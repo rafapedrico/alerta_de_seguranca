@@ -295,7 +295,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
         ),
       );
     }
-
+  }
+final theme = Theme.of(context);
+final String fundoAtivo = 'light';
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       body: SingleChildScrollView(
