@@ -197,7 +197,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
       'contexto_usuario': anotacoesUsuario,
     };
 
-    // Ajustado aqui para apenas imprimir no terminal e evitar quebras de compilação
     print('🚨 DISPARANDO ALERTA MÁXIMO DE EMERGÊNCIA!');
     print('📋 Dados enviados na cascata: $payloadAlerta');
 
@@ -213,6 +212,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Caso o sistema esteja bloqueado aguardando PIN
     if (_estaBloqueadoAguardandoPIN) {
       return Scaffold(
         backgroundColor: const Color(0xFF1A1A1A),
@@ -295,230 +295,258 @@ class _SegurancaTabState extends State<SegurancaTab> {
         ),
       );
     }
-  }
-final theme = Theme.of(context);
-final String fundoAtivo = 'light';
+
+    // Tela de funcionamento normal com plano de fundo
+    final theme = Theme.of(context);
+    const String fundoAtivo = 'light';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.lightbulb_outline, color: Colors.blue, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _contextoController,
-                        enabled: !_isTimerAtivo, 
-                        decoration: const InputDecoration(
-                          labelText: 'Dica de Contexto',
-                          hintText: 'Ex: Placa do carro / Ônibus / Localização',
-                          hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                          border: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                        ),
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
+      backgroundColor: Colors.transparent, // Permite que o fundo do Container apareça
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/$fundoAtivo.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Card(
+                elevation: 0,
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade200),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            if (!_manterHorarioDiario) ...[
-              const Text('Daqui quanto tempo vou chegar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Column(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                  child: Row(
                     children: [
-                      SizedBox(
-                        height: 130,
-                        width: 70,
-                        child: CupertinoPicker(
-                          itemExtent: 38,
-                          scrollController: FixedExtentScrollController(initialItem: _horaSelecionada),
-                          onSelectedItemChanged: (index) => setState(() => _horaSelecionada = index),
-                          children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
+                      const Icon(Icons.lightbulb_outline, color: Colors.blue, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _contextoController,
+                          enabled: !_isTimerAtivo, 
+                          decoration: const InputDecoration(
+                            labelText: 'Dica de Contexto',
+                            hintText: 'Ex: Placa do carro / Ônibus / Localização',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                          ),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         ),
                       ),
-                      const Text('Horas', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
                     ],
                   ),
-                  const SizedBox(width: 40),
-                  Column(
-                    children: [
-                      SizedBox(
-                        height: 130,
-                        width: 70,
-                        child: CupertinoPicker(
-                          itemExtent: 38,
-                          scrollController: FixedExtentScrollController(initialItem: _minutoSelecionada),
-                          onSelectedItemChanged: (index) => setState(() => _minutoSelecionada = index),
-                          children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
-                        ),
-                      ),
-                      const Text('Minutos', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-
-            if (_manterHorarioDiario) ...[
-              const Text('Definir horário fixo de rotina', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade100),
                 ),
-                child: Column(
+              ),
+              const SizedBox(height: 24),
+
+              if (!_manterHorarioDiario) ...[
+                const Text('Daqui quanto tempo vou chegar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Dê duplo clique no dia para ativar/desativar', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    Column(
                       children: [
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            children: [
-                              const Text('Dia', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(
-                                height: 140,
-                                child: CupertinoPicker(
-                                  itemExtent: 36,
-                                  looping: true, 
-                                  onSelectedItemChanged: (index) {},
-                                  children: List.generate(_diasSemana.length, (index) {
-                                    final dia = _diasSemana[index];
-                                    final isSelecionado = _diasAtivos.contains(dia);
-                                    return GestureDetector(
-                                      onDoubleTap: () {
-                                        setState(() {
-                                          if (isSelecionado) { _diasAtivos.remove(dia); } else { _diasAtivos.add(dia); }
-                                        });
-                                      },
-                                      child: Center(child: Text(isSelecionado ? '✓ $dia' : dia, style: TextStyle(fontSize: 14, fontWeight: isSelecionado ? FontWeight.bold : FontWeight.normal, color: isSelecionado ? const Color(0xFF4C7040) : Colors.black87))),
-                                    );
-                                  }),
-                                ),
-                              ),
-                            ],
+                        SizedBox(
+                          height: 130,
+                          width: 70,
+                          child: CupertinoPicker(
+                            itemExtent: 38,
+                            scrollController: FixedExtentScrollController(initialItem: _horaSelecionada),
+                            onSelectedItemChanged: (index) => setState(() => _horaSelecionada = index),
+                            children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
                           ),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            children: [
-                              const Text('Horas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(
-                                height: 140,
-                                child: CupertinoPicker(
-                                  itemExtent: 36,
-                                  onSelectedItemChanged: (index) => _horaRotina = index,
-                                  children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))),
-                                ),
-                              ),
-                            ],
+                        const Text('Horas', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    const SizedBox(width: 40),
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: 130,
+                          width: 70,
+                          child: CupertinoPicker(
+                            itemExtent: 38,
+                            scrollController: FixedExtentScrollController(initialItem: _minutoSelecionada),
+                            onSelectedItemChanged: (index) => setState(() => _minutoSelecionada = index),
+                            children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
                           ),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            children: [
-                              const Text('Minutos', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(
-                                height: 140,
-                                child: CupertinoPicker(
-                                  itemExtent: 36,
-                                  onSelectedItemChanged: (index) => _minutoRotina = index * 5,
-                                  children: List.generate(12, (index) => Center(child: Text((index * 5).toString().padLeft(2, '0'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        const Text('Minutos', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ],
                 ),
+              ],
+
+ if (_manterHorarioDiario) ...[
+                const Text('Definir horário fixo de rotina', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade100),
+                  ),
+                  child: Column(
+                    children: [
+                      // Fileira de dias estilo Bolinhas do iPhone
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(_diasSemana.length, (index) {
+                          final diaCompleto = _diasSemana[index];
+                          // Iniciais do iPhone: D, S, T, Q, Q, S, S
+                          final String inicial = index == 0 ? 'S' : index == 1 ? 'T' : index == 2 ? 'Q' : index == 3 ? 'Q' : index == 4 ? 'S' : index == 5 ? 'S' : 'D';
+                          final isSelecionado = _diasAtivos.contains(diaCompleto);
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSelecionado) {
+                                  _diasAtivos.remove(diaCompleto);
+                                } else {
+                                  _diasAtivos.add(diaCompleto);
+                                }
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelecionado ? const Color(0xFF4C7040) : Colors.grey.shade100,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  inicial,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelecionado ? Colors.white : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      
+                      // Seletores de Hora e Minuto Lado a Lado
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Column(
+                            children: [
+                              const Text('Hora', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              SizedBox(
+                                width: 70,
+                                height: 110,
+                                child: CupertinoPicker(
+                                  itemExtent: 36,
+                                  scrollController: FixedExtentScrollController(initialItem: _horaRotina),
+                                  onSelectedItemChanged: (index) => _horaRotina = index,
+                                  children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Text(':', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          Column(
+                            children: [
+                              const Text('Minuto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              SizedBox(
+                                width: 70,
+                                height: 110,
+                                child: CupertinoPicker(
+                                  itemExtent: 36,
+                                  scrollController: FixedExtentScrollController(initialItem: _minutoRotina ~/ 5),
+                                  onSelectedItemChanged: (index) => _minutoRotina = index * 5,
+                                  children: List.generate(12, (index) => Center(child: Text((index * 5).toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Checkbox(
+                    value: _manterHorarioDiario,
+                    activeColor: const Color(0xFF4C7040),
+                    onChanged: _isTimerAtivo ? null : (value) => setState(() => _manterHorarioDiario = value ?? false),
+                  ),
+                  Text('Prefiro manter um horário diário', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _isTimerAtivo ? Colors.grey : Colors.black87)),
+                ],
               ),
+
+              const SizedBox(height: 24),
+
+              GestureDetector(
+                onTap: _alternarTimer,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isTimerAtivo ? const Color(0xFFE67E22) : const Color(0xFF4C7040),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_isTimerAtivo ? Icons.timer : Icons.check_circle_outline, color: Colors.white, size: 36),
+                      const SizedBox(height: 6),
+                      Text(
+                        _isTimerAtivo ? _formatarTempo(_segundosRestantes) : 'Fazer\nCheck-in',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: _isTimerAtivo ? 20 : 16, letterSpacing: _isTimerAtivo ? 1.2 : 0),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(_isTimerAtivo ? 'Toque: desarmar' : 'Toque para iniciar', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.favorite, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Text('Cuidando de você com carinho', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey, fontStyle: FontStyle.italic)),
+                  SizedBox(width: 8),
+                  Icon(Icons.favorite, color: Colors.red, size: 16),
+                ],
+              ),
+              const SizedBox(height: 16),
             ],
-
-            const SizedBox(height: 24),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _manterHorarioDiario,
-                  activeColor: const Color(0xFF4C7040),
-                  onChanged: _isTimerAtivo ? null : (value) => setState(() => _manterHorarioDiario = value ?? false),
-                ),
-                Text('Prefiro manter um horário diário', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _isTimerAtivo ? Colors.grey : Colors.black87)),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            GestureDetector(
-              onTap: _alternarTimer,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isTimerAtivo ? const Color(0xFFE67E22) : const Color(0xFF4C7040),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(_isTimerAtivo ? Icons.timer : Icons.check_circle_outline, color: Colors.white, size: 36),
-                    const SizedBox(height: 6),
-                    Text(
-                      _isTimerAtivo ? _formatarTempo(_segundosRestantes) : 'Fazer\nCheck-in',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: _isTimerAtivo ? 20 : 16, letterSpacing: _isTimerAtivo ? 1.2 : 0),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(_isTimerAtivo ? 'Toque: desarmar' : 'Toque para iniciar', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.favorite, color: Colors.red, size: 16),
-                SizedBox(width: 8),
-                Text('Cuidando de você com carinho', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey, fontStyle: FontStyle.italic)),
-                SizedBox(width: 8),
-                Icon(Icons.favorite, color: Colors.red, size: 16),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );
