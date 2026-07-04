@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
+import '../../services/font_scale_service.dart';
+
 
 // Planos de fundo reais disponíveis em assets/, com nomes elegantes.
 const List<_PresetWallpaper> _presetWallpapers = [
@@ -560,6 +562,112 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     }
   }
 
+  /// Abre um modal inferior (showModalBottomSheet) com as opções de
+  /// tamanho de fonte disponíveis para acessibilidade visual.
+  void _mostrarModalTamanhoFonte(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return ValueListenableBuilder<double>(
+          valueListenable: FontScaleService.fontScaleNotifier,
+          builder: (context, fatorAtual, _) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.text_fields, color: Color(0xFF4C7040)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Tamanho das Letras',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _opcaoTamanhoFonte(
+                    ctx,
+                    label: 'Pequeno',
+                    fator: FontScaleService.pequeno,
+                    fatorAtual: fatorAtual,
+                    amostraFontSize: 14,
+                  ),
+                  _opcaoTamanhoFonte(
+                    ctx,
+                    label: 'Padrão',
+                    fator: FontScaleService.padrao,
+                    fatorAtual: fatorAtual,
+                    amostraFontSize: 16,
+                  ),
+                  _opcaoTamanhoFonte(
+                    ctx,
+                    label: 'Grande',
+                    fator: FontScaleService.grande,
+                    fatorAtual: fatorAtual,
+                    amostraFontSize: 18,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _opcaoTamanhoFonte(
+    BuildContext ctx, {
+    required String label,
+    required double fator,
+    required double fatorAtual,
+    required double amostraFontSize,
+  }) {
+    final bool isSelected = fatorAtual == fator;
+    return ListTile(
+      leading: Icon(
+        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+        color: isSelected ? const Color(0xFF4C7040) : Colors.grey,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: amostraFontSize,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      trailing: Text(
+        'Aa',
+        style: TextStyle(fontSize: amostraFontSize, color: Colors.grey.shade600),
+      ),
+      onTap: () async {
+        await _salvarTamanhoFonte(fator);
+        if (ctx.mounted) Navigator.of(ctx).pop();
+      },
+    );
+  }
+
+  Future<void> _salvarTamanhoFonte(double fator) async {
+    await FontScaleService.salvar(fator);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔤 Tamanho das letras: ${FontScaleService.rotuloPara(fator)}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+
   void _showPremiumModal() {
     showDialog(
       context: context,
@@ -781,9 +889,24 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           onTap: _showWallpaperDialog,
         ),
 
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.teal.shade50,
+            child: Icon(Icons.text_fields, color: Colors.teal.shade700),
+          ),
+          title: const Text('Tamanho das Letras'),
+          subtitle: Text(
+            FontScaleService.rotuloPara(FontScaleService.fontScaleNotifier.value),
+            style: const TextStyle(fontSize: 13),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _mostrarModalTamanhoFonte(context),
+        ),
+
         const Divider(),
 
         _sectionHeader(theme, Icons.workspace_premium, 'Plano'),
+
 
         if (isPremium)
           Padding(
