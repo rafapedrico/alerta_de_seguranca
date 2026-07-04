@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 
 
 // Planos de fundo reais disponíveis em assets/, com nomes elegantes.
@@ -27,11 +28,149 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
 
+  // Máximo de contatos de emergência permitidos.
+  static const int _maxContatos = 3;
+
+  // Lista de contatos de emergência carregada do SQLite (tabela isolada
+  // 'contatos_emergencia').
+  List<Map<String, dynamic>> _contatosEmergencia = [];
+  bool _carregandoContatos = true;
+
   @override
   void initState() {
     super.initState();
     _loadConfig();
+    _carregarContatosEmergencia();
   }
+
+  Future<void> _carregarContatosEmergencia() async {
+    setState(() => _carregandoContatos = true);
+    try {
+      final contatos = await _db.getContatosEmergencia();
+      if (mounted) {
+        setState(() {
+          _contatosEmergencia = contatos;
+          _carregandoContatos = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _carregandoContatos = false);
+    }
+  }
+
+  /// Remove tudo que não for dígito do número de telefone (espaços,
+  /// traços, parênteses, "+" etc.), garantindo que o número fique
+  /// pronto para uso em links do WhatsApp (com DDI/DDD numéricos).
+  String _limparNumeroTelefone(String numero) {
+    return numero.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  /// Solicita permissão de acesso aos contatos e, caso concedida, abre o
+  /// seletor nativo de contatos para o usuário escolher um familiar.
+  /// Após a seleção, o número é limpo e salvo na tabela isolada
+  /// 'contatos_emergencia' do SQLite.
+  Future<void> _adicionarContatoDaAgenda() async {
+    if (_contatosEmergencia.length >= _maxContatos) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Você já cadastrou o máximo de $_maxContatos contatos.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 1) Solicita permissão explicitamente ANTES de abrir a agenda.
+    final bool permitido = await FlutterContacts.requestPermission(readonly: true);
+    if (!permitido) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Permissão de acesso aos contatos foi negada.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2) Abre o seletor nativo de contatos do aparelho.
+    Contact? contatoSelecionado;
+    try {
+      contatoSelecionado = await FlutterContacts.openExternalPick();
+    } catch (_) {
+      contatoSelecionado = null;
+    }
+
+    if (contatoSelecionado == null) return; // Usuário cancelou a seleção.
+
+    // 3) Recupera os dados completos do contato (incluindo telefones).
+    final contatoCompleto = await FlutterContacts.getContact(contatoSelecionado.id);
+    if (contatoCompleto == null || contatoCompleto.phones.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Este contato não possui telefone cadastrado.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final nome = contatoCompleto.displayName.trim().isNotEmpty
+        ? contatoCompleto.displayName.trim()
+        : 'Sem nome';
+    final telefoneOriginal = contatoCompleto.phones.first.number;
+    final telefoneLimpo = _limparNumeroTelefone(telefoneOriginal);
+
+    if (telefoneLimpo.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Número de telefone inválido.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 4) Salva na tabela isolada 'contatos_emergencia'.
+    await _db.inserirContatoEmergencia({
+      'nome': nome,
+      'telefone': telefoneLimpo,
+    });
+
+    await _carregarContatosEmergencia();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ $nome adicionado aos contatos de emergência!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _excluirContato(int id, String nome) async {
+    await _db.deletarContatoEmergencia(id);
+    await _carregarContatosEmergencia();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🗑️ $nome removido dos contatos de emergência.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
 
   Future<void> _loadConfig() async {
     setState(() => _loading = true);
@@ -49,19 +188,16 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   }
 
   String? get _pinReal => _userConfig?['pin_real'] as String?;
-  String? get _pinCoacao => _userConfig?['pin_coacao'] as String?;
+  String? get _senhaPendente => _userConfig?['senha_pendente'] as String?;
   int get _tempoTolerancia => _userConfig?['tempo_padrao_timer'] as int? ?? 15;
+
   String get _tipoPlano => _userConfig?['tipo_plano'] as String? ?? 'free';
   String? get _planoDeFundoUrl => _userConfig?['plano_de_fundo_url'] as String?;
-  
-  String get _telefone1 => _userConfig?['telefone_emergencia_1'] as String? ?? '';
-  String get _telefone2 => _userConfig?['telefone_emergencia_2'] as String? ?? '';
 
   Future<void> _ensureUserConfig() async {
     if (_userConfig == null) {
       final id = await _db.insertUserConfig({
         'pin_real': null,
-        'pin_coacao': null,
         'tempo_padrao_timer': 15,
         'forcando_whatsapp': 0,
         'tipo_plano': 'free',
@@ -148,221 +284,22 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   Future<void> _savePinReal(String pin) async {
     await _ensureUserConfig();
     final id = _userConfig!['id'] as int;
-    await _db.updateUserConfig({'id': id, 'pin_real': pin});
-    await _loadConfig();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ PIN Real definido com sucesso!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showPinCoacaoDialog() {
-    final pinController = TextEditingController(text: _pinCoacao ?? '');
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, size: 22, color: Colors.orange),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'PIN de Coação',
-                softWrap: true,
-                overflow: TextOverflow.clip,
-              ),
-            ),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, size: 18, color: Colors.orange.shade800),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Este PIN é usado em situações de coação. '
-                        'Ao digitar este PIN no lugar do real, o app '
-                        'aparenta funcionar normalmente, mas ativa '
-                        'silenciosamente o alerta para seus contatos de emergência.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN de Coação',
-                  hintText: 'Digite 4 números',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.pin),
-                  counterText: '',
-                ),
-                maxLength: 4,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, letterSpacing: 12),
-                obscureText: true,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Informe o PIN';
-                  if (v.trim().length != 4) return 'Deve ter exatamente 4 dígitos';
-                  if (int.tryParse(v.trim()) == null) return 'Apenas números';
-                  if (v.trim() == _pinReal) return 'Deve ser diferente do PIN Real';
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              await _savePinCoacao(pinController.text.trim());
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text('Salvar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _savePinCoacao(String pin) async {
-    await _ensureUserConfig();
-    final id = _userConfig!['id'] as int;
-    await _db.updateUserConfig({'id': id, 'pin_coacao': pin});
-    await _loadConfig();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ PIN de Coação definido com sucesso!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showTelefonesDialog() {
-    final tel1Controller = TextEditingController(text: _telefone1);
-    final tel2Controller = TextEditingController(text: _telefone2);
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.contact_phone, size: 22, color: Colors.blue),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Contatos de Alerta',
-                softWrap: true,
-                overflow: TextOverflow.clip,
-              ),
-            ),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Cadastre os números com DDD (ex: 11999999999). O app tentará enviar primeiro via notificação interna e, caso falhe, pelo WhatsApp.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: tel1Controller,
-                decoration: const InputDecoration(
-                  labelText: 'Telefone de Emergência 1',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Informe pelo menos um número';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: tel2Controller,
-                decoration: const InputDecoration(
-                  labelText: 'Telefone de Emergência 2 (Opcional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone_android),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              await _saveTelefones(tel1Controller.text.trim(), tel2Controller.text.trim());
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text('Salvar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _saveTelefones(String t1, String t2) async {
-    await _ensureUserConfig();
-    final id = _userConfig!['id'] as int;
+    // Regra de segurança: a nova senha NÃO entra em vigor imediatamente.
+    // Ela fica pendente por 24 horas, mantendo a senha atual (pin_real)
+    // intacta até que o prazo de segurança seja cumprido.
+    final agora = DateTime.now().millisecondsSinceEpoch.toString();
     await _db.updateUserConfig({
-      'id': id, 
-      'telefone_emergencia_1': t1,
-      'telefone_emergencia_2': t2,
+      'id': id,
+      'senha_pendente': pin,
+      'timestamp_alteracao_senha': agora,
     });
     await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Contatos de emergência atualizados!'),
+          content: Text('🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.'),
           behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -816,11 +753,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
             overflow: TextOverflow.clip,
           ),
           subtitle: Text(
-            _pinReal != null ? '✅ Definido' : '⚠️ Não definido',
+            _senhaPendente != null
+                ? '⏳ Nova senha pendente (aguardando 24h para ativar)'
+                : (_pinReal != null ? '✅ Definido' : '⚠️ Não definido'),
             softWrap: true,
             overflow: TextOverflow.clip,
             style: TextStyle(
-              color: _pinReal != null ? Colors.green.shade600 : Colors.orange.shade600,
+              color: _senhaPendente != null
+                  ? Colors.blue.shade600
+                  : (_pinReal != null ? Colors.green.shade600 : Colors.orange.shade600),
               fontSize: 13,
             ),
           ),
@@ -828,57 +769,134 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           onTap: _showPinRealDialog,
         ),
 
-        ListTile(
-          leading: CircleAvatar(
-            backgroundColor: _pinCoacao != null ? Colors.green.shade100 : Colors.orange.shade100,
-            child: Icon(
-              _pinCoacao != null ? Icons.warning_amber : Icons.warning_amber_outlined,
-              color: _pinCoacao != null ? Colors.green.shade700 : Colors.orange.shade700,
-            ),
-          ),
-          title: const Text(
-            'PIN de Coação',
+        const Divider(),
+
+        // =========================================
+        // SEÇÃO: CONTATOS DE EMERGÊNCIA
+        // =========================================
+        _sectionHeader(theme, Icons.contact_emergency, 'Contatos de Emergência'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Cadastre até $_maxContatos familiares que receberão o alerta em caso de emergência.',
             softWrap: true,
             overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
-          subtitle: Text(
-            _pinCoacao != null ? '✅ Definido' : '⚠️ Não definido',
-            softWrap: true,
-            overflow: TextOverflow.clip,
-            style: TextStyle(
-              color: _pinCoacao != null ? Colors.green.shade600 : Colors.orange.shade600,
-              fontSize: 13,
+        ),
+        const SizedBox(height: 12),
+
+        if (_carregandoContatos)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_contatosEmergencia.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Nenhum contato cadastrado ainda.',
+                textAlign: TextAlign.center,
+                softWrap: true,
+                overflow: TextOverflow.clip,
+                style: TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: List.generate(_contatosEmergencia.length, (index) {
+                final contato = _contatosEmergencia[index];
+                final id = contato['id'] as int;
+                final nome = contato['nome'] as String? ?? 'Sem nome';
+                final telefone = contato['telefone'] as String? ?? '';
+                return Card(
+                  elevation: 0,
+                  color: Colors.white,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFFE8F5E9),
+                      child: Text(
+                        nome.isNotEmpty ? nome[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Color(0xFF4C7040),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      nome,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      telefone,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      tooltip: 'Excluir contato',
+                      onPressed: () => _excluirContato(id, nome),
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
-          trailing: const Icon(Icons.edit),
-          onTap: _showPinCoacaoDialog,
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _contatosEmergencia.length >= _maxContatos
+                  ? null
+                  : _adicionarContatoDaAgenda,
+              icon: const Icon(Icons.person_add_alt_1),
+              label: const Text(
+                '+ Adicionar Contato da Agenda',
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4C7040),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
         ),
 
+        const SizedBox(height: 16),
         const Divider(),
 
         _sectionHeader(theme, Icons.av_timer, 'Rotina e Contingência'),
 
-        ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.blue.shade50,
-            child: const Icon(Icons.contact_phone, color: Colors.blue),
-          ),
-          title: const Text(
-            'Contatos de Emergência',
-            softWrap: true,
-            overflow: TextOverflow.clip,
-          ),
-          subtitle: Text(
-            _telefone1.isNotEmpty ? '📞 $_telefone1' : '⚠️ Nenhum telefone cadastrado',
-            softWrap: true,
-            overflow: TextOverflow.clip,
-            style: const TextStyle(fontSize: 13),
-          ),
-          trailing: const Icon(Icons.edit),
-          onTap: _showTelefonesDialog,
-        ),
+
 
         ListTile(
+
           leading: CircleAvatar(
             backgroundColor: const Color(0xFFE8F5E9),
             child: Icon(Icons.hourglass_bottom, color: const Color(0xFF4C7040)),

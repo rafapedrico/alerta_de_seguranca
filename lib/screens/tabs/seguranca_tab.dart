@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
@@ -23,9 +24,14 @@ class _SegurancaTabState extends State<SegurancaTab> {
   // Variáveis do Banco de Dados
   String? _pinRealConfirmado;
   String? _pinCoacaoConfirmado;
+  String? _senhaPendente;
+  String? _timestampAlteracaoSenha;
   int _toleranciaRotinaMinutos = 15;
   String _telefoneEmergencia1 = '';
   String _telefoneEmergencia2 = '';
+
+  // Regra de segurança: 24 horas em milissegundos
+  static const int _prazoSegurancaMs = 86400000;
 
   // Variáveis de controle do Timer Padrão
   int _horaSelecionada = 0;
@@ -63,12 +69,53 @@ class _SegurancaTabState extends State<SegurancaTab> {
         setState(() {
           _pinRealConfirmado = config['pin_real'] as String?;
           _pinCoacaoConfirmado = config['pin_coacao'] as String?;
+          _senhaPendente = config['senha_pendente'] as String?;
+          _timestampAlteracaoSenha = config['timestamp_alteracao_senha'] as String?;
           _toleranciaRotinaMinutos = config['tempo_padrao_timer'] as int? ?? 15;
           _telefoneEmergencia1 = config['telefone_emergencia_1'] as String? ?? '';
           _telefoneEmergencia2 = config['telefone_emergencia_2'] as String? ?? '';
         });
+        // Verifica se o prazo de segurança de 24h já expirou, e caso
+        // afirmativo, efetiva a troca de senha pendente automaticamente.
+        await _processarSenhaPendenteSeExpirada();
       }
     } catch (_) {}
+  }
+
+  /// Verifica se existe uma senha pendente e se o prazo de segurança de
+  /// 24 horas desde a solicitação já se passou. Se sim, promove a senha
+  /// pendente para senha principal (pin_real) e limpa os campos temporários.
+  /// Caso contrário, mantém a senha antiga como válida para autenticação.
+  Future<void> _processarSenhaPendenteSeExpirada() async {
+    if (_senhaPendente == null || _timestampAlteracaoSenha == null) return;
+
+    final timestampSolicitacao = int.tryParse(_timestampAlteracaoSenha!);
+    if (timestampSolicitacao == null) return;
+
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    final decorrido = agora - timestampSolicitacao;
+
+    if (decorrido >= _prazoSegurancaMs) {
+      // Prazo de segurança cumprido: efetiva a nova senha.
+      final config = await _db.getUserConfig();
+      if (config == null) return;
+      final id = config['id'] as int;
+      await _db.updateUserConfig({
+        'id': id,
+        'pin_real': _senhaPendente,
+        'senha_pendente': null,
+        'timestamp_alteracao_senha': null,
+      });
+      if (mounted) {
+        setState(() {
+          _pinRealConfirmado = _senhaPendente;
+          _senhaPendente = null;
+          _timestampAlteracaoSenha = null;
+        });
+      }
+    }
+    // Se ainda não passaram 24h, nada é feito: a senha antiga
+    // (_pinRealConfirmado) continua sendo a única válida para autenticação.
   }
 
   void _alternarTimer() {
@@ -169,15 +216,41 @@ class _SegurancaTabState extends State<SegurancaTab> {
       anotacoesUsuario = 'Nenhuma anotação de contexto informada pelo usuário.';
     }
 
+    // Busca os contatos de emergência salvos na tabela isolada
+    // 'contatos_emergencia' (cadastrados na aba Família via Agenda).
+    List<Map<String, dynamic>> contatosEmergencia = [];
+    try {
+      contatosEmergencia = await _db.getContatosEmergencia();
+    } catch (_) {}
+
+    final mensagemAlerta =
+        'ALERTA DE EMERGÊNCIA! Não realizei meu check-in de segurança. '
+        'Contexto: $anotacoesUsuario';
+
     final payloadAlerta = {
       'mensagem': 'ALERTA DE EMERGÊNCIA - O usuário não realizou o check-in de segurança previsto.',
-      'telefones': [_telefoneEmergencia1, _telefoneEmergencia2],
+      'contatos': contatosEmergencia,
       'localizacao': 'Última localização conhecida obtida pelo GPS do aparelho',
       'contexto_usuario': anotacoesUsuario,
     };
 
     print('🚨 DISPARANDO ALERTA MÁXIMO DE EMERGÊNCIA!');
     print('📋 Dados enviados na cascata: $payloadAlerta');
+
+    // Para cada contato de emergência cadastrado, prepara/abre o link do
+    // WhatsApp com a mensagem de alerta já preenchida.
+    for (final contato in contatosEmergencia) {
+      final telefone = (contato['telefone'] as String?) ?? '';
+      if (telefone.isEmpty) continue;
+      final urlWhatsapp = Uri.parse(
+        'https://wa.me/$telefone?text=${Uri.encodeComponent(mensagemAlerta)}',
+      );
+      try {
+        if (await canLaunchUrl(urlWhatsapp)) {
+          await launchUrl(urlWhatsapp, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {}
+    }
 
     _pararTimer();
   }

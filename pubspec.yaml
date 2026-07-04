@@ -31,6 +31,11 @@ dependencies:
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.3.3
 
+  # Contatos e permissões (Contatos de Emergência - aba Família)
+  flutter_contacts: ^1.1.9+2
+  permission_handler: ^11.3.1
+  url_launcher: ^6.2.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

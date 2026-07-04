@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -37,17 +37,30 @@ class DatabaseHelper {
         tempo_padrao_timer INTEGER,
         forcando_whatsapp INTEGER NOT NULL DEFAULT 0,
         tipo_plano TEXT NOT NULL DEFAULT 'free',
-        plano_de_fundo_url TEXT
+        plano_de_fundo_url TEXT,
+        senha_pendente TEXT,
+        timestamp_alteracao_senha TEXT
       )
     ''');
 
-    // Table: contacts (up to 3 contacts)
+    // Table: contacts (up to 3 contacts) - legado, mantido por compatibilidade
     await db.execute('''
       CREATE TABLE contacts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
         telefone_whatsapp TEXT NOT NULL,
         limite_mensal_alertas INTEGER NOT NULL DEFAULT 10
+      )
+    ''');
+
+    // Table: contatos_emergencia - tabela isolada e dedicada exclusivamente
+    // aos contatos de emergência da aba Família (até 3 contatos), com
+    // integração via Agenda do celular (flutter_contacts).
+    await db.execute('''
+      CREATE TABLE contatos_emergencia (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        telefone TEXT NOT NULL
       )
     ''');
   }
@@ -57,6 +70,23 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       // Add plano_de_fundo_url to user_config
       await db.execute('ALTER TABLE user_config ADD COLUMN plano_de_fundo_url TEXT');
+    }
+    // Migration from v2 to v3: add senha_pendente e timestamp_alteracao_senha
+    // (regra de segurança de 24h para troca de senha)
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE user_config ADD COLUMN senha_pendente TEXT');
+      await db.execute('ALTER TABLE user_config ADD COLUMN timestamp_alteracao_senha TEXT');
+    }
+    // Migration from v3 to v4: cria a tabela isolada 'contatos_emergencia',
+    // usada pela aba Família para até 3 contatos vindos da Agenda do celular.
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS contatos_emergencia (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nome TEXT NOT NULL,
+          telefone TEXT NOT NULL
+        )
+      ''');
     }
   }
 
@@ -112,5 +142,30 @@ class DatabaseHelper {
   Future<int> deleteContact(int id) async {
     final db = await database;
     return await db.delete('contacts', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ==============================
+  // CONTATOS DE EMERGÊNCIA METHODS
+  // ==============================
+  // Tabela isolada e dedicada exclusivamente aos contatos de emergência
+  // cadastrados na aba Família (até 3 contatos), integrados via Agenda
+  // do celular (flutter_contacts). Totalmente independente de user_config.
+
+  /// Retorna todos os contatos de emergência cadastrados, ordenados por id.
+  Future<List<Map<String, dynamic>>> getContatosEmergencia() async {
+    final db = await database;
+    return await db.query('contatos_emergencia', orderBy: 'id ASC');
+  }
+
+  /// Insere um novo contato de emergência. Retorna o id gerado.
+  Future<int> inserirContatoEmergencia(Map<String, dynamic> contato) async {
+    final db = await database;
+    return await db.insert('contatos_emergencia', contato);
+  }
+
+  /// Remove um contato de emergência pelo id.
+  Future<int> deletarContatoEmergencia(int id) async {
+    final db = await database;
+    return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
   }
 }

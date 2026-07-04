@@ -6,6 +6,8 @@ class UserConfig {
   final bool forcandoWhatsapp;
   final String tipoPlano;
   final String? planoDeFundoUrl;
+  final String? senhaPendente;
+  final String? timestampAlteracaoSenha;
 
   UserConfig({
     this.id,
@@ -15,6 +17,8 @@ class UserConfig {
     this.forcandoWhatsapp = false,
     this.tipoPlano = 'free',
     this.planoDeFundoUrl,
+    this.senhaPendente,
+    this.timestampAlteracaoSenha,
   });
 
   Map<String, dynamic> toMap() => {
@@ -25,6 +29,8 @@ class UserConfig {
         'forcando_whatsapp': forcandoWhatsapp ? 1 : 0,
         'tipo_plano': tipoPlano,
         'plano_de_fundo_url': planoDeFundoUrl,
+        'senha_pendente': senhaPendente,
+        'timestamp_alteracao_senha': timestampAlteracaoSenha,
       };
 
   factory UserConfig.fromMap(Map<String, dynamic> map) => UserConfig(
@@ -35,5 +41,7 @@ class UserConfig {
         forcandoWhatsapp: (map['forcando_whatsapp'] as int?) == 1,
         tipoPlano: map['tipo_plano'] as String? ?? 'free',
         planoDeFundoUrl: map['plano_de_fundo_url'] as String?,
+        senhaPendente: map['senha_pendente'] as String?,
+        timestampAlteracaoSenha: map['timestamp_alteracao_senha'] as String?,
       );
 }

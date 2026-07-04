@@ -49,7 +49,6 @@ class _FamiliaTabState extends State<FamiliaTab> {
           ),
         ),
         child: SafeArea(
-
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -250,7 +249,7 @@ class _FamiliaTabState extends State<FamiliaTab> {
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
