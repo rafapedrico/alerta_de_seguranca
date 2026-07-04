@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import '../../services/api_service.dart';
 import '../../services/database_helper.dart';
+import '../../services/wallpaper_service.dart';
+
 
 class SegurancaTab extends StatefulWidget {
   const SegurancaTab({super.key});
@@ -27,9 +29,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   // Variáveis de controle do Timer Padrão
   int _horaSelecionada = 0;
-  int _minutoSelecionada = 5; 
-  bool _manterHorarioDiario = false;
-  
+  int _minutoSelecionada = 5;
+
   // Variáveis de controle do Timer Ativo
   Timer? _timer;
   bool _isTimerAtivo = false;
@@ -38,17 +39,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
   // Estado de Bloqueio por PIN
   bool _estaBloqueadoAguardandoPIN = false;
   Timer? _timerToleranciaBloqueio;
-  int _segundosToleranciaBloqueio = 60; 
+  int _segundosToleranciaBloqueio = 60;
   String _pinDigitadoNoBloqueio = '';
-
-  // Dias da semana para a opção diária
-  final List<String> _diasSemana = [
-    'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO', 'DOMINGO'
-  ];
-
-  final Set<String> _diasAtivos = {}; 
-  int _horaRotina = 23;
-  int _minutoRotina = 45;
 
   @override
   void initState() {
@@ -58,7 +50,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   @override
   void dispose() {
-    _contextoController.dispose(); 
+    _contextoController.dispose();
     _timer?.cancel();
     _timerToleranciaBloqueio?.cancel();
     super.dispose();
@@ -88,21 +80,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
   }
 
   void _iniciarTimer() {
-    _carregarConfiguracoesSeguranca(); 
-    int totalSegundos = 0;
-
-    if (_manterHorarioDiario) {
-      final agora = DateTime.now();
-      var dataAlvo = DateTime(agora.year, agora.month, agora.day, _horaRotina, _minutoRotina);
-      
-      if (dataAlvo.isBefore(agora)) {
-        dataAlvo = dataAlvo.add(const Duration(days: 1));
-      }
-      dataAlvo = dataAlvo.add(Duration(minutes: _toleranciaRotinaMinutos));
-      totalSegundos = dataAlvo.difference(agora).inSeconds;
-    } else {
-      totalSegundos = (_horaSelecionada * 3600) + (_minutoSelecionada * 60);
-    }
+    _carregarConfiguracoesSeguranca();
+    int totalSegundos = (_horaSelecionada * 3600) + (_minutoSelecionada * 60);
 
     if (totalSegundos <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,7 +122,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   void _ativarBloqueioDeSeguranca() {
     setState(() {
       _estaBloqueadoAguardandoPIN = true;
-      _segundosToleranciaBloqueio = 60; 
+      _segundosToleranciaBloqueio = 60;
       _pinDigitadoNoBloqueio = '';
     });
 
@@ -184,12 +163,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   Future<void> _executarDisparoDeEmergencia() async {
     _timerToleranciaBloqueio?.cancel();
-    
+
     String anotacoesUsuario = _contextoController.text.trim();
     if (anotacoesUsuario.isEmpty) {
       anotacoesUsuario = 'Nenhuma anotação de contexto informada pelo usuário.';
     }
-    
+
     final payloadAlerta = {
       'mensagem': 'ALERTA DE EMERGÊNCIA - O usuário não realizou o check-in de segurança previsto.',
       'telefones': [_telefoneEmergencia1, _telefoneEmergencia2],
@@ -262,7 +241,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
                     ),
                     itemCount: 12,
                     itemBuilder: (context, index) {
-                      if (index == 9) return const SizedBox.shrink(); 
+                      if (index == 9) return const SizedBox.shrink();
                       if (index == 11) {
                         return IconButton(
                           icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28),
@@ -296,23 +275,25 @@ class _SegurancaTabState extends State<SegurancaTab> {
       );
     }
 
-    // Tela de funcionamento normal com plano de fundo
-    final theme = Theme.of(context);
-    const String fundoAtivo = 'light';
-
+    // Tela de funcionamento normal com plano de fundo dinâmico,
+    // sincronizado em tempo real com a escolha feita em Configurações.
     return Scaffold(
       backgroundColor: Colors.transparent, // Permite que o fundo do Container apareça
-      body: Container(
+      body: ValueListenableBuilder<String>(
+        valueListenable: WallpaperService.wallpaperNotifier,
+        builder: (context, fundoAtivo, _) {
+          return Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/$fundoAtivo.png'),
+            image: AssetImage(fundoAtivo),
             fit: BoxFit.cover,
           ),
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -332,7 +313,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
                       Expanded(
                         child: TextField(
                           controller: _contextoController,
-                          enabled: !_isTimerAtivo, 
+                          enabled: !_isTimerAtivo,
                           decoration: const InputDecoration(
                             labelText: 'Dica de Contexto',
                             hintText: 'Ex: Placa do carro / Ônibus / Localização',
@@ -350,162 +331,46 @@ class _SegurancaTabState extends State<SegurancaTab> {
               ),
               const SizedBox(height: 24),
 
-              if (!_manterHorarioDiario) ...[
-                const Text('Daqui quanto tempo vou chegar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Column(
-                      children: [
-                        SizedBox(
-                          height: 130,
-                          width: 70,
-                          child: CupertinoPicker(
-                            itemExtent: 38,
-                            scrollController: FixedExtentScrollController(initialItem: _horaSelecionada),
-                            onSelectedItemChanged: (index) => setState(() => _horaSelecionada = index),
-                            children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
-                          ),
-                        ),
-                        const Text('Horas', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                    const SizedBox(width: 40),
-                    Column(
-                      children: [
-                        SizedBox(
-                          height: 130,
-                          width: 70,
-                          child: CupertinoPicker(
-                            itemExtent: 38,
-                            scrollController: FixedExtentScrollController(initialItem: _minutoSelecionada),
-                            onSelectedItemChanged: (index) => setState(() => _minutoSelecionada = index),
-                            children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
-                          ),
-                        ),
-                        const Text('Minutos', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-
- if (_manterHorarioDiario) ...[
-                const Text('Definir horário fixo de rotina', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade100),
-                  ),
-                  child: Column(
-                    children: [
-                      // Fileira de dias estilo Bolinhas do iPhone
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(_diasSemana.length, (index) {
-                          final diaCompleto = _diasSemana[index];
-                          // Iniciais do iPhone: D, S, T, Q, Q, S, S
-                          final String inicial = index == 0 ? 'S' : index == 1 ? 'T' : index == 2 ? 'Q' : index == 3 ? 'Q' : index == 4 ? 'S' : index == 5 ? 'S' : 'D';
-                          final isSelecionado = _diasAtivos.contains(diaCompleto);
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (isSelecionado) {
-                                  _diasAtivos.remove(diaCompleto);
-                                } else {
-                                  _diasAtivos.add(diaCompleto);
-                                }
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelecionado ? const Color(0xFF4C7040) : Colors.grey.shade100,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  inicial,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelecionado ? Colors.white : Colors.black54,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      
-                      // Seletores de Hora e Minuto Lado a Lado
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Column(
-                            children: [
-                              const Text('Hora', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(
-                                width: 70,
-                                height: 110,
-                                child: CupertinoPicker(
-                                  itemExtent: 36,
-                                  scrollController: FixedExtentScrollController(initialItem: _horaRotina),
-                                  onSelectedItemChanged: (index) => _horaRotina = index,
-                                  children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Text(':', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          Column(
-                            children: [
-                              const Text('Minuto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(
-                                width: 70,
-                                height: 110,
-                                child: CupertinoPicker(
-                                  itemExtent: 36,
-                                  scrollController: FixedExtentScrollController(initialItem: _minutoRotina ~/ 5),
-                                  onSelectedItemChanged: (index) => _minutoRotina = index * 5,
-                                  children: List.generate(12, (index) => Center(child: Text((index * 5).toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
+              const Text('Daqui quanto tempo vou chegar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Checkbox(
-                    value: _manterHorarioDiario,
-                    activeColor: const Color(0xFF4C7040),
-                    onChanged: _isTimerAtivo ? null : (value) => setState(() => _manterHorarioDiario = value ?? false),
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 130,
+                        width: 70,
+                        child: CupertinoPicker(
+                          itemExtent: 38,
+                          scrollController: FixedExtentScrollController(initialItem: _horaSelecionada),
+                          onSelectedItemChanged: (index) => setState(() => _horaSelecionada = index),
+                          children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
+                        ),
+                      ),
+                      const Text('Horas', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                    ],
                   ),
-                  Text('Prefiro manter um horário diário', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _isTimerAtivo ? Colors.grey : Colors.black87)),
+                  const SizedBox(width: 40),
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 130,
+                        width: 70,
+                        child: CupertinoPicker(
+                          itemExtent: 38,
+                          scrollController: FixedExtentScrollController(initialItem: _minutoSelecionada),
+                          onSelectedItemChanged: (index) => setState(() => _minutoSelecionada = index),
+                          children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
+                        ),
+                      ),
+                      const Text('Minutos', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               GestureDetector(
                 onTap: _alternarTimer,
@@ -548,7 +413,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
             ],
           ),
         ),
+          );
+        },
       ),
     );
   }
 }
+
+

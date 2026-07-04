@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
+import '../../services/wallpaper_service.dart';
 
-// Simulated preset wallpapers for chat background
+// Planos de fundo reais disponíveis em assets/, com nomes elegantes.
 const List<_PresetWallpaper> _presetWallpapers = [
-  _PresetWallpaper('Padrão Claro', 'light', 0xFFF5F5F5),
-  _PresetWallpaper('Padrão Escuro', 'dark', 0xFF121212),
-  _PresetWallpaper('Azul Suave', 'blue', 0xFFE3F2FD),
-  _PresetWallpaper('Verde Natureza', 'green', 0xFFE8F5E9),
-  _PresetWallpaper('Lavanda', 'lavender', 0xFFF3E5F5),
-  _PresetWallpaper('Cinza Elegante', 'gray', 0xFFEEEEEE),
+  _PresetWallpaper('Azul Profundo', 'blue'),
+  _PresetWallpaper('Escuro Absoluto', 'dark'),
+  _PresetWallpaper('Cinza Urbano', 'gray'),
+  _PresetWallpaper('Verde Botânico', 'green'),
+  _PresetWallpaper('Lavanda Suave', 'lavender'),
+  _PresetWallpaper('Luz Clássica', 'light'),
 ];
 
 class ConfiguracoesTab extends StatefulWidget {
@@ -454,54 +455,77 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                   _saveWallpaper(wp.key);
                   Navigator.of(ctx).pop();
                 },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Color(wp.colorValue),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                      width: isSelected ? 3 : 1,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.3),
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        isSelected ? Icons.check_circle : Icons.wallpaper,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.grey.shade600,
-                        size: 28,
+                            : Colors.grey.shade300,
+                        width: isSelected ? 3 : 1,
                       ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          wp.label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.grey.shade700,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.3),
+                                blurRadius: 8,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          'assets/${wp.key}.png',
+                          fit: BoxFit.cover,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.0),
+                                Colors.black.withOpacity(0.55),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        if (isSelected)
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Icon(
+                              Icons.check_circle,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 22,
+                            ),
+                          ),
+                        Positioned(
+                          left: 4,
+                          right: 4,
+                          bottom: 4,
+                          child: Text(
+                            wp.label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: Colors.white,
+                              shadows: const [
+                                Shadow(color: Colors.black87, blurRadius: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -522,6 +546,9 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     await _ensureUserConfig();
     final id = _userConfig!['id'] as int;
     await _db.updateUserConfig({'id': id, 'plano_de_fundo_url': key});
+    // Espelha a escolha em SharedPreferences para acesso rápido/síncrono
+    // nas demais telas (ex: Segurança, Família).
+    await WallpaperService.salvar('assets/$key.png');
     await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -625,9 +652,22 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
 
     final isPremium = _tipoPlano == 'premium';
 
-    return ListView(
+    return ValueListenableBuilder<String>(
+      valueListenable: WallpaperService.wallpaperNotifier,
+      builder: (context, fundoAtivo, _) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage(fundoAtivo),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
+
         _sectionHeader(theme, Icons.security, 'Segurança'),
 
         ListTile(
@@ -717,28 +757,25 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                 ? _presetWallpapers
                         .firstWhere(
                           (w) => w.key == _planoDeFundoUrl,
-                          orElse: () => const _PresetWallpaper('Customizado', 'custom', 0xFFF5F5F5),
+                          orElse: () => const _PresetWallpaper('Luz Clássica', 'light'),
                         )
                         .label
-                : 'Padrão',
+                : 'Luz Clássica (padrão)',
             style: const TextStyle(fontSize: 13),
           ),
-          trailing: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _planoDeFundoUrl != null
-                  ? Color(
-                      _presetWallpapers
-                          .firstWhere(
-                            (w) => w.key == _planoDeFundoUrl,
-                            orElse: () => const _PresetWallpaper('', 'default', 0xFFF5F5F5),
-                          )
-                          .colorValue,
-                    )
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
+          trailing: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Image.asset(
+                'assets/${_planoDeFundoUrl ?? 'light'}.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           onTap: _showWallpaperDialog,
@@ -937,10 +974,14 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           ),
         const SizedBox(height: 24),
       ],
+          ),
+        );
+      },
     );
   }
 
   Widget _sectionHeader(ThemeData theme, IconData icon, String title) {
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
@@ -964,7 +1005,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
 class _PresetWallpaper {
   final String label;
   final String key;
-  final int colorValue;
 
-  const _PresetWallpaper(this.label, this.key, this.colorValue);
+  const _PresetWallpaper(this.label, this.key);
 }
