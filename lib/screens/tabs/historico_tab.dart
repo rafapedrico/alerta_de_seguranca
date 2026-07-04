@@ -24,7 +24,12 @@ class _HistoricoTabState extends State<HistoricoTab> {
             itemBuilder: (context, index) {
               return ListTile(
                 leading: const Icon(Icons.history),
-                title: Text(_activities[index]),
+                title: Text(
+                  _activities[index],
+                  softWrap: true,
+                  overflow: TextOverflow.clip,
+                  maxLines: 3,
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () {
@@ -42,7 +47,14 @@ class _HistoricoTabState extends State<HistoricoTab> {
               // Implement delete selected items functionality here
             },
             icon: const Icon(Icons.delete_forever),
-            label: const Text('Apagar itens selecionados'),
+            label: const Flexible(
+              child: Text(
+                'Apagar itens selecionados',
+                softWrap: true,
+                overflow: TextOverflow.clip,
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ),
       ],

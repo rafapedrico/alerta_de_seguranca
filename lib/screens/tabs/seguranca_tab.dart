@@ -201,14 +201,26 @@ class _SegurancaTabState extends State<SegurancaTab> {
             children: [
               const Icon(Icons.security, color: Colors.redAccent, size: 50),
               const SizedBox(height: 12),
-              const Text(
-                'SISTEMA BLOQUEADO',
-                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'SISTEMA BLOQUEADO',
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  overflow: TextOverflow.clip,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Tempo de tolerância: ${_segundosToleranciaBloqueio}s',
-                style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.w500),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Tempo de tolerância: ${_segundosToleranciaBloqueio}s',
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  overflow: TextOverflow.clip,
+                  style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.w500),
+                ),
               ),
               const SizedBox(height: 32),
               Row(
@@ -331,7 +343,13 @@ class _SegurancaTabState extends State<SegurancaTab> {
               ),
               const SizedBox(height: 24),
 
-              const Text('Daqui quanto tempo vou chegar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const Text(
+                'Daqui quanto tempo vou chegar',
+                textAlign: TextAlign.center,
+                softWrap: true,
+                overflow: TextOverflow.clip,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -348,7 +366,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
                           children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
                         ),
                       ),
-                      const Text('Horas', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                      const Text(
+                        'Horas',
+                        softWrap: true,
+                        overflow: TextOverflow.clip,
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
                   const SizedBox(width: 40),
@@ -364,7 +387,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
                           children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
                         ),
                       ),
-                      const Text('Minutos', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                      const Text(
+                        'Minutos',
+                        softWrap: true,
+                        overflow: TextOverflow.clip,
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
                 ],
@@ -387,26 +415,51 @@ class _SegurancaTabState extends State<SegurancaTab> {
                     children: [
                       Icon(_isTimerAtivo ? Icons.timer : Icons.check_circle_outline, color: Colors.white, size: 36),
                       const SizedBox(height: 6),
-                      Text(
-                        _isTimerAtivo ? _formatarTempo(_segundosRestantes) : 'Fazer\nCheck-in',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: _isTimerAtivo ? 20 : 16, letterSpacing: _isTimerAtivo ? 1.2 : 0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _isTimerAtivo ? _formatarTempo(_segundosRestantes) : 'Fazer\nCheck-in',
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            overflow: TextOverflow.clip,
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: _isTimerAtivo ? 20 : 16, letterSpacing: _isTimerAtivo ? 1.2 : 0),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 6),
-                      Text(_isTimerAtivo ? 'Toque: desarmar' : 'Toque para iniciar', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          _isTimerAtivo ? 'Toque: desarmar' : 'Toque para iniciar',
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.favorite, color: Colors.red, size: 16),
-                  SizedBox(width: 8),
-                  Text('Cuidando de você com carinho', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey, fontStyle: FontStyle.italic)),
-                  SizedBox(width: 8),
-                  Icon(Icons.favorite, color: Colors.red, size: 16),
+                  const Icon(Icons.favorite, color: Colors.red, size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Cuidando de você com carinho',
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      overflow: TextOverflow.clip,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.favorite, color: Colors.red, size: 16),
                 ],
               ),
               const SizedBox(height: 16),
@@ -419,5 +472,3 @@ class _SegurancaTabState extends State<SegurancaTab> {
     );
   }
 }
-
-

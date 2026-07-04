@@ -82,7 +82,13 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           children: [
             Icon(Icons.lock_outline, size: 22),
             SizedBox(width: 8),
-            Text('PIN Real'),
+            Expanded(
+              child: Text(
+                'PIN Real',
+                softWrap: true,
+                overflow: TextOverflow.clip,
+              ),
+            ),
           ],
         ),
         content: Form(
@@ -165,7 +171,13 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           children: [
             Icon(Icons.warning_amber_rounded, size: 22, color: Colors.orange),
             SizedBox(width: 8),
-            Text('PIN de Coação'),
+            Expanded(
+              child: Text(
+                'PIN de Coação',
+                softWrap: true,
+                overflow: TextOverflow.clip,
+              ),
+            ),
           ],
         ),
         content: Form(
@@ -273,7 +285,13 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           children: [
             Icon(Icons.contact_phone, size: 22, color: Colors.blue),
             SizedBox(width: 8),
-            Text('Contatos de Alerta'),
+            Expanded(
+              child: Text(
+                'Contatos de Alerta',
+                softWrap: true,
+                overflow: TextOverflow.clip,
+              ),
+            ),
           ],
         ),
         content: Form(
@@ -361,7 +379,13 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           children: [
             Icon(Icons.hourglass_top, size: 22, color: Color(0xFF4C7040)),
             SizedBox(width: 8),
-            Text('Tempo de Tolerância'),
+            Expanded(
+              child: Text(
+                'Tempo de Tolerância',
+                softWrap: true,
+                overflow: TextOverflow.clip,
+              ),
+            ),
           ],
         ),
         content: Form(
@@ -786,9 +810,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
               color: _pinReal != null ? Colors.green.shade700 : Colors.orange.shade700,
             ),
           ),
-          title: const Text('PIN Real'),
+          title: const Text(
+            'PIN Real',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             _pinReal != null ? '✅ Definido' : '⚠️ Não definido',
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: TextStyle(
               color: _pinReal != null ? Colors.green.shade600 : Colors.orange.shade600,
               fontSize: 13,
@@ -806,9 +836,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
               color: _pinCoacao != null ? Colors.green.shade700 : Colors.orange.shade700,
             ),
           ),
-          title: const Text('PIN de Coação'),
+          title: const Text(
+            'PIN de Coação',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             _pinCoacao != null ? '✅ Definido' : '⚠️ Não definido',
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: TextStyle(
               color: _pinCoacao != null ? Colors.green.shade600 : Colors.orange.shade600,
               fontSize: 13,
@@ -827,9 +863,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
             backgroundColor: Colors.blue.shade50,
             child: const Icon(Icons.contact_phone, color: Colors.blue),
           ),
-          title: const Text('Contatos de Emergência'),
+          title: const Text(
+            'Contatos de Emergência',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             _telefone1.isNotEmpty ? '📞 $_telefone1' : '⚠️ Nenhum telefone cadastrado',
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
           ),
           trailing: const Icon(Icons.edit),
@@ -841,9 +883,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
             backgroundColor: const Color(0xFFE8F5E9),
             child: Icon(Icons.hourglass_bottom, color: const Color(0xFF4C7040)),
           ),
-          title: const Text('Tempo de Tolerância de Rotina'),
+          title: const Text(
+            'Tempo de Tolerância de Rotina',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             '$_tempoTolerancia minutos de atraso permitidos',
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
           trailing: const Icon(Icons.edit),
@@ -859,7 +907,11 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
             backgroundColor: Colors.purple.shade100,
             child: Icon(Icons.wallpaper, color: Colors.purple.shade700),
           ),
-          title: const Text('Alterar Plano de Fundo'),
+          title: const Text(
+            'Alterar Plano de Fundo',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             _planoDeFundoUrl != null
                 ? _presetWallpapers
@@ -869,6 +921,8 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                         )
                         .label
                 : 'Luz Clássica (padrão)',
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
           ),
           trailing: ClipRRect(
@@ -894,9 +948,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
             backgroundColor: Colors.teal.shade50,
             child: Icon(Icons.text_fields, color: Colors.teal.shade700),
           ),
-          title: const Text('Tamanho das Letras'),
+          title: const Text(
+            'Tamanho das Letras',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
           subtitle: Text(
             FontScaleService.rotuloPara(FontScaleService.fontScaleNotifier.value),
+            softWrap: true,
+            overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
           ),
           trailing: const Icon(Icons.chevron_right),
@@ -933,28 +993,34 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                 children: [
                   const Icon(Icons.verified, color: Colors.white, size: 32),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Plano Familiar Ativo',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Plano Familiar Ativo',
+                          softWrap: true,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Todos os recursos premium disponíveis',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
-                          fontSize: 12,
+                        const SizedBox(height: 2),
+                        Text(
+                          'Todos os recursos premium disponíveis',
+                          softWrap: true,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -968,6 +1034,8 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                         SizedBox(width: 4),
                         Text(
                           'Premium',
+                          softWrap: true,
+                          overflow: TextOverflow.clip,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -1012,12 +1080,16 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                         Icon(Icons.workspace_premium,
                             color: Colors.amber.shade300, size: 32),
                         const SizedBox(width: 10),
-                        Text(
-                          'Premium',
-                          style: TextStyle(
-                            color: Colors.amber.shade200,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            'Premium',
+                            softWrap: true,
+                            overflow: TextOverflow.clip,
+                            style: TextStyle(
+                              color: Colors.amber.shade200,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -1025,6 +1097,8 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                     const SizedBox(height: 12),
                     const Text(
                       'Proteja quem você ama',
+                      softWrap: true,
+                      overflow: TextOverflow.clip,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -1034,31 +1108,44 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                     const SizedBox(height: 4),
                     const Text(
                       'Mude para o Plano Premium',
+                      softWrap: true,
+                      overflow: TextOverflow.clip,
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.spaceBetween,
+                      runSpacing: 8,
                       children: [
-                        const Text(
-                          'R\$ 9,90',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'R\$ 9,90',
+                              softWrap: true,
+                              overflow: TextOverflow.clip,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '/mês',
+                              softWrap: true,
+                              overflow: TextOverflow.clip,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '/mês',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1073,6 +1160,8 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                             children: [
                               Text(
                                 'Ver mais',
+                                softWrap: true,
+                                overflow: TextOverflow.clip,
                                 style: TextStyle(
                                   color: Colors.indigo.shade600,
                                   fontWeight: FontWeight.bold,

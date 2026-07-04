@@ -56,14 +56,19 @@ class _FamiliaTabState extends State<FamiliaTab> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 8),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.people, color: Color(0xFF4C7040), size: 28),
-                    SizedBox(width: 8),
-                    Text(
-                      'Rotina em Família',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                    const Icon(Icons.people, color: Color(0xFF4C7040), size: 28),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Rotina em Família',
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        overflow: TextOverflow.clip,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
                     ),
                   ],
                 ),
@@ -71,6 +76,9 @@ class _FamiliaTabState extends State<FamiliaTab> {
 
                 const Text(
                   'Definir horário fixo de rotina',
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  overflow: TextOverflow.clip,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 const SizedBox(height: 16),
@@ -78,7 +86,7 @@ class _FamiliaTabState extends State<FamiliaTab> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade100),
                   ),
@@ -124,12 +132,17 @@ class _FamiliaTabState extends State<FamiliaTab> {
                                 color: isSelecionado ? const Color(0xFF4C7040) : Colors.grey.shade100,
                               ),
                               child: Center(
-                                child: Text(
-                                  inicial,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelecionado ? Colors.white : Colors.black54,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    inicial,
+                                    softWrap: true,
+                                    overflow: TextOverflow.clip,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelecionado ? Colors.white : Colors.black54,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -150,6 +163,8 @@ class _FamiliaTabState extends State<FamiliaTab> {
                             children: [
                               const Text(
                                 'Hora',
+                                softWrap: true,
+                                overflow: TextOverflow.clip,
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
                               ),
                               SizedBox(
@@ -172,11 +187,20 @@ class _FamiliaTabState extends State<FamiliaTab> {
                               ),
                             ],
                           ),
-                          const Text(':', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const Flexible(
+                            child: Text(
+                              ':',
+                              softWrap: true,
+                              overflow: TextOverflow.clip,
+                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey),
+                            ),
+                          ),
                           Column(
                             children: [
                               const Text(
                                 'Minuto',
+                                softWrap: true,
+                                overflow: TextOverflow.clip,
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
                               ),
                               SizedBox(
@@ -215,9 +239,13 @@ class _FamiliaTabState extends State<FamiliaTab> {
                       activeColor: const Color(0xFF4C7040),
                       onChanged: (value) => setState(() => _rotinaAtiva = value ?? false),
                     ),
-                    const Text(
-                      'Manter rotina diária ativada',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                    Flexible(
+                      child: Text(
+                        'Manter rotina diária ativada',
+                        softWrap: true,
+                        overflow: TextOverflow.clip,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                      ),
                     ),
                   ],
                 ),
@@ -233,5 +261,3 @@ class _FamiliaTabState extends State<FamiliaTab> {
     );
   }
 }
-
-
