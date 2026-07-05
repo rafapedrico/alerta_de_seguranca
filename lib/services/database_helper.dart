@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'encryption_service.dart';
+
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -21,11 +21,12 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
+
 
   Future<void> _onCreate(Database db, int version) async {
     // Table: user_config
@@ -56,14 +57,34 @@ class DatabaseHelper {
     // Table: contatos_emergencia - tabela isolada e dedicada exclusivamente
     // aos contatos de emergência da aba Família (até 3 contatos), com
     // integração via Agenda do celular (flutter_contacts).
+    // Colunas exclusao_pendente/timestamp_solicitacao implementam a trava
+    // de segurança de 24h antes da remoção definitiva de um contato.
     await db.execute('''
       CREATE TABLE contatos_emergencia (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
-        telefone TEXT NOT NULL
+        telefone TEXT NOT NULL,
+        exclusao_pendente INTEGER NOT NULL DEFAULT 0,
+        timestamp_solicitacao TEXT
+      )
+    ''');
+
+    // Table: historico - registra eventos administrativos do aplicativo
+    // nas categorias 'seguranca', 'familia' e 'sistema', exibidos
+    // normalmente na aba Histórico.
+    await db.execute('''
+
+      CREATE TABLE historico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descricao TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        timestamp TEXT NOT NULL
       )
     ''');
   }
+
+
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Migration from v1 to v2: add plano_de_fundo_url
@@ -88,7 +109,34 @@ class DatabaseHelper {
         )
       ''');
     }
+    // Migration from v4 to v5: adiciona a trava de segurança de 24h para
+    // exclusão de contatos de emergência (exclusao_pendente/timestamp_solicitacao).
+    if (oldVersion < 5) {
+      await db.execute(
+        "ALTER TABLE contatos_emergencia ADD COLUMN exclusao_pendente INTEGER NOT NULL DEFAULT 0",
+      );
+      await db.execute(
+        'ALTER TABLE contatos_emergencia ADD COLUMN timestamp_solicitacao TEXT',
+      );
+    }
+    // Migration from v5 to v6: cria a tabela 'historico', usada para
+    // registrar os eventos administrativos do aplicativo, exibidos na
+    // aba Histórico.
+    if (oldVersion < 6) {
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS historico (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          titulo TEXT NOT NULL,
+          descricao TEXT NOT NULL,
+          categoria TEXT NOT NULL,
+          timestamp TEXT NOT NULL
+        )
+      ''');
+    }
   }
+
+
 
   // ====================
   // USER CONFIG METHODS
@@ -163,9 +211,94 @@ class DatabaseHelper {
     return await db.insert('contatos_emergencia', contato);
   }
 
-  /// Remove um contato de emergência pelo id.
+  /// Remove um contato de emergência pelo id (exclusão IMEDIATA/definitiva).
+  /// Usado apenas internamente após o prazo de segurança de 24h ter expirado.
   Future<int> deletarContatoEmergencia(int id) async {
     final db = await database;
     return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
   }
+
+  /// Marca um contato de emergência como "exclusão pendente", iniciando a
+  /// trava de segurança de 24h. O contato NÃO é removido imediatamente,
+  /// apenas sinalizado com o timestamp da solicitação. Continua sendo
+  /// retornado normalmente por getContatosEmergencia() (e portanto ainda
+  /// recebe alertas de emergência) até que o prazo expire.
+  Future<int> solicitarExclusaoContatoEmergencia(int id) async {
+    final db = await database;
+    final agora = DateTime.now().millisecondsSinceEpoch.toString();
+    return await db.update(
+      'contatos_emergencia',
+      {
+        'exclusao_pendente': 1,
+        'timestamp_solicitacao': agora,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Verifica todos os contatos com exclusão pendente e remove
+  /// definitivamente aqueles cujo prazo de segurança de 24 horas já
+  /// tenha expirado desde a solicitação.
+  Future<void> processarExclusoesPendentesExpiradas() async {
+    final db = await database;
+    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+    final agora = DateTime.now().millisecondsSinceEpoch;
+
+    final pendentes = await db.query(
+      'contatos_emergencia',
+      where: 'exclusao_pendente = 1',
+    );
+
+    for (final contato in pendentes) {
+      final timestampStr = contato['timestamp_solicitacao'] as String?;
+      final timestampSolicitacao = timestampStr != null ? int.tryParse(timestampStr) : null;
+      if (timestampSolicitacao == null) continue;
+
+      if (agora - timestampSolicitacao >= prazoSegurancaMs) {
+        final id = contato['id'] as int;
+        await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
+      }
+    }
+  }
+
+  // ====================
+  // HISTORICO METHODS
+  // ====================
+  // Tabela 'historico' usada para registrar eventos administrativos do
+  // aplicativo nas categorias 'seguranca', 'familia' e 'sistema', todos
+  // exibidos de forma transparente na aba Histórico.
+
+  /// Insere um novo evento no histórico. [categoria] deve ser uma das
+  /// strings: 'seguranca', 'familia' ou 'sistema'.
+  Future<int> inserirEventoHistorico({
+    required String titulo,
+    required String descricao,
+    required String categoria,
+  }) async {
+    final db = await database;
+    return await db.insert('historico', {
+      'titulo': titulo,
+      'descricao': descricao,
+      'categoria': categoria,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Retorna todos os eventos do histórico, ordenados do mais recente
+  /// para o mais antigo. Usado pela aba Histórico.
+  Future<List<Map<String, dynamic>>> getHistorico() async {
+    final db = await database;
+    return await db.query('historico', orderBy: 'id DESC');
+  }
+
+  /// Remove um único evento do histórico pelo id. Usado pelo gesto de
+  /// "arrastar para excluir" (Dismissible) na aba Histórico.
+  Future<int> deletarEventoHistorico(int id) async {
+    final db = await database;
+    return await db.delete('historico', where: 'id = ?', whereArgs: [id]);
+  }
 }
+
+
+

@@ -1,32 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 
-/// Categorias usadas tanto para os filtros rápidos quanto para
-/// classificar cada evento do histórico.
-enum _CategoriaEvento { critico, familia, sistema }
-
-/// Nível de gravidade de cada evento, usado para colorir a barra
-/// lateral e escolher o ícone indicativo do card.
-enum _GravidadeEvento { alta, media, baixa }
-
-class _EventoHistorico {
-  final String titulo;
-  final String descricao;
-  final DateTime dataHora;
-  final _CategoriaEvento categoria;
-  final _GravidadeEvento gravidade;
-  final IconData icone;
-
-  const _EventoHistorico({
-    required this.titulo,
-    required this.descricao,
-    required this.dataHora,
-    required this.categoria,
-    required this.gravidade,
-    required this.icone,
-  });
-}
-
+/// Tela de Histórico: lê os eventos reais gravados no banco de dados
+/// (tabela 'historico') e os exibe organizados por categoria
+/// administrativa ('seguranca', 'familia', 'sistema'), de forma 100%
+/// transparente para o usuário do aplicativo.
 class HistoricoTab extends StatefulWidget {
   const HistoricoTab({super.key});
 
@@ -35,105 +14,75 @@ class HistoricoTab extends StatefulWidget {
 }
 
 class _HistoricoTabState extends State<HistoricoTab> {
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+
   // Filtro rápido selecionado no topo. 'Todos' por padrão.
   String _filtroSelecionado = 'Todos';
 
-  final List<String> _filtros = const ['Todos', 'Críticos', 'Família', 'Sistema'];
+  final List<String> _filtros = const ['Todos', 'Segurança', 'Família', 'Sistema'];
 
-  // Dados fictícios (mock) já ordenados do mais recente para o mais antigo.
-  late final List<_EventoHistorico> _eventos = [
-    _EventoHistorico(
-      titulo: 'Alerta de emergência disparado',
-      descricao: 'Check-in não realizado dentro do tempo de tolerância. Contatos de emergência notificados.',
-      dataHora: DateTime.now().subtract(const Duration(minutes: 12)),
-      categoria: _CategoriaEvento.critico,
-      gravidade: _GravidadeEvento.alta,
-      icone: Icons.warning_amber_rounded,
-    ),
-    _EventoHistorico(
-      titulo: 'Check-in de Segurança concluído',
-      descricao: 'PIN correto informado. Rotina desarmada com sucesso.',
-      dataHora: DateTime.now().subtract(const Duration(hours: 1, minutes: 5)),
-      categoria: _CategoriaEvento.sistema,
-      gravidade: _GravidadeEvento.baixa,
-      icone: Icons.check_circle,
-    ),
-    _EventoHistorico(
-      titulo: 'Rotina em Família atualizada',
-      descricao: 'Horário fixo de rotina alterado para 23:45, de segunda a sexta-feira.',
-      dataHora: DateTime.now().subtract(const Duration(hours: 3)),
-      categoria: _CategoriaEvento.familia,
-      gravidade: _GravidadeEvento.baixa,
-      icone: Icons.people_alt,
-    ),
-    _EventoHistorico(
-      titulo: 'Tentativa de PIN incorreta',
-      descricao: 'Um PIN inválido foi digitado durante o bloqueio de segurança.',
-      dataHora: DateTime.now().subtract(const Duration(hours: 5, minutes: 30)),
-      categoria: _CategoriaEvento.critico,
-      gravidade: _GravidadeEvento.media,
-      icone: Icons.lock_outline,
-    ),
-    _EventoHistorico(
-      titulo: 'Novo contato de emergência cadastrado',
-      descricao: 'Mamãe foi adicionada como contato de emergência número 1.',
-      dataHora: DateTime.now().subtract(const Duration(hours: 8)),
-      categoria: _CategoriaEvento.familia,
-      gravidade: _GravidadeEvento.baixa,
-      icone: Icons.contact_phone,
-    ),
-    _EventoHistorico(
-      titulo: 'Plano de fundo alterado',
-      descricao: 'O tema visual do aplicativo foi atualizado para "Verde Botânico".',
-      dataHora: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      categoria: _CategoriaEvento.sistema,
-      gravidade: _GravidadeEvento.baixa,
-      icone: Icons.wallpaper,
-    ),
-    _EventoHistorico(
-      titulo: 'Alarme reiniciado automaticamente',
-      descricao: 'O timer de rotina foi reiniciado após o horário programado.',
-      dataHora: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
-      categoria: _CategoriaEvento.sistema,
-      gravidade: _GravidadeEvento.media,
-      icone: Icons.refresh,
-    ),
-    _EventoHistorico(
-      titulo: 'Envio para contato (Mamãe)',
-      descricao: 'Mensagem de contingência enviada com sucesso via WhatsApp.',
-      dataHora: DateTime.now().subtract(const Duration(days: 2)),
-      categoria: _CategoriaEvento.familia,
-      gravidade: _GravidadeEvento.media,
-      icone: Icons.send,
-    ),
-  ]..sort((a, b) => b.dataHora.compareTo(a.dataHora));
+  bool _carregando = true;
+  List<Map<String, dynamic>> _eventos = [];
 
-  List<_EventoHistorico> get _eventosFiltrados {
+  @override
+  void initState() {
+    super.initState();
+    _carregarHistorico();
+  }
+
+  Future<void> _carregarHistorico() async {
+    final eventos = await _dbHelper.getHistorico();
+    if (!mounted) return;
+    setState(() {
+      _eventos = eventos;
+      _carregando = false;
+    });
+  }
+
+  List<Map<String, dynamic>> get _eventosFiltrados {
     switch (_filtroSelecionado) {
-      case 'Críticos':
-        return _eventos.where((e) => e.categoria == _CategoriaEvento.critico).toList();
+      case 'Segurança':
+        return _eventos.where((e) => e['categoria'] == 'seguranca').toList();
       case 'Família':
-        return _eventos.where((e) => e.categoria == _CategoriaEvento.familia).toList();
+        return _eventos.where((e) => e['categoria'] == 'familia').toList();
       case 'Sistema':
-        return _eventos.where((e) => e.categoria == _CategoriaEvento.sistema).toList();
+        return _eventos.where((e) => e['categoria'] == 'sistema').toList();
       case 'Todos':
       default:
         return _eventos;
     }
   }
 
-  Color _corGravidade(_GravidadeEvento gravidade) {
-    switch (gravidade) {
-      case _GravidadeEvento.alta:
+  Color _corCategoria(String categoria) {
+    switch (categoria) {
+      case 'seguranca':
         return Colors.redAccent;
-      case _GravidadeEvento.media:
-        return Colors.amber.shade700;
-      case _GravidadeEvento.baixa:
+      case 'familia':
+        return Colors.blueAccent;
+      case 'sistema':
         return Colors.green.shade600;
+      default:
+        return Colors.grey;
     }
   }
 
-  String _formatarDataHora(DateTime dataHora) {
+  IconData _iconeCategoria(String categoria) {
+    switch (categoria) {
+      case 'seguranca':
+        return Icons.shield_outlined;
+      case 'familia':
+        return Icons.people_alt;
+      case 'sistema':
+        return Icons.settings_suggest;
+      default:
+        return Icons.event_note;
+    }
+  }
+
+  String _formatarDataHora(String timestampIso) {
+    final dataHora = DateTime.tryParse(timestampIso);
+    if (dataHora == null) return '';
+
     final agora = DateTime.now();
     final diferenca = agora.difference(dataHora);
 
@@ -142,6 +91,14 @@ class _HistoricoTabState extends State<HistoricoTab> {
     if (diferenca.inHours < 24) return 'Há ${diferenca.inHours}h';
     if (diferenca.inDays == 1) return 'Ontem';
     return 'Há ${diferenca.inDays} dias';
+  }
+
+  Future<void> _excluirEvento(int id) async {
+    await _dbHelper.deletarEventoHistorico(id);
+    if (!mounted) return;
+    setState(() {
+      _eventos.removeWhere((e) => e['id'] == id);
+    });
   }
 
   @override
@@ -165,17 +122,19 @@ class _HistoricoTabState extends State<HistoricoTab> {
                 _construirFiltrosRapidos(),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: _eventosFiltrados.isEmpty
-                      ? _construirEstadoVazio()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          itemCount: _eventosFiltrados.length,
-                          itemBuilder: (context, index) {
-                            final evento = _eventosFiltrados[index];
-                            final isUltimo = index == _eventosFiltrados.length - 1;
-                            return _construirCardTimeline(evento, isUltimo);
-                          },
-                        ),
+                  child: _carregando
+                      ? const Center(child: CircularProgressIndicator())
+                      : _eventosFiltrados.isEmpty
+                          ? _construirEstadoVazio()
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              itemCount: _eventosFiltrados.length,
+                              itemBuilder: (context, index) {
+                                final evento = _eventosFiltrados[index];
+                                final isUltimo = index == _eventosFiltrados.length - 1;
+                                return _construirCardTimeline(evento, isUltimo);
+                              },
+                            ),
                 ),
               ],
             ),
@@ -245,118 +204,139 @@ class _HistoricoTabState extends State<HistoricoTab> {
     );
   }
 
-  Widget _construirCardTimeline(_EventoHistorico evento, bool isUltimo) {
-    final cor = _corGravidade(evento.gravidade);
+  Widget _construirCardTimeline(Map<String, dynamic> evento, bool isUltimo) {
+    final categoria = evento['categoria'] as String? ?? 'sistema';
+    final cor = _corCategoria(categoria);
+    final icone = _iconeCategoria(categoria);
+    final titulo = evento['titulo'] as String? ?? '';
+    final descricao = evento['descricao'] as String? ?? '';
+    final timestamp = evento['timestamp'] as String? ?? '';
+    final id = evento['id'] as int;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Coluna da linha do tempo: ícone + linha vertical sutil.
-          Column(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: cor.withOpacity(0.15),
-                  border: Border.all(color: cor, width: 1.5),
-                ),
-                child: Icon(evento.icone, color: cor, size: 18),
-              ),
-              if (!isUltimo)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: Colors.grey.withOpacity(0.35),
+    return Dismissible(
+      key: ValueKey(id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 16, left: 48),
+        decoration: BoxDecoration(
+          color: Colors.red.shade400,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      onDismissed: (_) => _excluirEvento(id),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Coluna da linha do tempo: ícone + linha vertical sutil.
+            Column(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: cor.withOpacity(0.15),
+                    border: Border.all(color: cor, width: 1.5),
                   ),
+                  child: Icon(icone, color: cor, size: 18),
                 ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Card de conteúdo do evento.
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.4)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Barra lateral de gravidade.
-                    Container(
-                      width: 5,
-                      decoration: BoxDecoration(
-                        color: cor,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(14),
-                          bottomLeft: Radius.circular(14),
+                if (!isUltimo)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: Colors.grey.withOpacity(0.35),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            // Card de conteúdo do evento.
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Barra lateral de categoria.
+                      Container(
+                        width: 5,
+                        decoration: BoxDecoration(
+                          color: cor,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(14),
+                            bottomLeft: Radius.circular(14),
+                          ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    evento.titulo,
-                                    softWrap: true,
-                                    overflow: TextOverflow.clip,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      titulo,
+                                      softWrap: true,
+                                      overflow: TextOverflow.clip,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    _formatarDataHora(evento.dataHora),
-                                    textAlign: TextAlign.right,
-                                    softWrap: true,
-                                    overflow: TextOverflow.clip,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w500,
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      _formatarDataHora(timestamp),
+                                      textAlign: TextAlign.right,
+                                      softWrap: true,
+                                      overflow: TextOverflow.clip,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              evento.descricao,
-                              softWrap: true,
-                              overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.black.withOpacity(0.75),
+                                ],
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                descricao,
+                                softWrap: true,
+                                overflow: TextOverflow.clip,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black.withOpacity(0.75),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

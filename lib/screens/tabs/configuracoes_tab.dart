@@ -46,6 +46,9 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   Future<void> _carregarContatosEmergencia() async {
     setState(() => _carregandoContatos = true);
     try {
+      // Antes de exibir a lista, remove definitivamente qualquer contato
+      // cuja trava de segurança de 24h já tenha expirado.
+      await _db.processarExclusoesPendentesExpiradas();
       final contatos = await _db.getContatosEmergencia();
       if (mounted) {
         setState(() {
@@ -56,6 +59,13 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     } catch (_) {
       if (mounted) setState(() => _carregandoContatos = false);
     }
+  }
+
+  /// Retorna true se o contato estiver marcado como "exclusão pendente"
+  /// (aguardando o prazo de segurança de 24h para remoção definitiva).
+  bool _isExclusaoPendente(Map<String, dynamic> contato) {
+    final valor = contato['exclusao_pendente'];
+    return valor == 1 || valor == true;
   }
 
   /// Remove tudo que não for dígito do número de telefone (espaços,
@@ -158,14 +168,19 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     }
   }
 
+  /// Solicita a exclusão de um contato de emergência, ativando a trava de
+  /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
+  /// como "exclusao_pendente" e continua recebendo alertas de emergência
+  /// normalmente até que o prazo de 24h expire.
   Future<void> _excluirContato(int id, String nome) async {
-    await _db.deletarContatoEmergencia(id);
+    await _db.solicitarExclusaoContatoEmergencia(id);
     await _carregarContatosEmergencia();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🗑️ $nome removido dos contatos de emergência.'),
+          content: Text('⏳ Solicitação recebida. $nome será removido em 24 horas.'),
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -844,17 +859,39 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    subtitle: Text(
-                      telefone,
-                      softWrap: true,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, color: Colors.black54),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                      tooltip: 'Excluir contato',
-                      onPressed: () => _excluirContato(id, nome),
-                    ),
+                    subtitle: _isExclusaoPendente(contato)
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.hourglass_bottom, size: 14, color: Colors.orange),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Removendo em 24h...',
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            telefone,
+                            softWrap: true,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13, color: Colors.black54),
+                          ),
+                    trailing: _isExclusaoPendente(contato)
+                        ? const Icon(Icons.hourglass_bottom, color: Colors.orange)
+                        : IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            tooltip: 'Excluir contato',
+                            onPressed: () => _excluirContato(id, nome),
+                          ),
                   ),
                 );
               }),
