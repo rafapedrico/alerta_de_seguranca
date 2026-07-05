@@ -62,9 +62,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
   String? _senhaPendente;
   String? _timestampAlteracaoSenha;
 
-  // Regra de segurança: 24 horas em milissegundos
-  static const int _prazoSegurancaMs = 86400000;
-
   // Variáveis de controle do Timer Padrão
   int _horaSelecionada = 0;
   int _minutoSelecionada = 5;
@@ -130,31 +127,20 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// 24 horas desde a solicitação já se passou. Se sim, promove a senha
   /// pendente para senha principal (pin_real) e limpa os campos temporários.
   /// Caso contrário, mantém a senha antiga como válida para autenticação.
+  ///
+  /// A verificação/efetivação em si é centralizada no DatabaseHelper
+  /// (`processarSenhaPendenteSeExpirada`), garantindo que o mesmo
+  /// comportamento ocorra independentemente de qual tela do app o usuário
+  /// abrir primeiro (Segurança, Configurações ou cold start em main.dart).
   Future<void> _processarSenhaPendenteSeExpirada() async {
-    if (_senhaPendente == null || _timestampAlteracaoSenha == null) return;
-
-    final timestampSolicitacao = int.tryParse(_timestampAlteracaoSenha!);
-    if (timestampSolicitacao == null) return;
-
-    final agora = DateTime.now().millisecondsSinceEpoch;
-    final decorrido = agora - timestampSolicitacao;
-
-    if (decorrido >= _prazoSegurancaMs) {
-      // Prazo de segurança cumprido: efetiva a nova senha.
+    final efetivado = await _db.processarSenhaPendenteSeExpirada();
+    if (efetivado && mounted) {
       final config = await _db.getUserConfig();
-      if (config == null) return;
-      final id = config['id'] as int;
-      await _db.updateUserConfig({
-        'id': id,
-        'pin_real': _senhaPendente,
-        'senha_pendente': null,
-        'timestamp_alteracao_senha': null,
-      });
-      if (mounted) {
+      if (config != null) {
         setState(() {
-          _pinRealConfirmado = _senhaPendente;
-          _senhaPendente = null;
-          _timestampAlteracaoSenha = null;
+          _pinRealConfirmado = config['pin_real'] as String?;
+          _senhaPendente = config['senha_pendente'] as String?;
+          _timestampAlteracaoSenha = config['timestamp_alteracao_senha'] as String?;
         });
       }
     }

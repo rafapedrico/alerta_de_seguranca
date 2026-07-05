@@ -29,6 +29,7 @@ void main() async {
   runApp(const SecurityCheckApp());
 }
 
+
 class SecurityCheckApp extends StatelessWidget {
   const SecurityCheckApp({super.key});
 

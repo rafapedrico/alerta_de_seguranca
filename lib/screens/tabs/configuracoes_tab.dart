@@ -319,31 +319,48 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   Future<void> _savePinReal(String pin) async {
     await _ensureUserConfig();
     final id = _userConfig!['id'] as int;
-    // Regra de segurança: a nova senha NÃO entra em vigor imediatamente.
-    // Ela fica pendente por 24 horas, mantendo a senha atual (pin_real)
-    // intacta até que o prazo de segurança seja cumprido.
-    final agora = DateTime.now().millisecondsSinceEpoch.toString();
-    await _db.updateUserConfig({
-      'id': id,
-      'senha_pendente': pin,
-      'timestamp_alteracao_senha': agora,
-    });
 
-    // Registra no histórico ('sistema') a solicitação de troca do PIN,
-    // deixando claro que a nova senha só entra em vigor após 24h.
-    await _db.inserirEventoHistorico(
-      titulo: 'Alteração de PIN solicitada',
-      descricao: 'Nova senha de acesso pendente, entrará em vigor em 24 horas.',
-      categoria: 'sistema',
-    );
+    // Regra de negócio:
+    // 1) Primeiro cadastro (nenhum PIN ainda definido): o PIN é efetivado
+    //    INSTANTANEAMENTE, sem qualquer carência.
+    // 2) Alteração de um PIN já existente: a nova senha fica pendente por
+    //    24 horas, mantendo a senha atual intacta até o prazo se cumprir.
+    //
+    // O método do DatabaseHelper decide qual dos dois casos se aplica e
+    // retorna `true` quando a efetivação foi instantânea (primeiro
+    // cadastro) ou `false` quando ficou pendente (alteração).
+    final bool efetivadoInstantaneamente =
+        await _db.salvarOuAgendarPinReal(id, pin);
+
+    if (efetivadoInstantaneamente) {
+      // Registra no histórico ('sistema') o cadastro inicial do PIN.
+      await _db.inserirEventoHistorico(
+        titulo: 'PIN de acesso definido',
+        descricao: 'PIN de acesso cadastrado e ativado imediatamente '
+            '(primeiro cadastro, sem carência de segurança).',
+        categoria: 'sistema',
+      );
+    } else {
+      // Registra no histórico ('sistema') a solicitação de troca do PIN,
+      // deixando claro que a nova senha só entra em vigor após 24h.
+      await _db.inserirEventoHistorico(
+        titulo: 'Alteração de PIN solicitada',
+        descricao: 'Nova senha de acesso pendente, entrará em vigor em 24 horas.',
+        categoria: 'sistema',
+      );
+    }
 
     await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.'),
+        SnackBar(
+          content: Text(
+            efetivadoInstantaneamente
+                ? '🔒 PIN definido com sucesso!'
+                : '🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.',
+          ),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 4),
+          duration: const Duration(seconds: 4),
         ),
       );
     }

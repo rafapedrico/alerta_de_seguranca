@@ -179,6 +179,93 @@ class DatabaseHelper {
     );
   }
 
+  // ==========================================
+  // PIN REAL: PRIMEIRO CADASTRO x ALTERAÇÃO
+  // ==========================================
+  // Regra de negócio:
+  // 1) Primeiro acesso (nenhum PIN cadastrado ainda): o PIN informado é
+  //    efetivado INSTANTANEAMENTE em 'pin_real', sem qualquer carência.
+  // 2) Alteração de um PIN já existente: a nova senha fica pendente por
+  //    24 horas ('senha_pendente' + 'timestamp_alteracao_senha'),
+  //    mantendo o PIN atual válido até que o prazo de segurança se
+  //    cumpra.
+  //
+  // Retorna `true` se o PIN foi efetivado instantaneamente (primeiro
+  // cadastro), ou `false` se ficou pendente por 24h (alteração).
+  Future<bool> salvarOuAgendarPinReal(int userConfigId, String novoPin) async {
+    final config = await getUserConfig();
+    final String? pinAtual = config?['pin_real'] as String?;
+    final bool possuiPinAtivo = pinAtual != null && pinAtual.trim().isNotEmpty;
+
+    if (!possuiPinAtivo) {
+      // Regra 1: primeiro cadastro — efetivação instantânea, sem carência.
+      await updateUserConfig({
+        'id': userConfigId,
+        'pin_real': novoPin,
+        // Garante que não fique nenhuma alteração pendente residual.
+        'senha_pendente': null,
+        'timestamp_alteracao_senha': null,
+      });
+      return true;
+    }
+
+    // Regra 2: já existe um PIN ativo — aplica a carência de 24h.
+    final agora = DateTime.now().millisecondsSinceEpoch.toString();
+    await updateUserConfig({
+      'id': userConfigId,
+      'senha_pendente': novoPin,
+      'timestamp_alteracao_senha': agora,
+    });
+    return false;
+  }
+
+  // ==========================================
+  // EFETIVAÇÃO CENTRALIZADA DA SENHA PENDENTE
+  // ==========================================
+  // Regra de segurança de 24h para ALTERAÇÃO de PIN (regra 2 acima): a
+  // verificação "já passaram 24h desde a solicitação? então promove a
+  // senha_pendente para pin_real" precisa ser executada de forma
+  // consistente independente de qual tela o usuário abrir primeiro
+  // (Segurança, Configurações, ou logo no cold start do app). Por isso
+  // essa lógica fica centralizada aqui no DatabaseHelper, e é chamada por
+  // todos os pontos de entrada relevantes, evitando que o app fique
+  // "preso" mostrando o PIN antigo como pendente apenas porque a tela de
+  // Segurança específica não foi visitada.
+  //
+  // Retorna `true` se uma senha pendente foi efetivada nesta chamada
+  // (promovida a pin_real), ou `false` caso não houvesse nada pendente ou
+  // o prazo de 24h ainda não tenha se cumprido.
+  Future<bool> processarSenhaPendenteSeExpirada() async {
+    final config = await getUserConfig();
+    if (config == null) return false;
+
+    final String? senhaPendente = config['senha_pendente'] as String?;
+    final String? timestampStr = config['timestamp_alteracao_senha'] as String?;
+    if (senhaPendente == null || timestampStr == null) return false;
+
+    final timestampSolicitacao = int.tryParse(timestampStr);
+    if (timestampSolicitacao == null) return false;
+
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    final decorrido = agora - timestampSolicitacao;
+    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+
+    if (decorrido < prazoSegurancaMs) {
+      // Ainda dentro da carência: o PIN atual continua sendo o único válido.
+      return false;
+    }
+
+    // Prazo de segurança cumprido: promove a senha pendente a PIN ativo.
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'pin_real': senhaPendente,
+      'senha_pendente': null,
+      'timestamp_alteracao_senha': null,
+    });
+    return true;
+  }
+
   // =================
   // CONTACTS METHODS
   // =================
@@ -436,4 +523,24 @@ class DatabaseHelper {
     final id = config['id'] as int;
     await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 0});
   }
+
+  // ==========================================================
+  // [TEMPORÁRIO/DEBUG] RESET MANUAL DE SENHA PARA TESTES FÍSICOS
+  // ==========================================================
+  // ATENÇÃO: Função exclusiva para uso durante testes de desenvolvimento.
+  // Executa um UPDATE direto na tabela 'user_config', limpando os campos
+  // 'pin_real', 'senha_pendente' e 'timestamp_alteracao_senha', forçando
+  // o aplicativo a voltar ao estado de "Primeiro Acesso" (sem PIN
+  // cadastrado), permitindo cadastrar uma nova senha instantaneamente,
+  // sem a carência de 24h. REMOVER antes de qualquer build de produção.
+  Future<void> debugResetarSenhaParaPrimeiroAcesso() async {
+    final db = await database;
+    await db.rawUpdate('''
+      UPDATE user_config
+      SET pin_real = NULL,
+          senha_pendente = NULL,
+          timestamp_alteracao_senha = NULL
+    ''');
+  }
 }
+
