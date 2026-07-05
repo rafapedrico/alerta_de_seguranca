@@ -155,6 +155,14 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       'telefone': telefoneLimpo,
     });
 
+    // Registra no histórico ('familia') a adição do novo contato de
+    // emergência, tornando a ação 100% transparente e auditável.
+    await _db.inserirEventoHistorico(
+      titulo: 'Contato de emergência adicionado',
+      descricao: '$nome foi cadastrado como contato de emergência.',
+      categoria: 'familia',
+    );
+
     await _carregarContatosEmergencia();
 
     if (mounted) {
@@ -168,12 +176,23 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     }
   }
 
+
   /// Solicita a exclusão de um contato de emergência, ativando a trava de
   /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
   /// como "exclusao_pendente" e continua recebendo alertas de emergência
   /// normalmente até que o prazo de 24h expire.
   Future<void> _excluirContato(int id, String nome) async {
     await _db.solicitarExclusaoContatoEmergencia(id);
+
+    // Registra no histórico ('familia') a solicitação de exclusão do
+    // contato, deixando claro que a remoção definitiva ainda está sujeita
+    // à trava de segurança de 24h.
+    await _db.inserirEventoHistorico(
+      titulo: 'Exclusão de contato solicitada',
+      descricao: '$nome terá a remoção efetivada em até 24 horas.',
+      categoria: 'familia',
+    );
+
     await _carregarContatosEmergencia();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,6 +204,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       );
     }
   }
+
 
 
   Future<void> _loadConfig() async {
@@ -308,6 +328,15 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       'senha_pendente': pin,
       'timestamp_alteracao_senha': agora,
     });
+
+    // Registra no histórico ('sistema') a solicitação de troca do PIN,
+    // deixando claro que a nova senha só entra em vigor após 24h.
+    await _db.inserirEventoHistorico(
+      titulo: 'Alteração de PIN solicitada',
+      descricao: 'Nova senha de acesso pendente, entrará em vigor em 24 horas.',
+      categoria: 'sistema',
+    );
+
     await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -319,6 +348,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       );
     }
   }
+
 
   void _showToleranciaDialog() {
     final toleranciaController = TextEditingController(text: _tempoTolerancia.toString());
@@ -398,6 +428,14 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     await _ensureUserConfig();
     final id = _userConfig!['id'] as int;
     await _db.updateUserConfig({'id': id, 'tempo_padrao_timer': minutos});
+
+    // Registra no histórico ('sistema') a alteração da tolerância padrão.
+    await _db.inserirEventoHistorico(
+      titulo: 'Tolerância de rotina alterada',
+      descricao: 'Novo tempo de tolerância configurado: $minutos minutos.',
+      categoria: 'sistema',
+    );
+
     await _loadConfig();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -408,6 +446,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       );
     }
   }
+
 
   void _showWallpaperDialog() {
     showDialog(
@@ -524,10 +563,19 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     await _ensureUserConfig();
     final id = _userConfig!['id'] as int;
     await _db.updateUserConfig({'id': id, 'plano_de_fundo_url': key});
+
+    // Registra no histórico ('sistema') a alteração do plano de fundo.
+    await _db.inserirEventoHistorico(
+      titulo: 'Plano de fundo alterado',
+      descricao: 'Novo plano de fundo selecionado: $key.',
+      categoria: 'sistema',
+    );
+
     // Espelha a escolha em SharedPreferences para acesso rápido/síncrono
     // nas demais telas (ex: Segurança, Família).
     await WallpaperService.salvar('assets/$key.png');
     await _loadConfig();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

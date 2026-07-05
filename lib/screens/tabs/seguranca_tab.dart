@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
+import '../../services/location_service.dart';
 
 
 class SegurancaTab extends StatefulWidget {
@@ -79,10 +80,21 @@ class _SegurancaTabState extends State<SegurancaTab> {
   int _segundosToleranciaBloqueio = 60;
   String _pinDigitadoNoBloqueio = '';
 
+  // Serviço singleton responsável pelo ciclo de vida proativo do GPS:
+  // solicitação de permissão, warm-up ao iniciar o cronômetro e loop de
+  // atualização a cada 2 minutos enquanto o check-in estiver ativo.
+  final LocationService _locationService = LocationService();
+
   @override
   void initState() {
     super.initState();
     _carregarConfiguracoesSeguranca();
+
+    // Regra de negócio 1 (Permissão ao Iniciar): assim que a tela de
+    // Segurança é aberta, o app já verifica/solicita a permissão de
+    // localização do Android, garantindo que o GPS esteja liberado antes
+    // mesmo de o usuário ativar o cronômetro de check-in.
+    _locationService.garantirPermissaoDeLocalizacao();
   }
 
   @override
@@ -90,8 +102,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
     _contextoController.dispose();
     _timer?.cancel();
     _timerToleranciaBloqueio?.cancel();
+    // Interrompe o loop de atualização de localização (se ainda ativo) ao
+    // destruir a tela, evitando Timers órfãos em segundo plano.
+    _locationService.pararCicloDeAtualizacao();
     super.dispose();
   }
+
 
   Future<void> _carregarConfiguracoesSeguranca() async {
     try {
@@ -182,7 +198,26 @@ class _SegurancaTabState extends State<SegurancaTab> {
       _estaBloqueadoAguardandoPIN = false;
     });
 
+    // Registra no histórico ('seguranca') a ativação do cronômetro de
+    // check-in, tornando a ação 100% transparente e auditável.
+    _db.inserirEventoHistorico(
+      titulo: 'Cronômetro ativado',
+      descricao: 'Check-in de segurança iniciado com duração de '
+          '${_horaSelecionada.toString().padLeft(2, '0')}h'
+          '${_minutoSelecionada.toString().padLeft(2, '0')}min.',
+      categoria: 'seguranca',
+    );
+
+    // Regra de negócio 2 e 3 (Captura Proativa + Loop de Atualização):
+    // no exato momento em que o cronômetro é iniciado, dispara IMEDIATAMENTE
+    // a busca de localização de alta precisão em segundo plano (warm-up) e
+    // agenda a atualização automática a cada 2 minutos enquanto o
+    // cronômetro permanecer ativo. A chamada não é aguardada (fire-and-
+    // -forget) para não travar a UI do botão de check-in.
+    _locationService.iniciarCicloDeAtualizacao();
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+
       if (_segundosRestantes > 0) {
         setState(() {
           _segundosRestantes--;
@@ -197,6 +232,10 @@ class _SegurancaTabState extends State<SegurancaTab> {
   void _pararTimer() {
     _timer?.cancel();
     _timerToleranciaBloqueio?.cancel();
+    // O cronômetro foi parado/desarmado (por qualquer motivo): interrompe
+    // o loop de atualização de localização a cada 2 minutos, já que ele
+    // só deve rodar enquanto o check-in estiver ativo.
+    _locationService.pararCicloDeAtualizacao();
     setState(() {
       _isTimerAtivo = false;
       _estaBloqueadoAguardandoPIN = false;
@@ -249,10 +288,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
   void _verificarPINInserido() {
     if (_pinDigitadoNoBloqueio == _pinRealConfirmado) {
       _pararTimer();
+      _db.inserirEventoHistorico(
+        titulo: 'Check-in desarmado com sucesso',
+        descricao: 'O cronômetro de segurança foi interrompido/desarmado '
+            'pelo usuário com o PIN correto.',
+        categoria: 'seguranca',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ Check-in desarmado com sucesso!'), backgroundColor: Colors.green),
       );
     } else if (_pinCoacaoConfirmado != null &&
+
         _pinCoacaoConfirmado!.isNotEmpty &&
         _pinDigitadoNoBloqueio == _pinCoacaoConfirmado) {
       _executarDisparoDeCoacaoSilencioso();
@@ -285,19 +331,30 @@ class _SegurancaTabState extends State<SegurancaTab> {
         '(https://maps.google.com/?q=${posicao.latitude},${posicao.longitude})';
   }
 
-  /// Obtém a localização a ser usada no alerta de emergência, com estratégia
-  /// resiliente para garantir que o SMS nunca saia sem coordenadas caso
-  /// exista algum registro histórico de localização no aparelho:
+  /// Obtém a localização a ser usada no alerta de emergência.
   ///
-  /// 1. Busca primeiro a última localização conhecida (rápida, em cache).
-  /// 2. Tenta obter a localização atual com alta precisão e timeout curto.
-  /// 3. Se a localização atual falhar/der timeout, usa a última conhecida
-  ///    obtida no passo 1 como fallback.
+  /// Regra de negócio 4 (Envio do Alerta Máximo): o disparo de emergência
+  /// deve usar IMEDIATAMENTE a última localização já capturada em memória
+  /// pelo fluxo proativo do [LocationService] — que roda desde o exato
+  /// momento em que o cronômetro foi iniciado (warm-up) e é atualizada a
+  /// cada 2 minutos enquanto o check-in permanece ativo. Isso evita ter que
+  /// esperar uma nova consulta (lenta) ao GPS bem no momento crítico do
+  /// alerta.
+  ///
+  /// Estratégia de fallback, para nunca deixar o SMS sem coordenadas:
+  /// 1. Última localização em memória do fluxo proativo (LocationService).
+  /// 2. Última localização conhecida do sistema (cache do Android).
+  /// 3. Tenta uma última consulta ao GPS em tempo real, com timeout curto.
   Future<String> _obterLocalizacaoFormatada() async {
-    Position? ultimaConhecida;
+    // Passo 1: última posição já capturada pelo fluxo proativo (warm-up +
+    // loop de 2 em 2 minutos), guardada em memória durante o cronômetro.
+    final Position? posicaoDoFluxoProativo = _locationService.ultimaPosicao;
+    if (posicaoDoFluxoProativo != null) {
+      return _formatarPosicao(posicaoDoFluxoProativo);
+    }
 
-    // Passo 1: última localização conhecida (não depende de sinal de GPS
-    // em tempo real, é praticamente instantânea).
+    // Passo 2: última localização conhecida do sistema (cache instantâneo).
+    Position? ultimaConhecida;
     try {
       ultimaConhecida = await Geolocator.getLastKnownPosition();
     } catch (_) {}
@@ -323,8 +380,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
         return 'Localização indisponível (permissão de localização negada).';
       }
 
-      // Passo 2: tenta obter a localização atual com alta precisão e
-      // timeout curto, para não travar o disparo de emergência.
+      // Passo 3: último recurso — tenta obter a localização atual com
+      // alta precisão e timeout curto, para não travar o disparo.
       try {
         final posicaoAtual = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
@@ -332,8 +389,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
         );
         return _formatarPosicao(posicaoAtual);
       } catch (_) {
-        // Passo 3: falhou ou deu timeout (ex: sem sinal de GPS).
-        // Usa a última localização conhecida como fallback, se existir.
         if (ultimaConhecida != null) {
           return _formatarPosicao(ultimaConhecida);
         }
@@ -384,6 +439,18 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
     debugPrint('🚨 DISPARANDO ALERTA MÁXIMO DE EMERGÊNCIA!');
     debugPrint('📋 Mensagem enviada via SMS: $mensagemAlerta');
+
+    // Registra no histórico ('seguranca') o disparo do alerta de
+    // emergência, seja ele normal (timer expirado/PIN incorreto) ou
+    // silencioso (PIN de coação) — sempre de forma transparente e
+    // auditável para o titular da conta.
+    _db.inserirEventoHistorico(
+      titulo: 'Alerta de emergência disparado',
+      descricao: 'SMS de emergência enviado para os contatos cadastrados. '
+          'Localização: $localizacaoFormatada',
+      categoria: 'seguranca',
+    );
+
 
     // Coleta os números de telefone de todos os destinatários cadastrados
     // (incluindo os que estão com exclusão pendente).
@@ -745,5 +812,3 @@ class _SegurancaTabState extends State<SegurancaTab> {
     );
   }
 }
-
-

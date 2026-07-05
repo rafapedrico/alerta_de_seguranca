@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -40,7 +40,9 @@ class DatabaseHelper {
         tipo_plano TEXT NOT NULL DEFAULT 'free',
         plano_de_fundo_url TEXT,
         senha_pendente TEXT,
-        timestamp_alteracao_senha TEXT
+        timestamp_alteracao_senha TEXT,
+        timestamp_solicitacao_auditoria TEXT,
+        auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -73,7 +75,6 @@ class DatabaseHelper {
     // nas categorias 'seguranca', 'familia' e 'sistema', exibidos
     // normalmente na aba Histórico.
     await db.execute('''
-
       CREATE TABLE historico (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         titulo TEXT NOT NULL,
@@ -123,7 +124,6 @@ class DatabaseHelper {
     // registrar os eventos administrativos do aplicativo, exibidos na
     // aba Histórico.
     if (oldVersion < 6) {
-
       await db.execute('''
         CREATE TABLE IF NOT EXISTS historico (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,6 +133,22 @@ class DatabaseHelper {
           timestamp TEXT NOT NULL
         )
       ''');
+    }
+    // Migration from v6 to v7: adiciona os campos de controle da trava de
+    // segurança temporal (3h) para liberação da Auditoria de Eventos
+    // Sensíveis (registros mais críticos da categoria 'seguranca').
+    // - timestamp_solicitacao_auditoria: marca quando o usuário solicitou
+    //   a liberação, usado para calcular as 3h de carência.
+    // - auditoria_liberada_sessao: flag zerada a cada cold start do app
+    //   (ver main.dart), garantindo que a visualização liberada nunca
+    //   sobreviva a um fechamento/reabertura completa do aplicativo.
+    if (oldVersion < 7) {
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN timestamp_solicitacao_auditoria TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0',
+      );
     }
   }
 
@@ -292,13 +308,132 @@ class DatabaseHelper {
     return await db.query('historico', orderBy: 'id DESC');
   }
 
+  /// Retorna somente os eventos do histórico da categoria 'seguranca',
+  /// que são os registros mais críticos/sensíveis do aplicativo (ex:
+  /// ativação/desarme do cronômetro, disparos de emergência). Usados
+  /// exclusivamente pela tela de Auditoria de Eventos Sensíveis, que só
+  /// libera essa visualização após a trava de segurança de 3 horas.
+  Future<List<Map<String, dynamic>>> getEventosSensiveis() async {
+    final db = await database;
+    return await db.query(
+      'historico',
+      where: 'categoria = ?',
+      whereArgs: ['seguranca'],
+      orderBy: 'id DESC',
+    );
+  }
+
   /// Remove um único evento do histórico pelo id. Usado pelo gesto de
   /// "arrastar para excluir" (Dismissible) na aba Histórico.
   Future<int> deletarEventoHistorico(int id) async {
     final db = await database;
     return await db.delete('historico', where: 'id = ?', whereArgs: [id]);
   }
+
+  // ==========================================
+  // AUDITORIA DE EVENTOS SENSÍVEIS (trava 3h)
+  // ==========================================
+  // Recurso de proteção de dados que exige uma solicitação explícita do
+  // usuário e um período de carência de 3 horas antes de liberar a
+  // visualização dos eventos mais sensíveis (categoria 'seguranca'),
+  // evitando acessos rápidos e não autorizados a esses registros caso o
+  // dispositivo seja acessado por terceiros.
+
+  static const int prazoAuditoriaMs = 3 * 60 * 60 * 1000; // 3 horas
+
+  /// Registra o timestamp atual como o momento da solicitação de
+  /// liberação da auditoria sensível, e já marca a sessão atual como
+  /// tendo uma solicitação pendente (a liberação efetiva do CONTEÚDO só
+  /// ocorre quando as 3h se cumprirem, verificado em [getStatusAuditoria]).
+  Future<void> solicitarLiberacaoAuditoria() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    final agora = DateTime.now().millisecondsSinceEpoch.toString();
+    await updateUserConfig({
+      'id': id,
+      'timestamp_solicitacao_auditoria': agora,
+      'auditoria_liberada_sessao': 0,
+    });
+  }
+
+  /// Verifica o estado atual da trava de auditoria, retornando um mapa
+  /// com:
+  /// - 'liberado': true se os registros sensíveis podem ser exibidos.
+  /// - 'msRestantes': quanto falta (em ms) para a liberação, se ainda
+  ///   houver uma solicitação pendente dentro do prazo de carência.
+  /// - 'temSolicitacaoPendente': true se existe uma solicitação em
+  ///   andamento (independente de já ter sido liberada ou não).
+  ///
+  /// Caso as 3h já tenham decorrido desde a solicitação, marca
+  /// automaticamente 'auditoria_liberada_sessao' = 1 no banco, liberando
+  /// a visualização para a sessão atual do app.
+  Future<Map<String, dynamic>> getStatusAuditoria() async {
+    final config = await getUserConfig();
+    if (config == null) {
+      return {
+        'liberado': false,
+        'msRestantes': prazoAuditoriaMs,
+        'temSolicitacaoPendente': false,
+      };
+    }
+
+    final timestampStr = config['timestamp_solicitacao_auditoria'] as String?;
+    final jaLiberadaNaSessao = (config['auditoria_liberada_sessao'] as int?) == 1;
+
+    if (timestampStr == null) {
+      return {
+        'liberado': false,
+        'msRestantes': prazoAuditoriaMs,
+        'temSolicitacaoPendente': false,
+      };
+    }
+
+    final timestampSolicitacao = int.tryParse(timestampStr);
+    if (timestampSolicitacao == null) {
+      return {
+        'liberado': false,
+        'msRestantes': prazoAuditoriaMs,
+        'temSolicitacaoPendente': false,
+      };
+    }
+
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    final decorrido = agora - timestampSolicitacao;
+
+    if (decorrido >= prazoAuditoriaMs) {
+      // Prazo de segurança cumprido: libera a visualização para a
+      // sessão atual (persistido, mas será resetado no próximo cold
+      // start do app, em main.dart).
+      if (!jaLiberadaNaSessao) {
+        final id = config['id'] as int;
+        await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 1});
+      }
+      return {
+        'liberado': true,
+        'msRestantes': 0,
+        'temSolicitacaoPendente': true,
+      };
+    }
+
+    return {
+      'liberado': false,
+      'msRestantes': prazoAuditoriaMs - decorrido,
+      'temSolicitacaoPendente': true,
+    };
+  }
+
+  /// Deve ser chamado uma única vez, logo na inicialização do app (cold
+  /// start), para resetar a flag 'auditoria_liberada_sessao'. Isso
+  /// garante que, assim que o aplicativo for totalmente fechado e
+  /// reaberto, o estado de liberação seja sempre resetado — exigindo que
+  /// a trava de 3h seja reavaliada (embora, se o prazo já tiver sido
+  /// cumprido anteriormente, a tela libere novamente de forma automática
+  /// ao ser reaberta, sem exigir nova solicitação).
+  Future<void> resetarSessaoAuditoria() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 0});
+  }
 }
-
-
-

@@ -3,6 +3,8 @@ import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/historico_tab.dart';
 import 'tabs/configuracoes_tab.dart';
+import 'auditoria_sensivel_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,18 +49,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Abre a tela de Auditoria de Eventos Sensíveis, protegida pela trava
+  /// de segurança temporal de 3 horas (ver AuditoriaSensivelScreen).
+  void _abrirAuditoriaSensivel(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AuditoriaSensivelScreen(),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          if (_indiceAbaAtual == 2)
+            IconButton(
+              icon: const Icon(Icons.privacy_tip_outlined),
+              tooltip: 'Auditoria de Eventos Sensíveis',
+              onPressed: () => _abrirAuditoriaSensivel(context),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => _abrirConfiguracoes(context),
           ),
         ],
       ),
+
       body: IndexedStack(
         index: _indiceAbaAtual,
         children: _telas,

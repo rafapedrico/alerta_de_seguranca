@@ -11,20 +11,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:security_check_app/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App inicializa e exibe a tela de Segurança', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const SecurityCheckApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verifica que a aba inicial (Segurança) foi carregada corretamente,
+    // exibindo o título no AppBar.
+    expect(find.text('Segurança'), findsWidgets);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verifica que a barra de navegação inferior está presente com as 3
+    // abas principais do aplicativo.
+    expect(find.byIcon(Icons.shield), findsWidgets);
+    expect(find.byIcon(Icons.people), findsOneWidget);
+    expect(find.byIcon(Icons.history), findsOneWidget);
   });
 }
