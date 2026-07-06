@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';
+import '../../services/api_service.dart';
 import '../../models/alarme_rotina.dart';
 
 
@@ -103,6 +104,18 @@ class FamiliaTabState extends State<FamiliaTab> {
       categoria: 'familia',
     );
 
+    // Sincroniza (fire-and-forget) o novo estado 'ativo' com o backend.
+    ApiService().salvarRotina(
+      alarmeId: alarme.id,
+      horario: '${alarme.hora.toString().padLeft(2, '0')}:'
+          '${alarme.minuto.toString().padLeft(2, '0')}:00',
+      toleranciaMinutos: alarme.minutosTolerancia,
+      etiqueta: alarme.etiqueta,
+      contextoPersonalizado: alarme.contextoPersonalizado,
+      diasSemana: alarme.diasSemana.map((d) => d.toString()).toList(),
+      ativo: ativo,
+    );
+
     await _carregarAlarmes();
   }
 
@@ -140,6 +153,23 @@ class FamiliaTabState extends State<FamiliaTab> {
   /// alarme de rotina.
   void abrirModalAdicionarAlarme() {
     _abrirModalAlarme();
+  }
+
+  /// Envia (fire-and-forget) o alarme de rotina recém-salvo para o
+  /// backend FastAPI (security_backend), via POST /api/rotinas. NUNCA
+  /// bloqueia nem interrompe o fluxo local do app: qualquer falha de
+  /// rede é apenas registrada via [debugPrint] (ver [ApiService]).
+  void _sincronizarRotinaComBackend(AlarmeRotina alarme) {
+    ApiService().salvarRotina(
+      alarmeId: alarme.id,
+      horario: '${alarme.hora.toString().padLeft(2, '0')}:'
+          '${alarme.minuto.toString().padLeft(2, '0')}:00',
+      toleranciaMinutos: alarme.minutosTolerancia,
+      etiqueta: alarme.etiqueta,
+      contextoPersonalizado: alarme.contextoPersonalizado,
+      diasSemana: alarme.diasSemana.map((d) => d.toString()).toList(),
+      ativo: alarme.ativo,
+    );
   }
 
   /// Abre o modal (bottom sheet) para criação/edição de um alarme de
@@ -419,6 +449,11 @@ class FamiliaTabState extends State<FamiliaTab> {
                             } else {
                               await RotinaAlarmeService.cancelarAlarme(idSalvo);
                             }
+
+                            // Sincroniza (fire-and-forget) com o backend
+                            // FastAPI (security_backend), usando o id
+                            // definitivo já salvo no SQLite local.
+                            _sincronizarRotinaComBackend(alarme.copyWith(id: idSalvo));
 
                             if (ctx.mounted) Navigator.of(ctx).pop();
                             await _carregarAlarmes();

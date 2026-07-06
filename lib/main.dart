@@ -5,6 +5,7 @@ import 'services/font_scale_service.dart';
 import 'services/database_helper.dart';
 import 'services/alarme_service.dart';
 import 'services/notificacao_service.dart';
+import 'services/api_service.dart';
 import 'screens/home_screen.dart';
 import 'widgets/pin_dialog.dart';
 
@@ -41,6 +42,13 @@ void main() async {
   // plano.
   await NotificacaoService.inicializar();
 
+  // Teste inicial de conectividade com o backend FastAPI (security_backend):
+  // dispara um heartbeat para /api/status logo na abertura do app, apenas
+  // para validação em desenvolvimento (visível no terminal do Uvicorn).
+  // Executado em fire-and-forget (sem await) para NUNCA atrasar o boot do
+  // app caso o servidor esteja fora do ar ou inacessível.
+  _testarConectividadeInicialComBackend();
+
 
   // Regra de negócio crítica (Etapa 2), CORRIGIDA: verifica no SQLite se
   // um disparo de emergência já ocorreu em segundo plano (callback
@@ -56,6 +64,23 @@ void main() async {
   runApp(SecurityCheckApp(
     aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
   ));
+}
+
+/// Dispara um heartbeat inicial para `/api/status` no backend FastAPI,
+/// usado exclusivamente para validar em desenvolvimento que o app
+/// conseguiu se conectar com sucesso ao servidor (visível nos logs do
+/// Uvicorn). Protegido para nunca lançar exceção nem atrasar o startup.
+///
+/// OBS: o percentual de bateria é enviado com um valor fixo/simulado
+/// (100%) por enquanto, evitando a dependência de um plugin extra
+/// (ex: battery_plus) apenas para esse heartbeat de desenvolvimento.
+Future<void> _testarConectividadeInicialComBackend() async {
+  try {
+    const double bateriaSimulada = 100;
+    await ApiService().enviarStatus(bateriaSimulada, '1.0.0');
+  } catch (e) {
+    debugPrint('⚠️ Falha ao testar conectividade inicial com o backend: $e');
+  }
 }
 
 

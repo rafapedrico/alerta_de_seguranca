@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'database_helper.dart';
+import 'api_service.dart';
 
 /// Serviço isolado responsável por TODO o fluxo de disparo do alerta de
 /// emergência: obtenção da localização GPS mais recente, montagem da
@@ -85,12 +86,47 @@ class EmergencyAlertService {
     }
   }
 
+  /// Tenta obter uma [Position] "crua" (não formatada) equivalente à
+  /// usada no SMS, para ser enviada também ao backend FastAPI em
+  /// `/api/alerta`. Reaproveita a mesma estratégia de fallback (posição
+  /// em memória -> última conhecida -> nova leitura do GPS), mas nunca
+  /// lança exceção: retorna `null` se nenhuma coordenada estiver
+  /// disponível por qualquer motivo.
+  Future<Position?> _obterPosicaoBruta({Position? posicaoEmMemoria}) async {
+    if (posicaoEmMemoria != null) return posicaoEmMemoria;
+    try {
+      final ultimaConhecida = await Geolocator.getLastKnownPosition();
+      if (ultimaConhecida != null) return ultimaConhecida;
+    } catch (_) {}
+    try {
+      final servicoAtivo = await Geolocator.isLocationServiceEnabled();
+      if (!servicoAtivo) return null;
+      LocationPermission permissao = await Geolocator.checkPermission();
+      if (permissao == LocationPermission.denied) {
+        permissao = await Geolocator.requestPermission();
+      }
+      if (permissao == LocationPermission.denied ||
+          permissao == LocationPermission.deniedForever) {
+        return null;
+      }
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 7),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Executa o fluxo COMPLETO de disparo de emergência:
   /// 1. Busca a dica de contexto informada (ou lê do SQLite se null).
   /// 2. Busca os contatos de emergência cadastrados.
   /// 3. Obtém a localização GPS mais recente disponível.
   /// 4. Monta a mensagem e envia via MethodChannel nativo (SmsManager).
   /// 5. Registra o disparo no histórico (categoria 'critico').
+  /// 6. Dispara (fire-and-forget) o mesmo alerta para o backend FastAPI
+  ///    (security_backend), via POST /api/alerta, em paralelo ao SMS
+  ///    nativo — NUNCA bloqueia nem depende do sucesso dessa chamada.
   ///
   /// [contexto] pode ser informado diretamente (fluxo com app aberto,
   /// vindo do TextEditingController da UI) ou omitido (fluxo headless),
@@ -146,6 +182,22 @@ class EmergencyAlertService {
       debugPrint('⚠️ Falha ao registrar evento no histórico: $e');
     }
 
+    // Dispara (fire-and-forget) o alerta também para o backend FastAPI,
+    // em paralelo ao SMS nativo abaixo. Protegido internamente pelo
+    // próprio ApiService (nunca lança exceção nem bloqueia este fluxo).
+    _obterPosicaoBruta(posicaoEmMemoria: posicaoEmMemoria).then((posicao) {
+      if (posicao != null) {
+        ApiService().dispararAlertaWeb(
+          latitude: posicao.latitude,
+          longitude: posicao.longitude,
+          contexto: anotacoesUsuario,
+        );
+      } else {
+        debugPrint(
+            '⚠️ [EmergencyAlertService] Localização indisponível: alerta web não enviado (SMS nativo prossegue normalmente).');
+      }
+    });
+
     final List<String> numerosDestinatarios = contatosEmergencia
         .map((contato) => (contato['telefone'] as String?) ?? '')
         .where((telefone) => telefone.isNotEmpty)
@@ -187,5 +239,3 @@ class EmergencyAlertService {
     }
   }
 }
-
-

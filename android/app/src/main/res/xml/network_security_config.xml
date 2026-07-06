@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuração de segurança de rede que permite tráfego HTTP não
+  criptografado (cleartext) EXCLUSIVAMENTE para o IP do servidor local
+  FastAPI (security_backend), usado durante o desenvolvimento/testes na
+  mesma rede Wi-Fi. Qualquer outro domínio continua bloqueado de usar
+  cleartext, seguindo a política padrão e mais segura do Android.
+
+  IMPORTANTE: caso o backend seja publicado futuramente em um domínio
+  HTTPS real (produção), este arquivo pode ser removido, junto com a
+  referência a ele em AndroidManifest.xml (android:networkSecurityConfig).
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.15.10</domain>
+    </domain-config>
+</network-security-config>
