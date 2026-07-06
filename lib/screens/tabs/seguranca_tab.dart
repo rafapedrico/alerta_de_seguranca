@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 import 'dart:async';
-import 'package:geolocator/geolocator.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/location_service.dart';
+import '../../services/emergency_alert_service.dart';
+import '../../services/alarme_service.dart';
+import '../../widgets/pin_dialog.dart';
 
 
 class SegurancaTab extends StatefulWidget {
@@ -18,11 +19,8 @@ class SegurancaTab extends StatefulWidget {
 
 class _SegurancaTabState extends State<SegurancaTab> {
   final DatabaseHelper _db = DatabaseHelper();
-
-  // Canal nativo (MethodChannel) usado para disparar SMS diretamente via
-  // Android SmsManager, sem depender de pacotes externos de terceiros.
-  static const MethodChannel _canalSms =
-      MethodChannel('com.example.security_check_app/sms');
+  final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
+  final AlarmeService _alarmeService = AlarmeService();
 
   // Controlador para o campo de Anotações/Dica de Contexto
   final TextEditingController _contextoController = TextEditingController();
@@ -44,23 +42,16 @@ class _SegurancaTabState extends State<SegurancaTab> {
     color: Colors.grey,
     fontStyle: FontStyle.italic,
   );
-  static const TextStyle _estiloBloqueioTitulo = TextStyle(
-    color: Colors.white,
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 1.5,
-  );
-  static const TextStyle _estiloBloqueioTolerancia = TextStyle(
-    color: Colors.amber,
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-  );
+
+  // Tolerância fixa (em segundos) após o cronômetro chegar a zero, antes
+  // do disparo automático de emergência. Usada tanto para a contagem
+  // visual em memória (com o app aberto) quanto somada à duração do
+  // alarme NATIVO agendado via AlarmeService (que continua rodando
+  // mesmo se o app for fechado).
+  static const int _segundosToleranciaPadrao = 60;
 
   // Variáveis do Banco de Dados
   String? _pinRealConfirmado;
-  String? _pinCoacaoConfirmado;
-  String? _senhaPendente;
-  String? _timestampAlteracaoSenha;
 
   // Variáveis de controle do Timer Padrão
   int _horaSelecionada = 0;
@@ -72,10 +63,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
   int _segundosRestantes = 0;
 
   // Estado de Bloqueio por PIN
-  bool _estaBloqueadoAguardandoPIN = false;
   Timer? _timerToleranciaBloqueio;
-  int _segundosToleranciaBloqueio = 60;
-  String _pinDigitadoNoBloqueio = '';
+
+  int _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
 
   // Serviço singleton responsável pelo ciclo de vida proativo do GPS:
   // solicitação de permissão, warm-up ao iniciar o cronômetro e loop de
@@ -112,9 +102,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
       if (config != null && mounted) {
         setState(() {
           _pinRealConfirmado = config['pin_real'] as String?;
-          _pinCoacaoConfirmado = config['pin_coacao'] as String?;
-          _senhaPendente = config['senha_pendente'] as String?;
-          _timestampAlteracaoSenha = config['timestamp_alteracao_senha'] as String?;
         });
         // Verifica se o prazo de segurança de 24h já expirou, e caso
         // afirmativo, efetiva a troca de senha pendente automaticamente.
@@ -139,8 +126,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
       if (config != null) {
         setState(() {
           _pinRealConfirmado = config['pin_real'] as String?;
-          _senhaPendente = config['senha_pendente'] as String?;
-          _timestampAlteracaoSenha = config['timestamp_alteracao_senha'] as String?;
         });
       }
     }
@@ -156,8 +141,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// e abre a MESMA tela de bloqueio com teclado de PIN (com os mesmos 60s
   /// de tolerância) usada quando o timer expira naturalmente. Isso garante
   /// que, mesmo para desarmar voluntariamente, o usuário precise confirmar
-  /// com o PIN — permitindo que a vítima sinalize coação mesmo ao tentar
-  /// simplesmente "cancelar" o check-in na frente de um agressor.
+  /// com o PIN. O ALARME NATIVO agendado via AlarmeService só é cancelado
+  /// quando o PIN correto for digitado com sucesso — abrir a tela de
+  /// bloqueio, por si só, NUNCA cancela o alarme nativo.
   void _alternarTimer() {
     if (_isTimerAtivo) {
       _ativarBloqueioDeSeguranca();
@@ -178,11 +164,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
       return;
     }
 
+    // Novo ciclo de check-in: reseta a flag de disparo único, garantindo
+    // que o próximo esgotamento de tolerância possa disparar novamente
+    // (uma única vez por ciclo).
+    _disparoJaExecutadoNesteCiclo = false;
+
     setState(() {
       _segundosRestantes = totalSegundos;
       _isTimerAtivo = true;
-      _estaBloqueadoAguardandoPIN = false;
     });
+
+
 
     // Registra no histórico ('seguranca') a ativação do cronômetro de
     // check-in, tornando a ação 100% transparente e auditável.
@@ -201,6 +193,19 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // cronômetro permanecer ativo. A chamada não é aguardada (fire-and-
     // -forget) para não travar a UI do botão de check-in.
     _locationService.iniciarCicloDeAtualizacao();
+
+    // Agenda o alarme NATIVO (android_alarm_manager_plus), que garante o
+    // disparo de emergência mesmo que o app seja fechado ou fique em
+    // segundo plano. A duração agendada replica exatamente o mesmo
+    // comportamento em memória: tempo escolhido pelo usuário + 60s de
+    // tolerância da tela de bloqueio.
+    final duracaoTotalComTolerancia = Duration(
+      seconds: totalSegundos + _segundosToleranciaPadrao,
+    );
+    _alarmeService.agendarAlarmeEmergencia(
+      duracaoAteDisparo: duracaoTotalComTolerancia,
+      contexto: _contextoController.text.trim(),
+    );
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
 
@@ -224,18 +229,46 @@ class _SegurancaTabState extends State<SegurancaTab> {
     _locationService.pararCicloDeAtualizacao();
     setState(() {
       _isTimerAtivo = false;
-      _estaBloqueadoAguardandoPIN = false;
       _segundosRestantes = 0;
-      _pinDigitadoNoBloqueio = '';
     });
+
+    // NOTA: o fechamento do diálogo de PIN (Navigator.pop) é tratado
+    // explicitamente em cada ponto de chamada específico (dentro do
+    // próprio PinDialogContent ao confirmar o PIN, e em
+    // _ativarBloqueioDeSeguranca quando a tolerância esgota) — NUNCA
+    // aqui, pois _pararTimer() também é chamado pelo fluxo de disparo
+    // automático de emergência, onde um pop indevido poderia fechar a
+    // rota errada ou falhar silenciosamente.
   }
 
+
+
+  /// Ativa a etapa de tolerância (60s) antes do disparo automático de
+  /// emergência. IMPORTANTE (correção do erro de design original): esta
+  /// etapa NÃO substitui mais a tela inteira por uma TelaBloqueioPin — a
+  /// UI normal (SegurancaTab, HomeScreen, BottomNavigationBar) permanece
+  /// totalmente visível e navegável. Um AlertDialog leve com o teclado
+  /// de PIN é aberto POR CIMA da tela atual, evitando os conflitos de
+  /// ciclo de vida relatados. Se o tempo esgotar SEM o PIN correto, o
+  /// disparo de emergência é executado exatamente UMA vez (ver
+  /// [_dispararUmaVezSeNecessario]), sem loop e sem travar a interface.
   void _ativarBloqueioDeSeguranca() {
     setState(() {
-      _estaBloqueadoAguardandoPIN = true;
-      _segundosToleranciaBloqueio = 60;
-      _pinDigitadoNoBloqueio = '';
+      _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
     });
+
+
+    // Exibe o diálogo de PIN por cima da tela atual. Não é aguardado
+    // (fire-and-forget) para não bloquear a contagem de tolerância, que
+    // continua rodando normalmente em paralelo via Timer.
+    if (mounted) {
+      exibirDialogoPin(
+        context: context,
+        pinEsperado: _pinRealConfirmado,
+        segundosTolerancia: _segundosToleranciaBloqueio,
+        aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
+      );
+    }
 
     _timerToleranciaBloqueio = Timer.periodic(const Duration(seconds: 1), (t) {
       if (_segundosToleranciaBloqueio > 0) {
@@ -244,234 +277,84 @@ class _SegurancaTabState extends State<SegurancaTab> {
         });
       } else {
         _timerToleranciaBloqueio?.cancel();
-        _executarDisparoDeEmergencia();
+        // Fecha o diálogo de PIN (se ainda aberto) antes de disparar o
+        // alerta, já que o tempo de tolerância esgotou sem confirmação.
+        // Este é o ÚNICO ponto (além da confirmação de PIN correto
+        // dentro do próprio PinDialogContent) em que o diálogo é
+        // fechado programaticamente, evitando pops indevidos em outras
+        // rotas.
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        _dispararUmaVezSeNecessario();
       }
     });
   }
 
-  void _pressionarTecladoPIN(String caractere) {
-    if (_pinDigitadoNoBloqueio.length < 4) {
-      setState(() {
-        _pinDigitadoNoBloqueio += caractere;
-      });
-    }
 
-    if (_pinDigitadoNoBloqueio.length == 4) {
-      _verificarPINInserido();
-    }
-  }
+  /// Chamado pelo [PinDialogContent] quando o PIN correto é digitado.
+  /// Cancela o alarme NATIVO (só agora, com o PIN confirmado), interrompe
+  /// os timers locais e registra o desarme no histórico. Envolvido em
+  /// try/catch para NUNCA travar o diálogo/UI mesmo em caso de falha.
+  Future<void> _aoConfirmarPinCorreto() async {
+    try {
+      _timerToleranciaBloqueio?.cancel();
+      await _alarmeService.cancelarAlarme();
+      await _db.limparAguardandoConfirmacaoPin();
 
-  /// Verifica o PIN digitado no teclado de bloqueio, comparando com os dois
-  /// PINs possíveis cadastrados pelo usuário:
-  ///
-  /// - PIN real: desarma o sistema normalmente, sem disparar alerta.
-  /// - PIN de coação (sob ameaça): desarma "aparentemente" a tela mostrando
-  ///   a MESMA mensagem de sucesso do PIN real (para não levantar suspeitas
-  ///   de quem estiver coagindo o usuário), mas dispara silenciosamente o
-  ///   alerta de emergência em segundo plano, sem qualquer indicação visual.
-  /// - Qualquer outro valor: trata como PIN incorreto e dispara o alerta de
-  ///   emergência normalmente (comportamento já existente).
-  void _verificarPINInserido() {
-    if (_pinDigitadoNoBloqueio == _pinRealConfirmado) {
       _pararTimer();
-      _db.inserirEventoHistorico(
-        titulo: 'Check-in desarmado com sucesso',
-        descricao: 'O cronômetro de segurança foi interrompido/desarmado '
-            'pelo usuário com o PIN correto.',
-        categoria: 'seguranca',
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Check-in desarmado com sucesso!'), backgroundColor: Colors.green),
-      );
-    } else if (_pinCoacaoConfirmado != null &&
-
-        _pinCoacaoConfirmado!.isNotEmpty &&
-        _pinDigitadoNoBloqueio == _pinCoacaoConfirmado) {
-      _executarDisparoDeCoacaoSilencioso();
-    } else {
-      _executarDisparoDeEmergencia();
-    }
-  }
-
-  /// Dispara o alerta de emergência de forma totalmente silenciosa, usando
-  /// exatamente a mesma mensagem padrão de emergência (para não deixar
-  /// rastro visível no dispositivo caso seja inspecionado pelo agressor).
-  /// A interface finge que o check-in foi desarmado com sucesso, idêntico
-  /// ao fluxo do PIN real, para não alertar quem estiver coagindo o usuário.
-  Future<void> _executarDisparoDeCoacaoSilencioso() async {
-    _pararTimer();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Check-in desarmado com sucesso!'), backgroundColor: Colors.green),
-      );
-    }
-    // Dispara o alerta em segundo plano, sem qualquer feedback visual
-    // adicional, mesmo que o envio de SMS falhe.
-    await _dispararAlertaDeEmergencia();
-  }
-
-  /// Formata uma [Position] em texto legível (latitude/longitude + link do
-  /// Google Maps) para ser inserida no corpo do SMS.
-  String _formatarPosicao(Position posicao) {
-    return 'Latitude: ${posicao.latitude}, Longitude: ${posicao.longitude} '
-        '(https://maps.google.com/?q=${posicao.latitude},${posicao.longitude})';
-  }
-
-  /// Obtém a localização a ser usada no alerta de emergência.
-  ///
-  /// Regra de negócio 4 (Envio do Alerta Máximo): o disparo de emergência
-  /// deve usar IMEDIATAMENTE a última localização já capturada em memória
-  /// pelo fluxo proativo do [LocationService] — que roda desde o exato
-  /// momento em que o cronômetro foi iniciado (warm-up) e é atualizada a
-  /// cada 2 minutos enquanto o check-in permanece ativo. Isso evita ter que
-  /// esperar uma nova consulta (lenta) ao GPS bem no momento crítico do
-  /// alerta.
-  ///
-  /// Estratégia de fallback, para nunca deixar o SMS sem coordenadas:
-  /// 1. Última localização em memória do fluxo proativo (LocationService).
-  /// 2. Última localização conhecida do sistema (cache do Android).
-  /// 3. Tenta uma última consulta ao GPS em tempo real, com timeout curto.
-  Future<String> _obterLocalizacaoFormatada() async {
-    // Passo 1: última posição já capturada pelo fluxo proativo (warm-up +
-    // loop de 2 em 2 minutos), guardada em memória durante o cronômetro.
-    final Position? posicaoDoFluxoProativo = _locationService.ultimaPosicao;
-    if (posicaoDoFluxoProativo != null) {
-      return _formatarPosicao(posicaoDoFluxoProativo);
-    }
-
-    // Passo 2: última localização conhecida do sistema (cache instantâneo).
-    Position? ultimaConhecida;
-    try {
-      ultimaConhecida = await Geolocator.getLastKnownPosition();
-    } catch (_) {}
-
-    try {
-      bool servicoAtivo = await Geolocator.isLocationServiceEnabled();
-      if (!servicoAtivo) {
-        if (ultimaConhecida != null) {
-          return _formatarPosicao(ultimaConhecida);
-        }
-        return 'Localização indisponível (serviço de GPS desativado no aparelho).';
-      }
-
-      LocationPermission permissao = await Geolocator.checkPermission();
-      if (permissao == LocationPermission.denied) {
-        permissao = await Geolocator.requestPermission();
-      }
-      if (permissao == LocationPermission.denied ||
-          permissao == LocationPermission.deniedForever) {
-        if (ultimaConhecida != null) {
-          return _formatarPosicao(ultimaConhecida);
-        }
-        return 'Localização indisponível (permissão de localização negada).';
-      }
-
-      // Passo 3: último recurso — tenta obter a localização atual com
-      // alta precisão e timeout curto, para não travar o disparo.
-      try {
-        final posicaoAtual = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 7),
+      if (mounted) {
+        _db.inserirEventoHistorico(
+          titulo: 'Check-in desarmado com sucesso',
+          descricao: 'O cronômetro de segurança foi interrompido/desarmado '
+              'pelo usuário com o PIN correto.',
+          categoria: 'seguranca',
         );
-        return _formatarPosicao(posicaoAtual);
-      } catch (_) {
-        if (ultimaConhecida != null) {
-          return _formatarPosicao(ultimaConhecida);
-        }
-        return 'Não foi possível obter a localização atual do aparelho.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Check-in desarmado com sucesso!'), backgroundColor: Colors.green),
+        );
       }
-    } catch (_) {
-      if (ultimaConhecida != null) {
-        return _formatarPosicao(ultimaConhecida);
-      }
-      return 'Não foi possível obter a localização atual do aparelho.';
-    }
-  }
-
-  /// Monta a mensagem de alerta e dispara o SMS de emergência para todos os
-  /// contatos cadastrados. Extraído em método próprio para ser reaproveitado
-  /// tanto pelo disparo normal (timer expirado / PIN incorreto) quanto pelo
-  /// disparo silencioso via PIN de coação.
-  ///
-  /// Qualquer falha no envio (ex: SmsManager indisponível, permissão
-  /// negada, etc.) é apenas registrada via [debugPrint] e nunca exibida ao
-  /// usuário, garantindo que o fluxo de coação permaneça 100% silencioso.
-  Future<void> _dispararAlertaDeEmergencia() async {
-    String anotacoesUsuario = _contextoController.text.trim();
-    if (anotacoesUsuario.isEmpty) {
-      anotacoesUsuario = 'Nenhuma anotação de contexto informada pelo usuário.';
-    }
-
-    // Busca os contatos de emergência salvos na tabela isolada
-    // 'contatos_emergencia' (cadastrados na aba Família via Agenda).
-    // Inclui também os contatos com exclusão pendente (ainda dentro da
-    // trava de segurança de 24h), pois continuam válidos para receber
-    // alertas de emergência até que a exclusão seja efetivada.
-    List<Map<String, dynamic>> contatosEmergencia = [];
-    try {
-      contatosEmergencia = await _db.getContatosEmergencia();
     } catch (e) {
-      debugPrint('⚠️ Falha ao buscar contatos de emergência: $e');
-    }
-
-    // Obtém e formata a última localização conhecida (coordenadas de
-    // latitude/longitude) para incluir no corpo do SMS.
-    final localizacaoFormatada = await _obterLocalizacaoFormatada();
-
-    final mensagemAlerta =
-        'ALERTA DE EMERGÊNCIA! Não realizei meu check-in de segurança.\n'
-        'Localização: $localizacaoFormatada\n'
-        'Contexto: $anotacoesUsuario';
-
-    debugPrint('🚨 DISPARANDO ALERTA MÁXIMO DE EMERGÊNCIA!');
-    debugPrint('📋 Mensagem enviada via SMS: $mensagemAlerta');
-
-    // Registra no histórico ('seguranca') o disparo do alerta de
-    // emergência, seja ele normal (timer expirado/PIN incorreto) ou
-    // silencioso (PIN de coação) — sempre de forma transparente e
-    // auditável para o titular da conta.
-    _db.inserirEventoHistorico(
-      titulo: 'Alerta de emergência disparado',
-      descricao: 'SMS de emergência enviado para os contatos cadastrados. '
-          'Localização: $localizacaoFormatada',
-      categoria: 'seguranca',
-    );
-
-
-    // Coleta os números de telefone de todos os destinatários cadastrados
-    // (incluindo os que estão com exclusão pendente).
-    final List<String> numerosDestinatarios = contatosEmergencia
-        .map((contato) => (contato['telefone'] as String?) ?? '')
-        .where((telefone) => telefone.isNotEmpty)
-        .toList();
-
-    if (numerosDestinatarios.isNotEmpty) {
-      try {
-        // Dispara o alerta via SMS nativo do aparelho, chamando o
-        // MethodChannel implementado em MainActivity.kt, que por sua vez
-        // usa o SmsManager do Android para enviar as mensagens de forma
-        // totalmente invisível e em segundo plano (sem depender de
-        // pacotes externos ou do WhatsApp).
-        await _canalSms.invokeMethod('enviarSms', {
-          'telefones': numerosDestinatarios,
-          'mensagem': mensagemAlerta,
-        });
-      } catch (e) {
-        // Nunca exibimos erro ao usuário: qualquer falha aqui é apenas
-        // registrada para depuração, mantendo o fluxo 100% silencioso
-        // (essencial para o cenário de PIN de coação).
-        debugPrint('⚠️ Falha ao enviar SMS de emergência: $e');
-      }
-    } else {
-      debugPrint('⚠️ Nenhum contato de emergência cadastrado para receber o alerta.');
+      debugPrint('⚠️ Falha ao confirmar PIN/desarmar check-in: $e');
     }
   }
 
+  // Flag simples para garantir que, mesmo diante de eventuais chamadas
+  // concorrentes (ex.: Timer da tolerância + fechamento do diálogo quase
+  // simultâneos), o disparo de emergência ocorra NO MÁXIMO uma única vez
+  // por ciclo de tolerância — nunca em loop.
+  bool _disparoJaExecutadoNesteCiclo = false;
+
+  /// Garante (via flag [_disparoJaExecutadoNesteCiclo]) que o disparo de
+  /// emergência seja executado apenas UMA vez quando a tolerância
+  /// esgotar, e delega para [_executarDisparoDeEmergencia] o try/catch
+  /// completo em torno do EmergencyAlertService.
+  Future<void> _dispararUmaVezSeNecessario() async {
+    if (_disparoJaExecutadoNesteCiclo) return;
+    _disparoJaExecutadoNesteCiclo = true;
+    await _executarDisparoDeEmergencia();
+  }
+
+  /// Executa o disparo de emergência quando a tolerância expira com o
+  /// app ainda aberto (fluxo em memória). Reaproveita o
+  /// [EmergencyAlertService], compartilhado com o callback headless do
+  /// [AlarmeService]. Protegido por try/catch para que qualquer falha
+  /// (GPS, SMS, banco) jamais trave a interface do usuário ou dispare
+  /// novamente em loop — o [EmergencyAlertService] já é 100% silencioso
+  /// e não-repetitivo internamente.
   Future<void> _executarDisparoDeEmergencia() async {
     _timerToleranciaBloqueio?.cancel();
-    await _dispararAlertaDeEmergencia();
+    try {
+      await _emergencyAlertService.dispararAlertaDeEmergencia(
+        contexto: _contextoController.text.trim(),
+        posicaoEmMemoria: _locationService.ultimaPosicao,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao executar disparo de emergência: $e');
+    }
     _pararTimer();
   }
+
 
 
   String _formatarTempo(int totalSegundos) {
@@ -483,117 +366,16 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_estaBloqueadoAguardandoPIN) {
-      return _buildTelaBloqueio();
-    }
+    // Correção do erro de design original: a tela de bloqueio de PIN por
+    // inatividade que substituía toda a rota foi removida. A UI normal
+    // (com o cronômetro em contagem regressiva ou já em tolerância) é
+    // SEMPRE exibida — o diálogo de PIN, quando necessário, é aberto por
+    // cima dela via [exibirDialogoPin] (ver [_ativarBloqueioDeSeguranca]),
+    // nunca bloqueando a navegação para as demais abas (Família,
+    // Histórico) nem a HomeScreen.
     return _buildTelaPrincipal();
   }
 
-  /// Tela exibida quando o timer expira e o sistema aguarda a digitação do
-  /// PIN (real ou de coação) dentro do prazo de tolerância.
-  Widget _buildTelaBloqueio() {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.security, color: Colors.redAccent, size: 50),
-            const SizedBox(height: 12),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'SISTEMA BLOQUEADO',
-                textAlign: TextAlign.center,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: _estiloBloqueioTitulo,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Tempo de tolerância: ${_segundosToleranciaBloqueio}s',
-                textAlign: TextAlign.center,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: _estiloBloqueioTolerancia,
-              ),
-            ),
-            const SizedBox(height: 32),
-            _buildIndicadoresPIN(),
-            const SizedBox(height: 40),
-            Expanded(child: _buildTecladoPIN()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Bolinhas indicadoras de quantos dígitos do PIN já foram digitados.
-  Widget _buildIndicadoresPIN() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (index) {
-        bool preenchido = index < _pinDigitadoNoBloqueio.length;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: preenchido ? Colors.redAccent : Colors.white24,
-            border: Border.all(color: Colors.white54),
-          ),
-        );
-      }),
-    );
-  }
-
-  /// Teclado numérico exibido na tela de bloqueio para digitação do PIN.
-  Widget _buildTecladoPIN() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 20,
-          mainAxisSpacing: 20,
-          childAspectRatio: 1.3,
-        ),
-        itemCount: 12,
-        itemBuilder: (context, index) {
-          if (index == 9) return const SizedBox.shrink();
-          if (index == 11) {
-            return IconButton(
-              icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28),
-              onPressed: () {
-                if (_pinDigitadoNoBloqueio.isNotEmpty) {
-                  setState(() {
-                    _pinDigitadoNoBloqueio = _pinDigitadoNoBloqueio.substring(0, _pinDigitadoNoBloqueio.length - 1);
-                  });
-                }
-              },
-            );
-          }
-          String numero = index == 10 ? '0' : (index + 1).toString();
-          return ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.08),
-              foregroundColor: Colors.white,
-              shape: const CircleBorder(),
-              elevation: 0,
-            ),
-            onPressed: () => _pressionarTecladoPIN(numero),
-            child: Text(numero, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-          );
-        },
-      ),
-    );
-  }
 
   /// Tela de funcionamento normal com plano de fundo dinâmico, sincronizado
   /// em tempo real com a escolha feita em Configurações.

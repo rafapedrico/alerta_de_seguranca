@@ -21,11 +21,13 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+
   }
+
 
 
   Future<void> _onCreate(Database db, int version) async {
@@ -34,7 +36,6 @@ class DatabaseHelper {
       CREATE TABLE user_config (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         pin_real TEXT,
-        pin_coacao TEXT,
         tempo_padrao_timer INTEGER,
         forcando_whatsapp INTEGER NOT NULL DEFAULT 0,
         tipo_plano TEXT NOT NULL DEFAULT 'free',
@@ -83,7 +84,24 @@ class DatabaseHelper {
         timestamp TEXT NOT NULL
       )
     ''');
+
+    // Table: alarmes_rotina - gerenciador de múltiplos alarmes de rotina
+    // (estilo despertador do iPhone), usado pela aba Família. Cada
+    // alarme possui hora/minuto, dias da semana de repetição (armazenados
+    // como string CSV, ex: "1,3,5" para Seg/Qua/Sex, onde 1=Segunda até
+    // 7=Domingo), estado ativo/inativo e uma etiqueta/nome livre.
+    await db.execute('''
+      CREATE TABLE alarmes_rotina (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        hora INTEGER NOT NULL,
+        minuto INTEGER NOT NULL,
+        dias_semana TEXT NOT NULL,
+        ativo INTEGER NOT NULL DEFAULT 1,
+        etiqueta TEXT
+      )
+    ''');
   }
+
 
 
 
@@ -150,7 +168,76 @@ class DatabaseHelper {
         'ALTER TABLE user_config ADD COLUMN auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0',
       );
     }
+    // Migration from v7 to v8: cria a tabela 'alarmes_rotina', usada pelo
+    // novo gerenciador de múltiplos alarmes de rotina da aba Família
+    // (estilo despertador do iPhone).
+    if (oldVersion < 8) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS alarmes_rotina (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          hora INTEGER NOT NULL,
+          minuto INTEGER NOT NULL,
+          dias_semana TEXT NOT NULL,
+          ativo INTEGER NOT NULL DEFAULT 1,
+          etiqueta TEXT
+        )
+      ''');
+    }
+    // Migration from v8 to v9: adiciona os campos de controle do disparo
+    // de emergência via alarme NATIVO (android_alarm_manager_plus), que
+    // roda de forma confiável mesmo com o app fechado/em background:
+    // - aguardando_confirmacao_pin: flag persistida indicando que um
+    //   disparo de emergência já ocorreu (SMS já enviado pelo callback
+    //   headless) e o app deve exibir a tela de bloqueio de PIN assim
+    //   que for reaberto (cold start), até que o PIN correto seja
+    //   digitado.
+    // - contexto_timer_ativo: espelha em disco o texto digitado pelo
+    //   usuário no campo "Dica de Contexto" no exato momento em que o
+    //   cronômetro de check-in é iniciado, permitindo que o callback
+    //   headless (que não tem acesso à UI/memória do app) monte a mesma
+    //   mensagem de SMS de emergência.
+    // - timestamp_expiracao_alarme: guarda o instante (epoch ms) em que
+    //   o alarme nativo está agendado para disparar, usado apenas para
+    //   fins de auditoria/depuração.
+    if (oldVersion < 9) {
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN aguardando_confirmacao_pin INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN contexto_timer_ativo TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN timestamp_expiracao_alarme TEXT',
+      );
+    }
+    // Migration from v9 to v10: adiciona os campos necessários para a
+    // Etapa 3 (Alarmes de Rotina Múltiplos e Recorrentes) na tabela
+    // 'alarmes_rotina':
+    // - contexto_personalizado: dica de contexto PRÓPRIA de cada alarme
+    //   de rotina (independente do campo de contexto do check-in manual
+    //   em SegurancaTab), usada para montar a mensagem de SMS de
+    //   emergência caso o check-in de rotina não seja confirmado a tempo.
+    // - minutos_tolerancia: quantos minutos o usuário tem, após a
+    //   notificação de check-in de rotina ser exibida, para confirmar
+    //   "Cheguei bem" antes do disparo automático de emergência.
+    // - ultimo_disparo_epoch: timestamp (epoch ms) do último disparo
+    //   NATIVO já processado para este alarme, usado internamente pelo
+    //   RotinaAlarmeService para fins de auditoria/depuração.
+    if (oldVersion < 10) {
+      await db.execute(
+        'ALTER TABLE alarmes_rotina ADD COLUMN contexto_personalizado TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE alarmes_rotina ADD COLUMN minutos_tolerancia INTEGER NOT NULL DEFAULT 10',
+      );
+      await db.execute(
+        'ALTER TABLE alarmes_rotina ADD COLUMN ultimo_disparo_epoch INTEGER',
+      );
+    }
   }
+
+
+
 
 
 
@@ -373,7 +460,14 @@ class DatabaseHelper {
   // exibidos de forma transparente na aba Histórico.
 
   /// Insere um novo evento no histórico. [categoria] deve ser uma das
-  /// strings: 'seguranca', 'familia' ou 'sistema'.
+  /// strings: 'seguranca', 'familia', 'sistema' ou 'critico'.
+  ///
+  /// IMPORTANTE — separação de privacidade: a categoria 'critico' é
+  /// EXCLUSIVA para os alarmes de emergência e disparos de SMS de socorro
+  /// (o registro mais sensível do aplicativo). Ela NUNCA deve aparecer na
+  /// tela de Histórico Geral (ver [getHistorico]), sendo retornada apenas
+  /// por [getEventosSensiveis], usada pela tela de Auditoria de Eventos
+  /// Sensíveis, protegida pela trava de segurança de 3 horas.
   Future<int> inserirEventoHistorico({
     required String titulo,
     required String descricao,
@@ -388,27 +482,42 @@ class DatabaseHelper {
     });
   }
 
-  /// Retorna todos os eventos do histórico, ordenados do mais recente
-  /// para o mais antigo. Usado pela aba Histórico.
+  /// Retorna os eventos do histórico exibidos na tela de Histórico Geral
+  /// (abas Todos/Segurança/Família/Sistema), ordenados do mais recente
+  /// para o mais antigo.
+  ///
+  /// Regra de negócio de privacidade/blindagem: os registros da categoria
+  /// 'critico' (alarmes de emergência e disparos de SMS de socorro) são
+  /// EXCLUÍDOS explicitamente desta consulta, independentemente de
+  /// qualquer status de liberação da Auditoria. Esses eventos só podem
+  /// ser vistos dentro do cofre de Auditoria de Eventos Sensíveis (ver
+  /// [getEventosSensiveis]), nunca aqui.
   Future<List<Map<String, dynamic>>> getHistorico() async {
     final db = await database;
-    return await db.query('historico', orderBy: 'id DESC');
+    return await db.query(
+      'historico',
+      where: 'categoria != ?',
+      whereArgs: ['critico'],
+      orderBy: 'id DESC',
+    );
   }
 
-  /// Retorna somente os eventos do histórico da categoria 'seguranca',
-  /// que são os registros mais críticos/sensíveis do aplicativo (ex:
-  /// ativação/desarme do cronômetro, disparos de emergência). Usados
-  /// exclusivamente pela tela de Auditoria de Eventos Sensíveis, que só
-  /// libera essa visualização após a trava de segurança de 3 horas.
+  /// Retorna somente os eventos do histórico da categoria 'critico', que
+  /// são os registros mais críticos/sensíveis do aplicativo (alarmes de
+  /// emergência e disparos de SMS de socorro para os contatos
+  /// cadastrados). Usados exclusivamente pela tela de Auditoria de
+  /// Eventos Sensíveis, que só libera essa visualização após a trava de
+  /// segurança de 3 horas.
   Future<List<Map<String, dynamic>>> getEventosSensiveis() async {
     final db = await database;
     return await db.query(
       'historico',
       where: 'categoria = ?',
-      whereArgs: ['seguranca'],
+      whereArgs: ['critico'],
       orderBy: 'id DESC',
     );
   }
+
 
   /// Remove um único evento do histórico pelo id. Usado pelo gesto de
   /// "arrastar para excluir" (Dismissible) na aba Histórico.
@@ -524,6 +633,85 @@ class DatabaseHelper {
     await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 0});
   }
 
+  // ==========================================
+  // ALARMES DE ROTINA (Gerenciador estilo despertador)
+  // ==========================================
+  // Tabela 'alarmes_rotina', usada pela aba Família para gerenciar
+  // múltiplos alarmes de rotina/check-in, no estilo do despertador do
+  // iPhone. Cada alarme possui hora, minuto, dias da semana de repetição
+  // (string CSV, ex: "1,3,5", onde 1=Segunda ... 7=Domingo), um estado
+  // ativo/inativo (alternável rapidamente via switch) e uma etiqueta
+  // livre descrevendo o propósito do alarme (ex: "Chegada no trabalho").
+
+  /// Insere um novo alarme de rotina. Retorna o id gerado.
+  Future<int> inserirAlarme(Map<String, dynamic> alarme) async {
+    final db = await database;
+    return await db.insert('alarmes_rotina', alarme);
+  }
+
+  /// Retorna todos os alarmes de rotina cadastrados, ordenados por
+  /// horário (hora e minuto) para facilitar a visualização cronológica.
+  Future<List<Map<String, dynamic>>> listarAlarmes() async {
+    final db = await database;
+    return await db.query('alarmes_rotina', orderBy: 'hora ASC, minuto ASC');
+  }
+
+  /// Atualiza os dados de um alarme de rotina já existente (hora, minuto,
+  /// dias da semana, etiqueta e/ou estado ativo). O mapa [alarme] deve
+  /// conter obrigatoriamente a chave 'id'.
+  Future<int> atualizarAlarme(Map<String, dynamic> alarme) async {
+    final db = await database;
+    return await db.update(
+      'alarmes_rotina',
+      alarme,
+      where: 'id = ?',
+      whereArgs: [alarme['id']],
+    );
+  }
+
+  /// Alterna rapidamente o estado ativo/inativo de um alarme (usado pelo
+  /// SwitchListTile na listagem da aba Família), sem precisar reenviar os
+  /// demais campos do alarme.
+  Future<int> alternarAtivoAlarme(int id, bool ativo) async {
+    final db = await database;
+    return await db.update(
+      'alarmes_rotina',
+      {'ativo': ativo ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Remove definitivamente um alarme de rotina pelo id.
+  Future<int> deletarAlarme(int id) async {
+    final db = await database;
+    return await db.delete('alarmes_rotina', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Busca um único alarme de rotina pelo id. Usado pelo callback headless
+  /// do [RotinaAlarmeService] (Etapa 3), que roda em um isolate/engine
+  /// separado e recebe apenas o id do alarme como parâmetro, precisando
+  /// consultar o restante dos dados (contexto, tolerância etc.) no SQLite.
+  Future<Map<String, dynamic>?> buscarAlarmePorId(int id) async {
+    final db = await database;
+    final result = await db.query('alarmes_rotina', where: 'id = ?', whereArgs: [id], limit: 1);
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  /// Atualiza apenas o timestamp (epoch ms) do último disparo NATIVO já
+  /// processado para este alarme de rotina, usado para fins de
+  /// auditoria/depuração pelo [RotinaAlarmeService].
+  Future<int> marcarUltimoDisparo(int id, int epoch) async {
+    final db = await database;
+    return await db.update(
+      'alarmes_rotina',
+      {'ultimo_disparo_epoch': epoch},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+
   // ==========================================================
   // [TEMPORÁRIO/DEBUG] RESET MANUAL DE SENHA PARA TESTES FÍSICOS
   // ==========================================================
@@ -541,6 +729,77 @@ class DatabaseHelper {
           senha_pendente = NULL,
           timestamp_alteracao_senha = NULL
     ''');
+  }
+
+  // ==========================================================
+  // DISPARO DE EMERGÊNCIA VIA ALARME NATIVO (background/headless)
+  // ==========================================================
+  // Conjunto de métodos usados tanto pela UI (SegurancaTab) quanto pelo
+  // callback headless do AlarmeService (que roda em um isolate/engine
+  // separado, sem acesso a nenhum estado em memória do app principal).
+  // Por isso TODO o contexto necessário para o disparo (contatos, dica de
+  // contexto, PIN esperado etc.) precisa estar persistido em disco.
+
+  /// Marca no banco que o cronômetro de check-in foi iniciado, salvando a
+  /// dica de contexto digitada pelo usuário (usada para montar a mensagem
+  /// de SMS) e o timestamp (epoch ms) em que o alarme nativo está
+  /// agendado para disparar. Chamado pela SegurancaTab ao iniciar o
+  /// cronômetro, IMEDIATAMENTE ANTES de agendar o alarme nativo via
+  /// AlarmeService.
+  Future<void> salvarContextoTimerAtivo({
+    required String contexto,
+    required DateTime timestampExpiracao,
+  }) async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'contexto_timer_ativo': contexto,
+      'timestamp_expiracao_alarme':
+          timestampExpiracao.millisecondsSinceEpoch.toString(),
+    });
+  }
+
+  /// Marca no banco que um disparo de emergência JÁ OCORREU (o SMS já foi
+  /// enviado pelo callback headless) e que o app deve exibir a tela de
+  /// bloqueio de PIN assim que for reaberto, até que o PIN correto seja
+  /// digitado. Chamado exclusivamente pelo callback estático headless do
+  /// AlarmeService, portanto usa sua PRÓPRIA instância de banco (o
+  /// singleton `database` é resolvido normalmente, pois cada isolate/
+  /// engine abre sua própria conexão sqflite apontando para o mesmo
+  /// arquivo físico do banco).
+  Future<void> marcarAguardandoConfirmacaoPin() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'aguardando_confirmacao_pin': 1,
+    });
+  }
+
+  /// Limpa a flag de bloqueio, chamada quando o usuário digita o PIN
+  /// correto na TelaBloqueioPin (tanto no cenário de tolerância com o app
+  /// aberto quanto no cenário de cold start pós-disparo em background).
+  Future<void> limparAguardandoConfirmacaoPin() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'aguardando_confirmacao_pin': 0,
+      'contexto_timer_ativo': null,
+      'timestamp_expiracao_alarme': null,
+    });
+  }
+
+  /// Verifica se o app deve exibir a tela de bloqueio de PIN assim que for
+  /// aberto (cold start), usado por main.dart/HomeScreen.
+  Future<bool> isAguardandoConfirmacaoPin() async {
+    final config = await getUserConfig();
+    if (config == null) return false;
+    return (config['aguardando_confirmacao_pin'] as int?) == 1;
   }
 }
 

@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 
-/// Tela de Histórico: lê os eventos reais gravados no banco de dados
-/// (tabela 'historico') e os exibe organizados por categoria
+/// Tela de Histórico Geral: lê os eventos reais gravados no banco de
+/// dados (tabela 'historico') e os exibe organizados por categoria
 /// administrativa ('seguranca', 'familia', 'sistema'), de forma 100%
 /// transparente para o usuário do aplicativo.
+///
+/// Regra de negócio de privacidade/blindagem: os registros da categoria
+/// 'critico' (alarmes de emergência e disparos de SMS de socorro) NUNCA
+/// aparecem nesta tela — a exclusão é garantida diretamente na query
+/// [DatabaseHelper.getHistorico], que filtra essa categoria na origem,
+/// independentemente do filtro rápido selecionado pelo usuário. Esses
+/// eventos são isolados exclusivamente na tela de Auditoria de Eventos
+/// Sensíveis (ícone superior direito), protegida pela trava de segurança
+/// de 3 horas.
+
 class HistoricoTab extends StatefulWidget {
   const HistoricoTab({super.key});
 

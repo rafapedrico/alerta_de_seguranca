@@ -16,12 +16,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _indiceAbaAtual = 0;
 
+  // GlobalKey usada para acionar, a partir do AppBar global (botão "+"),
+  // o modal de "Adicionar Alarme" definido dentro da FamiliaTab.
+  final GlobalKey<FamiliaTabState> _familiaTabKey = GlobalKey<FamiliaTabState>();
+
   // Ordem exata das abas: Segurança, Família, Histórico
-  final List<Widget> _telas = const [
-    SegurancaTab(),
-    FamiliaTab(),
-    HistoricoTab(),
+  late final List<Widget> _telas = [
+    const SegurancaTab(),
+    FamiliaTab(key: _familiaTabKey),
+    const HistoricoTab(),
   ];
+
 
   final List<String> _titulos = const [
     'Segurança',
@@ -67,6 +72,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(_titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          if (_indiceAbaAtual == 1)
+            IconButton(
+              icon: const Icon(Icons.add_alarm),
+              tooltip: 'Adicionar Alarme',
+              onPressed: () => _familiaTabKey.currentState?.abrirModalAdicionarAlarme(),
+            ),
           if (_indiceAbaAtual == 2)
             IconButton(
               icon: const Icon(Icons.privacy_tip_outlined),
@@ -79,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+
 
       body: IndexedStack(
         index: _indiceAbaAtual,

@@ -2,15 +2,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 
-/// Tela de Auditoria de Eventos Sensíveis.
+/// Tela de Auditoria de Eventos Sensíveis (o "cofre" acessado pelo ícone
+/// superior direito).
 ///
 /// Recurso de proteção de dados/privacidade: os registros mais críticos do
-/// histórico (categoria 'seguranca' — ativação/desarme do cronômetro,
-/// disparos de emergência etc.) só podem ser visualizados após o usuário
-/// solicitar explicitamente a liberação e aguardar um período de carência
-/// de 3 horas. Isso evita que alguém com acesso rápido e não autorizado ao
-/// dispositivo (ex: um agressor) consiga inspecionar imediatamente o
-/// histórico de segurança da vítima.
+/// histórico (categoria 'critico' — EXCLUSIVAMENTE alarmes de emergência
+/// e disparos de SMS de socorro para os contatos cadastrados) só podem ser
+/// visualizados após o usuário solicitar explicitamente a liberação e
+/// aguardar um período de carência de 3 horas. Isso evita que alguém com
+/// acesso rápido e não autorizado ao dispositivo (ex: um agressor) consiga
+/// inspecionar imediatamente o histórico de segurança da vítima.
+///
+/// Blindagem de privacidade: esses registros são isolados exclusivamente
+/// aqui e NUNCA aparecem na tela de Histórico Geral (aba Histórico),
+/// independentemente de qualquer status de liberação desta tela — a
+/// separação é garantida na origem, pela query de [DatabaseHelper.getHistorico]
+/// (que exclui a categoria 'critico') e [DatabaseHelper.getEventosSensiveis]
+/// (que busca exclusivamente a categoria 'critico').
+
 ///
 /// Regras:
 /// - Ao solicitar, o timestamp da solicitação é salvo no banco.

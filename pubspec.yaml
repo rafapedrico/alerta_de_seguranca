@@ -36,7 +36,12 @@ dependencies:
   permission_handler: ^11.3.1
   url_launcher: ^6.2.5
 
+  # Alarmes em segundo plano e notificações locais
+  android_alarm_manager_plus: ^4.0.3
+  flutter_local_notifications: ^17.2.2
+
 dev_dependencies:
+
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1

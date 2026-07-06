@@ -13,7 +13,7 @@ import 'package:security_check_app/main.dart';
 void main() {
   testWidgets('App inicializa e exibe a tela de Segurança', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const SecurityCheckApp());
+    await tester.pumpWidget(const SecurityCheckApp(aguardandoConfirmacaoPin: false));
     await tester.pumpAndSettle();
 
     // Verifica que a aba inicial (Segurança) foi carregada corretamente,

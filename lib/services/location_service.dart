@@ -131,8 +131,8 @@ class LocationService {
   }
 
   /// Interrompe o ciclo de atualização periódica de localização. Deve ser
-  /// chamado sempre que o cronômetro for parado/desarmado (com sucesso,
-  /// por PIN de coação, ou por disparo de emergência).
+  /// chamado sempre que o cronômetro for parado/desarmado (com sucesso ou
+  /// por disparo de emergência).
   void pararCicloDeAtualizacao() {
     _timerAtualizacao?.cancel();
     _timerAtualizacao = null;
