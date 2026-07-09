@@ -4,6 +4,7 @@ import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';
 import '../../services/api_service.dart';
+import '../../services/contatos_emergencia_service.dart';
 import '../../models/alarme_rotina.dart';
 
 
@@ -42,6 +43,28 @@ class FamiliaTabState extends State<FamiliaTab> {
     super.initState();
     _carregarAlarmes();
     _carregarContatosEmergencia();
+
+    // Sincronização automática: sempre que um contato de emergência for
+    // adicionado/editado/excluído na aba Configurações, o
+    // ContatosEmergenciaService incrementa 'versaoContatos', disparando
+    // este listener e recarregando a lista imediatamente aqui na aba
+    // Família — sem precisar que o usuário troque de aba manualmente ou
+    // puxe para atualizar (RefreshIndicator).
+    ContatosEmergenciaService.versaoContatos.addListener(_aoContatosAlterados);
+  }
+
+  /// Callback do listener acima: apenas recarrega a lista de contatos de
+  /// emergência exibida nesta aba, refletindo instantaneamente qualquer
+  /// alteração feita em Configurações (adição, exclusão solicitada ou
+  /// exclusão efetivada).
+  void _aoContatosAlterados() {
+    _carregarContatosEmergencia();
+  }
+
+  @override
+  void dispose() {
+    ContatosEmergenciaService.versaoContatos.removeListener(_aoContatosAlterados);
+    super.dispose();
   }
 
   Future<void> _carregarAlarmes() async {

@@ -7,6 +7,7 @@ import '../../services/wallpaper_service.dart';
 import '../../services/location_service.dart';
 import '../../services/emergency_alert_service.dart';
 import '../../services/alarme_service.dart';
+import '../../services/api_service.dart';
 import '../../widgets/pin_dialog.dart';
 
 
@@ -36,12 +37,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
     color: Colors.grey,
     fontWeight: FontWeight.w500,
   );
-  static const TextStyle _estiloRodape = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: Colors.grey,
-    fontStyle: FontStyle.italic,
-  );
 
   // Tolerância fixa (em segundos) após o cronômetro chegar a zero, antes
   // do disparo automático de emergência. Usada tanto para a contagem
@@ -67,10 +62,43 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   int _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
 
+  // ==========================================================
+  // GUARDA CONTRA CONDIÇÃO DE CORRIDA (race condition) DE TIMERS
+  // ==========================================================
+  // Flag de controle centralizada: impede que _ativarBloqueioDeSeguranca()
+  // seja executada mais de uma vez simultaneamente (ex: o _timer principal
+  // chegando a zero E um toque manual do usuário em _alternarTimer quase
+  // ao mesmo tempo), o que anteriormente podia criar DOIS
+  // _timerToleranciaBloqueio concorrentes — o mais antigo ficava "órfão"
+  // rodando em paralelo sem que sua referência fosse cancelada antes de
+  // ser sobrescrita pelo novo Timer, causando decrementos/disparos de SOS
+  // mais rápidos e inesperados que o esperado (o efeito visual relatado:
+  // o botão fica laranja por ~1s e o SOS já dispara).
+  bool _bloqueioEmAndamento = false;
+
   // Serviço singleton responsável pelo ciclo de vida proativo do GPS:
   // solicitação de permissão, warm-up ao iniciar o cronômetro e loop de
   // atualização a cada 2 minutos enquanto o check-in estiver ativo.
   final LocationService _locationService = LocationService();
+
+  // ==========================================================
+  // STATUS DE CONECTIVIDADE COM O BACKEND (API)
+  // ==========================================================
+  // Indicador visual de conectividade com o servidor FastAPI
+  // (security_backend), verificado periodicamente via
+  // ApiService.enviarStatus(). null = ainda verificando (primeira
+  // checagem em andamento), true = Online, false = Offline.
+  bool? _apiOnline;
+  Timer? _timerStatusApi;
+  static const Duration _intervaloChecagemApi = Duration(seconds: 15);
+
+  // Guarda simples para evitar que múltiplas chamadas de
+  // _verificarStatusApi() rodem sobrepostas caso uma chamada anterior
+  // ainda esteja pendente (ex: rede lenta/instável) quando o próximo
+  // tick do Timer.periodic disparar — previne o acúmulo de Futures
+  // concorrentes que poderiam retornar fora de ordem e "piscar" o
+  // indicador de status de forma inconsistente.
+  bool _verificacaoStatusEmAndamento = false;
 
   @override
   void initState() {
@@ -82,17 +110,105 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // localização do Android, garantindo que o GPS esteja liberado antes
     // mesmo de o usuário ativar o cronômetro de check-in.
     _locationService.garantirPermissaoDeLocalizacao();
+
+    // Dispara a primeira checagem de conectividade imediatamente e
+    // agenda checagens periódicas enquanto a tela estiver aberta,
+    // mantendo o indicador visual (Online/Offline) sempre atualizado.
+    _verificarStatusApi();
+    _timerStatusApi = Timer.periodic(_intervaloChecagemApi, (_) {
+      _verificarStatusApi();
+    });
   }
 
   @override
   void dispose() {
     _contextoController.dispose();
-    _timer?.cancel();
-    _timerToleranciaBloqueio?.cancel();
+    _cancelarTodosOsTimers();
     // Interrompe o loop de atualização de localização (se ainda ativo) ao
     // destruir a tela, evitando Timers órfãos em segundo plano.
     _locationService.pararCicloDeAtualizacao();
     super.dispose();
+  }
+
+  // ==========================================================
+  // GERENCIADOR CENTRALIZADO DO CICLO DE VIDA DOS TIMERS
+  // ==========================================================
+  // Ponto ÚNICO de cancelamento de TODOS os Timers desta tela
+  // (cronômetro principal, tolerância de bloqueio e status da API).
+  // Chamado sistematicamente ANTES de qualquer novo Timer ser criado em
+  // qualquer fluxo (iniciar cronômetro, ativar bloqueio, dispose), e
+  // também diretamente pelo dispose(). Isso elimina de raiz qualquer
+  // possibilidade de dois Timers do mesmo tipo coexistirem
+  // simultaneamente — a causa raiz da condição de corrida relatada (o
+  // cronômetro "piscando" laranja por ~1s e disparando o SOS
+  // prematuramente).
+  void _cancelarTodosOsTimers() {
+    _timer?.cancel();
+    _timer = null;
+    _timerToleranciaBloqueio?.cancel();
+    _timerToleranciaBloqueio = null;
+    _timerStatusApi?.cancel();
+    _timerStatusApi = null;
+  }
+
+  /// Cancela exclusivamente o cronômetro principal de check-in,
+  /// garantindo que nenhuma referência antiga fique rodando "invisível"
+  /// antes de um novo ser agendado.
+  void _cancelarTimerPrincipal() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  /// Cancela exclusivamente o Timer de tolerância de bloqueio (60s),
+  /// sempre chamado ANTES de criar um novo — nunca permitindo que dois
+  /// Timers de tolerância concorram entre si.
+  void _cancelarTimerToleranciaBloqueio() {
+    _timerToleranciaBloqueio?.cancel();
+    _timerToleranciaBloqueio = null;
+  }
+
+  /// Chama ApiService.enviarStatus (heartbeat para /api/status) e
+  /// atualiza o indicador visual de conectividade (Online/Offline).
+  ///
+  /// Protegido em múltiplas camadas para NUNCA travar a UI ou o app,
+  /// mesmo diante de instabilidade de rede:
+  /// - [_verificacaoStatusEmAndamento] evita chamadas sobrepostas caso
+  ///   uma requisição anterior ainda esteja pendente.
+  /// - `.timeout(...)` garante um limite máximo de espera MESMO que o
+  ///   Dio interno não respeite seu próprio timeout configurado (ex: em
+  ///   cenários de conexão "pendurada"/half-open), evitando que este
+  ///   Future fique pendente indefinidamente e trave o próximo ciclo do
+  ///   Timer.periodic.
+  /// - O try/catch mais externo garante que QUALQUER exceção (timeout,
+  ///   erro de socket, DNS, etc.) resulte simplesmente em "Offline",
+  ///   nunca propagando uma exceção não tratada para o Timer.
+  Future<void> _verificarStatusApi() async {
+    if (_verificacaoStatusEmAndamento) return;
+    _verificacaoStatusEmAndamento = true;
+
+    bool online = false;
+    try {
+      const double bateriaSimulada = 100;
+      online = await ApiService()
+          .enviarStatus(bateriaSimulada, '1.0.0')
+          .timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          debugPrint(
+              '⚠️ [SegurancaTab] Timeout ao verificar status da API (>8s sem resposta).');
+          return false;
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ [SegurancaTab] Falha inesperada ao verificar status da API: $e');
+      online = false;
+    }
+
+    _verificacaoStatusEmAndamento = false;
+    if (!mounted) return;
+    setState(() {
+      _apiOnline = online;
+    });
   }
 
 
@@ -164,6 +280,14 @@ class _SegurancaTabState extends State<SegurancaTab> {
       return;
     }
 
+    // Cancela sistematicamente QUALQUER Timer principal ou de tolerância
+    // que ainda possa estar rodando de um ciclo anterior, antes de
+    // iniciar um novo — elimina a possibilidade de dois cronômetros
+    // concorrentes coexistirem.
+    _cancelarTimerPrincipal();
+    _cancelarTimerToleranciaBloqueio();
+    _bloqueioEmAndamento = false;
+
     // Novo ciclo de check-in: reseta a flag de disparo único, garantindo
     // que o próximo esgotamento de tolerância possa disparar novamente
     // (uma única vez por ciclo).
@@ -208,25 +332,35 @@ class _SegurancaTabState extends State<SegurancaTab> {
     );
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Guarda defensiva extra: se por qualquer motivo esta referência de
+      // Timer não for mais a atual (ex: foi substituída por um cancel +
+      // novo Timer entre um tick e outro), interrompe imediatamente esta
+      // instância "fantasma" em vez de continuar decrementando o estado.
+      if (!identical(timer, _timer)) {
+        timer.cancel();
+        return;
+      }
 
       if (_segundosRestantes > 0) {
         setState(() {
           _segundosRestantes--;
         });
       } else {
-        _timer?.cancel();
+        _cancelarTimerPrincipal();
         _ativarBloqueioDeSeguranca();
       }
     });
   }
 
   void _pararTimer() {
-    _timer?.cancel();
-    _timerToleranciaBloqueio?.cancel();
+    _cancelarTimerPrincipal();
+    _cancelarTimerToleranciaBloqueio();
+    _bloqueioEmAndamento = false;
     // O cronômetro foi parado/desarmado (por qualquer motivo): interrompe
     // o loop de atualização de localização a cada 2 minutos, já que ele
     // só deve rodar enquanto o check-in estiver ativo.
     _locationService.pararCicloDeAtualizacao();
+    if (!mounted) return;
     setState(() {
       _isTimerAtivo = false;
       _segundosRestantes = 0;
@@ -252,7 +386,32 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// ciclo de vida relatados. Se o tempo esgotar SEM o PIN correto, o
   /// disparo de emergência é executado exatamente UMA vez (ver
   /// [_dispararUmaVezSeNecessario]), sem loop e sem travar a interface.
+  ///
+  /// CORREÇÃO DE RACE CONDITION: esta função agora é protegida pela flag
+  /// [_bloqueioEmAndamento], impedindo que seja executada mais de uma vez
+  /// simultaneamente — cenário que antes podia ocorrer quando o [_timer]
+  /// principal chegava a zero e, quase ao mesmo tempo, o usuário tocava
+  /// manualmente no botão (via [_alternarTimer]). Antes dessa proteção,
+  /// isso podia criar DOIS [_timerToleranciaBloqueio] concorrentes: o
+  /// mais antigo nunca era cancelado antes do novo sobrescrever sua
+  /// referência, continuando a rodar "invisível" em paralelo e
+  /// disparando o SOS de forma prematura/inesperada (o efeito relatado:
+  /// o botão fica laranja por ~1s e o alerta já dispara).
   void _ativarBloqueioDeSeguranca() {
+    if (_bloqueioEmAndamento) {
+      // Já existe um ciclo de tolerância em andamento: ignora esta nova
+      // chamada por completo, em vez de criar um segundo Timer
+      // concorrente.
+      return;
+    }
+    _bloqueioEmAndamento = true;
+
+    // Cancela sistematicamente qualquer Timer de tolerância remanescente
+    // antes de criar um novo (defesa em profundidade, mesmo com a flag
+    // acima já impedindo reentrância).
+    _cancelarTimerToleranciaBloqueio();
+
+    if (!mounted) return;
     setState(() {
       _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
     });
@@ -267,29 +426,43 @@ class _SegurancaTabState extends State<SegurancaTab> {
         pinEsperado: _pinRealConfirmado,
         segundosTolerancia: _segundosToleranciaBloqueio,
         aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
+        aoErrarPinDuasVezes: _dispararSosDeCoacao,
       );
     }
 
+
     _timerToleranciaBloqueio = Timer.periodic(const Duration(seconds: 1), (t) {
+      // Guarda defensiva extra: garante que apenas o Timer de tolerância
+      // "atual" continue executando sua lógica, mesmo que uma referência
+      // antiga por algum motivo ainda não tenha sido totalmente
+      // finalizada pelo scheduler do Dart.
+      if (!identical(t, _timerToleranciaBloqueio)) {
+        t.cancel();
+        return;
+      }
+
       if (_segundosToleranciaBloqueio > 0) {
+        if (!mounted) return;
         setState(() {
           _segundosToleranciaBloqueio--;
         });
       } else {
-        _timerToleranciaBloqueio?.cancel();
-        // Fecha o diálogo de PIN (se ainda aberto) antes de disparar o
-        // alerta, já que o tempo de tolerância esgotou sem confirmação.
-        // Este é o ÚNICO ponto (além da confirmação de PIN correto
-        // dentro do próprio PinDialogContent) em que o diálogo é
-        // fechado programaticamente, evitando pops indevidos em outras
-        // rotas.
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
+        _cancelarTimerToleranciaBloqueio();
+        // BLINDAGEM DE SEGURANÇA: o diálogo de PIN NUNCA é fechado
+        // automaticamente pela expiração da tolerância — ele permanece
+        // aberto e travado na tela (teclado de PIN idêntico, mesma
+        // mensagem), exigindo o PIN CORRETO para ser fechado. Isso
+        // impede que um agressor, ao ver o diálogo desaparecer sozinho,
+        // conclua que o alerta foi disparado e destrua o aparelho antes
+        // que a vítima consiga confirmar sua segurança. O disparo de
+        // emergência ocorre normalmente em paralelo, SEM fechar o
+        // diálogo (ver [_dispararUmaVezSeNecessario] /
+        // [_aoConfirmarPinCorreto], o ÚNICO ponto que fecha o diálogo).
         _dispararUmaVezSeNecessario();
       }
     });
   }
+
 
 
   /// Chamado pelo [PinDialogContent] quando o PIN correto é digitado.
@@ -298,7 +471,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// try/catch para NUNCA travar o diálogo/UI mesmo em caso de falha.
   Future<void> _aoConfirmarPinCorreto() async {
     try {
-      _timerToleranciaBloqueio?.cancel();
+      _cancelarTimerToleranciaBloqueio();
       await _alarmeService.cancelarAlarme();
       await _db.limparAguardandoConfirmacaoPin();
 
@@ -343,7 +516,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// novamente em loop — o [EmergencyAlertService] já é 100% silencioso
   /// e não-repetitivo internamente.
   Future<void> _executarDisparoDeEmergencia() async {
-    _timerToleranciaBloqueio?.cancel();
+    _cancelarTimerToleranciaBloqueio();
     try {
       await _emergencyAlertService.dispararAlertaDeEmergencia(
         contexto: _contextoController.text.trim(),
@@ -353,6 +526,94 @@ class _SegurancaTabState extends State<SegurancaTab> {
       debugPrint('⚠️ Falha ao executar disparo de emergência: $e');
     }
     _pararTimer();
+  }
+
+  // ==========================================================
+  // PIN DE COAÇÃO (gatilho discreto de emergência)
+  // ==========================================================
+
+  /// Callback silencioso passado ao [PinDialogContent] (ver
+  /// [_ativarBloqueioDeSeguranca]), acionado automaticamente quando o
+  /// usuário digita o PIN INCORRETO 2 vezes consecutivas. Dispara o
+  /// MESMO fluxo de emergência real usado pelo SOS manual/automático
+  /// (SMS nativo + alerta ao backend), mas de forma 100% SILENCIOSA:
+  /// nenhum SnackBar, nenhuma alteração visual no diálogo de PIN, nada
+  /// que possa denunciar o disparo a quem estiver observando a tela
+  /// (ex: um agressor coagindo o usuário a digitar o PIN).
+  ///
+  /// Protegido por try/catch para nunca propagar exceção de volta ao
+  /// diálogo de PIN, mantendo seu comportamento visual inalterado
+  /// independentemente do resultado deste disparo.
+  Future<void> _dispararSosDeCoacao() async {
+    debugPrint('🚨 [PIN DE COAÇÃO] 2 PINs incorretos consecutivos detectados. '
+        'Disparando SOS silencioso.');
+    try {
+      await _emergencyAlertService.dispararAlertaDeEmergencia(
+        contexto: _contextoController.text.trim(),
+        posicaoEmMemoria: _locationService.ultimaPosicao,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar SOS silencioso: $e');
+    }
+  }
+
+  // ==========================================================
+  // BOTÃO DE SOS/PÂNICO MANUAL
+  // ==========================================================
+
+
+  /// Exibe um diálogo de confirmação simples ("Confirmar SOS?") antes de
+  /// disparar o alerta de emergência manualmente. Diferente do gatilho
+  /// físico (Volume+ segurado por 3s, que dispara IMEDIATAMENTE sem
+  /// diálogo, pois pode ocorrer com a tela apagada), o botão SOS dentro
+  /// do app SEMPRE pede essa confirmação, já que o usuário está olhando
+  /// a tela e pode ter tocado por engano. O diálogo permanece aberto até
+  /// o usuário decidir (sem timeout automático).
+  Future<void> _confirmarEDispararSosManual() async {
+    final bool? confirmou = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirmar SOS?'),
+          content: const Text(
+            'Isso enviará imediatamente um SMS de emergência e um alerta '
+            'para os seus contatos cadastrados, com sua localização atual. '
+            'Deseja continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Confirmar SOS', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmou != true || !mounted) return;
+
+    try {
+      await _emergencyAlertService.dispararAlertaDeEmergencia(
+        contexto: _contextoController.text.trim(),
+        posicaoEmMemoria: _locationService.ultimaPosicao,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🚨 SOS disparado! Contatos de emergência notificados.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar SOS manual: $e');
+    }
   }
 
 
@@ -399,6 +660,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  _buildIndicadorStatusApi(),
+                  const SizedBox(height: 12),
                   _buildCampoContexto(),
                   const SizedBox(height: 24),
                   const Text(
@@ -412,14 +675,68 @@ class _SegurancaTabState extends State<SegurancaTab> {
                   _buildSeletoresDeTempo(),
                   const SizedBox(height: 32),
                   _buildBotaoCheckIn(),
-                  const SizedBox(height: 32),
-                  _buildRodape(),
+                  const SizedBox(height: 24),
+                  _buildBotaoSos(),
                   const SizedBox(height: 16),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Indicador visual compacto de conectividade com o backend FastAPI
+  /// (security_backend): um pequeno "chip" com ícone e texto
+  /// "Online"/"Offline"/"Verificando...", com a cor refletindo o status
+  /// (verde = conectado, vermelho = sem conexão, cinza = checando).
+  Widget _buildIndicadorStatusApi() {
+    late final Color cor;
+    late final IconData icone;
+    late final String texto;
+
+    if (_apiOnline == null) {
+      cor = Colors.grey;
+      icone = Icons.sync;
+      texto = 'Verificando servidor...';
+    } else if (_apiOnline == true) {
+      cor = Colors.green;
+      icone = Icons.cloud_done;
+      texto = 'Servidor Online';
+    } else {
+      cor = Colors.red;
+      icone = Icons.cloud_off;
+      texto = 'Servidor Offline';
+    }
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cor.withOpacity(0.4)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icone, color: cor, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              texto,
+              style: TextStyle(color: cor, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -558,25 +875,29 @@ class _SegurancaTabState extends State<SegurancaTab> {
     );
   }
 
-  /// Rodapé decorativo exibido ao final da tela principal.
-  Widget _buildRodape() {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.favorite, color: Colors.red, size: 16),
-        SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            'Cuidando de você com carinho',
-            textAlign: TextAlign.center,
-            softWrap: true,
-            overflow: TextOverflow.clip,
-            style: _estiloRodape,
-          ),
+  /// Botão de SOS/Pânico manual: dispara o alerta de emergência
+  /// imediatamente (após confirmação simples via diálogo), reutilizando
+  /// o mesmo [EmergencyAlertService.dispararAlertaDeEmergencia] usado
+  /// pelo fluxo automático do cronômetro. Complementa (não substitui) o
+  /// gatilho físico via botão de Volume+ segurado por 3s, que dispara
+  /// sem diálogo (ver VolumeSosService/main.dart).
+  Widget _buildBotaoSos() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _confirmarEDispararSosManual,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red, width: 1.5),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        SizedBox(width: 8),
-        Icon(Icons.favorite, color: Colors.red, size: 16),
-      ],
+        icon: const Icon(Icons.sos),
+        label: const Text(
+          'SOS - Botão de Pânico',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 }

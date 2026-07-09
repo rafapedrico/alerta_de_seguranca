@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
+import '../../services/contatos_emergencia_service.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 
@@ -165,6 +166,12 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
 
     await _carregarContatosEmergencia();
 
+    // Notifica a aba Família (via ValueNotifier global) para que ela
+    // recarregue automaticamente sua lista de contatos de emergência,
+    // sem precisar que o usuário troque de aba manualmente ou puxe para
+    // atualizar.
+    ContatosEmergenciaService.notificarAlteracao();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -194,6 +201,12 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     );
 
     await _carregarContatosEmergencia();
+
+    // Notifica a aba Família (via ValueNotifier global) para que ela
+    // recarregue automaticamente sua lista de contatos de emergência,
+    // refletindo imediatamente o estado "Removendo em 24h...".
+    ContatosEmergenciaService.notificarAlteracao();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -224,7 +237,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
 
   String? get _pinReal => _userConfig?['pin_real'] as String?;
   String? get _senhaPendente => _userConfig?['senha_pendente'] as String?;
-  int get _tempoTolerancia => _userConfig?['tempo_padrao_timer'] as int? ?? 15;
 
   String get _tipoPlano => _userConfig?['tipo_plano'] as String? ?? 'free';
   String? get _planoDeFundoUrl => _userConfig?['plano_de_fundo_url'] as String?;
@@ -361,104 +373,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  }
-
-
-  void _showToleranciaDialog() {
-    final toleranciaController = TextEditingController(text: _tempoTolerancia.toString());
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.hourglass_top, size: 22, color: Color(0xFF4C7040)),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Tempo de Tolerância',
-                softWrap: true,
-                overflow: TextOverflow.clip,
-              ),
-            ),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Indique o tempo extra (em minutos) antes que o disparo silencioso de emergência seja feito de forma automática.',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: toleranciaController,
-                decoration: const InputDecoration(
-                  labelText: 'Minutos de Tolerância',
-                  hintText: 'Ex: 10',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.av_timer),
-                ),
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Informe o tempo';
-                  final numero = int.tryParse(v.trim());
-                  if (numero == null || numero <= 0) return 'Digite um número maior que 0';
-                  if (numero > 60) return 'O tempo máximo é 60 minutos';
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final minutos = int.parse(toleranciaController.text.trim());
-              await _saveTolerancia(minutos);
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text('Salvar'),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4C7040)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _saveTolerancia(int minutos) async {
-    await _ensureUserConfig();
-    final id = _userConfig!['id'] as int;
-    await _db.updateUserConfig({'id': id, 'tempo_padrao_timer': minutos});
-
-    // Registra no histórico ('sistema') a alteração da tolerância padrão.
-    await _db.inserirEventoHistorico(
-      titulo: 'Tolerância de rotina alterada',
-      descricao: 'Novo tempo de tolerância configurado: $minutos minutos.',
-      categoria: 'sistema',
-    );
-
-    await _loadConfig();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('⏱️ Tolerância de rotina ajustada para $minutos min!'),
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -991,33 +905,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
         ),
 
         const SizedBox(height: 16),
-        const Divider(),
-
-        _sectionHeader(theme, Icons.av_timer, 'Rotina e Contingência'),
-
-
-
-        ListTile(
-
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFE8F5E9),
-            child: Icon(Icons.hourglass_bottom, color: const Color(0xFF4C7040)),
-          ),
-          title: const Text(
-            'Tempo de Tolerância de Rotina',
-            softWrap: true,
-            overflow: TextOverflow.clip,
-          ),
-          subtitle: Text(
-            '$_tempoTolerancia minutos de atraso permitidos',
-            softWrap: true,
-            overflow: TextOverflow.clip,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-          trailing: const Icon(Icons.edit),
-          onTap: _showToleranciaDialog,
-        ),
-
         const Divider(),
 
         _sectionHeader(theme, Icons.palette, 'Visual do Chat'),

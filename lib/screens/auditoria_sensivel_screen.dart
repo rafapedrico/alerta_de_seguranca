@@ -104,6 +104,19 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     );
   }
 
+  /// Remove definitivamente um único evento sensível do histórico pelo
+  /// id, acionado pelo gesto de "arrastar para excluir" (Dismissible),
+  /// exatamente como já funciona na aba Histórico normal. Reaproveita o
+  /// mesmo método do DatabaseHelper usado por [HistoricoTab], já que a
+  /// tabela 'historico' é única — apenas a categoria ('critico') difere.
+  Future<void> _excluirEventoSensivel(int id) async {
+    await _db.deletarEventoHistorico(id);
+    if (!mounted) return;
+    setState(() {
+      _eventosSensiveis.removeWhere((e) => e['id'] == id);
+    });
+  }
+
   String _formatarTempoRestante(int ms) {
     final duracao = Duration(milliseconds: ms);
     final horas = duracao.inHours;
@@ -130,7 +143,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auditoria de Eventos Sensíveis'),
+        title: const Text('Auditoria de Eventos'),
         backgroundColor: const Color(0xFF4C7040),
         foregroundColor: Colors.white,
       ),
@@ -280,25 +293,45 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             itemCount: _eventosSensiveis.length,
             itemBuilder: (context, index) {
               final evento = _eventosSensiveis[index];
+              final id = evento['id'] as int;
               final titulo = evento['titulo'] as String? ?? '';
               final descricao = evento['descricao'] as String? ?? '';
               final timestamp = evento['timestamp'] as String? ?? '';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.red.shade50,
-                    child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
+
+              // Permite ao usuário arrastar o card para o lado (swipe)
+              // e excluir definitivamente o registro sensível, assim
+              // como já funciona na aba Histórico normal.
+              return Dismissible(
+                key: ValueKey(id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade400,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(descricao),
-                  trailing: Text(
-                    _formatarDataHora(timestamp),
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  child: const Icon(Icons.delete_outline, color: Colors.white),
+                ),
+                onDismissed: (_) => _excluirEventoSensivel(id),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.shade50,
+                      child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
+                    ),
+                    title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(descricao),
+                    trailing: Text(
+                      _formatarDataHora(timestamp),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
                   ),
                 ),
               );

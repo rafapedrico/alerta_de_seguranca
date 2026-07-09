@@ -24,11 +24,26 @@ import 'package:flutter/material.dart';
 ///   diferente da tela cheia antiga, ele NUNCA bloqueia a UI/navegação
 ///   por trás em caso de erro de ciclo de vida (o app permanece
 ///   plenamente responsivo).
+///
+/// PIN DE COAÇÃO (gatilho discreto de emergência): [aoErrarPinDuasVezes]
+/// é um callback OPCIONAL, disparado internamente sempre que o usuário
+/// digitar o PIN incorreto 2 VEZES CONSECUTIVAS (o contador é resetado
+/// automaticamente após acionar o callback, e também sempre que o PIN
+/// correto for digitado). A interface NUNCA reflete esse gatilho — a
+/// mensagem de erro exibida é sempre a mesma ("PIN incorreto. Tente
+/// novamente."), independentemente de qual erro consecutivo for,
+/// mantendo o disfarce de segurança 100% intacto diante de um possível
+/// agressor observando a tela. Toda a lógica real de disparo (chamar o
+/// EmergencyAlertService, obter localização, etc.) fica a cargo de quem
+/// fornece o callback (ver [SegurancaTab._dispararSosDeCoacao]) — este
+/// widget é propositalmente "burro" e não conhece nada sobre
+/// GPS/serviços de emergência.
 Future<void> exibirDialogoPin({
   required BuildContext context,
   required String? pinEsperado,
   required Future<void> Function() aoConfirmarPinCorreto,
   int? segundosTolerancia,
+  Future<void> Function()? aoErrarPinDuasVezes,
 }) {
   return showDialog<void>(
     context: context,
@@ -38,6 +53,7 @@ Future<void> exibirDialogoPin({
         pinEsperado: pinEsperado,
         aoConfirmarPinCorreto: aoConfirmarPinCorreto,
         segundosTolerancia: segundosTolerancia,
+        aoErrarPinDuasVezes: aoErrarPinDuasVezes,
       );
     },
   );
@@ -49,11 +65,16 @@ class PinDialogContent extends StatefulWidget {
     required this.pinEsperado,
     required this.aoConfirmarPinCorreto,
     this.segundosTolerancia,
+    this.aoErrarPinDuasVezes,
   });
 
   final String? pinEsperado;
   final Future<void> Function() aoConfirmarPinCorreto;
   final int? segundosTolerancia;
+
+  /// Callback silencioso, opcional, acionado ao 2º erro consecutivo de
+  /// PIN. Ver documentação completa em [exibirDialogoPin].
+  final Future<void> Function()? aoErrarPinDuasVezes;
 
   @override
   State<PinDialogContent> createState() => _PinDialogContentState();
@@ -63,6 +84,13 @@ class _PinDialogContentState extends State<PinDialogContent> {
   String _pinDigitado = '';
   String? _mensagemErro;
   bool _verificando = false;
+
+  // Contador de erros consecutivos de PIN, usado exclusivamente para o
+  // gatilho silencioso do "PIN de coação" (ver [widget.aoErrarPinDuasVezes]).
+  // É resetado para 0 tanto ao acionar o callback (evitando disparos
+  // repetidos a cada 2 erros subsequentes) quanto ao digitar o PIN
+  // correto. NUNCA influencia a mensagem de erro exibida na tela.
+  int _errosConsecutivos = 0;
 
   void _pressionarTecla(String caractere) {
     if (_pinDigitado.length >= 4 || _verificando) return;
@@ -90,6 +118,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
         _pinDigitado == widget.pinEsperado;
 
     if (pinCorreto) {
+      _errosConsecutivos = 0;
       setState(() => _verificando = true);
       // Executa a confirmação (cancela alarme nativo, limpa flags etc.)
       // com try/catch para NUNCA travar este diálogo em caso de falha.
@@ -106,7 +135,25 @@ class _PinDialogContentState extends State<PinDialogContent> {
       return;
     }
 
-    // PIN incorreto: aviso padrão, sem disparar nenhuma ação adicional.
+    // PIN incorreto: aviso padrão, sem disparar nenhuma ação adicional
+    // VISÍVEL na interface. A UI SEMPRE se comporta exatamente da mesma
+    // forma, independentemente do gatilho silencioso abaixo.
+    _errosConsecutivos++;
+
+    if (_errosConsecutivos >= 2 && widget.aoErrarPinDuasVezes != null) {
+      // Reseta ANTES de chamar, garantindo que o gatilho não seja
+      // acionado novamente a cada erro subsequente (apenas a cada novo
+      // par de erros consecutivos).
+      _errosConsecutivos = 0;
+      // Fire-and-forget silencioso: nunca aguardado, nunca propaga
+      // exceção para este diálogo, e jamais altera o estado visual
+      // desta tela (mensagem de erro, cores, ícones permanecem 100%
+      // idênticos ao fluxo normal de erro de PIN).
+      try {
+        widget.aoErrarPinDuasVezes!.call();
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() {
         _mensagemErro = 'PIN incorreto. Tente novamente.';

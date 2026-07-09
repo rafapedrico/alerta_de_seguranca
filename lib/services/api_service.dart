@@ -38,7 +38,10 @@ class ApiService {
 
   /// URL base do backend FastAPI (rede local Wi-Fi).
   /// Ajuste este valor caso o IP da máquina que roda o servidor mude.
-  static const String baseUrl = 'http://192.168.15.10:8000';
+  /// (Atualizado em 08/07: o IP da máquina de desenvolvimento mudou de
+  /// 192.168.15.10 para 192.168.15.7 — mantenha este valor sempre em
+  /// sincronia com o IP local atual exibido por `ipconfig`/`ifconfig`.)
+  static const String baseUrl = 'http://192.168.15.7:8000';
 
   /// Identificador do usuário/dispositivo usado em todas as requisições
   /// enquanto o app não possui autenticação real (Firebase Auth, etc.).
@@ -117,12 +120,20 @@ class ApiService {
   ///
   /// Retorna `true` em caso de sucesso (HTTP 200), ou `false` em qualquer
   /// falha de rede — nunca lança exceção.
+  ///
+  /// [timestampLocal] deve conter a data/hora EXATA (horas, minutos e
+  /// segundos locais do aparelho) do momento em que o disparo foi
+  /// originado — usada tanto pelo SOS padrão (manual ou automático via
+  /// cronômetro) quanto pelo SOS de coação (PIN incorreto 2x seguidas).
+  /// Se omitido, usa o horário local atual no instante da chamada.
   Future<bool> dispararAlertaWeb({
     required double latitude,
     required double longitude,
     required String contexto,
+    DateTime? timestampLocal,
   }) async {
     try {
+      final momento = timestampLocal ?? DateTime.now();
       final response = await _dio.post(
         '/api/alerta',
         data: {
@@ -130,9 +141,14 @@ class ApiService {
           'latitude': latitude,
           'longitude': longitude,
           'contexto': contexto,
-          'timestamp': DateTime.now().toUtc().toIso8601String(),
+          'timestamp': momento.toUtc().toIso8601String(),
+          // Campo adicional com a hora EXATA local (horas:minutos:segundos)
+          // do disparo, em formato legível, para exibição/registro direto
+          // no backend sem depender de conversão de fuso horário.
+          'timestamp_local': _formatarTimestampLocal(momento),
         },
       );
+
       debugPrint('🚨 [ApiService] /api/alerta respondeu: ${response.data}');
       return response.statusCode == 200;
     } catch (e) {
@@ -140,4 +156,15 @@ class ApiService {
       return false;
     }
   }
+
+  /// Formata um [DateTime] LOCAL no padrão "dd/MM/yyyy HH:mm:ss",
+  /// contendo horas, minutos e segundos exatos do disparo, para ser
+  /// enviado como campo auxiliar legível ao backend (ver
+  /// [dispararAlertaWeb]).
+  String _formatarTimestampLocal(DateTime momento) {
+    String doisDigitos(int valor) => valor.toString().padLeft(2, '0');
+    return '${doisDigitos(momento.day)}/${doisDigitos(momento.month)}/${momento.year} '
+        '${doisDigitos(momento.hour)}:${doisDigitos(momento.minute)}:${doisDigitos(momento.second)}';
+  }
 }
+

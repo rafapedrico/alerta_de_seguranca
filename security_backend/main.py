@@ -88,6 +88,11 @@ class AlertaPayload(BaseModel):
     timestamp: Optional[datetime] = Field(
         default=None, description="Momento em que o alerta foi gerado (UTC). Se omitido, usa o horário do servidor."
     )
+    timestamp_local: Optional[str] = Field(
+        default=None,
+        description="Data/hora EXATA local do disparo (formato 'dd/MM/yyyy HH:mm:ss'), "
+        "com horas, minutos e segundos do aparelho no momento do alerta.",
+    )
 
     class Config:
         json_schema_extra = {
@@ -97,8 +102,10 @@ class AlertaPayload(BaseModel):
                 "longitude": -46.633308,
                 "contexto": "botao_panico",
                 "timestamp": "2026-07-06T21:15:00Z",
+                "timestamp_local": "06/07/2026 18:15:00",
             }
         }
+
 
 
 class StatusPayload(BaseModel):
@@ -157,7 +164,9 @@ async def disparar_alerta(payload: AlertaPayload):
         },
         "contexto": payload.contexto,
         "timestamp_processado": timestamp_final,
+        "timestamp_local": payload.timestamp_local,
     }
+
 
 
 @app.post("/api/status", status_code=status.HTTP_200_OK, tags=["Status"])

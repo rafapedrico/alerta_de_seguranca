@@ -6,6 +6,8 @@ import 'services/database_helper.dart';
 import 'services/alarme_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/api_service.dart';
+import 'services/volume_sos_service.dart';
+import 'services/emergency_alert_service.dart';
 import 'screens/home_screen.dart';
 import 'widgets/pin_dialog.dart';
 
@@ -41,6 +43,28 @@ void main() async {
   // ação rápida "✅ Cheguei bem", tanto em primeiro quanto em segundo
   // plano.
   await NotificacaoService.inicializar();
+
+  // Inicia o Foreground Service nativo (VolumeSosService) que monitora
+  // o gatilho físico de SOS: segurar o botão de Volume+ por 3 segundos
+  // consecutivos, mesmo com a tela apagada ou o app minimizado. A
+  // notificação persistente exigida pelo Android para manter o Service
+  // ativo é exibida discretamente ("Segurança ativa"). Executado ANTES
+  // de runApp() para garantir que o monitoramento já esteja de pé assim
+  // que o usuário abrir o app.
+  await VolumeSosService().iniciarMonitoramento();
+
+  // Assim que o gatilho físico de SOS for detectado (evento recebido do
+  // lado nativo via EventChannel), aciona IMEDIATAMENTE o fluxo de dupla
+  // localização do EmergencyAlertService: um primeiro disparo instantâneo
+  // usando a última localização em cache, seguido de uma atualização com
+  // a localização em tempo real. Fire-and-forget (sem await), protegido
+  // internamente pelo próprio EmergencyAlertService (nunca lança exceção
+  // nem trava o app).
+  VolumeSosService().aoDispararSos.listen((_) {
+    EmergencyAlertService().dispararSosComDuplaLocalizacao().catchError((e) {
+      debugPrint('⚠️ Falha ao processar SOS via botão físico: $e');
+    });
+  });
 
   // Teste inicial de conectividade com o backend FastAPI (security_backend):
   // dispara um heartbeat para /api/status logo na abertura do app, apenas

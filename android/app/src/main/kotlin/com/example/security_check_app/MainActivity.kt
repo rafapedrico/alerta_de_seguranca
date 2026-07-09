@@ -24,5 +24,12 @@ class MainActivity: FlutterActivity() {
         // (EmergencyAlertService), que trata MissingPluginException sem
         // travar nem repetir em loop.
         flutterEngine.plugins.add(SmsSender())
+
+        // Registra o plugin local de SOS via botão físico de Volume+
+        // (ver VolumeSosPlugin/VolumeSosService). Expõe o MethodChannel
+        // usado para iniciar/parar o Foreground Service de monitoramento
+        // e o EventChannel usado para notificar o lado Dart quando o
+        // gatilho físico (3 incrementos de volume em até 3s) for detectado.
+        flutterEngine.plugins.add(VolumeSosPlugin())
     }
 }
