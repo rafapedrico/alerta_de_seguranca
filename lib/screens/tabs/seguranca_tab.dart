@@ -7,8 +7,10 @@ import '../../services/wallpaper_service.dart';
 import '../../services/location_service.dart';
 import '../../services/emergency_alert_service.dart';
 import '../../services/alarme_service.dart';
+import '../../services/alarme_sonoro_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/pin_dialog.dart';
+
 
 
 class SegurancaTab extends StatefulWidget {
@@ -22,6 +24,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
   final DatabaseHelper _db = DatabaseHelper();
   final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
   final AlarmeService _alarmeService = AlarmeService();
+  // Alerta Sonoro Customizável (Etapa 1 - Expansão Global): dispara o
+  // som escolhido pelo usuário em LOOP assim que o cronômetro principal
+  // chega a zero (tela de bloqueio de PIN é exibida), e para
+  // imediatamente quando o PIN correto é digitado.
+  final AlarmeSonoroService _alarmeSonoroService = AlarmeSonoroService();
+
 
   // Controlador para o campo de Anotações/Dica de Contexto
   final TextEditingController _contextoController = TextEditingController();
@@ -127,8 +135,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // Interrompe o loop de atualização de localização (se ainda ativo) ao
     // destruir a tela, evitando Timers órfãos em segundo plano.
     _locationService.pararCicloDeAtualizacao();
+    // Garante que o alerta sonoro em loop nunca continue tocando após a
+    // tela ser destruída.
+    _alarmeSonoroService.pararAlarme();
     super.dispose();
   }
+
 
   // ==========================================================
   // GERENCIADOR CENTRALIZADO DO CICLO DE VIDA DOS TIMERS
@@ -360,6 +372,10 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // o loop de atualização de localização a cada 2 minutos, já que ele
     // só deve rodar enquanto o check-in estiver ativo.
     _locationService.pararCicloDeAtualizacao();
+    // Garante que o alerta sonoro em loop nunca continue tocando além do
+    // ciclo de check-in atual, independentemente do motivo da parada.
+    _alarmeSonoroService.pararAlarme();
+
     if (!mounted) return;
     setState(() {
       _isTimerAtivo = false;
@@ -415,6 +431,16 @@ class _SegurancaTabState extends State<SegurancaTab> {
     setState(() {
       _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
     });
+
+    // ALERTA SONORO CUSTOMIZÁVEL (Etapa 1 - Expansão Global): dispara o
+    // som escolhido pelo usuário em LOOP no exato momento em que o
+    // cronômetro principal chega a zero e a tela de bloqueio de PIN é
+    // exibida. Fire-and-forget para não atrasar a abertura do diálogo.
+    // Interrompido automaticamente após a duração configurada, ou
+    // imediatamente caso o PIN correto seja digitado antes (ver
+    // [_aoConfirmarPinCorreto]).
+    _alarmeSonoroService.dispararAlarme();
+
 
 
     // Exibe o diálogo de PIN por cima da tela atual. Não é aguardado
@@ -472,8 +498,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
   Future<void> _aoConfirmarPinCorreto() async {
     try {
       _cancelarTimerToleranciaBloqueio();
+      // Interrompe IMEDIATAMENTE o alerta sonoro em loop, assim que o
+      // PIN correto for confirmado.
+      await _alarmeSonoroService.pararAlarme();
       await _alarmeService.cancelarAlarme();
       await _db.limparAguardandoConfirmacaoPin();
+
 
       _pararTimer();
       if (mounted) {

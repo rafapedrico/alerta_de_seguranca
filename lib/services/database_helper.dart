@@ -21,10 +21,11 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+
 
   }
 
@@ -43,9 +44,13 @@ class DatabaseHelper {
         senha_pendente TEXT,
         timestamp_alteracao_senha TEXT,
         timestamp_solicitacao_auditoria TEXT,
-        auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0
+        auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0,
+        som_alarme_selecionado INTEGER NOT NULL DEFAULT 1,
+        duracao_som_alarme INTEGER NOT NULL DEFAULT 30,
+        idioma_selecionado TEXT NOT NULL DEFAULT 'pt'
       )
     ''');
+
 
     // Table: contacts (up to 3 contacts) - legado, mantido por compatibilidade
     await db.execute('''
@@ -234,7 +239,30 @@ class DatabaseHelper {
         'ALTER TABLE alarmes_rotina ADD COLUMN ultimo_disparo_epoch INTEGER',
       );
     }
+    // Migration from v10 to v11: adiciona os campos de controle do
+    // Alerta Sonoro Customizável (Etapa 1 da Expansão Global) e do
+    // idioma preferido do usuário (Etapa 2 - Internacionalização):
+    // - som_alarme_selecionado: número (1 a 10) do som escolhido pelo
+    //   usuário para tocar em loop quando o cronômetro de check-in
+    //   chegar a zero.
+    // - duracao_som_alarme: duração (em segundos) configurada para o
+    //   toque do alerta sonoro.
+    // - idioma_selecionado: código do idioma da UI (ver
+    //   lib/services/localization_service.dart), suportando os 11
+    //   idiomas globais mapeados na Etapa 2.
+    if (oldVersion < 11) {
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN som_alarme_selecionado INTEGER NOT NULL DEFAULT 1',
+      );
+      await db.execute(
+        'ALTER TABLE user_config ADD COLUMN duracao_som_alarme INTEGER NOT NULL DEFAULT 30',
+      );
+      await db.execute(
+        "ALTER TABLE user_config ADD COLUMN idioma_selecionado TEXT NOT NULL DEFAULT 'pt'",
+      );
+    }
   }
+
 
 
 
@@ -535,7 +563,7 @@ class DatabaseHelper {
   // evitando acessos rápidos e não autorizados a esses registros caso o
   // dispositivo seja acessado por terceiros.
 
-  static const int prazoAuditoriaMs = 3 * 60 * 60 * 1000; // 3 horas
+  static const int prazoAuditoriaMs = 2 * 60 * 60 * 1000; // 2 horas
 
   /// Registra o timestamp atual como o momento da solicitação de
   /// liberação da auditoria sensível, e já marca a sessão atual como
@@ -623,7 +651,7 @@ class DatabaseHelper {
   /// start), para resetar a flag 'auditoria_liberada_sessao'. Isso
   /// garante que, assim que o aplicativo for totalmente fechado e
   /// reaberto, o estado de liberação seja sempre resetado — exigindo que
-  /// a trava de 3h seja reavaliada (embora, se o prazo já tiver sido
+  /// a trava de 2h seja reavaliada (embora, se o prazo já tiver sido
   /// cumprido anteriormente, a tela libere novamente de forma automática
   /// ao ser reaberta, sem exigir nova solicitação).
   Future<void> resetarSessaoAuditoria() async {
@@ -632,6 +660,23 @@ class DatabaseHelper {
     final id = config['id'] as int;
     await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 0});
   }
+
+  /// Bloqueia novamente o acesso aos registros sensíveis, acionado pelo
+  /// botão "Bloquear Novamente" na tela de Auditoria de Eventos
+  /// Sensíveis já liberada. Reseta tanto a flag de liberação da sessão
+  /// quanto o timestamp da solicitação original, exigindo uma NOVA
+  /// solicitação e uma NOVA espera de 2h para o próximo acesso.
+  Future<void> bloquearAuditoriaNovamente() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'auditoria_liberada_sessao': 0,
+      'timestamp_solicitacao_auditoria': null,
+    });
+  }
+
 
   // ==========================================
   // ALARMES DE ROTINA (Gerenciador estilo despertador)
@@ -801,5 +846,44 @@ class DatabaseHelper {
     if (config == null) return false;
     return (config['aguardando_confirmacao_pin'] as int?) == 1;
   }
+
+  // ==========================================================
+  // ALERTA SONORO CUSTOMIZÁVEL (Etapa 1 - Expansão Global)
+  // ==========================================================
+  // Persistência das escolhas de som (1 a 10) e duração (segundos) do
+  // alerta sonoro disparado ao término do cronômetro de check-in. Estes
+  // métodos espelham/complementam a persistência feita via
+  // SharedPreferences pelo AlarmeSonoroService, mantendo também um
+  // registro no SQLite (user_config) para consistência com o restante
+  // das preferências do usuário.
+
+  Future<void> salvarSomAlarmeSelecionado(int numeroSom) async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({'id': id, 'som_alarme_selecionado': numeroSom});
+  }
+
+  Future<void> salvarDuracaoSomAlarme(int segundos) async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({'id': id, 'duracao_som_alarme': segundos});
+  }
+
+  // ==========================================================
+  // IDIOMA SELECIONADO (Etapa 2 - Internacionalização)
+  // ==========================================================
+  // Persiste o código do idioma escolhido pelo usuário (ver
+  // lib/services/localization_service.dart para a lista completa dos 11
+  // idiomas globais suportados).
+
+  Future<void> salvarIdiomaSelecionado(String codigoIdioma) async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({'id': id, 'idioma_selecionado': codigoIdioma});
+  }
 }
+
 

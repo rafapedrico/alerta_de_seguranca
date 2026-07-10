@@ -41,6 +41,9 @@ dependencies:
   android_alarm_manager_plus: ^4.0.3
   flutter_local_notifications: ^17.2.2
 
+  # Alerta Sonoro Customizável (Etapa 1 - Expansão Global)
+  audioplayers: ^6.1.0
+
 dev_dependencies:
 
   flutter_test:
@@ -52,3 +55,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/sounds/
+    - assets/lang/
+
+

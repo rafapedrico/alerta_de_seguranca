@@ -3,7 +3,10 @@ import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
+import '../../services/alarme_sonoro_service.dart';
+import '../../services/localization_service.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+
 
 
 // Planos de fundo reais disponíveis em assets/, com nomes elegantes.
@@ -25,9 +28,24 @@ class ConfiguracoesTab extends StatefulWidget {
 
 class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   final DatabaseHelper _db = DatabaseHelper();
+  final AlarmeSonoroService _alarmeSonoroService = AlarmeSonoroService();
+  final LocalizationService _localizationService = LocalizationService();
 
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
+
+  // Estado local do Alerta Sonoro Customizável (Etapa 1 - Expansão
+  // Global): número do som selecionado (1-10) e duração do toque em
+  // segundos, carregados/persistidos via [AlarmeSonoroService].
+  int _somSelecionado = AlarmeSonoroService.somPadrao;
+  int _duracaoSomSegundos = AlarmeSonoroService.duracaoPadraoSegundos;
+  bool _carregandoAlarmeSonoro = true;
+  int? _somTestandoAgora;
+
+  // Estado local do idioma selecionado (Etapa 2 - Internacionalização).
+  String _idiomaSelecionado = LocalizationService.idiomaPadrao;
+  bool _carregandoIdioma = true;
+
 
   // Máximo de contatos de emergência permitidos.
   static const int _maxContatos = 3;
@@ -42,7 +60,133 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     super.initState();
     _loadConfig();
     _carregarContatosEmergencia();
+    _carregarConfiguracaoAlarmeSonoro();
+    _carregarConfiguracaoIdioma();
   }
+
+  @override
+  void dispose() {
+    // Garante que nenhum som de teste continue tocando após sair da
+    // tela de Configurações.
+    _alarmeSonoroService.pararTeste();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // ALERTA SONORO CUSTOMIZÁVEL (Etapa 1 - Expansão Global)
+  // ==========================================================
+
+  Future<void> _carregarConfiguracaoAlarmeSonoro() async {
+    setState(() => _carregandoAlarmeSonoro = true);
+    try {
+      final som = await _alarmeSonoroService.carregarSomSelecionado();
+      final duracao = await _alarmeSonoroService.carregarDuracaoSegundos();
+      if (mounted) {
+        setState(() {
+          _somSelecionado = som;
+          _duracaoSomSegundos = duracao;
+          _carregandoAlarmeSonoro = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _carregandoAlarmeSonoro = false);
+    }
+  }
+
+  Future<void> _selecionarSom(int? numero) async {
+    if (numero == null) return;
+    setState(() => _somSelecionado = numero);
+    await _alarmeSonoroService.salvarSomSelecionado(numero);
+    await _db.salvarSomAlarmeSelecionado(numero);
+  }
+
+  Future<void> _selecionarDuracaoSom(int segundos) async {
+    setState(() => _duracaoSomSegundos = segundos);
+    await _alarmeSonoroService.salvarDuracaoSegundos(segundos);
+    await _db.salvarDuracaoSomAlarme(segundos);
+  }
+
+
+  /// Testa/ouve o som escolhido (toque único, sem loop), usado pelo
+  /// botão de preview ao lado do Dropdown de seleção de som.
+  ///
+  /// Se o retorno do serviço indicar falha (asset vazio/inválido —
+  /// placeholder ainda não substituído por um áudio real em
+  /// `assets/sounds/`), exibe uma SnackBar amigável avisando o usuário,
+  /// em vez de deixar o botão "testar" parecer simplesmente quebrado.
+  Future<void> _testarSom(int numero) async {
+    setState(() => _somTestandoAgora = numero);
+    final sucesso = await _alarmeSonoroService.testarSom(numero);
+
+    if (!sucesso && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '🔇 Arquivo de som de teste vazio. Substitua o placeholder '
+            'na pasta assets/sounds.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+
+    // Reseta o indicador visual de "tocando" em exatamente 4 segundos,
+    // sincronizado com o auto-stop de 4s aplicado pelo
+    // AlarmeSonoroService.testarSom (ver alarme_sonoro_service.dart).
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && _somTestandoAgora == numero) {
+        setState(() => _somTestandoAgora = null);
+      }
+    });
+
+  }
+
+
+  // ==========================================================
+  // INTERNACIONALIZAÇÃO (Etapa 2 - Expansão Global)
+  // ==========================================================
+
+  Future<void> _carregarConfiguracaoIdioma() async {
+    setState(() => _carregandoIdioma = true);
+    try {
+      final idioma = await _localizationService.carregarIdioma();
+      if (mounted) {
+        setState(() {
+          _idiomaSelecionado = idioma;
+          _carregandoIdioma = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _carregandoIdioma = false);
+    }
+  }
+
+  Future<void> _selecionarIdioma(String? codigo) async {
+    if (codigo == null) return;
+    setState(() => _idiomaSelecionado = codigo);
+    await _localizationService.salvarIdioma(codigo);
+    if (mounted) {
+      // Monta o texto de feedback JÁ TRADUZIDO para o próprio idioma
+      // recém-selecionado, usando o nome nativo (ex.: "English",
+      // "Español") para que um usuário estrangeiro compreenda o aviso
+      // imediatamente, sem depender do português.
+      final nomeNativo = _localizationService.idiomaPorCodigo(codigo).nomeNativo;
+      final mensagem = AppStrings.traduzirComParametro(
+        codigo,
+        'idioma_alterado_snackbar',
+        {'idioma': nomeNativo},
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensagem),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
 
   Future<void> _carregarContatosEmergencia() async {
     setState(() => _carregandoContatos = true);
@@ -972,7 +1116,207 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
 
         const Divider(),
 
+        // =========================================
+        // SEÇÃO: ALERTA SONORO CUSTOMIZÁVEL (Etapa 1)
+        // =========================================
+        _sectionHeader(theme, Icons.notifications_active, 'Alerta Sonoro'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Escolha o som e a duração do alarme disparado ao término do '
+            'cronômetro de check-in.',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        if (_carregandoAlarmeSonoro)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              // "start" garante que, se o Dropdown crescer de altura por
+              // causa de fonte grande do sistema, o botão de teste ao
+              // lado permaneça alinhado ao topo em vez de forçar uma
+              // altura fixa/cortar o conteúdo do campo.
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _somSelecionado,
+                    // Permite que o texto do item selecionado use toda a
+                    // largura disponível do campo, evitando corte
+                    // horizontal quando a fonte do sistema aumenta.
+                    isExpanded: true,
+                    // "isDense: false" (padrão) garante altura extra
+                    // suficiente para acomodar fontes grandes, em vez de
+                    // manter o campo com altura mínima fixa.
+                    isDense: false,
+                    decoration: InputDecoration(
+                      labelText: 'Som do alarme',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      // Padding vertical generoso e simétrico, permitindo
+                      // que o campo cresça verticalmente conforme o
+                      // fatorEscala de fonte do sistema, em vez de um
+                      // valor rígido que corta texto em fontes GRANDES.
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                    ),
+                    items: AlarmeSonoroService.sonsDisponiveis
+                        .map(
+                          (som) => DropdownMenuItem<int>(
+                            value: som.numero,
+                            child: Text(
+                              som.nomeExibicao,
+                              softWrap: true,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _selecionarSom,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  tooltip: 'Testar/ouvir som',
+                  onPressed: () => _testarSom(_somSelecionado),
+                  icon: Icon(
+                    _somTestandoAgora == _somSelecionado
+                        ? Icons.volume_up
+                        : Icons.play_arrow,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF4C7040),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.timer_outlined, color: Colors.black54, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Duração do toque: $_duracaoSomSegundos s',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                      Slider(
+                        value: _duracaoSomSegundos.toDouble(),
+                        min: 5,
+                        max: 120,
+                        divisions: 23,
+                        activeColor: const Color(0xFF4C7040),
+                        label: '$_duracaoSomSegundos s',
+                        onChanged: (v) => setState(() => _duracaoSomSegundos = v.round()),
+                        onChangeEnd: (v) => _selecionarDuracaoSom(v.round()),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        const Divider(),
+
+        // =========================================
+        // SEÇÃO: IDIOMA (Etapa 2 - Internacionalização)
+        // =========================================
+        _sectionHeader(theme, Icons.language, 'Idioma'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Escolha o idioma do aplicativo. Suporte preparado para 11 '
+            'idiomas globais.',
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+        ),
+        // Espaçamento adaptável: usa o textScaleFactor do MediaQuery para
+        // que, com fontes GRANDES do sistema, o texto explicativo acima
+        // tenha folga suficiente antes do Dropdown de idioma, evitando a
+        // sensação de que o campo abaixo está "atropelando" o texto.
+        SizedBox(
+          height: 12 *
+              MediaQuery.of(context)
+                  .textScaler
+                  .scale(1.0)
+                  .clamp(1.0, 1.6),
+        ),
+
+
+        if (_carregandoIdioma)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownButtonFormField<String>(
+              value: _idiomaSelecionado,
+              // Permite que o texto do item selecionado (emoji + nome em
+              // português + nome nativo) use toda a largura disponível do
+              // campo, evitando corte horizontal com fontes grandes.
+              isExpanded: true,
+              // "isDense: false" (padrão) dá altura extra ao campo para
+              // acomodar fontes maiores sem cortar o conteúdo.
+              isDense: false,
+              decoration: InputDecoration(
+                labelText: 'Idioma do aplicativo',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                // Padding vertical generoso, sem valor rígido demais,
+                // permitindo que o campo cresça com fontes GRANDES.
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              ),
+              items: LocalizationService.idiomasSuportados
+                  .map(
+                    (idioma) => DropdownMenuItem<String>(
+                      value: idioma.codigo,
+                      child: Text(
+                        '${idioma.bandeiraEmoji}  ${idioma.nomeEmPortugues} '
+                        '(${idioma.nomeNativo})',
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _selecionarIdioma,
+            ),
+          ),
+        const SizedBox(height: 8),
+
+
+        const Divider(),
+
         _sectionHeader(theme, Icons.workspace_premium, 'Plano'),
+
 
 
         if (isPremium)

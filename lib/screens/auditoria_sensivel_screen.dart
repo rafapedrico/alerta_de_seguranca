@@ -9,7 +9,7 @@ import '../services/database_helper.dart';
 /// histórico (categoria 'critico' — EXCLUSIVAMENTE alarmes de emergência
 /// e disparos de SMS de socorro para os contatos cadastrados) só podem ser
 /// visualizados após o usuário solicitar explicitamente a liberação e
-/// aguardar um período de carência de 3 horas. Isso evita que alguém com
+/// aguardar um período de carência de 2 horas. Isso evita que alguém com
 /// acesso rápido e não autorizado ao dispositivo (ex: um agressor) consiga
 /// inspecionar imediatamente o histórico de segurança da vítima.
 ///
@@ -23,13 +23,15 @@ import '../services/database_helper.dart';
 ///
 /// Regras:
 /// - Ao solicitar, o timestamp da solicitação é salvo no banco.
-/// - Enquanto o tempo decorrido for < 3h, exibe apenas o aviso de carência
+/// - Enquanto o tempo decorrido for < 2h, exibe apenas o aviso de carência
 ///   com a contagem regressiva do tempo restante.
-/// - Quando o tempo decorrido for >= 3h, libera a visualização completa
+/// - Quando o tempo decorrido for >= 2h, libera a visualização completa
 ///   dos registros sensíveis.
 /// - Assim que o app for totalmente fechado/reiniciado (cold start), o
 ///   estado de liberação é resetado (ver main.dart), exigindo nova
-///   solicitação e nova espera de 3h para o próximo acesso.
+///   solicitação e nova espera de 2h para o próximo acesso.
+/// - O usuário também pode bloquear manualmente o acesso já liberado a
+///   qualquer momento através do botão "Bloquear Novamente".
 class AuditoriaSensivelScreen extends StatefulWidget {
   const AuditoriaSensivelScreen({super.key});
 
@@ -82,7 +84,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
       setState(() => _eventosSensiveis = eventos);
     } else if (_temSolicitacaoPendente) {
       // Ainda em carência: atualiza a contagem regressiva a cada segundo,
-      // verificando periodicamente se as 3h já se cumpriram.
+      // verificando periodicamente se as 2h já se cumpriram.
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _atualizarStatus());
     }
   }
@@ -96,13 +98,79 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
       const SnackBar(
         content: Text(
           'Solicitação aprovada. Por motivos de segurança e proteção de '
-          'privacidade, os registros estarão liberados em 3 horas.',
+          'privacidade, os registros estarão liberados em 2 horas.',
         ),
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 5),
       ),
     );
   }
+
+  /// Exibe um pop-up de confirmação antes de bloquear novamente o acesso
+  /// aos registros sensíveis já liberados. O texto de aviso é exibido
+  /// SEM cortes (softWrap habilitado, sem overflow/ellipsis e sem
+  /// maxLines), garantindo que toda a mensagem seja lida pelo usuário.
+  void _confirmarBloquearNovamente() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline, size: 22),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Bloquear Novamente?',
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Ao confirmar, o acesso aos registros sensíveis será bloqueado '
+          'imediatamente. Para visualizá-los novamente, será necessário '
+          'solicitar uma nova liberação e aguardar mais 2 horas de '
+          'carência de segurança.',
+          softWrap: true,
+          overflow: TextOverflow.visible,
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _bloquearNovamente();
+            },
+            icon: const Icon(Icons.lock, size: 18),
+            label: const Text('Bloquear Novamente'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Efetiva o rebloqueio dos registros sensíveis, resetando o status de
+  /// liberação/solicitação da auditoria no banco e atualizando a tela
+  /// imediatamente para a tela de carência.
+  Future<void> _bloquearNovamente() async {
+    await _db.bloquearAuditoriaNovamente();
+    if (!mounted) return;
+    await _atualizarStatus();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🔒 Acesso aos registros sensíveis bloqueado novamente.'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
 
   /// Remove definitivamente um único evento sensível do histórico pelo
   /// id, acionado pelo gesto de "arrastar para excluir" (Dismissible),
@@ -184,7 +252,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
               const Text(
                 'Por motivos de segurança e proteção de privacidade, os '
                 'registros mais sensíveis do histórico só podem ser '
-                'visualizados 3 horas após a solicitação.',
+                'visualizados 2 horas após a solicitação.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
@@ -218,7 +286,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             ] else ...[
               const Text(
                 'Para proteger sua privacidade, esses eventos exigem uma '
-                'solicitação prévia com carência de 3 horas antes da '
+                'solicitação prévia com carência de 2 horas antes da '
                 'liberação da visualização.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.black54),
@@ -281,7 +349,25 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
               const Expanded(
                 child: Text(
                   'Prazo de segurança cumprido. Registros liberados para esta sessão.',
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
                   style: TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: _confirmarBloquearNovamente,
+                icon: Icon(Icons.lock, color: Colors.green.shade800, size: 16),
+                label: Text(
+                  'Bloquear Novamente',
+                  style: TextStyle(
+                    color: Colors.green.shade800,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
             ],
