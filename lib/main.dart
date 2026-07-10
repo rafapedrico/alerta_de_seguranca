@@ -9,6 +9,7 @@ import 'services/api_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/emergency_alert_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
 
 
@@ -143,9 +144,13 @@ class SecurityCheckApp extends StatelessWidget {
               child: child!,
             );
           },
-          home: _TelaInicialComPossivelDialogoPin(
-            aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
-          ),
+          // MOCK/TEMPORÁRIO: o app agora abre na tela de Login em vez de
+          // ir direto para a HomeScreen. O botão "Entrar"/"Criar Conta"
+          // dessas telas navega para a TelaInicialComPossivelDialogoPin
+          // (fluxo principal já existente), simulando um login/cadastro
+          // bem-sucedido sem nenhuma integração real de backend ainda.
+          home: const LoginScreen(),
+
         );
       },
     );
@@ -159,20 +164,22 @@ class SecurityCheckApp extends StatelessWidget {
 /// erro de design original: a HomeScreen (com Segurança, Família e
 /// Histórico) fica sempre acessível, mesmo com o diálogo aberto por
 /// cima dela.
-class _TelaInicialComPossivelDialogoPin extends StatefulWidget {
-  const _TelaInicialComPossivelDialogoPin({
+class TelaInicialComPossivelDialogoPin extends StatefulWidget {
+  const TelaInicialComPossivelDialogoPin({
+    super.key,
     required this.aguardandoConfirmacaoPin,
   });
 
   final bool aguardandoConfirmacaoPin;
 
   @override
-  State<_TelaInicialComPossivelDialogoPin> createState() =>
+  State<TelaInicialComPossivelDialogoPin> createState() =>
       _TelaInicialComPossivelDialogoPinState();
 }
 
 class _TelaInicialComPossivelDialogoPinState
-    extends State<_TelaInicialComPossivelDialogoPin> {
+    extends State<TelaInicialComPossivelDialogoPin> {
+
   @override
   void initState() {
     super.initState();

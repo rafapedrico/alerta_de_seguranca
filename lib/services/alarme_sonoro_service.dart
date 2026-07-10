@@ -167,6 +167,13 @@ class AlarmeSonoroService {
       await _playerTeste.stop();
       final som = _somPorNumero(numero);
 
+      // Som 10 = "Toque Silencioso": silêncio proposital, não há o que
+      // validar/tocar. Short-circuit total: nem verificamos os bytes do
+      // asset nem chamamos o player, apenas simulamos sucesso.
+      if (som.numero == 10) {
+        return true;
+      }
+
       final valido = await _assetDeSomEhValido(som.assetPath, numeroSom: som.numero);
       if (!valido) {
         debugPrint(
@@ -226,6 +233,21 @@ class AlarmeSonoroService {
       final numeroSom = await carregarSomSelecionado();
       final duracaoSegundos = await carregarDuracaoSegundos();
       final som = _somPorNumero(numeroSom);
+
+      // Som 10 = "Toque Silencioso": silêncio proposital. Short-circuit
+      // total: nem carregamos nem tocamos o asset, apenas simulamos o
+      // fluxo de "alarme ativo" com o mesmo auto-stop de segurança dos
+      // demais sons.
+      if (som.numero == 10) {
+        debugPrint(
+            '🔇 [AlarmeSonoroService] Som 10 ("Toque Silencioso") selecionado — pulando carregamento/reprodução de áudio (silêncio proposital).');
+        Future.delayed(Duration(seconds: duracaoSegundos), () {
+          if (_tocandoEmLoop) {
+            pararAlarme();
+          }
+        });
+        return;
+      }
 
       final valido = await _assetDeSomEhValido(som.assetPath, numeroSom: som.numero);
       if (!valido) {

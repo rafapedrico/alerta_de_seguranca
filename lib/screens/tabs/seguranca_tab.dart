@@ -924,7 +924,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         ),
         icon: const Icon(Icons.sos),
         label: const Text(
-          'SOS - Botão de Pânico',
+          'Botão de Pânico',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
