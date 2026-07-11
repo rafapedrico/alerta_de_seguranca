@@ -4,6 +4,8 @@ import 'package:geolocator/geolocator.dart';
 
 import 'database_helper.dart';
 import 'api_service.dart';
+import 'plano_limite_service.dart';
+
 
 /// Serviço isolado responsável por TODO o fluxo de disparo do alerta de
 /// emergência: obtenção da localização GPS mais recente, montagem da
@@ -155,7 +157,21 @@ class EmergencyAlertService {
     String? contexto,
     Position? posicaoEmMemoria,
   }) async {
+    // Regra de negócio (Plano Gratuito): no máximo 5 alertas de
+    // emergência por mês. Verificado ANTES de qualquer outra etapa do
+    // disparo — se o limite já tiver sido atingido, o fluxo é
+    // interrompido silenciosamente aqui (sem lançar exceção nem afetar a
+    // UI que chamou este método).
+    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
+    if (!podeDisparar) {
+      debugPrint(
+          '🚫 [EmergencyAlertService] Limite mensal de alertas do Plano Gratuito atingido — disparo cancelado.');
+      return;
+    }
+    await PlanoLimiteService().incrementarAlertaUsado();
+
     String anotacoesUsuario = (contexto ?? '').trim();
+
     if (anotacoesUsuario.isEmpty) {
       try {
         final config = await _db.getUserConfig();
@@ -287,7 +303,19 @@ class EmergencyAlertService {
   Future<void> dispararSosComDuplaLocalizacao() async {
     debugPrint('🚨 [SOS FÍSICO] Gatilho de Volume+ detectado! Disparando com dupla localização.');
 
+    // Regra de negócio (Plano Gratuito): mesmo limite mensal de 5
+    // alertas se aplica ao gatilho físico de SOS. Verificado antes de
+    // qualquer etapa do disparo.
+    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
+    if (!podeDisparar) {
+      debugPrint(
+          '🚫 [SOS FÍSICO] Limite mensal de alertas do Plano Gratuito atingido — disparo cancelado.');
+      return;
+    }
+    await PlanoLimiteService().incrementarAlertaUsado();
+
     String anotacoesUsuario = '';
+
     try {
       final config = await _db.getUserConfig();
       anotacoesUsuario =

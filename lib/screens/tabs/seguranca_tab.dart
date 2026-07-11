@@ -9,7 +9,9 @@ import '../../services/emergency_alert_service.dart';
 import '../../services/alarme_service.dart';
 import '../../services/alarme_sonoro_service.dart';
 import '../../services/api_service.dart';
+import '../../services/captura_dissuasao_service.dart';
 import '../../widgets/pin_dialog.dart';
+
 
 
 
@@ -552,11 +554,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
         contexto: _contextoController.text.trim(),
         posicaoEmMemoria: _locationService.ultimaPosicao,
       );
+      // Recurso de Captura e Dissuasão: disparado após o timeout
+      // automático do cronômetro de check-in não ser confirmado a
+      // tempo. Verifica o limite mensal de fotos do Plano Gratuito
+      // internamente antes de abrir a câmera.
+      await CapturaDissuasaoService().abrirCapturaSePermitido();
     } catch (e) {
       debugPrint('⚠️ Falha ao executar disparo de emergência: $e');
     }
     _pararTimer();
   }
+
 
   // ==========================================================
   // PIN DE COAÇÃO (gatilho discreto de emergência)
@@ -641,10 +649,15 @@ class _SegurancaTabState extends State<SegurancaTab> {
           ),
         );
       }
+      // Recurso de Captura e Dissuasão: disparado logo após o SOS
+      // manual confirmado pelo usuário. Verifica o limite mensal de
+      // fotos do Plano Gratuito internamente antes de abrir a câmera.
+      await CapturaDissuasaoService().abrirCapturaSePermitido();
     } catch (e) {
       debugPrint('⚠️ Falha ao disparar SOS manual: $e');
     }
   }
+
 
 
 

@@ -8,9 +8,13 @@ import 'services/notificacao_service.dart';
 import 'services/api_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/emergency_alert_service.dart';
+import 'services/plano_limite_service.dart';
+import 'services/captura_dissuasao_service.dart';
+import 'app_navigator.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
+
 
 
 void main() async {
@@ -54,6 +58,11 @@ void main() async {
   // que o usuário abrir o app.
   await VolumeSosService().iniciarMonitoramento();
 
+  // Inicializa os contadores mensais de limite do Plano Gratuito (5
+  // alertas + 2 fotos por mês), garantindo que já estejam sincronizados
+  // com o mês corrente antes de qualquer disparo de emergência.
+  await PlanoLimiteService().inicializar();
+
   // Assim que o gatilho físico de SOS for detectado (evento recebido do
   // lado nativo via EventChannel), aciona IMEDIATAMENTE o fluxo de dupla
   // localização do EmergencyAlertService: um primeiro disparo instantâneo
@@ -61,11 +70,19 @@ void main() async {
   // a localização em tempo real. Fire-and-forget (sem await), protegido
   // internamente pelo próprio EmergencyAlertService (nunca lança exceção
   // nem trava o app).
+  //
+  // Em seguida (também fire-and-forget), aciona o recurso de Captura e
+  // Dissuasão via CapturaDissuasaoService, que usa o appNavigatorKey
+  // global para abrir a CameraCapturaScreen em tela cheia — mesmo este
+  // listener não pertencendo a nenhuma árvore de widgets.
   VolumeSosService().aoDispararSos.listen((_) {
-    EmergencyAlertService().dispararSosComDuplaLocalizacao().catchError((e) {
+    EmergencyAlertService().dispararSosComDuplaLocalizacao().then((_) {
+      CapturaDissuasaoService().abrirCapturaSePermitido();
+    }).catchError((e) {
       debugPrint('⚠️ Falha ao processar SOS via botão físico: $e');
     });
   });
+
 
   // Teste inicial de conectividade com o backend FastAPI (security_backend):
   // dispara um heartbeat para /api/status logo na abertura do app, apenas
@@ -129,8 +146,10 @@ class SecurityCheckApp extends StatelessWidget {
       valueListenable: FontScaleService.fontScaleNotifier,
       builder: (context, fatorFonte, _) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'Security Check',
           debugShowCheckedModeBanner: false,
+
           theme: ThemeData(
             colorSchemeSeed: Colors.blue,
             useMaterial3: true,

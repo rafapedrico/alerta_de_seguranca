@@ -28,6 +28,29 @@
          FastAPI via HTTP/HTTPS. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Necessária para o recurso de Captura e Dissuasão: abre a câmera
+         traseira em tela cheia logo após um disparo de emergência. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <!-- Necessária para o MainActivity acordar o dispositivo e se
+         sobrepor à lockscreen sem exigir o PIN do Android quando o SOS
+         é disparado pelo botão físico com a tela bloqueada (ver
+         MainActivity.onCreate / setTurnScreenOn / FLAG_TURN_SCREEN_ON). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
+
+    <!-- Necessária para permitir que o app se sobreponha a outras janelas
+         do sistema (incluindo, em alguns fabricantes/versões do Android
+         14/15, a própria tela de bloqueio). Sem esta declaração explícita,
+         o app sequer aparece listado na tela de "Acesso especial > Exibir
+         sobre outros apps" das Configurações do Android, o que pode
+         impedir a CameraCapturaScreen de se sobrepor ao Keyguard em
+         alguns aparelhos. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+
+
     <application
         android:label="security_check_app"
         android:name=".MainApplication"
@@ -56,7 +79,40 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Activity nativa DEDICADA, iniciada diretamente via Intent
+             pelo VolumeSosService (rodando em segundo plano) quando o
+             gatilho físico de SOS é detectado com o aparelho bloqueado
+             ou o app completamente fechado. showWhenLocked/turnScreenOn
+             declarados diretamente no manifest (suportados a partir da
+             API 27) reforçam, em nível de sistema, o mesmo
+             comportamento já aplicado programaticamente em
+             LockscreenCameraActivity.onCreate() (herdado de
+             MainActivity), cobrindo o caso em que o Android decide
+             consultar essas propriedades antes mesmo do onCreate() ser
+             executado. launchMode="singleTask" + excludeFromRecents
+             evitam múltiplas instâncias empilhadas e mantêm essa
+             Activity fora da lista de apps recentes do usuário. -->
+        <activity
+            android:name=".LockscreenCameraActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=".lockscreen_camera"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+        </activity>
+
         <!-- Don't delete the meta-data below.
+
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"

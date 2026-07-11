@@ -165,6 +165,7 @@ class VolumeSosService : Service() {
             if (contagemIncrementos >= incrementosNecessarios) {
                 contagemIncrementos = 0
                 VolumeSosEventBridge.notificarSosDisparado()
+                forcarAberturaLockscreenCameraActivity()
             }
         } else if (volumeAtual < volumeAnterior) {
             // Volume desceu: reseta a contagem (o gatilho exige apenas
@@ -186,6 +187,7 @@ class VolumeSosService : Service() {
         if (wakeLock?.isHeld != true) {
             adquirirWakeLock()
         }
+
         return START_STICKY
     }
 
@@ -255,6 +257,47 @@ class VolumeSosService : Service() {
         }
     }
 
+    /**
+     * Dispara DIRETAMENTE, via [Intent] nativo (sem depender do
+     * EventChannel/engine Flutter estar "quente" com um listener Dart
+     * ativo), a [LockscreenCameraActivity] — forçando o Android a criar
+     * uma Activity real do zero com as flags de sobreposição ao
+     * Keyguard (`setShowWhenLocked`/`setTurnScreenOn`/
+     * `requestDismissKeyguard`, herdadas de [MainActivity]), mesmo no
+     * cenário mais agressivo em que o app foi completamente fechado
+     * pelo usuário/sistema e apenas este Foreground Service permanece
+     * vivo.
+     *
+     * As flags `FLAG_ACTIVITY_NEW_TASK` (obrigatória ao iniciar uma
+     * Activity a partir de um Context que não é uma Activity, como este
+     * Service), `FLAG_ACTIVITY_CLEAR_TOP` e `FLAG_ACTIVITY_SINGLE_TOP`
+     * garantem que, se já existir uma instância desta Activity na pilha
+     * de tarefas, ela seja reaproveitada/trazida ao topo em vez de
+     * empilhar uma nova instância a cada gatilho físico consecutivo.
+     *
+     * Protegido por try/catch: uma falha aqui (ex: restrição de
+     * fabricante a `startActivity()` a partir de background em versões
+     * específicas do Android) NUNCA derruba o Service nem impede o
+     * fluxo já em andamento via [VolumeSosEventBridge] (cenário de app
+     * em primeiro plano).
+     */
+    private fun forcarAberturaLockscreenCameraActivity() {
+        try {
+            val intent = Intent(this, LockscreenCameraActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            // Silenciosamente ignorado: o disparo do SMS/alerta via
+            // VolumeSosEventBridge (app em primeiro plano) já ocorreu
+            // logo acima e não deve ser afetado por esta falha.
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
@@ -269,6 +312,7 @@ class VolumeSosService : Service() {
             } else {
                 context.startService(intent)
             }
+
         }
 
         /** Para o Foreground Service de monitoramento de SOS. */

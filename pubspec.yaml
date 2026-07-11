@@ -44,6 +44,15 @@ dependencies:
   # Alerta Sonoro Customizável (Etapa 1 - Expansão Global)
   audioplayers: ^6.1.0
 
+  # Recurso de Captura e Dissuasão: câmera traseira em tela cheia
+  # Fixado em 0.10.5+9 (em vez de 0.11.x) para evitar a dependência
+  # transitiva camera_android_camerax mais recente, que exige uma API
+  # SurfaceProducer.Callback incompatível com a versão do Flutter/Gradle
+  # local usada neste projeto.
+  camera: 0.10.5+9
+
+
+
 dev_dependencies:
 
   flutter_test:
