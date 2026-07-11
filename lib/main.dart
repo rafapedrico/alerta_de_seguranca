@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'services/encryption_service.dart';
+
 import 'services/wallpaper_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/database_helper.dart';
@@ -10,6 +12,7 @@ import 'services/volume_sos_service.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/plano_limite_service.dart';
 import 'services/captura_dissuasao_service.dart';
+import 'services/rotina_alarme_service.dart';
 import 'app_navigator.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -17,8 +20,58 @@ import 'widgets/pin_dialog.dart';
 
 
 
+
+/// Rota especial reconhecida no cold start quando o app é iniciado pela
+/// `LockscreenCameraActivity` nativa (gatilho físico de SOS com o
+/// aparelho bloqueado/app completamente fechado). Precisa espelhar
+/// EXATAMENTE a constante `ROTA_INICIAL_SOS_FISICO` declarada em
+/// `LockscreenCameraActivity.kt`.
+///
+/// IMPORTANTE: esta string NUNCA é usada como uma rota nomeada de fato
+/// navegável pelo `Navigator` — o [MaterialApp] não possui nenhum
+/// sistema de rotas nomeadas (`routes`/`initialRoute`), apenas `home` +
+/// [onGenerateRoute] (ver [SecurityCheckApp]), que sempre resolve
+/// QUALQUER nome de rota de volta para a tela padrão (`LoginScreen`),
+/// evitando por completo o erro "Could not navigate to initial route".
+/// Esta constante é apenas INSPECIONADA uma única vez, aqui em
+/// `main()`, via `PlatformDispatcher.defaultRouteName`, para decidir se
+/// o fluxo de SOS deve ser disparado automaticamente assim que o
+/// primeiro frame do app for renderizado.
+const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
+
+/// Rota especial reconhecida no cold start quando o app é iniciado pela
+/// `RotinaCheckinAlarmActivity` nativa (disparo de um alarme de
+/// check-in de ROTINA com o aparelho bloqueado/app completamente
+/// fechado). Precisa espelhar EXATAMENTE a constante
+/// `ROTA_INICIAL_ROTINA_ALARME` declarada em
+/// `RotinaCheckinAlarmActivity.kt`. Assim como `_rotaInicialSosFisico`,
+/// é apenas INSPECIONADA uma única vez aqui em `main()` — a navegação
+/// real para o diálogo de confirmação de check-in é feita via
+/// `appNavigatorKey` após o primeiro frame, e não através de rotas
+/// nomeadas de fato.
+const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Detecta, ainda ANTES de qualquer inicialização assíncrona, se este
+  // cold start específico foi disparado pela LockscreenCameraActivity
+  // nativa (gatilho físico de SOS com o aparelho bloqueado/app
+  // fechado). O valor é apenas guardado aqui — o disparo efetivo do SOS
+  // só ocorre depois que o Navigator estiver pronto (ver
+  // addPostFrameCallback logo abaixo de runApp()), garantindo que
+  // `appNavigatorKey.currentState` já exista.
+  final bool coldStartViaSosFisico =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
+          _rotaInicialSosFisico;
+
+  // Idem, para o cold start disparado pela RotinaCheckinAlarmActivity
+  // nativa (alarme de check-in de rotina tocando em loop, com o
+  // aparelho bloqueado/app fechado).
+  final bool coldStartViaRotinaAlarme =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
+          _rotaInicialRotinaAlarme;
+
 
   // Initialize AES-256 encryption service before running the app
   EncryptionService().initialize();
@@ -64,24 +117,28 @@ void main() async {
   await PlanoLimiteService().inicializar();
 
   // Assim que o gatilho físico de SOS for detectado (evento recebido do
-  // lado nativo via EventChannel), aciona IMEDIATAMENTE o fluxo de dupla
-  // localização do EmergencyAlertService: um primeiro disparo instantâneo
-  // usando a última localização em cache, seguido de uma atualização com
-  // a localização em tempo real. Fire-and-forget (sem await), protegido
-  // internamente pelo próprio EmergencyAlertService (nunca lança exceção
-  // nem trava o app).
-  //
-  // Em seguida (também fire-and-forget), aciona o recurso de Captura e
-  // Dissuasão via CapturaDissuasaoService, que usa o appNavigatorKey
-  // global para abrir a CameraCapturaScreen em tela cheia — mesmo este
-  // listener não pertencendo a nenhuma árvore de widgets.
+  // lado nativo via EventChannel — cenário de app já em primeiro
+  // plano/segundo plano, mas com o processo/engine vivo), aciona o
+  // fluxo completo de SOS (ver [_dispararFluxoCompletoDeSos]).
   VolumeSosService().aoDispararSos.listen((_) {
-    EmergencyAlertService().dispararSosComDuplaLocalizacao().then((_) {
-      CapturaDissuasaoService().abrirCapturaSePermitido();
-    }).catchError((e) {
-      debugPrint('⚠️ Falha ao processar SOS via botão físico: $e');
-    });
+    _dispararFluxoCompletoDeSos(
+      origem: 'EventChannel (app em primeiro/segundo plano)',
+    );
   });
+
+  // Assim que um NOVO disparo de alarme de check-in de rotina chegar
+  // via onNewIntent (cenário em que o app já está aberto/em primeiro
+  // plano, e a RotinaCheckinAlarmActivity nativa já está viva), exibe
+  // imediatamente o diálogo de PIN (com o botão "Pausar Alarme") por
+  // cima da tela atual. Ver RotinaAlarmEventBridge/RotinaAlarmPlugin.kt.
+  const EventChannel('com.example.security_check_app/rotina_alarme_events')
+      .receiveBroadcastStream()
+      .listen((_) {
+    _exibirPinDeRotinaAoAbrirPorAlarme();
+  }, onError: (e) {
+    debugPrint('⚠️ [main] Erro no EventChannel de alarme de rotina: $e');
+  });
+
 
 
   // Teste inicial de conectividade com o backend FastAPI (security_backend):
@@ -106,6 +163,114 @@ void main() async {
   runApp(SecurityCheckApp(
     aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
   ));
+
+  // Se este cold start foi disparado pelo gatilho físico de SOS com o
+  // aparelho bloqueado/app fechado (LockscreenCameraActivity), aciona o
+  // MESMO fluxo completo de SOS (dupla localização + SMS + Captura e
+  // Dissuasão) assim que o primeiro frame do app for renderizado —
+  // momento em que `appNavigatorKey.currentState` já está garantidamente
+  // disponível para a navegação em tela cheia até a CameraCapturaScreen.
+  if (coldStartViaSosFisico) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _dispararFluxoCompletoDeSos(
+        origem: 'cold start via LockscreenCameraActivity (SOS físico)',
+      );
+    });
+  }
+
+  // Se este cold start foi disparado pela RotinaCheckinAlarmActivity
+  // nativa (alarme de check-in de rotina tocando em loop, com o
+  // aparelho bloqueado/app fechado), exibe o diálogo de PIN (com o
+  // botão "Pausar Alarme") assim que o primeiro frame for renderizado.
+  // Como o app não usa rotas nomeadas de fato (ver onGenerateRoute),
+  // não é possível ler um "idAlarme" via argumentos de rota — por isso
+  // o valor é obtido diretamente do lado nativo através do
+  // EventChannel/MethodChannel do RotinaAlarmPlugin (ver
+  // [_exibirPinDeRotinaAoAbrirPorAlarme]).
+  if (coldStartViaRotinaAlarme) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _exibirPinDeRotinaAoAbrirPorAlarme();
+    });
+  }
+}
+
+/// Exibe o diálogo de PIN (com o botão "Pausar Alarme" visível) por
+/// cima da tela atual, usado tanto no cold start via
+/// [RotinaCheckinAlarmActivity] quanto sempre que o
+/// [RotinaAlarmeService] sinalizar (via EventChannel) um novo disparo
+/// de alarme de rotina enquanto o app já está em primeiro/segundo
+/// plano. Como não há como repassar o `idAlarme` por uma rota nomeada
+/// de fato, esta função apenas identifica o ALARME DE ROTINA MAIS
+/// RECENTE disparado (`ultimo_disparo_epoch`) para montar o contexto
+/// exibido ao usuário — o próprio `pin_dialog.dart` não exige o
+/// `idAlarme` para funcionar (o cancelamento nativo do som/alarme de
+/// tolerância é feito de forma "global" no lado nativo/HEADLESS, ver
+/// `RotinaAlarmSomBridge`).
+Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
+  final context = appNavigatorKey.currentContext;
+  if (context == null) return;
+
+  try {
+    final config = await DatabaseHelper().getUserConfig();
+    final pinReal = config?['pin_real'] as String?;
+
+    // Busca, dentre todos os alarmes de rotina cadastrados, aquele com
+    // o `ultimo_disparo_epoch` mais recente — presumivelmente o que
+    // acabou de disparar e abriu a RotinaCheckinAlarmActivity.
+    final alarmes = await DatabaseHelper().listarAlarmes();
+    Map<String, dynamic>? maisRecente;
+    for (final alarme in alarmes) {
+      final epoch = alarme['ultimo_disparo_epoch'] as int?;
+      if (epoch == null) continue;
+      final epochAtual = maisRecente?['ultimo_disparo_epoch'] as int?;
+      if (epochAtual == null || epoch > epochAtual) {
+        maisRecente = alarme;
+      }
+    }
+    final idAlarme = maisRecente?['id'] as int?;
+
+    await exibirDialogoPin(
+      context: context,
+      pinEsperado: pinReal,
+      segundosTolerancia: null,
+      mostrarBotaoCancelar: true,
+      aoConfirmarPinCorreto: () async {
+        if (idAlarme != null) {
+          await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
+        }
+      },
+      aoCancelar: () {
+        if (idAlarme != null) {
+          RotinaAlarmeService.pausarAlarme(idAlarme);
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('⚠️ Falha ao exibir diálogo de PIN do alarme de rotina: $e');
+  }
+}
+
+
+/// Dispara, em sequência, o fluxo completo de emergência física:
+/// 1. [EmergencyAlertService.dispararSosComDuplaLocalizacao] — envia o
+///    primeiro SMS instantâneo (última localização em cache) seguido de
+///    uma atualização com a localização em tempo real.
+/// 2. [CapturaDissuasaoService.abrirCapturaSePermitido] — abre a
+///    [CameraCapturaScreen] em tela cheia via [appNavigatorKey].
+///
+/// Reaproveitado tanto pelo listener do [VolumeSosService.aoDispararSos]
+/// (app já em primeiro/segundo plano, engine "quente") quanto pelo
+/// cenário de cold start via [LockscreenCameraActivity] (app
+/// completamente fechado antes do gatilho físico). Fire-and-forget (sem
+/// await no ponto de chamada), protegido internamente para NUNCA lançar
+/// exceção nem travar o app — apenas logado via [debugPrint].
+void _dispararFluxoCompletoDeSos({required String origem}) {
+  debugPrint('🆘 [main] Disparando fluxo completo de SOS — origem: $origem');
+  EmergencyAlertService().dispararSosComDuplaLocalizacao().then((_) {
+    CapturaDissuasaoService().abrirCapturaSePermitido();
+  }).catchError((e) {
+    debugPrint('⚠️ [main] Falha ao processar SOS ($origem): $e');
+  });
 }
 
 /// Dispara um heartbeat inicial para `/api/status` no backend FastAPI,
@@ -169,6 +334,33 @@ class SecurityCheckApp extends StatelessWidget {
           // (fluxo principal já existente), simulando um login/cadastro
           // bem-sucedido sem nenhuma integração real de backend ainda.
           home: const LoginScreen(),
+
+          // IMPORTANTE (correção do crash "Could not navigate to initial
+          // route"): quando o app é iniciado a partir da
+          // LockscreenCameraActivity nativa (gatilho físico de SOS com o
+          // aparelho bloqueado/app fechado), o Android/Flutter tenta
+          // resolver a rota nomeada especial `_rotaInicialSosFisico` como
+          // rota INICIAL do MaterialApp. Como este app nunca usou rotas
+          // nomeadas (`routes`/`initialRoute`), essa resolução falhava
+          // com uma tela de erro vermelha, pois não havia absolutamente
+          // nenhum `onGenerateRoute` para capturá-la.
+          //
+          // A partir de agora, QUALQUER nome de rota desconhecido
+          // (incluindo `_rotaInicialSosFisico` e qualquer outro que
+          // eventualmente apareça no futuro) é silenciosamente resolvido
+          // de volta para a tela padrão (`LoginScreen`), preservando
+          // exatamente o mesmo comportamento de `home`. O disparo real
+          // do fluxo de SOS + a navegação para a CameraCapturaScreen NÃO
+          // dependem desta rota nomeada — são tratados separadamente via
+          // `coldStartViaSosFisico` + `addPostFrameCallback` em main(),
+          // que empurra a CameraCapturaScreen por cima usando o
+          // `appNavigatorKey`, assim que o Navigator já estiver pronto.
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute(
+              builder: (_) => const LoginScreen(),
+              settings: settings,
+            );
+          },
 
         );
       },

@@ -65,6 +65,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
   @override
   void initState() {
     super.initState();
+    // Garante que nenhum campo de texto/teclado de outra tela permaneça
+    // com foco ao entrar neste fluxo em tela cheia — evita que o teclado
+    // virtual suba e sobreponha o preview da câmera logo na abertura.
+    FocusManager.instance.primaryFocus?.unfocus();
     // ==========================================================
     // LOGS EXTRAS DE RASTREAMENTO (diagnóstico temporário):
     // impressos ANTES de qualquer outra linha do initState(), com
@@ -74,6 +78,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
     // ==========================================================
     debugPrint(
         '🟩🟩🟩 [CameraCapturaScreen] >>> initState() ENTROU <<< timestamp=${DateTime.now().toIso8601String()}');
+
     debugPrint(
         '🟩🟩🟩 [CameraCapturaScreen] >>> initState() ordem de execução: PASSO 0 (antes de super.initState() já concluído) <<<');
     // LOG DE RASTREAMENTO (diagnóstico): confirma, sem qualquer dúvida,

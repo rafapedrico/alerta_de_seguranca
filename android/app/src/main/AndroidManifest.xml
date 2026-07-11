@@ -94,6 +94,24 @@
              evitam múltiplas instâncias empilhadas e mantêm essa
              Activity fora da lista de apps recentes do usuário. -->
         <activity
+            android:name=".RotinaCheckinAlarmActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+        </activity>
+
+
+        <activity
             android:name=".LockscreenCameraActivity"
             android:exported="false"
             android:launchMode="singleTask"

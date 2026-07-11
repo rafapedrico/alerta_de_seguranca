@@ -2,7 +2,9 @@ package com.example.security_check_app
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
 import io.flutter.embedding.engine.FlutterEngine
+
 
 /**
  * Activity nativa DEDICADA a forçar a abertura do app por cima do
@@ -58,7 +60,15 @@ class LockscreenCameraActivity : MainActivity() {
         // implementada em MainActivity.onCreate (setShowWhenLocked,
         // setTurnScreenOn, requestDismissKeyguard, flags legadas).
         super.onCreate(savedInstanceState)
+
+        // Impede que o teclado virtual do sistema suba automaticamente
+        // por cima da tela de Captura/Dissuasão (CameraCapturaScreen) ao
+        // abrir esta Activity diretamente por cima do Keyguard — nenhum
+        // campo de texto é exibido neste fluxo, então o soft input nunca
+        // deve ser mostrado.
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
     }
+
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         // Garante que os mesmos plugins locais (SmsSender,

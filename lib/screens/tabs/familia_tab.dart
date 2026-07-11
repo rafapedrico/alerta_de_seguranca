@@ -645,14 +645,30 @@ class FamiliaTabState extends State<FamiliaTab> {
                 activeColor: const Color(0xFF4C7040),
                 onChanged: (ativo) => _alternarAtivo(alarme, ativo),
                 value: alarme.ativo,
-                title: Text(
-                  alarme.horarioFormatado,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: alarme.ativo ? Colors.black87 : Colors.grey,
-                  ),
-                ),
+                title: alarme.pausado
+                    ? Row(
+                        children: [
+                          Icon(Icons.pause_circle_filled,
+                              color: Colors.orange.shade700, size: 22),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Alarme Pausado',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange.shade700,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        alarme.horarioFormatado,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: alarme.ativo ? Colors.black87 : Colors.grey,
+                        ),
+                      ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -673,6 +689,28 @@ class FamiliaTabState extends State<FamiliaTab> {
                         color: alarme.ativo ? Colors.grey.shade700 : Colors.grey.shade400,
                       ),
                     ),
+                    if (alarme.pausado)
+                      GestureDetector(
+                        onTap: () => _despausarAlarme(alarme),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.play_circle_outline,
+                                  size: 16, color: Colors.green.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Toque para reativar',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -683,6 +721,34 @@ class FamiliaTabState extends State<FamiliaTab> {
       }).toList(),
     );
   }
+
+  /// Reativa (despausa) um alarme de rotina previamente pausado pelo
+  /// usuário através do botão "Pausar Alarme" na tela de confirmação
+  /// nativa. Chamado ao tocar em "Toque para reativar", exibido logo
+  /// abaixo do texto "Alarme Pausado".
+  Future<void> _despausarAlarme(AlarmeRotina alarme) async {
+    if (alarme.id == null) return;
+    await RotinaAlarmeService.despausarAlarme(alarme.id!);
+
+    await _db.inserirEventoHistorico(
+      titulo: 'Alarme de rotina reativado',
+      descricao:
+          '${alarme.etiqueta.isNotEmpty ? alarme.etiqueta : 'Alarme'} '
+          '(${alarme.horarioFormatado}) foi reativado após pausa.',
+      categoria: 'familia',
+    );
+
+    await _carregarAlarmes();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('▶️ Alarme reativado com sucesso.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
 
   /// Card em modo "somente leitura" com os contatos de emergência já
   /// cadastrados na aba de Configurações. A gestão (adicionar/remover)

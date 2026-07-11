@@ -44,6 +44,8 @@ Future<void> exibirDialogoPin({
   required Future<void> Function() aoConfirmarPinCorreto,
   int? segundosTolerancia,
   Future<void> Function()? aoErrarPinDuasVezes,
+  bool mostrarBotaoCancelar = false,
+  VoidCallback? aoCancelar,
 }) {
   return showDialog<void>(
     context: context,
@@ -54,6 +56,8 @@ Future<void> exibirDialogoPin({
         aoConfirmarPinCorreto: aoConfirmarPinCorreto,
         segundosTolerancia: segundosTolerancia,
         aoErrarPinDuasVezes: aoErrarPinDuasVezes,
+        mostrarBotaoCancelar: mostrarBotaoCancelar,
+        aoCancelar: aoCancelar,
       );
     },
   );
@@ -66,6 +70,8 @@ class PinDialogContent extends StatefulWidget {
     required this.aoConfirmarPinCorreto,
     this.segundosTolerancia,
     this.aoErrarPinDuasVezes,
+    this.mostrarBotaoCancelar = false,
+    this.aoCancelar,
   });
 
   final String? pinEsperado;
@@ -76,9 +82,23 @@ class PinDialogContent extends StatefulWidget {
   /// PIN. Ver documentação completa em [exibirDialogoPin].
   final Future<void> Function()? aoErrarPinDuasVezes;
 
+  /// Quando `true`, exibe um botão de texto "Cancelar" abaixo do teclado
+  /// numérico, permitindo fechar o diálogo sem digitar o PIN. Usado em
+  /// fluxos onde a confirmação por PIN é opcional (ex: pausar um alarme
+  /// de rotina), diferente do bloqueio de segurança padrão da
+  /// SegurancaTab, que nunca deve poder ser cancelado sem o PIN correto.
+  final bool mostrarBotaoCancelar;
+
+  /// Callback disparado ao tocar no botão "Cancelar" (visível apenas
+  /// quando [mostrarBotaoCancelar] é `true`). O próprio diálogo já se
+  /// encarrega de fechar (`Navigator.pop`) antes de chamar este
+  /// callback.
+  final VoidCallback? aoCancelar;
+
   @override
   State<PinDialogContent> createState() => _PinDialogContentState();
 }
+
 
 class _PinDialogContentState extends State<PinDialogContent> {
   String _pinDigitado = '';
@@ -229,11 +249,29 @@ class _PinDialogContentState extends State<PinDialogContent> {
             ),
             const SizedBox(height: 8),
             _buildTecladoPIN(),
+            if (widget.mostrarBotaoCancelar) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _verificando
+                    ? null
+                    : () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        }
+                        widget.aoCancelar?.call();
+                      },
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
 
   Widget _buildIndicadoresPIN() {
     return Row(

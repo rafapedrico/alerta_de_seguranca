@@ -21,10 +21,11 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+
 
 
   }
@@ -261,7 +262,21 @@ class DatabaseHelper {
         "ALTER TABLE user_config ADD COLUMN idioma_selecionado TEXT NOT NULL DEFAULT 'pt'",
       );
     }
+    // Migration from v11 to v12: adiciona o campo 'alarme_pausado' na
+    // tabela 'alarmes_rotina', usado pelo botão "Pausar Alarme" exibido
+    // na tela nativa de confirmação de check-in de rotina
+    // (RotinaCheckinAlarmActivity/pin_dialog.dart). Quando pausado
+    // (1), o alarme de rotina permanece cadastrado (não é excluído),
+    // porém o callback headless de disparo (_callbackCheckinRotina)
+    // ignora o próximo disparo, e a aba Família exibe "Alarme Pausado"
+    // no lugar do horário normal.
+    if (oldVersion < 12) {
+      await db.execute(
+        'ALTER TABLE alarmes_rotina ADD COLUMN alarme_pausado INTEGER NOT NULL DEFAULT 0',
+      );
+    }
   }
+
 
 
 
@@ -755,6 +770,22 @@ class DatabaseHelper {
       whereArgs: [id],
     );
   }
+
+  /// Marca/desmarca o alarme de rotina [id] como "pausado"
+  /// (`alarme_pausado`), acionado pelo botão "Pausar Alarme"/"Alarme
+  /// Pausado" (ver [RotinaAlarmeService.pausarAlarme] e a aba Família).
+  /// Quando pausado, o alarme permanece cadastrado (não é excluído),
+  /// mas o próximo disparo é ignorado pelo callback headless.
+  Future<int> definirAlarmePausado(int id, bool pausado) async {
+    final db = await database;
+    return await db.update(
+      'alarmes_rotina',
+      {'alarme_pausado': pausado ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
 
 
   // ==========================================================

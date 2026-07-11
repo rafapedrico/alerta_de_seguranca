@@ -34,6 +34,15 @@ class AlarmeRotina {
   /// evitar reagendamentos duplicados. Não editável pela UI.
   final int? ultimoDisparoEpoch;
 
+  /// Indica se o usuário pausou este alarme específico através do
+  /// botão "Pausar Alarme" exibido no `pin_dialog.dart` quando o
+  /// check-in de rotina dispara. Enquanto `true`, os disparos deste
+  /// alarme são ignorados (ver `_callbackCheckinRotina` em
+  /// `rotina_alarme_service.dart`), e a aba Família exibe o texto
+  /// "Alarme Pausado" no lugar do horário. É resetado para `false`
+  /// (despausado) quando o usuário toca em "Toque para reativar".
+  final bool pausado;
+
   AlarmeRotina({
     this.id,
     required this.hora,
@@ -44,7 +53,9 @@ class AlarmeRotina {
     this.contextoPersonalizado = '',
     this.minutosTolerancia = 10,
     this.ultimoDisparoEpoch,
+    this.pausado = false,
   });
+
 
 
   /// Converte o conjunto de dias da semana em uma string CSV ordenada
@@ -87,6 +98,7 @@ class AlarmeRotina {
         contextoPersonalizado: map['contexto_personalizado'] as String? ?? '',
         minutosTolerancia: map['minutos_tolerancia'] as int? ?? 10,
         ultimoDisparoEpoch: map['ultimo_disparo_epoch'] as int?,
+        pausado: (map['alarme_pausado'] as int?) == 1,
       );
 
   AlarmeRotina copyWith({
@@ -99,6 +111,7 @@ class AlarmeRotina {
     String? contextoPersonalizado,
     int? minutosTolerancia,
     int? ultimoDisparoEpoch,
+    bool? pausado,
   }) {
     return AlarmeRotina(
       id: id ?? this.id,
@@ -110,8 +123,10 @@ class AlarmeRotina {
       contextoPersonalizado: contextoPersonalizado ?? this.contextoPersonalizado,
       minutosTolerancia: minutosTolerancia ?? this.minutosTolerancia,
       ultimoDisparoEpoch: ultimoDisparoEpoch ?? this.ultimoDisparoEpoch,
+      pausado: pausado ?? this.pausado,
     );
   }
+
 
 
   /// Retorna o horário formatado no padrão "HH:mm".

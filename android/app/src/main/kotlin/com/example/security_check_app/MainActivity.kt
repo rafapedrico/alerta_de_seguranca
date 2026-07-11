@@ -74,7 +74,15 @@ open class MainActivity: FlutterActivity() {
         // o lockscreen por cima da Activity entre o onCreate() original e a
         // navegação para a tela de Captura e Dissuasão.
         flutterEngine.plugins.add(LockscreenPlugin())
+
+        // Registra o plugin local de comunicação com a
+        // RotinaCheckinAlarmActivity (ver RotinaAlarmPlugin/
+        // RotinaCheckinAlarmActivity), usado tanto para abrir a tela de
+        // confirmação de check-in de rotina por cima do Keyguard quanto
+        // para pausar o som do alarme em loop a partir do lado Dart.
+        flutterEngine.plugins.add(RotinaAlarmPlugin())
     }
 }
+
 
 

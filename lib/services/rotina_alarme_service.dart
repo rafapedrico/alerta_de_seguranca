@@ -1,9 +1,22 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'notificacao_service.dart';
+
+/// MethodChannel espelhando o `RotinaAlarmPlugin.kt` nativo, usado para:
+/// - "iniciarTelaAlarme": abrir a `RotinaCheckinAlarmActivity` nativa por
+///   cima do Keyguard/lockscreen no momento exato do disparo do alarme
+///   de check-in de rotina (chamado pelo callback headless
+///   `_callbackCheckinRotina`).
+/// - "pausarAlarme": interromper IMEDIATAMENTE o som em loop tocando na
+///   Activity nativa (chamado pelo `pin_dialog.dart` assim que o botão
+///   "Pausar Alarme" é tocado ou o PIN correto é confirmado).
+const MethodChannel _canalRotinaAlarme =
+    MethodChannel('com.example.security_check_app/rotina_alarme');
+
 
 /// Serviço responsável por agendar/cancelar os alarmes NATIVOS de
 /// check-in de rotina (Etapa 3), um por [AlarmeRotina] cadastrado na aba
@@ -129,6 +142,78 @@ class RotinaAlarmeService {
     debugPrint('⏰ Alarme de rotina #$idAlarme cancelado.');
   }
 
+  /// Pausa o alarme de check-in de rotina [idAlarme]: cancela o alarme
+  /// nativo de check-in e um eventual alarme de tolerância pendente,
+  /// marca `alarme_pausado = 1` no banco (SEM excluir o alarme, que
+  /// continua listado normalmente na aba Família, apenas com o texto
+  /// "Alarme Pausado" no lugar do horário) e interrompe IMEDIATAMENTE o
+  /// som em loop tocando na `RotinaCheckinAlarmActivity` nativa, caso
+  /// esteja visível. Chamado pelo `pin_dialog.dart` quando o usuário
+  /// toca no botão "Pausar Alarme".
+  static Future<void> pausarAlarme(int idAlarme) async {
+    await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
+    await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
+    await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
+
+    try {
+      await DatabaseHelper().definirAlarmePausado(idAlarme, true);
+    } catch (e) {
+      debugPrint('⚠️ Falha ao marcar alarme #$idAlarme como pausado: $e');
+    }
+
+    try {
+      await _canalRotinaAlarme.invokeMethod('pausarAlarme');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao pausar som nativo do alarme #$idAlarme: $e');
+    }
+
+    debugPrint('⏸️ Alarme de rotina #$idAlarme pausado pelo usuário.');
+  }
+
+  /// Reativa (despausa) o alarme de rotina [idAlarme], marcando
+  /// `alarme_pausado = 0` no banco e reagendando o próximo disparo
+  /// normalmente (caso o alarme esteja com `ativo = 1`). Chamado pelo
+  /// botão de reativação exibido na aba Família ao lado do texto
+  /// "Alarme Pausado".
+  static Future<void> despausarAlarme(int idAlarme) async {
+    try {
+      await DatabaseHelper().definirAlarmePausado(idAlarme, false);
+    } catch (e) {
+      debugPrint('⚠️ Falha ao desmarcar alarme #$idAlarme como pausado: $e');
+    }
+
+    try {
+      final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
+      final ativo = (dados?['ativo'] as int?) == 1;
+      if (dados != null && ativo) {
+        await agendarAlarme(dados);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Falha ao reagendar alarme #$idAlarme após despausar: $e');
+    }
+
+    debugPrint('▶️ Alarme de rotina #$idAlarme reativado pelo usuário.');
+  }
+
+  /// Solicita ao lado nativo (via [MethodChannel]) que a
+  /// `RotinaCheckinAlarmActivity` seja iniciada/trazida ao topo por
+  /// cima do Keyguard/lockscreen para o [idAlarme] informado. Chamado
+  /// pelo callback headless `_callbackCheckinRotina` assim que o
+  /// disparo de check-in de rotina ocorre, garantindo que a tela de
+  /// confirmação apareça imediatamente mesmo com o app fechado ou o
+  /// aparelho bloqueado.
+  static Future<void> iniciarTelaAlarmeNativa(int idAlarme) async {
+    try {
+      await _canalRotinaAlarme.invokeMethod('iniciarTelaAlarme', {
+        'idAlarme': idAlarme,
+      });
+    } catch (e) {
+      debugPrint(
+          '⚠️ Falha ao iniciar tela nativa do alarme de rotina #$idAlarme: $e');
+    }
+  }
+
+
   /// Chamado pelo [NotificacaoService] quando o usuário toca em "✅
   /// Cheguei bem" na notificação (com o app aberto ou fechado). Cancela
   /// o alarme de tolerância pendente, remove a notificação e registra a
@@ -194,6 +279,25 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   final ativo = (dados['ativo'] as int?) == 1;
   if (!ativo) return;
 
+  // Se o usuário pausou este alarme especificamente (botão "Pausar
+  // Alarme" na tela de confirmação nativa), o disparo é IGNORADO por
+  // completo: nenhuma notificação/tela é exibida, nenhum alarme de
+  // tolerância é agendado, e o alarme já é reagendado normalmente para
+  // a próxima ocorrência (mantendo o ciclo recorrente ativo, apenas
+  // "pulando" este disparo específico). O flag `alarme_pausado`
+  // permanece 1 até que o usuário reative manualmente na aba Família.
+  final pausado = (dados['alarme_pausado'] as int?) == 1;
+  if (pausado) {
+    debugPrint(
+        '⏸️ [HEADLESS] Alarme de rotina #$idAlarme está pausado — disparo ignorado.');
+    try {
+      await RotinaAlarmeService.agendarAlarme(dados);
+    } catch (e) {
+      debugPrint('⚠️ [HEADLESS] Falha ao reagendar alarme pausado: $e');
+    }
+    return;
+  }
+
   final etiqueta = (dados['etiqueta'] as String?) ?? 'Check-in de rotina';
   final minutosTolerancia = dados['minutos_tolerancia'] as int? ?? 10;
 
@@ -212,6 +316,17 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha ao exibir notificação de check-in: $e');
   }
+
+  // Abre imediatamente a RotinaCheckinAlarmActivity nativa por cima do
+  // Keyguard/lockscreen, tocando o alarme sonoro em loop até que o
+  // usuário confirme "Cheguei bem" (PIN correto) ou toque em "Pausar
+  // Alarme" (ver pin_dialog.dart / RotinaCheckinAlarmActivity.kt).
+  try {
+    await RotinaAlarmeService.iniciarTelaAlarmeNativa(idAlarme);
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao iniciar tela nativa do alarme: $e');
+  }
+
 
   // Agenda o alarme de TOLERÂNCIA: se o usuário não confirmar "Cheguei
   // bem" dentro de [minutosTolerancia], o disparo de emergência ocorre
