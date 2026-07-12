@@ -10,6 +10,7 @@ class UserConfig {
   final bool aguardandoConfirmacaoPin;
   final String? contextoTimerAtivo;
   final String? timestampExpiracaoAlarme;
+  final bool confirmacaoTatilAtiva;
 
   UserConfig({
     this.id,
@@ -23,6 +24,7 @@ class UserConfig {
     this.aguardandoConfirmacaoPin = false,
     this.contextoTimerAtivo,
     this.timestampExpiracaoAlarme,
+    this.confirmacaoTatilAtiva = true,
   });
 
   Map<String, dynamic> toMap() => {
@@ -37,6 +39,7 @@ class UserConfig {
         'aguardando_confirmacao_pin': aguardandoConfirmacaoPin ? 1 : 0,
         'contexto_timer_ativo': contextoTimerAtivo,
         'timestamp_expiracao_alarme': timestampExpiracaoAlarme,
+        'confirmacao_tatil_ativa': confirmacaoTatilAtiva ? 1 : 0,
       };
 
   factory UserConfig.fromMap(Map<String, dynamic> map) => UserConfig(
@@ -52,5 +55,6 @@ class UserConfig {
             (map['aguardando_confirmacao_pin'] as int?) == 1,
         contextoTimerAtivo: map['contexto_timer_ativo'] as String?,
         timestampExpiracaoAlarme: map['timestamp_expiracao_alarme'] as String?,
+        confirmacaoTatilAtiva: (map['confirmacao_tatil_ativa'] as int?) == 1,
       );
 }

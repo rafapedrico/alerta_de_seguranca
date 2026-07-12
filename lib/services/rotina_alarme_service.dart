@@ -1,6 +1,8 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
@@ -218,12 +220,15 @@ class RotinaAlarmeService {
   /// Cheguei bem" na notificação (com o app aberto ou fechado). Cancela
   /// o alarme de tolerância pendente, remove a notificação e registra a
   /// confirmação no histórico (categoria 'sistema').
+  static final MethodChannel _alarmeChannel = MethodChannel('com.example.security_check_app/rotina_alarme');
+
   static Future<void> confirmarCheckinRotina(int idAlarme) async {
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
 
     Map<String, dynamic>? dados;
     try {
+      await _alarmeChannel.invokeMethod('pararAlarme');
       dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
     } catch (_) {}
 
@@ -279,21 +284,17 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   final ativo = (dados['ativo'] as int?) == 1;
   if (!ativo) return;
 
-  // Se o usuário pausou este alarme especificamente (botão "Pausar
-  // Alarme" na tela de confirmação nativa), o disparo é IGNORADO por
-  // completo: nenhuma notificação/tela é exibida, nenhum alarme de
-  // tolerância é agendado, e o alarme já é reagendado normalmente para
-  // a próxima ocorrência (mantendo o ciclo recorrente ativo, apenas
-  // "pulando" este disparo específico). O flag `alarme_pausado`
-  // permanece 1 até que o usuário reative manualmente na aba Família.
-  final pausado = (dados['alarme_pausado'] as int?) == 1;
-  if (pausado) {
-    debugPrint(
-        '⏸️ [HEADLESS] Alarme de rotina #$idAlarme está pausado — disparo ignorado.');
+  // Verificar se o alarme foi pausado por hoje via swipe
+  final prefs = await SharedPreferences.getInstance();
+  final key = 'pausado_hoje_$idAlarme';
+  if (prefs.getBool(key) == true) {
+    debugPrint('⏸️ [HEADLESS] Alarme de rotina #$idAlarme pausado por hoje via swipe — disparo ignorado.');
+    // Remover a flag após processar para não afetar futuros disparos
+    await prefs.remove(key);
     try {
       await RotinaAlarmeService.agendarAlarme(dados);
     } catch (e) {
-      debugPrint('⚠️ [HEADLESS] Falha ao reagendar alarme pausado: $e');
+      debugPrint('⚠️ [HEADLESS] Falha ao reagendar alarme pausado por hoje: $e');
     }
     return;
   }
@@ -317,14 +318,14 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     debugPrint('⚠️ [HEADLESS] Falha ao exibir notificação de check-in: $e');
   }
 
-  // Abre imediatamente a RotinaCheckinAlarmActivity nativa por cima do
-  // Keyguard/lockscreen, tocando o alarme sonoro em loop até que o
-  // usuário confirme "Cheguei bem" (PIN correto) ou toque em "Pausar
-  // Alarme" (ver pin_dialog.dart / RotinaCheckinAlarmActivity.kt).
+  // Exibe uma notificação de tela cheia com som e vibração
   try {
-    await RotinaAlarmeService.iniciarTelaAlarmeNativa(idAlarme);
+    await NotificacaoService.exibirNotificacaoAlarmeCompleto(
+      idAlarme: idAlarme,
+      etiqueta: etiqueta,
+    );
   } catch (e) {
-    debugPrint('⚠️ [HEADLESS] Falha ao iniciar tela nativa do alarme: $e');
+    debugPrint('⚠️ [HEADLESS] Falha ao exibir notificação de alarme: $e');
   }
 
 

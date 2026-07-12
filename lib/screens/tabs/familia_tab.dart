@@ -6,6 +6,7 @@ import '../../services/rotina_alarme_service.dart';
 import '../../services/api_service.dart';
 import '../../services/contatos_emergencia_service.dart';
 import '../../models/alarme_rotina.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 /// Aba responsável pelo gerenciador de múltiplos alarmes de rotina de
@@ -32,6 +33,7 @@ class FamiliaTabState extends State<FamiliaTab> {
 
   bool _carregandoContatos = true;
   List<Map<String, dynamic>> _contatosEmergencia = [];
+  Map<int, bool> _pausadoHojeMap = {}; // Mapa para armazenar estado de pausa por alarme
 
   // Rótulos das iniciais dos dias, no padrão iPhone: S T Q Q S S D.
   static const List<String> _iniciaisDias = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
@@ -72,8 +74,23 @@ class FamiliaTabState extends State<FamiliaTab> {
     try {
       final dados = await _db.listarAlarmes();
       if (!mounted) return;
+      
+      // Carregar estados de pausa do SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final alarmesAtualizados = <AlarmeRotina>[];
+      final pausadoHojeMap = <int, bool>{};
+      
+      for (var alarme in dados.map((m) => AlarmeRotina.fromMap(m))) {
+        if (alarme.id != null) {
+          final key = 'pausado_hoje_${alarme.id}';
+          pausadoHojeMap[alarme.id!] = prefs.getBool(key) ?? false;
+        }
+        alarmesAtualizados.add(alarme);
+      }
+
       setState(() {
-        _alarmes = dados.map((m) => AlarmeRotina.fromMap(m)).toList();
+        _alarmes = alarmesAtualizados;
+        _pausadoHojeMap = pausadoHojeMap;
         _carregandoAlarmes = false;
       });
     } catch (_) {
@@ -593,27 +610,38 @@ class FamiliaTabState extends State<FamiliaTab> {
 
     return Column(
       children: _alarmes.map((alarme) {
-        return Dismissible(
-          key: ValueKey(alarme.id),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: Colors.red.shade400,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.delete_outline, color: Colors.white),
-          ),
-          confirmDismiss: (_) async {
-            return await showDialog<bool>(
+            return Dismissible(
+             key: ValueKey(alarme.id),
+             direction: DismissDirection.horizontal,
+             background: Container(
+               alignment: Alignment.centerRight,
+               padding: const EdgeInsets.symmetric(horizontal: 20),
+               margin: const EdgeInsets.only(bottom: 10),
+               decoration: BoxDecoration(
+                 color: Colors.red.shade400,
+                 borderRadius: BorderRadius.circular(14),
+               ),
+               child: const Icon(Icons.delete, color: Colors.white),
+             ),
+             secondaryBackground: Container(
+               alignment: Alignment.centerLeft,
+               padding: const EdgeInsets.symmetric(horizontal: 20),
+               margin: const EdgeInsets.only(bottom: 10),
+               decoration: BoxDecoration(
+                 color: Colors.blue.shade400,
+                 borderRadius: BorderRadius.circular(14),
+               ),
+               child: const Icon(Icons.pause_circle_filled, color: Colors.white),
+             ),
+            confirmDismiss: (direction) async {
+              if (direction == DismissDirection.startToEnd) {
+                return await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Remover alarme?'),
+                    title: const Text('Excluir alarme permanentemente?'),
                     content: Text(
-                      'Deseja remover o alarme "${alarme.etiqueta}" '
-                      '(${alarme.horarioFormatado})?',
+                      'Deseja excluir o alarme "${alarme.etiqueta}" '
+                      '(${alarme.horarioFormatado}) permanentemente?',
                     ),
                     actions: [
                       TextButton(
@@ -621,19 +649,57 @@ class FamiliaTabState extends State<FamiliaTab> {
                         child: const Text('Cancelar'),
                       ),
                       FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Remover'),
+                        child: const Text('Excluir'),
                       ),
                     ],
                   ),
-                ) ??
-                false;
-          },
-          onDismissed: (_) => _excluirAlarme(alarme),
+                ) ?? false;
+              } else {
+                return await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Pausar alarme por hoje?'),
+                    content: Text(
+                      'Deseja pausar o alarme "${alarme.etiqueta}" '
+                      '(${alarme.horarioFormatado}) por hoje?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancelar'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.blue),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Pausar'),
+                      ),
+                    ],
+                  ),
+                ) ?? false;
+              }
+            },
+            onDismissed: (direction) async {
+              if (alarme.id == null) return;
+              
+              if (direction == DismissDirection.endToStart) {
+                // Swipe left (delete)
+                await _excluirAlarme(alarme);
+              } else if (direction == DismissDirection.startToEnd) {
+                // Swipe right (pause)
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('pausado_hoje_${alarme.id}', true);
+                setState(() {
+                  _pausadoHojeMap[alarme.id!] = true;
+                });
+              }
+            },
           child: Card(
             elevation: 0,
-            color: Colors.white.withOpacity(0.92),
+            color: (_pausadoHojeMap[alarme.id] ?? false)
+                ? Colors.grey.withOpacity(0.7) // Card cinza quando pausado
+                : Colors.white.withOpacity(0.92),
             margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -726,6 +792,29 @@ class FamiliaTabState extends State<FamiliaTab> {
   /// usuário através do botão "Pausar Alarme" na tela de confirmação
   /// nativa. Chamado ao tocar em "Toque para reativar", exibido logo
   /// abaixo do texto "Alarme Pausado".
+  Future<void> _pausarAlarme(AlarmeRotina alarme) async {
+    if (alarme.id == null) return;
+    await RotinaAlarmeService.pausarAlarme(alarme.id!);
+
+    await _db.inserirEventoHistorico(
+      titulo: 'Alarme de rotina pausado',
+      descricao:
+          '${alarme.etiqueta.isNotEmpty ? alarme.etiqueta : 'Alarme'} '
+          '(${alarme.horarioFormatado}) foi pausado manualmente.',
+      categoria: 'familia',
+    );
+
+    await _carregarAlarmes();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⏸️ Alarme pausado com sucesso.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _despausarAlarme(AlarmeRotina alarme) async {
     if (alarme.id == null) return;
     await RotinaAlarmeService.despausarAlarme(alarme.id!);

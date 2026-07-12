@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -83,6 +84,7 @@ class NotificacaoService {
       priority: Priority.high,
       ongoing: true,
       autoCancel: false,
+      vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
       actions: const [
         AndroidNotificationAction(
           acaoConfirmarId,
@@ -101,6 +103,46 @@ class NotificacaoService {
       'Toque em "Cheguei bem" para confirmar seu check-in de segurança.',
       details,
       payload: idAlarme.toString(),
+    );
+  }
+
+  /// Exibe uma notificação de alarme completo com som e vibração persistentes,
+  /// usando uma intenção de tela cheia para aparecer sobre a tela de bloqueio.
+  static Future<void> exibirNotificacaoAlarmeCompleto({
+    required int idAlarme,
+    required String etiqueta,
+  }) async {
+    await inicializar();
+
+    final androidDetails = AndroidNotificationDetails(
+      canalId,
+      canalNome,
+      channelDescription: canalDescricao,
+      importance: Importance.max,
+      priority: Priority.high,
+      ongoing: true,
+      fullScreenIntent: true,
+      autoCancel: false,
+      playSound: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      actions: const [
+        AndroidNotificationAction(
+          'pausar_alarme',
+          '⏸️ Pausar Alarme',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+
+    await _plugin.show(
+      idAlarme + 10000, // ID diferente para não conflitar com a notificação normal
+      etiqueta.isNotEmpty ? etiqueta : 'Alarme de Segurança',
+      'Confirme sua segurança ou pause o alarme!',
+      details,
+      payload: 'alarme_${idAlarme.toString()}',
     );
   }
 
@@ -136,16 +178,24 @@ class NotificacaoService {
   /// rotina correspondente via [RotinaAlarmeService], cancelando o
   /// alarme de tolerância agendado e registrando o evento no histórico.
   static void _processarResposta(NotificationResponse resposta) {
-    if (resposta.actionId != acaoConfirmarId) return;
-
-    final idAlarme = int.tryParse(resposta.payload ?? '');
+    final payload = resposta.payload ?? '';
+    final idAlarme = int.tryParse(payload.startsWith('alarme_') 
+        ? payload.replaceFirst('alarme_', '') 
+        : payload);
+    
     if (idAlarme == null) return;
 
-    // Fire-and-forget: o processamento é assíncrono, mas o handler do
-    // plugin não aguarda retorno.
-    RotinaAlarmeService.confirmarCheckinRotina(idAlarme).catchError((e) {
-      debugPrint('⚠️ Falha ao confirmar check-in de rotina: $e');
-    });
+    if (resposta.actionId == acaoConfirmarId) {
+      // Fire-and-forget: o processamento é assíncrono, mas o handler do
+      // plugin não aguarda retorno.
+      RotinaAlarmeService.confirmarCheckinRotina(idAlarme).catchError((e) {
+        debugPrint('⚠️ Falha ao confirmar check-in de rotina: $e');
+      });
+    } else if (resposta.actionId == 'pausar_alarme') {
+      RotinaAlarmeService.pausarAlarme(idAlarme).catchError((e) {
+        debugPrint('⚠️ Falha ao pausar alarme: $e');
+      });
+    }
   }
 
   /// Registra, de forma resiliente (nunca lança exceção), um evento no
