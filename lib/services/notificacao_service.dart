@@ -2,8 +2,12 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart'; 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
+import '../main.dart'; 
+import '../screens/alarme_disparado_screen.dart';
 import 'database_helper.dart';
 import 'rotina_alarme_service.dart';
 
@@ -84,6 +88,7 @@ class NotificacaoService {
       priority: Priority.high,
       ongoing: true,
       autoCancel: false,
+      fullScreenIntent: true,   // Add fullScreenIntent to wake Android
       vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
       actions: const [
         AndroidNotificationAction(
@@ -195,6 +200,11 @@ class NotificacaoService {
       RotinaAlarmeService.pausarAlarme(idAlarme).catchError((e) {
         debugPrint('⚠️ Falha ao pausar alarme: $e');
       });
+    } else if (resposta.actionId == null) {
+      // Correção Absoluta: Alinhado com a appNavigatorKey global declarada no seu main.dart
+      appNavigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (context) => const AlarmeDisparadoScreen()),
+      );
     }
   }
 

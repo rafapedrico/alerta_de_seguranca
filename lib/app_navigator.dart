@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:security_check_app/screens/alarme_disparado_screen.dart';
 
 /// [GlobalKey] central do [NavigatorState] do aplicativo, registrada no
 /// `navigatorKey` do [MaterialApp] em `main.dart`.
-///
-/// Necessária para o recurso de Captura e Dissuasão: pontos de disparo
-/// de emergência que NÃO possuem um [BuildContext] de tela local — como o
-/// listener de SOS físico (Volume+) em `main.dart`, que roda fora de
-/// qualquer árvore de widgets — ainda assim precisam navegar até a
-/// [CameraCapturaScreen] em tela cheia.
-///
-/// Mantendo essa chave centralizada e desacoplada de qualquer serviço de
-/// negócio (ex: EmergencyAlertService), preservamos a regra de que
-/// serviços "puros" nunca dependem de UI, deixando cada ponto de chamada
-/// (SegurancaTab, listener do main.dart) livre para decidir se e quando
-/// deve navegar.
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Função para navegar para a tela de alarme disparado, blindada contra cold-starts
+void navigateToAlarmeDisparado() {
+  // Executa após a renderização do frame atual para evitar conflito se o app estiver abrindo do zero
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final state = appNavigatorKey.currentState;
+    
+    if (state != null) {
+      // Abre a tela por cima de forma limpa
+      state.push(
+        MaterialPageRoute(
+          builder: (context) => const AlarmeDisparadoScreen(),
+          settings: const RouteSettings(name: '/alarme_disparado'),
+        ),
+      );
+    } else {
+      // Fallback de contingência caso o estado demore um milissegundo a mais para inflar
+      Future.delayed(const Duration(milliseconds: 300), () {
+        appNavigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => const AlarmeDisparadoScreen(),
+            settings: const RouteSettings(name: '/alarme_disparado'),
+          ),
+        );
+      });
+    }
+  });
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
@@ -104,6 +105,8 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
     setState(() => _duracaoSomSegundos = segundos);
     await _alarmeSonoroService.salvarDuracaoSegundos(segundos);
     await _db.salvarDuracaoSomAlarme(segundos);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('alarm_duration', segundos);
   }
 
 
@@ -1204,38 +1207,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
           ),
 
           const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.timer_outlined, color: Colors.black54, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Duração do toque: $_duracaoSomSegundos s',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                      Slider(
-                        value: _duracaoSomSegundos.toDouble(),
-                        min: 5,
-                        max: 120,
-                        divisions: 23,
-                        activeColor: const Color(0xFF4C7040),
-                        label: '$_duracaoSomSegundos s',
-                        onChanged: (v) => setState(() => _duracaoSomSegundos = v.round()),
-                        onChangeEnd: (v) => _selecionarDuracaoSom(v.round()),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
         ],
 
         const Divider(),

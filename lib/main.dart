@@ -18,13 +18,10 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
 
-
-
-
 /// Rota especial reconhecida no cold start quando o app é iniciado pela
 /// `LockscreenCameraActivity` nativa (gatilho físico de SOS com o
 /// aparelho bloqueado/app completamente fechado). Precisa espelhar
-/// EXATAMENTE a constante `ROTA_INICIAL_SOS_FISICO` declarada em
+/// EXATAMENTE a constante `ROTA_INICIAL_SOS_FISICO` declarada in
 /// `LockscreenCameraActivity.kt`.
 ///
 /// IMPORTANTE: esta string NUNCA é usada como uma rota nomeada de fato
@@ -41,9 +38,8 @@ const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 
 /// Rota especial reconhecida no cold start quando o app é iniciado pela
 /// `RotinaCheckinAlarmActivity` nativa (disparo de um alarme de
-/// check-in de ROTINA com o aparelho bloqueado/app completamente
-/// fechado). Precisa espelhar EXATAMENTE a constante
-/// `ROTA_INICIAL_ROTINA_ALARME` declarada em
+/// check-in de ROTINA com o aparelho bloqueado/app fechado). Precisa
+/// espelhar EXATAMENTE a constante `ROTA_INICIAL_ROTINA_ALARME` declarada em
 /// `RotinaCheckinAlarmActivity.kt`. Assim como `_rotaInicialSosFisico`,
 /// é apenas INSPECIONADA uma única vez aqui em `main()` — a navegação
 /// real para o diálogo de confirmação de check-in é feita via
@@ -71,7 +67,6 @@ void main() async {
   final bool coldStartViaRotinaAlarme =
       WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
           _rotaInicialRotinaAlarme;
-
 
   // Initialize AES-256 encryption service before running the app
   EncryptionService().initialize();
@@ -139,15 +134,12 @@ void main() async {
     debugPrint('⚠️ [main] Erro no EventChannel de alarme de rotina: $e');
   });
 
-
-
   // Teste inicial de conectividade com o backend FastAPI (security_backend):
   // dispara um heartbeat para /api/status logo na abertura do app, apenas
   // para validação em desenvolvimento (visível no terminal do Uvicorn).
   // Executado em fire-and-forget (sem await) para NUNCA atrasar o boot do
   // app caso o servidor esteja fora do ar ou inacessível.
   _testarConectividadeInicialComBackend();
-
 
   // Regra de negócio crítica (Etapa 2), CORRIGIDA: verifica no SQLite se
   // um disparo de emergência já ocorreu em segundo plano (callback
@@ -179,7 +171,7 @@ void main() async {
   }
 
   // Se este cold start foi disparado pela RotinaCheckinAlarmActivity
-  // nativa (alarme de check-in de rotina tocando em loop, com o
+  // nativa (alarme de check-in de rotina tocando in loop, com o
   // aparelho bloqueado/app fechado), exibe o diálogo de PIN (com o
   // botão "Pausar Alarme") assim que o primeiro frame for renderizado.
   // Como o app não usa rotas nomeadas de fato (ver onGenerateRoute),
@@ -250,7 +242,6 @@ Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
   }
 }
 
-
 /// Dispara, em sequência, o fluxo completo de emergência física:
 /// 1. [EmergencyAlertService.dispararSosComDuplaLocalizacao] — envia o
 ///    primeiro SMS instantâneo (última localização em cache) seguido de
@@ -289,7 +280,6 @@ Future<void> _testarConectividadeInicialComBackend() async {
     debugPrint('⚠️ Falha ao testar conectividade inicial com o backend: $e');
   }
 }
-
 
 class SecurityCheckApp extends StatelessWidget {
   const SecurityCheckApp({super.key, required this.aguardandoConfirmacaoPin});
@@ -361,7 +351,6 @@ class SecurityCheckApp extends StatelessWidget {
               settings: settings,
             );
           },
-
         );
       },
     );
@@ -390,7 +379,6 @@ class TelaInicialComPossivelDialogoPin extends StatefulWidget {
 
 class _TelaInicialComPossivelDialogoPinState
     extends State<TelaInicialComPossivelDialogoPin> {
-
   @override
   void initState() {
     super.initState();

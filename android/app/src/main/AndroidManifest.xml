@@ -2,52 +2,29 @@
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
     <uses-permission android:name="android.permission.SEND_SMS"/>
-    <!-- Permissões de Localização (GPS), essenciais para o alerta de
-         emergência incluir as coordenadas atuais da vítima no SMS. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
-    <!-- Permissões necessárias para alarmes exatos e execução em segundo plano
-         (android_alarm_manager_plus / flutter_local_notifications). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- Necessárias para o VolumeSosService: Foreground Service persistente
-         que monitora o botão físico de Volume+ em segundo plano (gatilho
-         de SOS discreto), mesmo com a tela apagada ou o app minimizado.
-         FOREGROUND_SERVICE_SPECIAL_USE é exigida pelo Android 14+ (API 34)
-         para serviços em foreground que não se encaixam nas categorias
-         padrão (câmera, localização, mídia, etc.). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
-    <!-- Necessária para o ApiService (dio) se comunicar com o backend
-         FastAPI via HTTP/HTTPS. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Necessária para o recurso de Captura e Dissuasão: abre a câmera
-         traseira em tela cheia logo após um disparo de emergência. -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
-    <!-- Necessária para o MainActivity acordar o dispositivo e se
-         sobrepor à lockscreen sem exigir o PIN do Android quando o SOS
-         é disparado pelo botão físico com a tela bloqueada (ver
-         MainActivity.onCreate / setTurnScreenOn / FLAG_TURN_SCREEN_ON). -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
 
-    <!-- Necessária para permitir que o app se sobreponha a outras janelas
-         do sistema (incluindo, em alguns fabricantes/versões do Android
-         14/15, a própria tela de bloqueio). Sem esta declaração explícita,
-         o app sequer aparece listado na tela de "Acesso especial > Exibir
-         sobre outros apps" das Configurações do Android, o que pode
-         impedir a CameraCapturaScreen de se sobrepor ao Keyguard em
-         alguns aparelhos. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
 
@@ -62,14 +39,12 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -80,19 +55,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Activity nativa DEDICADA, iniciada diretamente via Intent
-             pelo VolumeSosService (rodando em segundo plano) quando o
-             gatilho físico de SOS é detectado com o aparelho bloqueado
-             ou o app completamente fechado. showWhenLocked/turnScreenOn
-             declarados diretamente no manifest (suportados a partir da
-             API 27) reforçam, em nível de sistema, o mesmo
-             comportamento já aplicado programaticamente em
-             LockscreenCameraActivity.onCreate() (herdado de
-             MainActivity), cobrindo o caso em que o Android decide
-             consultar essas propriedades antes mesmo do onCreate() ser
-             executado. launchMode="singleTask" + excludeFromRecents
-             evitam múltiplas instâncias empilhadas e mantêm essa
-             Activity fora da lista de apps recentes do usuário. -->
         <activity
             android:name=".RotinaCheckinAlarmActivity"
             android:exported="false"
@@ -109,7 +71,6 @@
               android:resource="@style/NormalTheme"
               />
         </activity>
-
 
         <activity
             android:name=".LockscreenCameraActivity"
@@ -129,15 +90,10 @@
               />
         </activity>
 
-        <!-- Don't delete the meta-data below.
-
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Receivers e services necessários para o android_alarm_manager_plus,
-             responsável por disparar tarefas em segundo plano mesmo com o app fechado. -->
         <receiver
             android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
             android:exported="false"/>
@@ -154,8 +110,6 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false"/>
 
-        <!-- Service necessário para flutter_local_notifications processar ações
-             de notificação em segundo plano. -->
         <service
             android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
             android:exported="false"
@@ -174,11 +128,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Foreground Service exclusivo do gatilho físico de SOS (Volume+
-             segurado por 3s). Roda persistentemente (notificação fixa de
-             baixa prioridade) para monitorar mudanças de volume do sistema
-             mesmo com a tela apagada ou o app minimizado. Ver
-             VolumeSosService.kt para detalhes da estratégia de detecção. -->
         <service
             android:name=".VolumeSosService"
             android:exported="false"
@@ -189,11 +138,6 @@
         </service>
     </application>
 
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
-
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
