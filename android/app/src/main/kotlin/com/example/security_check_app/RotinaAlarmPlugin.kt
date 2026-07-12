@@ -3,6 +3,7 @@ package com.example.security_check_app
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.preference.PreferenceManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -54,6 +55,18 @@ class RotinaAlarmPlugin : FlutterPlugin {
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao pausar som do alarme: ${e.message}", null)
+                        }
+                    }
+                    "setAlarmDuration" -> {
+                        try {
+                            val seconds = call.arguments as Int
+                            PreferenceManager.getDefaultSharedPreferences(context)
+                                .edit()
+                                .putInt("alarm_sound_duration", seconds)
+                                .apply()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao definir duração do alarme: ${e.message}", null)
                         }
                     }
                     else -> result.notImplemented()

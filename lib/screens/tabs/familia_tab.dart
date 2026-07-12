@@ -613,28 +613,28 @@ class FamiliaTabState extends State<FamiliaTab> {
             return Dismissible(
              key: ValueKey(alarme.id),
              direction: DismissDirection.horizontal,
-             background: Container(
-               alignment: Alignment.centerRight,
-               padding: const EdgeInsets.symmetric(horizontal: 20),
-               margin: const EdgeInsets.only(bottom: 10),
-               decoration: BoxDecoration(
-                 color: Colors.red.shade400,
-                 borderRadius: BorderRadius.circular(14),
-               ),
-               child: const Icon(Icons.delete, color: Colors.white),
-             ),
-             secondaryBackground: Container(
-               alignment: Alignment.centerLeft,
-               padding: const EdgeInsets.symmetric(horizontal: 20),
-               margin: const EdgeInsets.only(bottom: 10),
-               decoration: BoxDecoration(
-                 color: Colors.blue.shade400,
-                 borderRadius: BorderRadius.circular(14),
-               ),
-               child: const Icon(Icons.pause_circle_filled, color: Colors.white),
-             ),
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.pause_circle_filled, color: Colors.white),
+              ),
+              secondaryBackground: Container(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
             confirmDismiss: (direction) async {
-              if (direction == DismissDirection.startToEnd) {
+              if (direction == DismissDirection.endToStart) {
                 return await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(

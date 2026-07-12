@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
@@ -272,6 +273,29 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
+  final player = AudioPlayer();
+  final prefs = await SharedPreferences.getInstance();
+  final soundPath = prefs.getString('alarm_sound_path') ?? 'som_1.mp3';
+  final durationSeconds = prefs.getInt('alarm_sound_duration') ?? 30;
+
+  try {
+    await player.setReleaseMode(ReleaseMode.loop);
+    await player.play(AssetSource('sounds/$soundPath'));
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao tocar som do alarme: $e');
+    await player.stop();
+    await player.dispose();
+  }
+
+  Timer(Duration(seconds: durationSeconds), () async {
+    try {
+      await player.stop();
+      await player.dispose();
+    } catch (e) {
+      debugPrint('⚠️ [HEADLESS] Falha ao parar player: $e');
+    }
+  });
+
   Map<String, dynamic>? dados;
   try {
     dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
@@ -285,7 +309,6 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   if (!ativo) return;
 
   // Verificar se o alarme foi pausado por hoje via swipe
-  final prefs = await SharedPreferences.getInstance();
   final key = 'pausado_hoje_$idAlarme';
   if (prefs.getBool(key) == true) {
     debugPrint('⏸️ [HEADLESS] Alarme de rotina #$idAlarme pausado por hoje via swipe — disparo ignorado.');

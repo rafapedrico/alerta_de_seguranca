@@ -4,7 +4,11 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.WindowManager
+import androidx.preference.PreferenceManager
 import io.flutter.embedding.engine.FlutterEngine
 
 /**
@@ -78,7 +82,11 @@ class RotinaCheckinAlarmActivity : MainActivity() {
      */
     private fun iniciarSomEmLoop() {
         try {
-            val descritor = assets.openFd("flutter_assets/assets/sounds/som_1.mp3")
+            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+            val soundPath = prefs.getString("alarm_sound_path", "som_1.mp3")
+            val durationSeconds = prefs.getInt("alarm_sound_duration", 30) // Padrão 30s
+
+            val descritor = assets.openFd("flutter_assets/assets/sounds/$soundPath")
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -91,8 +99,24 @@ class RotinaCheckinAlarmActivity : MainActivity() {
                 isLooping = true
                 prepare()
                 start()
+                setVolume(1.0f, 1.0f)
             }
             RotinaAlarmSomBridge.registrarPlayer(mediaPlayer)
+
+            // Agendar parada automática após duração configurada
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    mediaPlayer?.let {
+                        it.stop()
+                        it.release()
+                        mediaPlayer = null
+                        RotinaAlarmSomBridge.registrarPlayer(null)
+                        Log.d("RotinaCheckin", "Som interrompido após $durationSeconds segundos")
+                    }
+                } catch (e: Exception) {
+                    Log.e("RotinaCheckin", "Erro ao parar som automaticamente", e)
+                }
+            }, durationSeconds * 1000L)
         } catch (e: Exception) {
             // Falha silenciosa: a tela de confirmação continua
             // funcionando normalmente mesmo sem áudio (ex: asset
