@@ -196,8 +196,11 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
-  final player = AudioPlayer();
+  // 🛡️ SALVA NO DISCO QUE O ALARME ESTÁ TOCANDO AGORA (À PROVA DE COLD START)
   final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('alarme_disparando_no_momento', true); 
+
+  final player = AudioPlayer();
   final soundPath = prefs.getString('alarm_sound_path') ?? 'som_1.mp3';
 
   try {

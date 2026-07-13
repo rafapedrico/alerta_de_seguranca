@@ -17,6 +17,8 @@ import 'app_navigator.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
+import 'screens/alarme_disparado_screen.dart'; 
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Rota especial reconhecida no cold start quando o app é iniciado pela
 /// `LockscreenCameraActivity` nativa (gatilho físico de SOS com o
@@ -149,11 +151,22 @@ void main() async {
   // de confirmação de PIN é exibido POR CIMA dela (ver
   // [_TelaInicialComPossivelDialogoPin]), preservando a navegação livre
   // entre as abas (Segurança, Família, Histórico) o tempo todo.
-  final bool aguardandoConfirmacaoPin =
+final bool aguardandoConfirmacaoPin =
       await DatabaseHelper().isAguardandoConfirmacaoPin();
+
+  // 🛡️ LÊ A FLAG DIRETO DO DISCO (IMUNE A ERROS DE ROTA NATIVAS)
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.reload(); // Atualiza o cache entre os isolates
+  final bool alarmeDisparandoNoDisco = prefs.getBool('alarme_disparando_no_momento') ?? false;
+
+  // Unifica as flags: se o disco disser que está tocando, a prioridade se torna verdadeira!
+  final bool abertoViaAlarmeRotinaFinal = coldStartViaRotinaAlarme || alarmeDisparandoNoDisco;
+
+  debugPrint('✈️ [main] Alarme tocando verificado via Disco: $alarmeDisparandoNoDisco');
 
   runApp(SecurityCheckApp(
     aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
+    abertoViaAlarmeRotina: abertoViaAlarmeRotinaFinal, // Envia o sinal robusto e infalível
   ));
 
   // Se este cold start foi disparado pelo gatilho físico de SOS com o
@@ -179,9 +192,12 @@ void main() async {
   // o valor é obtido diretamente do lado nativo através do
   // EventChannel/MethodChannel do RotinaAlarmPlugin (ver
   // [_exibirPinDeRotinaAoAbrirPorAlarme]).
+// Se este cold start foi disparado pelo alarme de check-in de rotina nativo tocando,
+  // força a injeção da tela com prioridade absoluta eliminando barreiras
   if (coldStartViaRotinaAlarme) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _exibirPinDeRotinaAoAbrirPorAlarme();
+      debugPrint('🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da AlarmeDisparadoScreen.');
+      navigateToAlarmeDisparado();
     });
   }
 }
@@ -198,50 +214,19 @@ void main() async {
 /// `idAlarme` para funcionar (o cancelamento nativo do som/alarme de
 /// tolerância é feito de forma "global" no lado nativo/HEADLESS, ver
 /// `RotinaAlarmSomBridge`).
+/// Modificação cirúrgica para evitar o conflito de tela preta no cold-start
 Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
-  final context = appNavigatorKey.currentContext;
-  if (context == null) return;
-
   try {
-    final config = await DatabaseHelper().getUserConfig();
-    final pinReal = config?['pin_real'] as String?;
-
-    // Busca, dentre todos os alarmes de rotina cadastrados, aquele com
-    // o `ultimo_disparo_epoch` mais recente — presumivelmente o que
-    // acabou de disparar e abriu a RotinaCheckinAlarmActivity.
-    final alarmes = await DatabaseHelper().listarAlarmes();
-    Map<String, dynamic>? maisRecente;
-    for (final alarme in alarmes) {
-      final epoch = alarme['ultimo_disparo_epoch'] as int?;
-      if (epoch == null) continue;
-      final epochAtual = maisRecente?['ultimo_disparo_epoch'] as int?;
-      if (epochAtual == null || epoch > epochAtual) {
-        maisRecente = alarme;
-      }
-    }
-    final idAlarme = maisRecente?['id'] as int?;
-
-    await exibirDialogoPin(
-      context: context,
-      pinEsperado: pinReal,
-      segundosTolerancia: null,
-      mostrarBotaoCancelar: true,
-      aoConfirmarPinCorreto: () async {
-        if (idAlarme != null) {
-          await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
-        }
-      },
-      aoCancelar: () {
-        if (idAlarme != null) {
-          RotinaAlarmeService.pausarAlarme(idAlarme);
-        }
-      },
-    );
+    debugPrint('📱 [main] Redirecionando cold-start de rotina para AlarmeDisparadoScreen.');
+    
+    // Em vez de chamar o diálogo de PIN antigo que quebra o ciclo visual,
+    // usamos o gerenciador de navegação para inflar a tela correta com o botão azul grande!
+    navigateToAlarmeDisparado();
+    
   } catch (e) {
-    debugPrint('⚠️ Falha ao exibir diálogo de PIN do alarme de rotina: $e');
+    debugPrint('⚠️ Falha ao redirecionar tela no cold-start de rotina: $e');
   }
 }
-
 /// Dispara, em sequência, o fluxo completo de emergência física:
 /// 1. [EmergencyAlertService.dispararSosComDuplaLocalizacao] — envia o
 ///    primeiro SMS instantâneo (última localização em cache) seguido de
@@ -282,21 +267,17 @@ Future<void> _testarConectividadeInicialComBackend() async {
 }
 
 class SecurityCheckApp extends StatelessWidget {
-  const SecurityCheckApp({super.key, required this.aguardandoConfirmacaoPin});
+  const SecurityCheckApp({
+    super.key, 
+    required this.aguardandoConfirmacaoPin,
+    this.abertoViaAlarmeRotina = false, // Nova flag defensiva
+  });
 
-  /// Quando `true` (verificado em main.dart via
-  /// [DatabaseHelper.isAguardandoConfirmacaoPin]), indica que um disparo
-  /// de emergência já ocorreu em segundo plano (callback headless do
-  /// AlarmeService) enquanto o app estava fechado, e que o diálogo de
-  /// confirmação de PIN deve ser exibido assim que a HomeScreen for
-  /// montada — SEM bloquear a navegação/rota como antes.
   final bool aguardandoConfirmacaoPin;
+  final bool abertoViaAlarmeRotina; // Declaração da flag
 
   @override
   Widget build(BuildContext context) {
-    // Ouve o fator de escala de fonte escolhido pelo usuário e reconstrói
-    // todo o MaterialApp instantaneamente quando ele mudar, aplicando o
-    // tamanho de letra em todas as telas do app.
     return ValueListenableBuilder<double>(
       valueListenable: FontScaleService.fontScaleNotifier,
       builder: (context, fatorFonte, _) {
@@ -318,36 +299,14 @@ class SecurityCheckApp extends StatelessWidget {
               child: child!,
             );
           },
-          // MOCK/TEMPORÁRIO: o app agora abre na tela de Login em vez de
-          // ir direto para a HomeScreen. O botão "Entrar"/"Criar Conta"
-          // dessas telas navega para a TelaInicialComPossivelDialogoPin
-          // (fluxo principal já existente), simulando um login/cadastro
-          // bem-sucedido sem nenhuma integração real de backend ainda.
-          home: const LoginScreen(),
+          // ESTRATÉGIA DE FLUXO: Se o app foi aberto pelo alarme de rotina, a tela inicial DEVE ser o botão grande!
+          home: abertoViaAlarmeRotina 
+              ? const AlarmeDisparadoScreen() 
+              : const LoginScreen(),
 
-          // IMPORTANTE (correção do crash "Could not navigate to initial
-          // route"): quando o app é iniciado a partir da
-          // LockscreenCameraActivity nativa (gatilho físico de SOS com o
-          // aparelho bloqueado/app fechado), o Android/Flutter tenta
-          // resolver a rota nomeada especial `_rotaInicialSosFisico` como
-          // rota INICIAL do MaterialApp. Como este app nunca usou rotas
-          // nomeadas (`routes`/`initialRoute`), essa resolução falhava
-          // com uma tela de erro vermelha, pois não havia absolutamente
-          // nenhum `onGenerateRoute` para capturá-la.
-          //
-          // A partir de agora, QUALQUER nome de rota desconhecido
-          // (incluindo `_rotaInicialSosFisico` e qualquer outro que
-          // eventualmente apareça no futuro) é silenciosamente resolvido
-          // de volta para a tela padrão (`LoginScreen`), preservando
-          // exatamente o mesmo comportamento de `home`. O disparo real
-          // do fluxo de SOS + a navegação para a CameraCapturaScreen NÃO
-          // dependem desta rota nomeada — são tratados separadamente via
-          // `coldStartViaSosFisico` + `addPostFrameCallback` em main(),
-          // que empurra a CameraCapturaScreen por cima usando o
-          // `appNavigatorKey`, assim que o Navigator já estiver pronto.
           onGenerateRoute: (settings) {
             return MaterialPageRoute(
-              builder: (_) => const LoginScreen(),
+              builder: (_) => abertoViaAlarmeRotina ? const AlarmeDisparadoScreen() : const LoginScreen(),
               settings: settings,
             );
           },

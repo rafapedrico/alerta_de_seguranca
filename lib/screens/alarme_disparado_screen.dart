@@ -12,6 +12,7 @@ class AlarmeDisparadoScreen extends StatelessWidget {
       // 1. FORÇA O PREFS GLOBAL PARA PARAR O LOOP EM DART
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
 
       // 2. BUSCA O ID DO ALARME ATIVO PARA CONFIRMAR O CHECK-IN
       final alarmes = await DatabaseHelper().listarAlarmes();
