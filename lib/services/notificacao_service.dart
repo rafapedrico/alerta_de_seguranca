@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart'; 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
 import '../main.dart'; 
@@ -88,24 +89,16 @@ class NotificacaoService {
       priority: Priority.high,
       ongoing: true,
       autoCancel: false,
-      fullScreenIntent: true,   // Add fullScreenIntent to wake Android
+      fullScreenIntent: true,
       vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
-      actions: const [
-        AndroidNotificationAction(
-          acaoConfirmarId,
-          '✅ Cheguei bem',
-          showsUserInterface: false,
-          cancelNotification: true,
-        ),
-      ],
     );
 
     final details = NotificationDetails(android: androidDetails);
 
     await _plugin.show(
       idAlarme,
-      etiqueta.isNotEmpty ? etiqueta : 'Check-in de rotina',
-      'Toque em "Cheguei bem" para confirmar seu check-in de segurança.',
+      'Alarme de rotina',
+      'Toque para cancelar o alarme.',
       details,
       payload: idAlarme.toString(),
     );
@@ -191,17 +184,42 @@ class NotificacaoService {
     if (idAlarme == null) return;
 
     if (resposta.actionId == acaoConfirmarId) {
-      // Fire-and-forget: o processamento é assíncrono, mas o handler do
-      // plugin não aguarda retorno.
-      RotinaAlarmeService.confirmarCheckinRotina(idAlarme).catchError((e) {
-        debugPrint('⚠️ Falha ao confirmar check-in de rotina: $e');
+      // 1. Gravação síncrona de prioridade máxima no disco para cessar o loop do reprodutor em background
+      SharedPreferences.getInstance().then((prefs) async {
+        await prefs.setBool('stop_current_alarm', true);
+        await prefs.remove('alarme_disparando_no_momento');
+        debugPrint('⏹️ [NotificacaoService] Flags de cancelamento persistidas no disco.');
+      }).catchError((e) {
+        debugPrint('⚠️ Erro ao persistir cancelamento no SharedPreferences: $e');
       });
+
+      // 2. Tenta fazer a limpeza silenciosa das rotinas locais
+      RotinaAlarmeService.pausarAlarme(idAlarme).then((_) {
+        // 3. Atualiza e remove o destaque da notificação
+        _plugin.show(
+          idAlarme,
+          'Alarme de rotina',
+          'Alarme cancelado.',
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              canalId,
+              canalNome,
+              importance: Importance.low,
+              priority: Priority.low,
+              ongoing: false,
+              autoCancel: true,
+            ),
+          ),
+        );
+      }).catchError((e) {
+        debugPrint('⚠️ Falha ao registrar pausa no service: $e');
+      });
+      
     } else if (resposta.actionId == 'pausar_alarme') {
       RotinaAlarmeService.pausarAlarme(idAlarme).catchError((e) {
         debugPrint('⚠️ Falha ao pausar alarme: $e');
       });
     } else if (resposta.actionId == null) {
-      // Correção Absoluta: Alinhado com a appNavigatorKey global declarada no seu main.dart
       appNavigatorKey.currentState?.push(
         MaterialPageRoute(builder: (context) => const AlarmeDisparadoScreen()),
       );

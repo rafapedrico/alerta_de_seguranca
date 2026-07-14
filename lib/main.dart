@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/encryption_service.dart';
-
 import 'services/wallpaper_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/database_helper.dart';
@@ -19,6 +18,7 @@ import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
 import 'screens/alarme_disparado_screen.dart'; 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async'; // Adicionado para suporte a Timer
 
 /// Rota especial reconhecida no cold start quando o app é iniciado pela
 /// `LockscreenCameraActivity` nativa (gatilho físico de SOS com o
@@ -266,15 +266,72 @@ Future<void> _testarConectividadeInicialComBackend() async {
   }
 }
 
-class SecurityCheckApp extends StatelessWidget {
+class SecurityCheckApp extends StatefulWidget {
   const SecurityCheckApp({
     super.key, 
     required this.aguardandoConfirmacaoPin,
-    this.abertoViaAlarmeRotina = false, // Nova flag defensiva
+    this.abertoViaAlarmeRotina = false,
   });
 
   final bool aguardandoConfirmacaoPin;
-  final bool abertoViaAlarmeRotina; // Declaração da flag
+  final bool abertoViaAlarmeRotina;
+
+  @override
+  State<SecurityCheckApp> createState() => _SecurityCheckAppState();
+}
+
+class _SecurityCheckAppState extends State<SecurityCheckApp> {
+  late ValueNotifier<bool> _alarmeAtivoNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _alarmeAtivoNotifier = ValueNotifier<bool>(widget.abertoViaAlarmeRotina);
+    _monitorarMudancasNoDisco();
+  }
+
+  // Monitora o disco periodicamente para atualizar o estado do botão flutuante global
+  void _monitorarMudancasNoDisco() {
+    Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final bool ativoNoDisco = prefs.getBool('alarme_disparando_no_momento') ?? false;
+      if (_alarmeAtivoNotifier.value != (widget.abertoViaAlarmeRotina || ativoNoDisco)) {
+        _alarmeAtivoNotifier.value = widget.abertoViaAlarmeRotina || ativoNoDisco;
+      }
+    });
+  }
+
+  Future<void> _cancelarAlarmeGlobal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
+      _alarmeAtivoNotifier.value = false;
+
+      // Chama a interrupção do som e timers de forma direta
+      final alarmes = await DatabaseHelper().listarAlarmes();
+      if (alarmes.isNotEmpty) {
+        final idAlarme = alarmes.first['id'] as int?;
+        if (idAlarme != null) {
+          await RotinaAlarmeService.pausarAlarme(idAlarme);
+          debugPrint('⏹️ [GlobalButton] Alarme #$idAlarme silenciado com sucesso.');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao cancelar alarme pelo botão global: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _alarmeAtivoNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +342,6 @@ class SecurityCheckApp extends StatelessWidget {
           navigatorKey: appNavigatorKey,
           title: 'Security Check',
           debugShowCheckedModeBanner: false,
-
           theme: ThemeData(
             colorSchemeSeed: Colors.blue,
             useMaterial3: true,
@@ -296,17 +352,67 @@ class SecurityCheckApp extends StatelessWidget {
               data: mediaQuery.copyWith(
                 textScaler: TextScaler.linear(fatorFonte),
               ),
-              child: child!,
+              child: Stack(
+                children: [
+                  child!,
+                  // Botão Flutuante Global Branco (Estilo Android Nativo) na parte inferior
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _alarmeAtivoNotifier,
+                    builder: (context, alarmeAtivo, _) {
+                      if (!alarmeAtivo) return const SizedBox.shrink();
+                      return Positioned(
+                        bottom: 24,
+                        left: 16,
+                        right: 16,
+                        child: SafeArea(
+                          child: Material(
+                            elevation: 8,
+                            borderRadius: BorderRadius.circular(28),
+                            color: Colors.white,
+                            child: InkWell(
+                              onTap: _cancelarAlarmeGlobal,
+                              borderRadius: BorderRadius.circular(28),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), // Reduzido para dar mais espaço
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min, // Garante que o botão use apenas o espaço necessário
+                                  children: [
+                                    Icon(Icons.alarm_off, color: Colors.black87),
+                                    SizedBox(width: 8),
+                                    Flexible( // Blinda contra qualquer estouro de texto
+                                      child: Text(
+                                        'Cancelar alarme de rotina',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis, // Se faltar tela, ele resume com reticências (...)
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: 15, // Ajustado ligeiramente de 16 para 15
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Roboto',
+                                          decoration: TextDecoration.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             );
           },
-          // ESTRATÉGIA DE FLUXO: Se o app foi aberto pelo alarme de rotina, a tela inicial DEVE ser o botão grande!
-          home: abertoViaAlarmeRotina 
+          home: widget.abertoViaAlarmeRotina 
               ? const AlarmeDisparadoScreen() 
               : const LoginScreen(),
-
           onGenerateRoute: (settings) {
             return MaterialPageRoute(
-              builder: (_) => abertoViaAlarmeRotina ? const AlarmeDisparadoScreen() : const LoginScreen(),
+              builder: (_) => widget.abertoViaAlarmeRotina ? const AlarmeDisparadoScreen() : const LoginScreen(),
               settings: settings,
             );
           },

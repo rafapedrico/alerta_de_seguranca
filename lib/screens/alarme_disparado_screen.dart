@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
@@ -9,7 +10,7 @@ class AlarmeDisparadoScreen extends StatelessWidget {
 
   Future<void> _desligarAlarmeEFechar(BuildContext context) async {
     try {
-      // 1. FORÇA O PREFS GLOBAL PARA PARAR O LOOP EM DART
+      // 1. FORÇA O PREFS GLOBAL PARA PARAR O LOOP EM DART E LIMPA A FLAG
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('stop_current_alarm', true);
       await prefs.remove('alarme_disparando_no_momento');
@@ -17,7 +18,6 @@ class AlarmeDisparadoScreen extends StatelessWidget {
       // 2. BUSCA O ID DO ALARME ATIVO PARA CONFIRMAR O CHECK-IN
       final alarmes = await DatabaseHelper().listarAlarmes();
       Map<String, dynamic>? maisRecente;
-      
       for (final alarme in alarmes) {
         final epoch = alarme['ultimo_disparo_epoch'] as int?;
         if (epoch == null) continue;
@@ -26,73 +26,79 @@ class AlarmeDisparadoScreen extends StatelessWidget {
           maisRecente = alarme;
         }
       }
-      
       final idAlarme = maisRecente?['id'] as int?;
 
       if (idAlarme != null) {
-        // Para o áudio nativo e cancela o cronômetro de tolerância do SMS
         await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
-        await RotinaAlarmeService.pausarAlarme(idAlarme);
-      } else {
-        // Fallback de emergência caso o ID não seja resolvido
-        await RotinaAlarmeService.desligarAlarme();
+        debugPrint('⏸️ Alarme de rotina #$idAlarme confirmado e pausado.');
       }
+
+      // 3. FECHA A ATIVIDADE NATIVA DO ANDROID IMEDIATAMENTE (ELIMINA A TELA PRETA)
+      await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     } catch (e) {
-      debugPrint('⚠️ Erro ao desligar áudio do alarme: $e');
-    } finally {
-      // 3. RECUA A TELA DO VISOR
-      if (appNavigatorKey.currentState?.canPop() ?? false) {
-        appNavigatorKey.currentState?.pop();
-      } else {
-        Navigator.of(context).pop();
-      }
+      debugPrint('⚠️ Erro ao desligar alarme e fechar: $e');
+      // Fallback de segurança caso o canal falhe
+      SystemNavigator.pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.security_rounded,
-                color: Colors.blue,
-                size: 80,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Alarme de rotina -\nConfirme seu segurança e pause o alarme',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 50),
-              SizedBox(
-                width: double.infinity,
-                height: 80,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade800,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+      backgroundColor: Colors.black, // Fundo preto para máxima discrição
+      body: Stack(
+        children: [
+          // Espaço centralizado para alguma informação ou apenas vácuo discreto
+          const Center(
+            child: Icon(
+              Icons.security,
+              color: Colors.white10,
+              size: 120,
+            ),
+          ),
+          // Botão Flutuante Branco idêntico posicionado na parte inferior
+          Positioned(
+            bottom: 32,
+            left: 16,
+            right: 16,
+            child: SafeArea(
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(28),
+                color: Colors.white,
+                child: InkWell(
+                  onTap: () => _desligarAlarmeEFechar(context),
+                  borderRadius: BorderRadius.circular(28),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.alarm_off, color: Colors.black87),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Cancelar alarme de rotina',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Roboto',
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    elevation: 4,
-                  ),
-                  onPressed: () => _desligarAlarmeEFechar(context),
-                  child: const Text(
-                    'DESLIGAR ALARME',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
