@@ -9,6 +9,7 @@ import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'notificacao_service.dart';
 
+// Canal unificado para comunicação nativa
 const MethodChannel _canalRotinaAlarme =
     MethodChannel('com.example.security_check_app/rotina_alarme');
 
@@ -108,10 +109,10 @@ class RotinaAlarmeService {
     }
 
     try {
-      await _canalRotinaAlarme.invokeMethod('pausarAlarme');
+      // Chama apenas o método que o Kotlin realmente implementa
       await _canalRotinaAlarme.invokeMethod('pararAlarme');
     } catch (e) {
-      debugPrint('⚠️ Falha ao pausar som nativo do alarme #$idAlarme: $e');
+      debugPrint('⚠️ Falha ao parar som nativo do alarme #$idAlarme: $e');
     }
 
     debugPrint('⏸️ Alarme de rotina #$idAlarme pausado pelo usuário.');
@@ -119,7 +120,6 @@ class RotinaAlarmeService {
 
   static Future<void> desligarAlarme() async {
     try {
-      await _canalRotinaAlarme.invokeMethod('pausarAlarme');
       await _canalRotinaAlarme.invokeMethod('pararAlarme');
       debugPrint('🔇 Alarme desligado pelo usuário');
     } catch (e) {
@@ -157,28 +157,31 @@ class RotinaAlarmeService {
     }
   }
 
-  static final MethodChannel _alarmeChannel = MethodChannel('com.example.security_check_app/rotina_alarme');
-
-  static Future<void> confirmarCheckinRotina(int idAlarme) async {
+ static Future<void> confirmarCheckinRotina(int idAlarme) async {
+    // 1. Limpa os timers pendentes locais de SMS e notificação
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
 
     Map<String, dynamic>? dados;
     try {
-      await _alarmeChannel.invokeMethod('pararAlarme');
-      await _alarmeChannel.invokeMethod('pausarAlarme');
+      // --- CORREÇÃO: Usamos o canal correto _canalRotinaAlarme ---
+      await _canalRotinaAlarme.invokeMethod('pararAlarme');
+      // -----------------------------------------------------------
       dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('⚠️ Erro ao parar som nativo no check-in: $e');
+    }
 
     final etiqueta = (dados?['etiqueta'] as String?)?.trim().isNotEmpty == true
         ? dados!['etiqueta'] as String
         : 'Alarme de rotina';
 
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Check-in de rotina confirmed',
+      titulo: 'Check-in de rotina confirmado',
       descricao: '$etiqueta: o usuário confirmou "Cheguei bem" com sucesso.',
     );
 
+    // Reagenda automaticamente a rotina do alarme para o próximo dia/período
     try {
       final ativo = (dados?['ativo'] as int?) == 1;
       if (dados != null && ativo) {
@@ -196,13 +199,16 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
-  // 🛡️ SALVA NO DISCO QUE O ALARME ESTÁ TOCANDO AGORA (À PROVA DE COLD START)
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('alarme_disparando_no_momento', true); 
-
   final player = AudioPlayer();
+  final prefs = await SharedPreferences.getInstance();
+  
+  // 1. Grava no disco que o alarme está disparando para o main.dart mostrar o botão azul
+  await prefs.setBool('alarme_disparando_no_momento', true);
+  await prefs.setBool('stop_current_alarm', false); // Reinicia a flag de parada
+
   final soundPath = prefs.getString('alarm_sound_path') ?? 'som_1.mp3';
 
+  // 2. Inicia o bloco de reprodução do áudio com segurança
   try {
     await player.setReleaseMode(ReleaseMode.loop);
     await player.play(AssetSource('sounds/$soundPath'));
@@ -212,19 +218,25 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     await player.dispose();
   }
 
-  // Correção: Adicionado o prefs.reload() para quebrar o cache de memória entre Isolates do Android
-  Timer.periodic(const Duration(seconds: 1), (timer) async {
+  // O restante do seu arquivo (os Timers e buscas no banco) continua exatamente igual daqui para baixo...
+
+// Monitora a flag no SharedPreferences a cada 200ms para uma parada instantânea
+  Timer.periodic(const Duration(milliseconds: 200), (timer) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload(); 
     if (prefs.getBool('stop_current_alarm') == true) {
       try {
         await player.stop();
         await player.dispose();
-        timer.cancel();
+        timer.cancel(); // Finaliza o monitoramento de segurança
+        
         await prefs.remove('stop_current_alarm');
-        debugPrint('🔇 [HEADLESS] Áudio interrompido via flag recarregada com sucesso.');
+        await prefs.remove('alarme_disparando_no_momento');
+        
+        debugPrint('🔇 [HEADLESS] Áudio do Flutter silenciado de forma instantânea.');
       } catch (e) {
-        debugPrint('⚠️ [HEADLESS] Falha ao parar player via flag: $e');
+        debugPrint('⚠️ [HEADLESS] Falha ao parar player do Flutter: $e');
+        timer.cancel();
       }
     }
   });

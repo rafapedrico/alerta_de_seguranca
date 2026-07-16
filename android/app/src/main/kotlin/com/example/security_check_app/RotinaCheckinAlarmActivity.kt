@@ -60,6 +60,7 @@ class RotinaCheckinAlarmActivity : MainActivity() {
     private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        RotinaAlarmPlugin.registrarActivity(this)
         // Reaplica toda a lógica de sobreposição ao Keyguard já
         // implementada em MainActivity.onCreate (setShowWhenLocked,
         // setTurnScreenOn, requestDismissKeyguard, flags legadas).
@@ -156,14 +157,13 @@ class RotinaCheckinAlarmActivity : MainActivity() {
         idAlarmeDoIntent(intent)?.let { idAlarme ->
             RotinaAlarmEventBridge.notificarNovoDisparo(idAlarme)
         }
-    }
+  }
 
     override fun onDestroy() {
-        // Libera o MediaPlayer e remove a referência de
-        // RotinaAlarmSomBridge, evitando qualquer chamada futura a um
-        // player já finalizado (memory leak/crash).
         RotinaAlarmSomBridge.pararSom()
         mediaPlayer = null
+        // 2. Remove o registro para não vazar memória
+        RotinaAlarmPlugin.registrarActivity(null)
         super.onDestroy()
     }
 

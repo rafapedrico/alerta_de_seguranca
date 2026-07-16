@@ -333,7 +333,7 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
     super.dispose();
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<double>(
       valueListenable: FontScaleService.fontScaleNotifier,
@@ -352,59 +352,8 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
               data: mediaQuery.copyWith(
                 textScaler: TextScaler.linear(fatorFonte),
               ),
-              child: Stack(
-                children: [
-                  child!,
-                  // Botão Flutuante Global Branco (Estilo Android Nativo) na parte inferior
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _alarmeAtivoNotifier,
-                    builder: (context, alarmeAtivo, _) {
-                      if (!alarmeAtivo) return const SizedBox.shrink();
-                      return Positioned(
-                        bottom: 24,
-                        left: 16,
-                        right: 16,
-                        child: SafeArea(
-                          child: Material(
-                            elevation: 8,
-                            borderRadius: BorderRadius.circular(28),
-                            color: Colors.white,
-                            child: InkWell(
-                              onTap: _cancelarAlarmeGlobal,
-                              borderRadius: BorderRadius.circular(28),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), // Reduzido para dar mais espaço
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min, // Garante que o botão use apenas o espaço necessário
-                                  children: [
-                                    Icon(Icons.alarm_off, color: Colors.black87),
-                                    SizedBox(width: 8),
-                                    Flexible( // Blinda contra qualquer estouro de texto
-                                      child: Text(
-                                        'Cancelar alarme de rotina',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis, // Se faltar tela, ele resume com reticências (...)
-                                        style: TextStyle(
-                                          color: Colors.black87,
-                                          fontSize: 15, // Ajustado ligeiramente de 16 para 15
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'Roboto',
-                                          decoration: TextDecoration.none,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+              // LIMPEZA ABSOLUTA: O Stack e o botão branco "Cancelar alarme de rotina" foram removidos daqui!
+              child: child!,
             );
           },
           home: widget.abertoViaAlarmeRotina 
