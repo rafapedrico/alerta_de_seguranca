@@ -139,36 +139,29 @@ class _PinDialogContentState extends State<PinDialogContent> {
 
     if (pinCorreto) {
       _errosConsecutivos = 0;
-      setState(() => _verificando = true);
-      // Executa a confirmação (cancela alarme nativo, limpa flags etc.)
-      // com try/catch para NUNCA travar este diálogo em caso de falha.
+      setState(() {
+        _verificando = true;
+        _mensagemErro = 'Alarme desligado'; // Altera a mensagem no próprio teclado
+      });
+
+      // Aguarda 1 segundo para o usuário ler o feedback de sucesso antes de sair
+      await Future.delayed(const Duration(seconds: 1));
+
       try {
         await widget.aoConfirmarPinCorreto();
-      } catch (_) {
-        // Silencioso por design: mesmo em caso de erro, fecha o diálogo
-        // e devolve o controle total ao usuário, evitando qualquer
-        // travamento de UI.
-      }
+      } catch (_) {}
+      
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
       return;
     }
 
-    // PIN incorreto: aviso padrão, sem disparar nenhuma ação adicional
-    // VISÍVEL na interface. A UI SEMPRE se comporta exatamente da mesma
-    // forma, independentemente do gatilho silencioso abaixo.
+    // --- NOVA LÓGICA: Mantém o teclado travado e exibe o aviso em minúsculas ---
     _errosConsecutivos++;
 
     if (_errosConsecutivos >= 2 && widget.aoErrarPinDuasVezes != null) {
-      // Reseta ANTES de chamar, garantindo que o gatilho não seja
-      // acionado novamente a cada erro subsequente (apenas a cada novo
-      // par de erros consecutivos).
       _errosConsecutivos = 0;
-      // Fire-and-forget silencioso: nunca aguardado, nunca propaga
-      // exceção para este diálogo, e jamais altera o estado visual
-      // desta tela (mensagem de erro, cores, ícones permanecem 100%
-      // idênticos ao fluxo normal de erro de PIN).
       try {
         widget.aoErrarPinDuasVezes!.call();
       } catch (_) {}
@@ -176,8 +169,8 @@ class _PinDialogContentState extends State<PinDialogContent> {
 
     if (mounted) {
       setState(() {
-        _mensagemErro = 'PIN incorreto. Tente novamente.';
-        _pinDigitado = '';
+        _mensagemErro = 'senha incorreta'; // Mensagem atualizada
+        _pinDigitado = ''; // Reseta os indicadores de círculos para nova tentativa
       });
     }
   }

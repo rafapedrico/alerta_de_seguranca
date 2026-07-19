@@ -199,25 +199,19 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
-  final player = AudioPlayer();
   final prefs = await SharedPreferences.getInstance();
   
-  // 1. Grava no disco que o alarme está disparando para o main.dart mostrar o botão azul
+  // 1. Grava no disco que o alarme está disparando para o main.dart saber
   await prefs.setBool('alarme_disparando_no_momento', true);
-  await prefs.setBool('stop_current_alarm', false); // Reinicia a flag de parada
+  await prefs.setBool('stop_current_alarm', false);
+  await prefs.reload();
 
-  final soundPath = prefs.getString('alarm_sound_path') ?? 'som_1.mp3';
-
-  // 2. Inicia o bloco de reprodução do áudio com segurança
+  // 2. Abre a interface nativa / traz o app para o primeiro plano IMEDIATAMENTE
   try {
-    await player.setReleaseMode(ReleaseMode.loop);
-    await player.play(AssetSource('sounds/$soundPath'));
+    await RotinaAlarmeService.iniciarTelaAlarmeNativa(idAlarme);
   } catch (e) {
-    debugPrint('⚠️ [HEADLESS] Falha ao tocar som do alarme: $e');
-    await player.stop();
-    await player.dispose();
+    debugPrint('⚠️ Falha ao chamar tela nativa: $e');
   }
-
   // O restante do seu arquivo (os Timers e buscas no banco) continua exatamente igual daqui para baixo...
 
 // Monitora a flag no SharedPreferences a cada 200ms para uma parada instantânea
@@ -226,29 +220,21 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     await prefs.reload(); 
     if (prefs.getBool('stop_current_alarm') == true) {
       try {
-        await player.stop();
-        await player.dispose();
+        // --- REMOVIDO: player.stop() e player.dispose() ---
         timer.cancel(); // Finaliza o monitoramento de segurança
         
         await prefs.remove('stop_current_alarm');
         await prefs.remove('alarme_disparando_no_momento');
         
-        debugPrint('🔇 [HEADLESS] Áudio do Flutter silenciado de forma instantânea.');
+        debugPrint(' Valenciano de forma instantânea.');
       } catch (e) {
-        debugPrint('⚠️ [HEADLESS] Falha ao parar player do Flutter: $e');
+        debugPrint('⚠️ [HEADLESS] Falha ao processar parada: $e');
         timer.cancel();
       }
     }
   });
 
-  Timer(const Duration(seconds: 240), () async {
-    try {
-      await player.stop();
-      await player.dispose();
-    } catch (e) {
-      debugPrint('⚠️ [HEADLESS] Falha ao parar player: $e');
-    }
-  });
+
 
   Map<String, dynamic>? dados;
   try {

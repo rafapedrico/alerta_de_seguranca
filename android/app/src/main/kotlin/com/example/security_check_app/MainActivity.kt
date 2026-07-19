@@ -39,25 +39,10 @@ open class MainActivity: FlutterActivity() {
         }
     }
 
-    private fun iniciarAlarmeNativo() {
-        try {
-            if (ringtone == null) {
-                val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) 
-                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                ringtone = RingtoneManager.getRingtone(applicationContext, alarmUri)
-            }
-            ringtone?.play()
-
-            vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 250, 500), 0))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(longArrayOf(0, 500, 250, 500), 0)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+private fun iniciarAlarmeNativo() {
+        // Método limpo por design: o som customizado agora é disparado e gerenciado 
+        // diretamente via AudioPlayer na interface estável do Flutter (alarme_disparado_screen.dart).
+        println("📱 [NATIVO] Tela chamada com sucesso. Som gerenciado pelo Flutter.")
     }
 
     private fun pararAlarmeNativo() {

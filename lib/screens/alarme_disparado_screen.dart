@@ -3,19 +3,105 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
+import '../widgets/pin_dialog.dart';
+import 'package:audioplayers/audioplayers.dart';
 
-class AlarmeDisparadoScreen extends StatelessWidget {
-  const AlarmeDisparadoScreen({super.key});
+class AlarmeDisparadoScreen extends StatefulWidget {
+  // --- ADICIONADO: Parâmetro para saber se o app já estava aberto ---
+  final bool veioDoForeground;
+  const AlarmeDisparadoScreen({super.key, this.veioDoForeground = false});
+  // ------------------------------------------------------------------
+
+  @override
+  State<AlarmeDisparadoScreen> createState() => _AlarmeDisparadoScreenState();
+}
+
+class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
+  final AudioPlayer _player = AudioPlayer();
+
+  static bool _instanciaGraficaAberta = false;
+  bool _souDuplicada = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    if (_instanciaGraficaAberta) {
+      _souDuplicada = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('🛡️ [SINTONIA] Detetada tentativa de tela azul duplicada. Removendo da pilha imediatamente!');
+        Navigator.of(context).pop();
+      });
+      return;
+    }
+    
+    _instanciaGraficaAberta = true; 
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      debugPrint('📱 [INTERFACE] Botão azul montado! Carregando som customizado.');
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      if (prefs.getBool('stop_current_alarm') == true) return;
+
+      final int somId = prefs.getInt('som_selecionado') ?? 1;
+      final String soundPath = 'som_$somId.mp3';
+
+      try {
+        await _player.setReleaseMode(ReleaseMode.loop);
+        await _player.play(AssetSource('sounds/$soundPath'));
+        debugPrint('🔊 Som customizado iniciado na interface: $soundPath');
+      } catch (e) {
+        debugPrint('⚠️ Erro ao tocar áudio do Flutter na interface: $e');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    if (!_souDuplicada) {
+      _instanciaGraficaAberta = false;
+    }
+    _player.dispose();
+    super.dispose();
+  }
+
+  // --- CAMINHO 1: EXCLUSIVO PARA TELA LIGADA (Limpa toda e qualquer tela azul duplicada) ---
+  void _fecharCaminhoTelaLigada(BuildContext context) {
+    // Garante que o diálogo do PIN feche primeiro
+    Navigator.of(context).pop();
+    
+    // Varre a pilha limpando qualquer rota residual de alarme que tenha ficado sobreposta
+    Navigator.of(context).popUntil((route) {
+      return route.isFirst || route.settings.name != '/alarme_disparado';
+    });
+    
+    debugPrint('🔓 [CAMINHO TELA LIGADA] Telas de alarme limpas com sucesso. App continua aberto!');
+  }
+
+  // --- CAMINHO 2: EXCLUSIVO PARA TELA DESLIGADA (Encerra o processo nativo) ---
+  Future<void> _fecharCaminhoTelaDesligada(BuildContext context) async {
+    Navigator.of(context).pop();
+    await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+    debugPrint('🔓 [CAMINHO TELA DESLIGADA] Encerrando o processo nativo e voltando para o Android.');
+  }
 
   Future<void> _desligarAlarmeEFechar(BuildContext context) async {
     try {
-      // 1. Grava IMEDIATAMENTE as flags no disco para matar o áudio Headless do Flutter
+      try {
+        await _player.stop();
+        debugPrint('🔇 Som interrompido pelo clique no botão azul.');
+      } catch (e) {
+        debugPrint('⚠️ Erro ao parar player na interface: $e');
+      }
+
+      // --- CORREÇÃO CIRÚRGICA: Limpa o disco IMEDIATAMENTE para matar o loop do main.dart ---
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('stop_current_alarm', true);
       await prefs.remove('alarme_disparando_no_momento');
-      await prefs.reload(); // Força o salvamento físico imediato
+      await prefs.reload();
+      // ----------------------------------------------------------------------------------
 
-      // 2. Busca o ID do alarme ativo para rodar a confirmação
       final alarmes = await DatabaseHelper().listarAlarmes();
       Map<String, dynamic>? maisRecente;
       
@@ -31,30 +117,63 @@ class AlarmeDisparadoScreen extends StatelessWidget {
       final idAlarme = maisRecente?['id'] as int?;
 
       if (idAlarme != null) {
-        // Para o cronômetro do SMS e chama o encerramento nativo
-        await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
+        await RotinaAlarmeService.pausarAlarme(idAlarme);
+        
+        final config = await DatabaseHelper().getUserConfig();
+        final pinReal = config?['pin_real'] as String? ?? '1234';
+
+        if (!context.mounted) return;
+
+        // Abre o teclado de PIN de forma limpa
+        await exibirDialogoPin(
+          context: context,
+          pinEsperado: pinReal,
+          segundosTolerancia: null,
+          aoConfirmarPinCorreto: () async {
+            await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
+            
+            if (!context.mounted) return;
+
+            // --- SEPARAÇÃO DE CAMINHOS BASEADA NA INTERFACE ATIVA ---
+            final ModalRoute<dynamic>? rotaAtual = ModalRoute.of(context);
+            final bool interfaceGraficaAtiva = rotaAtual?.isActive ?? false;
+
+            if (widget.veioDoForeground && interfaceGraficaAtiva) {
+              _fecharCaminhoTelaLigada(context);
+            } else {
+              await _fecharCaminhoTelaDesligada(context);
+            }
+          },
+        );
+
       } else {
-        // Fallback nativo direto
         const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
         await canalNativo.invokeMethod('pararAlarme');
+        
+        if (context.mounted) {
+          if (widget.veioDoForeground) {
+            _fecharCaminhoTelaLigada(context);
+          } else {
+            await _fecharCaminhoTelaDesligada(context);
+          }
+        }
       }
 
-      // 3. Fecha a interface e a activity nativa
-      await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     } catch (e) {
-      debugPrint('⚠️ Erro ao desligar alarme e fechar: $e');
-      SystemNavigator.pop();
+      debugPrint('⚠️ Erro no fluxo de silenciamento e PIN: $e');
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Fundo escuro discreto premium
+      backgroundColor: const Color(0xFF121212), 
       body: SafeArea(
         child: Stack(
           children: [
-            // Escudo de segurança em segundo plano
             const Center(
               child: Icon(
                 Icons.security_rounded,
@@ -62,7 +181,6 @@ class AlarmeDisparadoScreen extends StatelessWidget {
                 size: 140,
               ),
             ),
-            // O Botão Azul Grande Clássico posicionado na parte inferior
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
@@ -81,7 +199,7 @@ class AlarmeDisparadoScreen extends StatelessWidget {
                       height: 64,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700, // O azul original
+                          backgroundColor: Colors.blue.shade700, 
                           foregroundColor: Colors.white,
                           elevation: 6,
                           shape: RoundedRectangleBorder(

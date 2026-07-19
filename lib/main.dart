@@ -16,9 +16,9 @@ import 'app_navigator.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'widgets/pin_dialog.dart';
-import 'screens/alarme_disparado_screen.dart'; 
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async'; // Adicionado para suporte a Timer
+import 'package:shared_preferences/shared_preferences.dart';
+import 'screens/alarme_disparado_screen.dart'; 
 
 /// Rota especial reconhecida no cold start quando o app é iniciado pela
 /// `LockscreenCameraActivity` nativa (gatilho físico de SOS com o
@@ -266,20 +266,25 @@ Future<void> _testarConectividadeInicialComBackend() async {
   }
 }
 
+// 1. A Chave Global fica aqui sozinha (no topo, fora de qualquer classe)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// 2. Apenas UMA declaração da classe SecurityCheckApp com todos os seus parâmetros necessários
 class SecurityCheckApp extends StatefulWidget {
+  final bool aguardandoConfirmacaoPin;
+  final bool abertoViaAlarmeRotina;
+
   const SecurityCheckApp({
     super.key, 
     required this.aguardandoConfirmacaoPin,
     this.abertoViaAlarmeRotina = false,
   });
 
-  final bool aguardandoConfirmacaoPin;
-  final bool abertoViaAlarmeRotina;
-
   @override
   State<SecurityCheckApp> createState() => _SecurityCheckAppState();
 }
 
+// 3. O Estado dela inicia logo na sequência, sem nada repetido no meio
 class _SecurityCheckAppState extends State<SecurityCheckApp> {
   late ValueNotifier<bool> _alarmeAtivoNotifier;
 
@@ -290,7 +295,9 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
     _monitorarMudancasNoDisco();
   }
 
-  // Monitora o disco periodicamente para atualizar o estado do botão flutuante global
+// --- ADICIONE ESTA TRAVA LOGO ACIMA DO MÉTODO (SE JÁ NÃO TIVER) ---
+  bool _travaProcessandoAbertura = false;
+
   void _monitorarMudancasNoDisco() {
     Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (!mounted) {
@@ -299,13 +306,49 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
       }
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
+      
       final bool ativoNoDisco = prefs.getBool('alarme_disparando_no_momento') ?? false;
+      
+      // Se o alarme sumiu do disco, liberamos a trava totalmente
+      if (!ativoNoDisco) {
+        _travaProcessandoAbertura = false;
+      }
+      
+      if (ativoNoDisco) {
+        final state = navigatorKey.currentState;
+        if (state != null) {
+          bool jaEstaNaTela = false;
+          
+          // Varre a pilha inspecionando o conteúdo real das rotas abertas
+          state.popUntil((route) {
+            final String? nomeRota = route.settings.name;
+            // Se o nome for o da tela azul OU se a rota conter a nossa tela ativa
+            if (nomeRota == '/alarme_disparado' || route.toString().contains('AlarmeDisparadoScreen')) {
+              jaEstaNaTela = true;
+            }
+            return true;
+          });
+
+          // SÓ FAZ O PUSH SE NÃO TIVER NENHUMA TELA DE ALARME E SE A TRAVA INTERNA ESTIVER LIVRE
+          if (!jaEstaNaTela && !_travaProcessandoAbertura) {
+            _travaProcessandoAbertura = true; // Tranca imediatamente a porta
+
+            state.push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: '/alarme_disparado'),
+                builder: (context) => const AlarmeDisparadoScreen(veioDoForeground: true),
+              ),
+            );
+            debugPrint('🚀 [SUCESSO] Tela do botão azul forçada com segurança total anti-duplicação!');
+          }
+        }
+      }
+
       if (_alarmeAtivoNotifier.value != (widget.abertoViaAlarmeRotina || ativoNoDisco)) {
         _alarmeAtivoNotifier.value = widget.abertoViaAlarmeRotina || ativoNoDisco;
       }
     });
   }
-
   Future<void> _cancelarAlarmeGlobal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -335,41 +378,36 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
 
 @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: FontScaleService.fontScaleNotifier,
-      builder: (context, fatorFonte, _) {
-        return MaterialApp(
-          navigatorKey: appNavigatorKey,
-          title: 'Security Check',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorSchemeSeed: Colors.blue,
-            useMaterial3: true,
+    // Define a variável estável para a fonte que o Flutter estava pedindo
+    const double fatorFonte = 1.0; 
+
+    return MaterialApp(
+      navigatorKey: navigatorKey, 
+      title: 'Security Check App',
+      debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(fatorFonte),
           ),
-          builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context);
-            return MediaQuery(
-              data: mediaQuery.copyWith(
-                textScaler: TextScaler.linear(fatorFonte),
-              ),
-              // LIMPEZA ABSOLUTA: O Stack e o botão branco "Cancelar alarme de rotina" foram removidos daqui!
-              child: child!,
-            );
-          },
-          home: widget.abertoViaAlarmeRotina 
-              ? const AlarmeDisparadoScreen() 
-              : const LoginScreen(),
-          onGenerateRoute: (settings) {
-            return MaterialPageRoute(
-              builder: (_) => widget.abertoViaAlarmeRotina ? const AlarmeDisparadoScreen() : const LoginScreen(),
-              settings: settings,
-            );
-          },
+          child: child!,
         );
       },
-    );
-  }
-}
+      home: widget.abertoViaAlarmeRotina 
+          ? const AlarmeDisparadoScreen() 
+          : const LoginScreen(),
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (_) => widget.abertoViaAlarmeRotina ? const AlarmeDisparadoScreen() : const LoginScreen(),
+          settings: settings,
+        );
+      },
+    ); // <-- Fecha o MaterialApp perfeitamente
+  } // <-- Fecha o método build perfeitamente
+} // <-- Fecha a classe _SecurityCheckAppState aqui!
+
+// A PARTIR DAQUI SEU CÓDIGO ORIGINAL CONTINUA SOZINHO (FORA DA CLASSE ACIMA):
+// class TelaInicialComPossivelDialogoPin extends StatefulWidget { ...
 
 /// Wrapper leve em torno da [HomeScreen] responsável por, se necessário
 /// (cenário de cold start pós-disparo headless), exibir o diálogo de PIN
