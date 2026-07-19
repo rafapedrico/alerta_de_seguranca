@@ -1,15 +1,5 @@
 /// Modelo de dados de um Alarme de Rotina, usado pela aba Família no
 /// gerenciador de múltiplos alarmes (estilo despertador do iPhone).
-///
-/// Cada alarme representa um horário de check-in de rotina que pode se
-/// repetir em um ou mais dias da semana (ex: "Chegada no trabalho de
-/// moto" às 08:00, repetindo Segunda a Sexta).
-///
-/// Os dias da semana são representados como um [Set<int>] onde:
-/// 1 = Segunda-feira, 2 = Terça-feira, 3 = Quarta-feira, 4 = Quinta-feira,
-/// 5 = Sexta-feira, 6 = Sábado, 7 = Domingo.
-/// Esses valores são persistidos no SQLite como uma string CSV (ex:
-/// "1,3,5") na coluna 'dias_semana'.
 class AlarmeRotina {
   final int? id;
   final int hora;
@@ -17,30 +7,9 @@ class AlarmeRotina {
   final Set<int> diasSemana;
   final bool ativo;
   final String etiqueta;
-
-  /// Dica de contexto PRÓPRIA deste alarme de rotina (ex: "Indo de moto
-  /// para o trabalho"), usada para montar a mensagem de SMS de
-  /// emergência caso o check-in de rotina não seja confirmado a tempo.
-  /// Independente do campo de contexto do check-in manual (SegurancaTab).
   final String contextoPersonalizado;
-
-  /// Tempo de tolerância (em minutos) que o usuário tem, após a
-  /// notificação de check-in de rotina ser exibida, para confirmar
-  /// "Cheguei bem" antes do disparo automático de emergência.
   final int minutosTolerancia;
-
-  /// Timestamp (epoch ms) do último disparo NATIVO já processado para
-  /// este alarme, usado internamente pelo RotinaAlarmeService para
-  /// evitar reagendamentos duplicados. Não editável pela UI.
   final int? ultimoDisparoEpoch;
-
-  /// Indica se o usuário pausou este alarme específico através do
-  /// botão "Pausar Alarme" exibido no `pin_dialog.dart` quando o
-  /// check-in de rotina dispara. Enquanto `true`, os disparos deste
-  /// alarme são ignorados (ver `_callbackCheckinRotina` em
-  /// `rotina_alarme_service.dart`), e a aba Família exibe o texto
-  /// "Alarme Pausado" no lugar do horário. É resetado para `false`
-  /// (despausado) quando o usuário toca em "Toque para reativar".
   final bool pausado;
 
   AlarmeRotina({
@@ -56,17 +25,13 @@ class AlarmeRotina {
     this.pausado = false,
   });
 
-
-
-  /// Converte o conjunto de dias da semana em uma string CSV ordenada
-  /// (ex: {5, 1, 3} -> "1,3,5"), pronta para ser persistida no SQLite.
+  /// Converte o conjunto de dias da semana em uma string CSV ordenada (ex: {5, 1, 3} -> "1,3,5").
   static String diasParaCsv(Set<int> dias) {
     final ordenados = dias.toList()..sort();
     return ordenados.join(',');
   }
 
   /// Converte uma string CSV (ex: "1,3,5") de volta para um Set<int>.
-  /// Retorna um conjunto vazio caso a string esteja vazia ou nula.
   static Set<int> diasDeCsv(String? csv) {
     if (csv == null || csv.trim().isEmpty) return {};
     return csv
@@ -86,20 +51,37 @@ class AlarmeRotina {
         'contexto_personalizado': contextoPersonalizado,
         'minutos_tolerancia': minutosTolerancia,
         'ultimo_disparo_epoch': ultimoDisparoEpoch,
+        'alarme_pausado': pausado ? '1' : '0',
       };
 
-  factory AlarmeRotina.fromMap(Map<String, dynamic> map) => AlarmeRotina(
-        id: map['id'] as int?,
-        hora: map['hora'] as int? ?? 0,
-        minuto: map['minuto'] as int? ?? 0,
-        diasSemana: diasDeCsv(map['dias_semana'] as String?),
-        ativo: (map['ativo'] as int?) == 1,
-        etiqueta: map['etiqueta'] as String? ?? '',
-        contextoPersonalizado: map['contexto_personalizado'] as String? ?? '',
-        minutosTolerancia: map['minutos_tolerancia'] as int? ?? 10,
-        ultimoDisparoEpoch: map['ultimo_disparo_epoch'] as int?,
-        pausado: (map['alarme_pausado'] as int?) == 1,
-      );
+  factory AlarmeRotina.fromMap(Map<String, dynamic> map) {
+    int parseInt(dynamic val, int defaultValue) {
+      if (val is int) return val;
+      if (val is String) return int.tryParse(val) ?? defaultValue;
+      return defaultValue;
+    }
+
+    final rawPausa = map['alarme_pausado'];
+    bool estaPausado = false;
+    if (rawPausa != null && rawPausa != 0 && rawPausa != '0' && rawPausa != false) {
+      estaPausado = true;
+    }
+
+    return AlarmeRotina(
+      id: parseInt(map['id'], 0) == 0 ? null : parseInt(map['id'], 0),
+      hora: parseInt(map['hora'], 0),
+      minuto: parseInt(map['minuto'], 0),
+      diasSemana: diasDeCsv(map['dias_semana'] as String?),
+      ativo: map['ativo'] == 1 || map['ativo'] == '1' || map['ativo'] == true,
+      etiqueta: map['etiqueta']?.toString() ?? '',
+      contextoPersonalizado: map['contexto_personalizado']?.toString() ?? '',
+      minutosTolerancia: parseInt(map['minutos_tolerancia'], 10),
+      ultimoDisparoEpoch: map['ultimo_disparo_epoch'] != null
+          ? parseInt(map['ultimo_disparo_epoch'], 0)
+          : null,
+      pausado: estaPausado,
+    );
+  }
 
   AlarmeRotina copyWith({
     int? id,
@@ -127,15 +109,11 @@ class AlarmeRotina {
     );
   }
 
-
-
   /// Retorna o horário formatado no padrão "HH:mm".
   String get horarioFormatado =>
       '${hora.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')}';
 
-  /// Retorna uma descrição resumida dos dias da semana selecionados,
-  /// no estilo "Seg, Qua, Sex", "Todos os dias" (7 dias) ou "Nunca"
-  /// (nenhum dia selecionado, alarme disparado apenas uma vez/manual).
+  /// Retorna uma descrição resumida dos dias da semana selecionados.
   String get diasResumidos {
     if (diasSemana.isEmpty) return 'Nunca';
     if (diasSemana.length == 7) return 'Todos os dias';
@@ -152,7 +130,6 @@ class AlarmeRotina {
 
     final diasOrdenados = diasSemana.toList()..sort();
 
-    // Caso especial comum: Segunda a Sexta.
     if (diasOrdenados.length == 5 &&
         diasOrdenados.every((d) => d >= 1 && d <= 5)) {
       return 'Seg a Sex';

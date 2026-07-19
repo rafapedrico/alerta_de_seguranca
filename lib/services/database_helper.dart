@@ -776,11 +776,15 @@ class DatabaseHelper {
   /// Pausado" (ver [RotinaAlarmeService.pausarAlarme] e a aba Família).
   /// Quando pausado, o alarme permanece cadastrado (não é excluído),
   /// mas o próximo disparo é ignorado pelo callback headless.
-  Future<int> definirAlarmePausado(int id, bool pausado) async {
+Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
     final db = await database;
+    final valorStr = statusPausa is bool 
+        ? (statusPausa ? '1' : '0') 
+        : statusPausa.toString();
+        
     return await db.update(
       'alarmes_rotina',
-      {'alarme_pausado': pausado ? 1 : 0},
+      {'alarme_pausado': valorStr},
       where: 'id = ?',
       whereArgs: [id],
     );
