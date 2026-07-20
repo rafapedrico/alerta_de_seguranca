@@ -39,16 +39,12 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    // 🟢 ADICIONE ESTA LINHA:
     WidgetsBinding.instance.addObserver(this);
-
-    // 🟢 MANTENHA ESTAS LINHAS (elas já estão no seu código):
     _carregarAlarmes();
     _carregarContatosEmergencia();
     ContatosEmergenciaService.versaoContatos.addListener(_aoContatosAlterados);
   }
 
-  // 🟢 ADICIONE ESTE MÉTODO COMPLETO (recarrega os cards sempre que você volta pro app):
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -59,17 +55,15 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // 🟢 ADICIONE ESTA LINHA DENTRO DO DISPOSE:
     WidgetsBinding.instance.removeObserver(this);
-
-    // 🟢 MANTENHA ESTAS LINHAS:
     ContatosEmergenciaService.versaoContatos.removeListener(_aoContatosAlterados);
     super.dispose();
-}
+  }
 
   void _aoContatosAlterados() {
     _carregarContatosEmergencia();
   }
+
   /// Retorna a data de hoje formatada em String (ex: '2026-07-19')
   String _obterDataHojeFormatada() {
     final agora = DateTime.now();
@@ -130,9 +124,30 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     return valor == 1 || valor == true;
   }
 
-  Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
+Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     if (alarme.id == null) return;
-    await _db.alternarAtivoAlarme(alarme.id!, ativo);
+
+    final dbInstancia = await _db.database;
+
+    // Se estiver ligando a chave e o alarme estava pausado, limpa a pausa no SQLite
+    if (ativo) {
+      await dbInstancia.update(
+        'alarmes_rotina',
+        {
+          'alarme_pausado': '0',
+          'ativo': 1,
+        },
+        where: 'id = ?',
+        whereArgs: [alarme.id],
+      );
+      if (mounted) {
+        setState(() {
+          _pausadoHojeMap[alarme.id!] = false;
+        });
+      }
+    } else {
+      await _db.alternarAtivoAlarme(alarme.id!, false);
+    }
 
     if (ativo) {
       final atualizado = await _db.buscarAlarmePorId(alarme.id!);
@@ -190,7 +205,7 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
+Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
     if (alarme.id == null) return;
     final dataHoje = _obterDataHojeFormatada();
 
@@ -220,17 +235,40 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
+Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
     if (alarme.id == null) return;
 
+    // 1. Zera a coluna alarme_pausado ('0') e força ativo = 1 no SQLite
     final dbInstancia = await _db.database;
     await dbInstancia.update(
       'alarmes_rotina',
-      {'alarme_pausado': '0'},
+      {
+        'alarme_pausado': '0',
+        'ativo': 1,
+      },
       where: 'id = ?',
       whereArgs: [alarme.id],
     );
 
+    // 2. Garante o status ativo e limpa a memória local NO MESMO FRAME (instantâneo)
+    await _db.alternarAtivoAlarme(alarme.id!, true);
+    
+    if (mounted) {
+      setState(() {
+        _pausadoHojeMap[alarme.id!] = false;
+        // Atualiza o objeto da lista local imediatamente para evitar ter que clicar 2 vezes
+        final index = _alarmes.indexWhere((item) => item.id == alarme.id);
+        if (index != -1) {
+          _alarmes[index] = _alarmes[index].copyWith(pausado: false, ativo: true);
+        }
+      });
+    }
+
+    // 3. Reagenda o alarme nativo no Android
+    final alarmeReativado = alarme.copyWith(pausado: false, ativo: true);
+    await RotinaAlarmeService.agendarAlarme(alarmeReativado.toMap());
+
+    // 4. Registra no histórico
     await _db.inserirEventoHistorico(
       titulo: 'Alarme de rotina reativado',
       descricao:
@@ -238,15 +276,22 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
       categoria: 'familia',
     );
 
+    // 5. Recarrega os alarmes do banco para sincronizar tudo perfeitamente
     await _carregarAlarmes();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('▶️ Alarme reativado com sucesso.'),
-          behavior: SnackBarBehavior.floating,
+        SnackBar(
+          content: Text(
+            '${alarme.etiqueta.isNotEmpty ? alarme.etiqueta : 'Alarme'} (${alarme.horarioFormatado}) reativado com sucesso.',
+          ),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
+
+    // 6. Sincroniza em segundo plano
+    _sincronizarRotinaComBackend(alarmeReativado);
   }
 
   void abrirModalAdicionarAlarme() {
@@ -608,7 +653,7 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     );
   }
 
- Widget _construirListaAlarmes() {
+  Widget _construirListaAlarmes() {
     if (_carregandoAlarmes) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -774,13 +819,31 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                       ),
                     ],
-                    if (estaPausadoHoje) ...[
-                      const SizedBox(height: 6),
-                      InkWell(
-                        onTap: () => _despausarAlarmeManual(alarme),
-                        child: Text(
-                          '▶️ Toque para reativar agora',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                    
+                     if (estaPausadoHoje) ...[
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () async {
+                          await _despausarAlarmeManual(alarme);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_circle_fill, size: 18, color: Colors.blue.shade700),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Toque para reativar agora',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
