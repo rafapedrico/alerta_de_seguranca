@@ -608,7 +608,7 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     );
   }
 
-  Widget _construirListaAlarmes() {
+ Widget _construirListaAlarmes() {
     if (_carregandoAlarmes) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -645,7 +645,20 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
 
         return Dismissible(
           key: ValueKey('alarme_dismiss_${alarme.id}'),
-          direction: DismissDirection.horizontal,
+          direction: estaPausadoHoje 
+              ? DismissDirection.endToStart 
+              : DismissDirection.horizontal,
+          onDismissed: (direction) async {
+            setState(() {
+              _alarmes.removeWhere((item) => item.id == alarme.id);
+            });
+
+            if (direction == DismissDirection.endToStart) {
+              await _excluirAlarme(alarme);
+            } else if (direction == DismissDirection.startToEnd) {
+              await _pausarAlarmePorHoje(alarme);
+            }
+          },
           background: Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -692,7 +705,7 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
                       ],
                     ),
                   ) ?? false;
-            } else if (direction == DismissDirection.startToEnd) {
+            } else if (direction == DismissDirection.startToEnd && !estaPausadoHoje) {
               return await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
@@ -706,13 +719,6 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
                   ) ?? false;
             }
             return false;
-          },
-          onDismissed: (direction) async {
-            if (direction == DismissDirection.endToStart) {
-              await _excluirAlarme(alarme);
-            } else if (direction == DismissDirection.startToEnd) {
-              await _pausarAlarmePorHoje(alarme);
-            }
           },
           child: Card(
             elevation: 0,
@@ -729,13 +735,23 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
                 onChanged: (ativo) => _alternarAtivo(alarme, ativo),
                 value: alarme.ativo,
                 title: estaPausadoHoje
-                    ? Row(
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.pause_circle_filled, color: Colors.amber.shade800, size: 22),
-                          const SizedBox(width: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.pause_circle_filled, color: Colors.amber.shade800, size: 22),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Pausado até 00:00',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber.shade800),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
                           Text(
-                            'Pausado até 00:00',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber.shade800),
+                            'Retorna: ${alarme.horarioFormatado} (${alarme.diasResumidos})',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
                           ),
                         ],
                       )
@@ -746,33 +762,28 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      alarme.etiqueta,
-                      softWrap: true,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: alarme.ativo ? Colors.black87 : Colors.grey),
-                    ),
-                    Text(
-                      alarme.diasResumidos,
-                      style: TextStyle(fontSize: 12, color: alarme.ativo ? Colors.grey.shade700 : Colors.grey.shade400),
-                    ),
-                    if (estaPausadoHoje)
-                      GestureDetector(
+                    if (!estaPausadoHoje)
+                      Text(
+                        alarme.diasResumidos,
+                        style: TextStyle(color: alarme.ativo ? Colors.grey.shade800 : Colors.grey.shade400, fontWeight: FontWeight.w500),
+                      ),
+                    if (alarme.etiqueta.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        alarme.etiqueta,
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                    if (estaPausadoHoje) ...[
+                      const SizedBox(height: 6),
+                      InkWell(
                         onTap: () => _despausarAlarmeManual(alarme),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Row(
-                            children: [
-                              Icon(Icons.play_circle_outline, size: 16, color: Colors.green.shade700),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Toque para reativar agora',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green.shade700),
-                              ),
-                            ],
-                          ),
+                        child: Text(
+                          '▶️ Toque para reativar agora',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
