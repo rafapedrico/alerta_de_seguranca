@@ -200,11 +200,11 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
   final prefs = await SharedPreferences.getInstance();
+  await prefs.reload();
   
   // 1. Grava no disco que o alarme está disparando para o main.dart saber
   await prefs.setBool('alarme_disparando_no_momento', true);
   await prefs.setBool('stop_current_alarm', false);
-  await prefs.reload();
 
   // 2. Abre a interface nativa / traz o app para o primeiro plano IMEDIATAMENTE
   try {
@@ -212,21 +212,17 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   } catch (e) {
     debugPrint('⚠️ Falha ao chamar tela nativa: $e');
   }
-  // O restante do seu arquivo (os Timers e buscas no banco) continua exatamente igual daqui para baixo...
 
-// Monitora a flag no SharedPreferences a cada 200ms para uma parada instantânea
+  // 3. Monitora a flag no SharedPreferences para interrupção instantânea
   Timer.periodic(const Duration(milliseconds: 200), (timer) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload(); 
-    if (prefs.getBool('stop_current_alarm') == true) {
+    final prefsRelo = await SharedPreferences.getInstance();
+    await prefsRelo.reload(); 
+    if (prefsRelo.getBool('stop_current_alarm') == true) {
       try {
-        // --- REMOVIDO: player.stop() e player.dispose() ---
         timer.cancel(); // Finaliza o monitoramento de segurança
-        
-        await prefs.remove('stop_current_alarm');
-        await prefs.remove('alarme_disparando_no_momento');
-        
-        debugPrint(' Valenciano de forma instantânea.');
+        await prefsRelo.remove('stop_current_alarm');
+        await prefsRelo.remove('alarme_disparando_no_momento');
+        debugPrint('🔇 [HEADLESS] Alarme finalizado com sucesso.');
       } catch (e) {
         debugPrint('⚠️ [HEADLESS] Falha ao processar parada: $e');
         timer.cancel();
@@ -234,9 +230,9 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     }
   });
 
-
-
   Map<String, dynamic>? dados;
+  // ⬇️ Daqui para baixo no seu arquivo (busca no banco e timers de tolerância),
+  // tudo CONTINUA 100% INTACTO sem mudar nenhuma linha!
   try {
     dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
   } catch (e) {

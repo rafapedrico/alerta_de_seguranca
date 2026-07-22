@@ -37,19 +37,43 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     
     _instanciaGraficaAberta = true; 
     
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+WidgetsBinding.instance.addPostFrameCallback((_) async {
       debugPrint('📱 [INTERFACE] Botão azul montado! Carregando som customizado.');
       
       final prefs = await SharedPreferences.getInstance();
-      await prefs.reload();
+      await prefs.reload(); // Força a leitura atualizada do disco
       if (prefs.getBool('stop_current_alarm') == true) return;
 
-     // 🟢 LEITURA DINÂMICA DO SOM CONFIGURADO:
-      String soundPath = prefs.getString('tom_alarme_selecionado') ?? 
-                         prefs.getString('tom_alarme') ?? 
-                         'som_1.mp3';
+      // 1. Tenta buscar das SharedPreferences (String)
+      String? soundPath = prefs.getString('tom_alarme_selecionado') ?? 
+                          prefs.getString('tom_alarme');
 
-      // Garante que o nome termine com .mp3 sem duplicar extensão
+      // 2. Tenta buscar das SharedPreferences (Int)
+      if (soundPath == null || soundPath.isEmpty) {
+        final int? somInt = prefs.getInt('som_selecionado') ?? prefs.getInt('tom_alarme_id');
+        if (somInt != null) {
+          soundPath = 'som_$somInt.mp3';
+        }
+      }
+
+      // 3. 🟢 FALLBACK DE SEGURANÇA: Consulta direta na tabela user_config
+      if (soundPath == null || soundPath.isEmpty) {
+        try {
+          final dbHelper = DatabaseHelper();
+          final config = await dbHelper.getUserConfig();
+          final int? somDb = config?['som_alarme_selecionado'] as int? ?? 
+                             config?['som_selecionado'] as int?;
+          if (somDb != null) {
+            soundPath = 'som_$somDb.mp3';
+          }
+        } catch (e) {
+          debugPrint('⚠️ Erro ao buscar som no SQLite: $e');
+        }
+      }
+
+      // 4. Se nada for encontrado em nenhum lugar, assume som_1.mp3 como padrão
+      soundPath ??= 'som_1.mp3';
+
       if (!soundPath.endsWith('.mp3')) {
         soundPath = '$soundPath.mp3';
       }
@@ -57,9 +81,9 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       try {
         await _player.setReleaseMode(ReleaseMode.loop);
         await _player.play(AssetSource('sounds/$soundPath'));
-        debugPrint('🔊 Som customizado iniciado na interface: $soundPath');
+        debugPrint('🔊 Som customizado iniciado com sucesso na interface: $soundPath');
       } catch (e) {
-        debugPrint('⚠️ Erro ao tocar áudio do Flutter na interface: $e');
+        debugPrint('⚠️ Erro ao tocar áudio na interface: $e');
       }
     });
   }

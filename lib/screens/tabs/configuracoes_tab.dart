@@ -93,13 +93,21 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
       if (mounted) setState(() => _carregandoAlarmeSonoro = false);
     }
   }
-
-  Future<void> _selecionarSom(int? numero) async {
+Future<void> _selecionarSom(int? numero) async {
     if (numero == null) return;
     setState(() => _somSelecionado = numero);
     await _alarmeSonoroService.salvarSomSelecionado(numero);
     await _db.salvarSomAlarmeSelecionado(numero);
+
+    // 🟢 GRAVAÇÃO DIRETA NO SHAREDPREFERENCES PARA O BOTÃO AZUL LER:
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('tom_alarme_selecionado', 'som_$numero.mp3');
+    await prefs.setInt('som_selecionado', numero);
+    await prefs.reload();
+
+    debugPrint('🎵 Som do alarme atualizado com sucesso para: som_$numero.mp3');
   }
+ 
 
   Future<void> _selecionarDuracaoSom(int segundos) async {
     setState(() => _duracaoSomSegundos = segundos);
