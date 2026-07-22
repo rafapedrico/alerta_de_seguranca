@@ -44,8 +44,15 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       await prefs.reload();
       if (prefs.getBool('stop_current_alarm') == true) return;
 
-      final int somId = prefs.getInt('som_selecionado') ?? 1;
-      final String soundPath = 'som_$somId.mp3';
+     // 🟢 LEITURA DINÂMICA DO SOM CONFIGURADO:
+      String soundPath = prefs.getString('tom_alarme_selecionado') ?? 
+                         prefs.getString('tom_alarme') ?? 
+                         'som_1.mp3';
+
+      // Garante que o nome termine com .mp3 sem duplicar extensão
+      if (!soundPath.endsWith('.mp3')) {
+        soundPath = '$soundPath.mp3';
+      }
 
       try {
         await _player.setReleaseMode(ReleaseMode.loop);

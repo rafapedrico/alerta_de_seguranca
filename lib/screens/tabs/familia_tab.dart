@@ -33,6 +33,9 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _contatosEmergencia = [];
   Map<int, bool> _pausadoHojeMap = {};
 
+  // 🟢 TRAVA ADICIONADA AQUI (Impede o clique duplo/concorrência)
+  bool _processandoDespausa = false;
+
   static const List<String> _iniciaisDias = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   static const List<int> _valoresDias = [1, 2, 3, 4, 5, 6, 7];
 
@@ -44,7 +47,6 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     _carregarContatosEmergencia();
     ContatosEmergenciaService.versaoContatos.addListener(_aoContatosAlterados);
   }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -127,27 +129,15 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
 Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     if (alarme.id == null) return;
 
-    final dbInstancia = await _db.database;
+    final bool estaPausado = _pausadoHojeMap[alarme.id] ?? false;
 
-    // Se estiver ligando a chave e o alarme estava pausado, limpa a pausa no SQLite
-    if (ativo) {
-      await dbInstancia.update(
-        'alarmes_rotina',
-        {
-          'alarme_pausado': '0',
-          'ativo': 1,
-        },
-        where: 'id = ?',
-        whereArgs: [alarme.id],
-      );
-      if (mounted) {
-        setState(() {
-          _pausadoHojeMap[alarme.id!] = false;
-        });
-      }
-    } else {
-      await _db.alternarAtivoAlarme(alarme.id!, false);
+    // Se estava pausado e o usuário tocou para ativar/ligar a chave
+    if (estaPausado && ativo) {
+      await _despausarAlarmeManual(alarme);
+      return;
     }
+
+    await _db.alternarAtivoAlarme(alarme.id!, ativo);
 
     if (ativo) {
       final atualizado = await _db.buscarAlarmePorId(alarme.id!);
@@ -234,11 +224,28 @@ Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
       );
     }
   }
-
+  String _obterDiaRetorno(AlarmeRotina alarme) {
+    const diasSiglas = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    final agora = DateTime.now();
+    // Amanhã (dia seguinte à pausa)
+    final amanha = agora.add(const Duration(days: 1));
+    return diasSiglas[amanha.weekday - 1];
+  }
 Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
     if (alarme.id == null) return;
 
-    // 1. Zera a coluna alarme_pausado ('0') e força ativo = 1 no SQLite
+    // 1. Atualização visual instantânea no mesmo frame (sem delay)
+    if (mounted) {
+      setState(() {
+        _pausadoHojeMap[alarme.id!] = false;
+        final index = _alarmes.indexWhere((item) => item.id == alarme.id);
+        if (index != -1) {
+          _alarmes[index] = _alarmes[index].copyWith(pausado: false, ativo: true);
+        }
+      });
+    }
+
+    // 2. Atualiza o banco SQLite zerando a pausa e ativando o alarme
     final dbInstancia = await _db.database;
     await dbInstancia.update(
       'alarmes_rotina',
@@ -250,21 +257,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
       whereArgs: [alarme.id],
     );
 
-    // 2. Garante o status ativo e limpa a memória local NO MESMO FRAME (instantâneo)
-    await _db.alternarAtivoAlarme(alarme.id!, true);
-    
-    if (mounted) {
-      setState(() {
-        _pausadoHojeMap[alarme.id!] = false;
-        // Atualiza o objeto da lista local imediatamente para evitar ter que clicar 2 vezes
-        final index = _alarmes.indexWhere((item) => item.id == alarme.id);
-        if (index != -1) {
-          _alarmes[index] = _alarmes[index].copyWith(pausado: false, ativo: true);
-        }
-      });
-    }
-
-    // 3. Reagenda o alarme nativo no Android
+    // 3. Reagenda apenas o alarme nativo no Android (sem re-disparar o ciclo de alteração do banco)
     final alarmeReativado = alarme.copyWith(pausado: false, ativo: true);
     await RotinaAlarmeService.agendarAlarme(alarmeReativado.toMap());
 
@@ -276,8 +269,8 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
       categoria: 'familia',
     );
 
-    // 5. Recarrega os alarmes do banco para sincronizar tudo perfeitamente
-    await _carregarAlarmes();
+    // 5. Sincroniza em segundo plano
+    _sincronizarRotinaComBackend(alarmeReativado);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -289,9 +282,6 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
         ),
       );
     }
-
-    // 6. Sincroniza em segundo plano
-    _sincronizarRotinaComBackend(alarmeReativado);
   }
 
   void abrirModalAdicionarAlarme() {
@@ -652,8 +642,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
       ),
     );
   }
-
-  Widget _construirListaAlarmes() {
+Widget _construirListaAlarmes() {
     if (_carregandoAlarmes) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -775,78 +764,67 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
             ),
             child: GestureDetector(
               onLongPress: () => _abrirModalAlarme(alarmeExistente: alarme),
-              child: SwitchListTile(
-                activeColor: const Color(0xFF4C7040),
-                onChanged: (ativo) => _alternarAtivo(alarme, ativo),
-                value: alarme.ativo,
-                title: estaPausadoHoje
-                    ? Column(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.pause_circle_filled, color: Colors.amber.shade800, size: 22),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Pausado até 00:00',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber.shade800),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Retorna: ${alarme.horarioFormatado} (${alarme.diasResumidos})',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        alarme.horarioFormatado,
-                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: alarme.ativo ? Colors.black87 : Colors.grey),
-                      ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!estaPausadoHoje)
-                      Text(
-                        alarme.diasResumidos,
-                        style: TextStyle(color: alarme.ativo ? Colors.grey.shade800 : Colors.grey.shade400, fontWeight: FontWeight.w500),
-                      ),
-                    if (alarme.etiqueta.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        alarme.etiqueta,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
-                    
-                     if (estaPausadoHoje) ...[
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () async {
-                          await _despausarAlarmeManual(alarme);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_circle_fill, size: 18, color: Colors.blue.shade700),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Toque para reativar agora',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade700,
+                          if (estaPausadoHoje) ...[
+                            Row(
+                              children: [
+                                Icon(Icons.pause_circle_filled, color: Colors.amber.shade800, size: 22),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Pausado até 00:00',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber.shade800),
                                 ),
-                              ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Retorna: ${alarme.horarioFormatado} (${_obterDiaRetorno(alarme)})',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                            ),
+                            if (alarme.etiqueta.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(alarme.etiqueta, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                             ],
-                          ),
-                        ),
+                            const SizedBox(height: 6),
+                            InkWell(
+                              onTap: () async {
+                                await _despausarAlarmeManual(alarme);
+                              },
+                              child: Text(
+                                '▶️ Toque para reativar o alarme',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              alarme.horarioFormatado,
+                              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: alarme.ativo ? Colors.black87 : Colors.grey),
+                            ),
+                            Text(
+                              alarme.diasResumidos,
+                              style: TextStyle(color: alarme.ativo ? Colors.grey.shade800 : Colors.grey.shade400, fontWeight: FontWeight.w500),
+                            ),
+                            if (alarme.etiqueta.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(alarme.etiqueta, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                            ],
+                          ],
+                        ],
                       ),
-                    ],
+                    ),
+                    Switch(
+                      activeColor: const Color(0xFF4C7040),
+                      // Se estiver pausado hoje, o switch fica cinza/desligado (false)
+                      value: estaPausadoHoje ? false : alarme.ativo,
+                      onChanged: (ativo) => _alternarAtivo(alarme, ativo),
+                    ),
                   ],
                 ),
               ),
@@ -856,8 +834,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
       }).toList(),
     );
   }
-
-  Widget _construirCardContatosEmergencia() {
+   Widget _construirCardContatosEmergencia() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
