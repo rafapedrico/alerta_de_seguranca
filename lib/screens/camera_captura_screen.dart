@@ -24,6 +24,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
   CameraController? _controller;
   _EstadoCaptura _estado = _EstadoCaptura.inicializandoCamera;
   bool _processandoFoto = false;
+  final FocusNode _focusNode = FocusNode();
 
   static const Duration _duracaoSimulacaoEnvio = Duration(milliseconds: 1800);
 
@@ -46,13 +47,13 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
     try {
       await _lockscreenChannel.invokeMethod('forcarShowWhenLocked');
     } catch (e) {
-      debugPrint(
-          '⚠️ [CameraCapturaScreen] Falha ao reforçar showWhenLocked: $e');
+      debugPrint('⚠️ [CameraCapturaScreen] Falha ao reforçar showWhenLocked: $e');
     }
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _descartarCameraSuavemente();
     super.dispose();
   }
@@ -90,10 +91,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
         orElse: () => cameras.first,
       );
 
-      // Usamos alta resolução limpa
+      // 📸 RESOLUÇÃO MÁXIMA NATIVA + FORMATO JPEG
       final controller = CameraController(
         cameraTraseira,
-        ResolutionPreset.high,
+        ResolutionPreset.max,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -104,13 +105,19 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
         return;
       }
 
-      // Pequena pausa (300ms) para o hardware ajustar o foco contínuo automático de fábrica
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Ativa auto-foco contínuo do hardware
+      try {
+        await controller.setFocusMode(FocusMode.auto);
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
           _controller = controller;
           _estado = _EstadoCaptura.prontaParaFoto;
+        });
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _focusNode.requestFocus();
         });
       }
     } catch (e) {
@@ -140,8 +147,13 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
     try {
       setState(() => _estado = _EstadoCaptura.processandoEnvio);
 
+      // Trava foco no instante do clique
+      try {
+        await controller.setFocusMode(FocusMode.locked);
+      } catch (_) {}
+
       final XFile fotoCapturada = await controller.takePicture();
-      debugPrint('📸 Foto capturada com sucesso: ${fotoCapturada.path}');
+      debugPrint('📸 Foto em Alta Resolução capturada com sucesso: ${fotoCapturada.path}');
 
       _processarEnvioEEnviarSmsResgate(fotoCapturada);
     } catch (e) {
@@ -181,7 +193,19 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: _buildConteudoPorEstado(),
+          child: RawKeyboardListener(
+            focusNode: _focusNode,
+            autofocus: true,
+            onKey: (event) {
+              if (event is RawKeyDownEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.audioVolumeDown ||
+                    event.logicalKey == LogicalKeyboardKey.audioVolumeUp) {
+                  _tirarFoto();
+                }
+              }
+            },
+            child: _buildConteudoPorEstado(),
+          ),
         ),
       ),
     );
@@ -210,19 +234,51 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
       );
     }
 
-    return InkWell(
-      onTap: _tirarFoto,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CameraPreview(controller),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 32,
+    final size = MediaQuery.of(context).size;
+    var scale = size.aspectRatio * controller.value.aspectRatio;
+    if (scale < 1) scale = 1 / scale;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Enquadramento de escala para Alta Definição em tela cheia
+        ClipRect(
+          child: Transform.scale(
+            scale: scale,
             child: Center(
+              child: CameraPreview(controller),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 20,
+          right: 20,
+          top: 20,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              '📸 Toque no botão ou aperte VOLUME para tirar a foto',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 32,
+          child: Center(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _tirarFoto,
               child: Container(
                 width: 80,
                 height: 80,
@@ -239,8 +295,8 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
