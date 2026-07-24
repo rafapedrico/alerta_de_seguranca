@@ -415,4 +415,44 @@ class EmergencyAlertService {
           '(o SMS/alerta imediato da etapa 1 já foi enviado normalmente): $e');
     }
   }
+/// Envia o 2º SMS contendo as credenciais de acesso para a família
+  /// recuperar a foto e a localização registradas.
+  Future<void> enviarSmsResgateFoto({
+    required String login,
+    required String senha,
+    String? urlNovem,
+  }) async {
+    List<Map<String, dynamic>> contatos = [];
+    try {
+      contatos = await _db.getContatosEmergencia();
+    } catch (e) {
+      debugPrint('⚠️ [SMS RESGATE] Falha ao carregar contatos: $e');
+    }
+
+    if (contatos.isEmpty) {
+      debugPrint('⚠️ [SMS RESGATE] Nenhum contato cadastrado para receber as credenciais.');
+      return;
+    }
+
+    final String link = urlNovem ?? 'https://seu-painel-nuvem.com/login';
+
+    final String mensagemResgate =
+        '🚨 EVIDÊNCIA FOTOGRÁFICA REGISTRADA!\n'
+        'Fotos e localização enviadas para a nuvem.\n'
+        'Acesso: $link\n'
+        'Login: $login\n'
+        'Senha: $senha\n'
+        'Operação irreversível.';
+
+    debugPrint('📋 [SMS RESGATE] Enviando credenciais de resgate para contatos...');
+    await _enviarSms(contatos, mensagemResgate);
+
+    try {
+      await _db.inserirEventoHistorico(
+        titulo: 'Evidência fotográfica registrada',
+        descricao: 'SMS com dados de resgate enviado para os contatos de emergência.',
+        categoria: 'critico',
+      );
+    } catch (_) {}
+  }
 }
