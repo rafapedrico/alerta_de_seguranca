@@ -1,8 +1,6 @@
 package com.example.security_check_app
 
 import android.app.Activity
-import android.app.KeyguardManager
-import android.content.Context
 import android.os.Build
 import android.view.WindowManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -85,8 +83,10 @@ class LockscreenPlugin : FlutterPlugin, ActivityAware {
     /**
      * Reaplica, na Activity atualmente visível, exatamente o mesmo
      * conjunto de flags/chamadas usado em [MainActivity.onCreate]: exibir
-     * por cima do Keyguard, ligar a tela, e solicitar a dispensa do
-     * lockscreen — sem jamais exigir PIN/senha do usuário do Android.
+     * por cima do Keyguard e ligar a tela — sem jamais chamar
+     * requestDismissKeyguard()/FLAG_DISMISS_KEYGUARD, pois em aparelhos com
+     * bloqueio seguro isso aciona a tela de autenticação nativa do Android
+     * (PIN/padrão/senha do sistema), o que o fluxo de SOS não pode exigir.
      */
     private fun forcarShowWhenLocked() {
         val act = activity ?: return
@@ -94,16 +94,12 @@ class LockscreenPlugin : FlutterPlugin, ActivityAware {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             act.setShowWhenLocked(true)
             act.setTurnScreenOn(true)
-            val keyguardManager =
-                act.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            keyguardManager.requestDismissKeyguard(act, null)
         } else {
             @Suppress("DEPRECATION")
             act.window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             )
         }
     }

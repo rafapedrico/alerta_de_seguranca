@@ -79,6 +79,7 @@ void main() async {
   runApp(SecurityCheckApp(
     aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
     abertoViaAlarmeRotina: abertoViaAlarmeRotinaFinal,
+    abertoViaSosFisico: coldStartViaSosFisico,
   ));
 
   if (coldStartViaSosFisico) {
@@ -164,11 +165,13 @@ Future<void> _testarConectividadeInicialComBackend() async {
 class SecurityCheckApp extends StatefulWidget {
   final bool aguardandoConfirmacaoPin;
   final bool abertoViaAlarmeRotina;
+  final bool abertoViaSosFisico;
 
   const SecurityCheckApp({
     super.key,
     required this.aguardandoConfirmacaoPin,
     this.abertoViaAlarmeRotina = false,
+    this.abertoViaSosFisico = false,
   });
 
   @override
@@ -268,6 +271,17 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
     super.dispose();
   }
 
+  /// Escolhe a tela raiz do MaterialApp. No cold start via SOS Físico
+  /// (botão de volume com o aparelho bloqueado) NUNCA construímos a
+  /// LoginScreen: ela tem campos de texto e, mesmo sem autofocus, não deve
+  /// chegar a existir sobre a lockscreen. Uma tela preta neutra ocupa esse
+  /// instante até a CameraCapturaScreen ser empurrada por cima.
+  Widget _telaInicial() {
+    if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
+    if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
+    return const LoginScreen();
+  }
+
   @override
   Widget build(BuildContext context) {
     const double fatorFonte = 1.0;
@@ -284,14 +298,10 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
           child: child!,
         );
       },
-      home: widget.abertoViaAlarmeRotina
-          ? const AlarmeDisparadoScreen()
-          : const LoginScreen(),
+      home: _telaInicial(),
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
-          builder: (_) => widget.abertoViaAlarmeRotina
-              ? const AlarmeDisparadoScreen()
-              : const LoginScreen(),
+          builder: (_) => _telaInicial(),
           settings: settings,
         );
       },
@@ -352,5 +362,17 @@ class _TelaInicialComPossivelDialogoPinState
   @override
   Widget build(BuildContext context) {
     return const HomeScreen();
+  }
+}
+
+/// Placeholder neutro (sem nenhum campo de texto/foco) exibido só durante o
+/// instante do cold start via SOS Físico, antes da CameraCapturaScreen ser
+/// empurrada por cima em [navigateToCameraCaptura].
+class _TelaPretaAguardandoSos extends StatelessWidget {
+  const _TelaPretaAguardandoSos();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(backgroundColor: Colors.black);
   }
 }
