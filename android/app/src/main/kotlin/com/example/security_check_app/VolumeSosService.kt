@@ -89,6 +89,16 @@ class VolumeSosService : Service() {
      * para disparar o SOS. */
     private val incrementosNecessarios = 3
 
+    /** Timestamp do último disparo de SOS efetivado. */
+    private var ultimoDisparoMs: Long = 0L
+
+    /** Período mínimo (ms) entre dois disparos de SOS consecutivos. Evita
+     * que uma única sequência prolongada de cliques em Volume+ (o
+     * usuário continua clicando além do mínimo de 3 incrementos) dispare
+     * vários fluxos de SOS sobrepostos — o que gerava múltiplos SMS e uma
+     * corrida entre solicitações concorrentes de permissão de câmera. */
+    private val cooldownDisparoMs = 10_000L
+
     override fun onCreate() {
         super.onCreate()
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -164,8 +174,11 @@ class VolumeSosService : Service() {
 
             if (contagemIncrementos >= incrementosNecessarios) {
                 contagemIncrementos = 0
-                VolumeSosEventBridge.notificarSosDisparado()
-                forcarAberturaLockscreenCameraActivity()
+                if (agora - ultimoDisparoMs >= cooldownDisparoMs) {
+                    ultimoDisparoMs = agora
+                    VolumeSosEventBridge.notificarSosDisparado()
+                    forcarAberturaLockscreenCameraActivity()
+                }
             }
         } else if (volumeAtual < volumeAnterior) {
             // Volume desceu: reseta a contagem (o gatilho exige apenas

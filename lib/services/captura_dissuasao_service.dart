@@ -25,16 +25,19 @@ class CapturaDissuasaoService {
         return;
       }
 
-      // 2. Garante a verificação/solicitação da permissão de CÂMERA
+      // 2. Apenas verifica o status da permissão de CÂMERA, sem solicitar.
+      // A solicitação real (Permission.camera.request()) acontece uma
+      // única vez, dentro de CameraCapturaScreen._inicializarCamera().
+      // Chamar request() também aqui causava uma corrida entre as duas
+      // telas — o permission_handler não permite duas solicitações
+      // simultâneas e uma delas falhava com PlatformException
+      // ("A request for permissions is already running"), deixando a
+      // permissão presa em "denied".
       try {
         final status = await Permission.camera.status;
         debugPrint('📷 [CapturaDissuasaoService] Status atual da permissão de câmera: $status');
-        if (!status.isGranted) {
-          final novoStatus = await Permission.camera.request();
-          debugPrint('📷 [CapturaDissuasaoService] Permissão de câmera solicitada, resultado: $novoStatus');
-        }
       } catch (e) {
-        debugPrint('⚠️ [CapturaDissuasaoService] Falha ao solicitar permissão de câmera: $e');
+        debugPrint('⚠️ [CapturaDissuasaoService] Falha ao verificar permissão de câmera: $e');
       }
 
       // 3. RETRY LOOP: Aguarda até 3s usando appNavigatorKey

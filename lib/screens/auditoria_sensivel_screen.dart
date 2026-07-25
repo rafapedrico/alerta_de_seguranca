@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../services/database_helper.dart';
 
 /// Tela de Auditoria de Eventos Sensíveis (o "cofre" acessado pelo ícone
@@ -95,13 +96,10 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     await _atualizarStatus();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Solicitação aprovada. Por motivos de segurança e proteção de '
-          'privacidade, os registros estarão liberados em 2 horas.',
-        ),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.auditoriaSolicitacaoAprovada),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 5),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -114,32 +112,29 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lock_outline, size: 22),
-            SizedBox(width: 8),
+            const Icon(Icons.lock_outline, size: 22),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Bloquear Novamente?',
+                AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteTitulo,
                 softWrap: true,
                 overflow: TextOverflow.visible,
               ),
             ),
           ],
         ),
-        content: const Text(
-          'Ao confirmar, o acesso aos registros sensíveis será bloqueado '
-          'imediatamente. Para visualizá-los novamente, será necessário '
-          'solicitar uma nova liberação e aguardar mais 2 horas de '
-          'carência de segurança.',
+        content: Text(
+          AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteConteudo,
           softWrap: true,
           overflow: TextOverflow.visible,
-          style: TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
+            child: Text(AppLocalizations.of(ctx)!.cancelar),
           ),
           FilledButton.icon(
             onPressed: () async {
@@ -147,7 +142,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
               await _bloquearNovamente();
             },
             icon: const Icon(Icons.lock, size: 18),
-            label: const Text('Bloquear Novamente'),
+            label: Text(AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteBotao),
           ),
         ],
       ),
@@ -163,10 +158,10 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     await _atualizarStatus();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🔒 Acesso aos registros sensíveis bloqueado novamente.'),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.auditoriaBloqueadoNovamente),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 4),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -200,18 +195,19 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     if (dataHora == null) return '';
     final agora = DateTime.now();
     final diferenca = agora.difference(dataHora);
-    if (diferenca.inMinutes < 1) return 'Agora mesmo';
-    if (diferenca.inMinutes < 60) return 'Há ${diferenca.inMinutes} min';
-    if (diferenca.inHours < 24) return 'Há ${diferenca.inHours}h';
-    if (diferenca.inDays == 1) return 'Ontem';
-    return 'Há ${diferenca.inDays} dias';
+    final l10n = AppLocalizations.of(context)!;
+    if (diferenca.inMinutes < 1) return l10n.historicoAgoraMesmo;
+    if (diferenca.inMinutes < 60) return l10n.historicoHaMinutos(diferenca.inMinutes);
+    if (diferenca.inHours < 24) return l10n.historicoHaHoras(diferenca.inHours);
+    if (diferenca.inDays == 1) return l10n.historicoOntem;
+    return l10n.historicoHaDias(diferenca.inDays);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auditoria de Eventos'),
+        title: Text(AppLocalizations.of(context)!.auditoriaTitulo),
         backgroundColor: const Color(0xFF4C7040),
         foregroundColor: Colors.white,
       ),
@@ -238,8 +234,8 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             const SizedBox(height: 24),
             Text(
               _temSolicitacaoPendente
-                  ? 'Aguardando liberação de segurança'
-                  : 'Registros sensíveis protegidos',
+                  ? AppLocalizations.of(context)!.auditoriaAguardandoLiberacao
+                  : AppLocalizations.of(context)!.auditoriaRegistrosProtegidos,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
@@ -249,12 +245,10 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             ),
             const SizedBox(height: 12),
             if (_temSolicitacaoPendente) ...[
-              const Text(
-                'Por motivos de segurança e proteção de privacidade, os '
-                'registros mais sensíveis do histórico só podem ser '
-                'visualizados 2 horas após a solicitação.',
+              Text(
+                AppLocalizations.of(context)!.auditoriaAvisoCarencia,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
               const SizedBox(height: 24),
               Container(
@@ -266,9 +260,9 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'Tempo restante',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    Text(
+                      AppLocalizations.of(context)!.auditoriaTempoRestante,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -284,12 +278,10 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
                 ),
               ),
             ] else ...[
-              const Text(
-                'Para proteger sua privacidade, esses eventos exigem uma '
-                'solicitação prévia com carência de 2 horas antes da '
-                'liberação da visualização.',
+              Text(
+                AppLocalizations.of(context)!.auditoriaAvisoSolicitacao,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -297,7 +289,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _solicitarLiberacao,
                   icon: const Icon(Icons.lock_open),
-                  label: const Text('Solicitar Liberação do Histórico Sensível'),
+                  label: Text(AppLocalizations.of(context)!.auditoriaSolicitarLiberacaoBotao),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4C7040),
                     foregroundColor: Colors.white,
@@ -325,10 +317,10 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             children: [
               Icon(Icons.verified_user, size: 56, color: Colors.green.shade400),
               const SizedBox(height: 12),
-              const Text(
-                'Visualização liberada. Nenhum evento sensível registrado ainda.',
+              Text(
+                AppLocalizations.of(context)!.auditoriaNenhumEvento,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54, fontSize: 15),
+                style: const TextStyle(color: Colors.black54, fontSize: 15),
               ),
             ],
           ),
@@ -346,12 +338,12 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
             children: [
               Icon(Icons.verified_user, color: Colors.green.shade700, size: 18),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Prazo de segurança cumprido. Registros liberados para esta sessão.',
+                  AppLocalizations.of(context)!.auditoriaPrazoLiberado,
                   softWrap: true,
                   overflow: TextOverflow.visible,
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                 ),
               ),
               const SizedBox(width: 8),
@@ -359,7 +351,7 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
                 onPressed: _confirmarBloquearNovamente,
                 icon: Icon(Icons.lock, color: Colors.green.shade800, size: 16),
                 label: Text(
-                  'Bloquear Novamente',
+                  AppLocalizations.of(context)!.auditoriaBloquearNovamenteBotao,
                   style: TextStyle(
                     color: Colors.green.shade800,
                     fontSize: 12,

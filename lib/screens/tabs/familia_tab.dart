@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';
@@ -187,8 +188,8 @@ Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     await _carregarAlarmes();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🗑️ Alarme removido com sucesso.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.familiaAlarmeRemovido),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -217,8 +218,8 @@ Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
     await _carregarAlarmes();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⏸️ Alarme pausado até as 00:00 de hoje.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.familiaAlarmePausadoAte),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -276,7 +277,10 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${alarme.etiqueta.isNotEmpty ? alarme.etiqueta : 'Alarme'} (${alarme.horarioFormatado}) reativado com sucesso.',
+            AppLocalizations.of(context)!.familiaReativadoComSucesso(
+              alarme.etiqueta.isNotEmpty ? alarme.etiqueta : 'Alarme',
+              alarme.horarioFormatado,
+            ),
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -338,7 +342,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                           const Icon(Icons.alarm_add, color: Color(0xFF4C7040)),
                           const SizedBox(width: 8),
                           Text(
-                            alarmeExistente == null ? 'Adicionar Alarme' : 'Editar Alarme',
+                            alarmeExistente == null
+                                ? AppLocalizations.of(ctx)!.familiaAdicionarAlarme
+                                : AppLocalizations.of(ctx)!.familiaEditarAlarme,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -349,9 +355,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                         children: [
                           Column(
                             children: [
-                              const Text(
-                                'Hora',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                              Text(
+                                AppLocalizations.of(ctx)!.familiaHoraLabel,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
                               ),
                               SizedBox(
                                 width: 70,
@@ -382,9 +388,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                           ),
                           Column(
                             children: [
-                              const Text(
-                                'Minuto',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                              Text(
+                                AppLocalizations.of(ctx)!.familiaMinutoLabel,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
                               ),
                               SizedBox(
                                 width: 70,
@@ -409,9 +415,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Repetir',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
+                      Text(
+                        AppLocalizations.of(ctx)!.familiaRepetirLabel,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -455,8 +461,8 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                       TextField(
                         controller: etiquetaController,
                         decoration: InputDecoration(
-                          labelText: 'Etiqueta',
-                          hintText: 'Ex: Chegada no trabalho de moto',
+                          labelText: AppLocalizations.of(ctx)!.familiaEtiquetaLabel,
+                          hintText: AppLocalizations.of(ctx)!.familiaEtiquetaHint,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -468,14 +474,13 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                         controller: contextoController,
                         maxLines: 2,
                         decoration: InputDecoration(
-                          labelText: 'Dica de contexto (opcional)',
-                          hintText: 'Ex: Indo de moto para o trabalho',
+                          labelText: AppLocalizations.of(ctx)!.familiaDicaContextoOpcionalLabel,
+                          hintText: AppLocalizations.of(ctx)!.familiaDicaContextoOpcionalHint,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           prefixIcon: const Icon(Icons.edit_note),
-                          helperText:
-                              'Usada na mensagem de SMS caso o check-in não seja confirmado a tempo.',
+                          helperText: AppLocalizations.of(ctx)!.familiaDicaContextoHelper,
                           helperMaxLines: 2,
                         ),
                       ),
@@ -484,10 +489,10 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                         children: [
                           const Icon(Icons.timer_outlined, color: Colors.grey, size: 20),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Tolerância para confirmar "Cheguei bem"',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              AppLocalizations.of(ctx)!.familiaToleranciaLabel,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ),
                           DropdownButton<int>(
@@ -495,7 +500,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                             items: const [5, 10, 15, 20, 30, 45, 60]
                                 .map((minutos) => DropdownMenuItem(
                                       value: minutos,
-                                      child: Text('$minutos min'),
+                                      child: Text(AppLocalizations.of(ctx)!.familiaMinutosAbrev(minutos)),
                                     ))
                                 .toList(),
                             onChanged: (valor) {
@@ -569,9 +574,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                             if (mounted) setState(() {});
                           },
                           icon: const Icon(Icons.check, color: Colors.white),
-                          label: const Text(
-                            'Salvar Alarme',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          label: Text(
+                            AppLocalizations.of(ctx)!.familiaSalvarAlarme,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -616,13 +621,13 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                       children: [
                         const Icon(Icons.alarm, color: Color(0xFF4C7040), size: 28),
                         const SizedBox(width: 8),
-                        const Flexible(
+                        Flexible(
                           child: Text(
-                            'Alarmes de Rotina',
+                            AppLocalizations.of(context)!.familiaAlarmesRotinaTitulo,
                             textAlign: TextAlign.center,
                             softWrap: true,
                             overflow: TextOverflow.clip,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
                         ),
                       ],
@@ -664,7 +669,7 @@ Widget _construirListaAlarmes() {
             Icon(Icons.alarm_off, size: 48, color: Colors.grey.shade400),
             const SizedBox(height: 12),
             Text(
-              'Nenhum alarme de rotina cadastrado.\nToque no "+" para adicionar o primeiro.',
+              AppLocalizations.of(context)!.familiaNenhumAlarme,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
@@ -701,11 +706,11 @@ Widget _construirListaAlarmes() {
               color: Colors.blue.shade600,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.pause_circle_filled, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Pausar por hoje', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const Icon(Icons.pause_circle_filled, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.familiaPausarPorHoje, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -717,12 +722,12 @@ Widget _construirListaAlarmes() {
               color: Colors.red.shade600,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Excluir permanente', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                SizedBox(width: 8),
-                Icon(Icons.delete, color: Colors.white),
+                Text(AppLocalizations.of(context)!.familiaExcluirPermanente, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                const Icon(Icons.delete, color: Colors.white),
               ],
             ),
           ),
@@ -731,11 +736,11 @@ Widget _construirListaAlarmes() {
               return await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Excluir alarme permanentemente?'),
-                      content: Text('Deseja excluir o alarme "${alarme.etiqueta}" (${alarme.horarioFormatado}) permanentemente?'),
+                      title: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeTitulo),
+                      content: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeConteudo(alarme.etiqueta, alarme.horarioFormatado)),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-                        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Excluir')),
+                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(AppLocalizations.of(ctx)!.cancelar)),
+                        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.of(ctx).pop(true), child: Text(AppLocalizations.of(ctx)!.excluir)),
                       ],
                     ),
                   ) ?? false;
@@ -743,11 +748,11 @@ Widget _construirListaAlarmes() {
               return await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Pausar alarme por hoje?'),
-                      content: Text('Deseja pausar o alarme "${alarme.etiqueta}" (${alarme.horarioFormatado}) até as 00:00? Ele retornará à ativa amanhã automaticamente.'),
+                      title: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeTitulo),
+                      content: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeConteudo(alarme.etiqueta, alarme.horarioFormatado)),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-                        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.blue), onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Pausar')),
+                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(AppLocalizations.of(ctx)!.cancelar)),
+                        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.blue), onPressed: () => Navigator.of(ctx).pop(true), child: Text(AppLocalizations.of(ctx)!.familiaPausarBotao)),
                       ],
                     ),
                   ) ?? false;
@@ -778,14 +783,14 @@ Widget _construirListaAlarmes() {
                                 Icon(Icons.pause_circle_filled, color: Colors.amber.shade800, size: 22),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Pausado até 00:00',
+                                  AppLocalizations.of(context)!.familiaPausadoAte0000,
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber.shade800),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Retorna: ${alarme.horarioFormatado} (${_obterDiaRetorno(alarme)})',
+                              AppLocalizations.of(context)!.familiaRetorna(alarme.horarioFormatado, _obterDiaRetorno(alarme)),
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
                             ),
                             if (alarme.etiqueta.isNotEmpty) ...[
@@ -798,7 +803,7 @@ Widget _construirListaAlarmes() {
                                 await _despausarAlarmeManual(alarme);
                               },
                               child: Text(
-                                '▶️ Toque para reativar o alarme',
+                                AppLocalizations.of(context)!.familiaToqueReativar,
                                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
                               ),
                             ),
@@ -850,19 +855,19 @@ Widget _construirListaAlarmes() {
             children: [
               const Icon(Icons.contact_emergency, color: Color(0xFF4C7040)),
               const SizedBox(width: 8),
-              const Flexible(
+              Flexible(
                 child: Text(
-                  'Contatos de Emergência',
+                  AppLocalizations.of(context)!.familiaContatosEmergenciaTitulo,
                   softWrap: true,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Estes contatos recebem os alertas de emergência. Gerencie-os na aba Configurações.',
+            AppLocalizations.of(context)!.familiaContatosEmergenciaDescricao,
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 12),
@@ -870,13 +875,13 @@ Widget _construirListaAlarmes() {
             const Center(child: CircularProgressIndicator())
           else if (_contatosEmergencia.isEmpty)
             Text(
-              'Nenhum contato de emergência cadastrado ainda.',
+              AppLocalizations.of(context)!.familiaNenhumContato,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             )
           else
             Column(
               children: _contatosEmergencia.map((contato) {
-                final nome = contato['nome'] as String? ?? 'Sem nome';
+                final nome = contato['nome'] as String? ?? AppLocalizations.of(context)!.familiaSemNome;
                 final telefone = contato['telefone'] as String? ?? '';
                 final pendente = _isExclusaoPendente(contato);
                 return Padding(
@@ -907,7 +912,7 @@ Widget _construirListaAlarmes() {
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                             ),
                             Text(
-                              pendente ? 'Removendo em 24h...' : telefone,
+                              pendente ? AppLocalizations.of(context)!.familiaRemovendoEm24h : telefone,
                               softWrap: true,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

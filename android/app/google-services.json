@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "555863351772",
+    "project_id": "guardiaox",
+    "storage_bucket": "guardiaox.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:555863351772:android:1b76bbad7fe800e14def19",
+        "android_client_info": {
+          "package_name": "com.example.security_check_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "555863351772-vrlhh2c4kv0a1ci7eu34i36rq5jro327.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD3cnaZu1w7EeBvgoazJYXnEd5nAP1R7M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "555863351772-vrlhh2c4kv0a1ci7eu34i36rq5jro327.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

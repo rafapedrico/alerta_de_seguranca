@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 
@@ -26,10 +27,28 @@ class HistoricoTab extends StatefulWidget {
 class _HistoricoTabState extends State<HistoricoTab> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  // Filtro rápido selecionado no topo. 'Todos' por padrão.
-  String _filtroSelecionado = 'Todos';
+  // Filtro rápido selecionado no topo (chave interna neutra, independente
+  // do idioma — o rótulo exibido é traduzido separadamente em
+  // [_rotuloFiltro]). 'todos' por padrão.
+  String _filtroSelecionado = 'todos';
 
-  final List<String> _filtros = const ['Todos', 'Segurança', 'Família', 'Sistema'];
+  final List<String> _filtros = const ['todos', 'seguranca', 'familia', 'sistema'];
+
+  /// Rótulo traduzido exibido no chip do filtro [chave].
+  String _rotuloFiltro(String chave) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (chave) {
+      case 'seguranca':
+        return l10n.tabSeguranca;
+      case 'familia':
+        return l10n.tabFamilia;
+      case 'sistema':
+        return l10n.historicoFiltroSistema;
+      case 'todos':
+      default:
+        return l10n.historicoFiltroTodos;
+    }
+  }
 
   bool _carregando = true;
   List<Map<String, dynamic>> _eventos = [];
@@ -51,13 +70,13 @@ class _HistoricoTabState extends State<HistoricoTab> {
 
   List<Map<String, dynamic>> get _eventosFiltrados {
     switch (_filtroSelecionado) {
-      case 'Segurança':
+      case 'seguranca':
         return _eventos.where((e) => e['categoria'] == 'seguranca').toList();
-      case 'Família':
+      case 'familia':
         return _eventos.where((e) => e['categoria'] == 'familia').toList();
-      case 'Sistema':
+      case 'sistema':
         return _eventos.where((e) => e['categoria'] == 'sistema').toList();
-      case 'Todos':
+      case 'todos':
       default:
         return _eventos;
     }
@@ -96,11 +115,12 @@ class _HistoricoTabState extends State<HistoricoTab> {
     final agora = DateTime.now();
     final diferenca = agora.difference(dataHora);
 
-    if (diferenca.inMinutes < 1) return 'Agora mesmo';
-    if (diferenca.inMinutes < 60) return 'Há ${diferenca.inMinutes} min';
-    if (diferenca.inHours < 24) return 'Há ${diferenca.inHours}h';
-    if (diferenca.inDays == 1) return 'Ontem';
-    return 'Há ${diferenca.inDays} dias';
+    final l10n = AppLocalizations.of(context)!;
+    if (diferenca.inMinutes < 1) return l10n.historicoAgoraMesmo;
+    if (diferenca.inMinutes < 60) return l10n.historicoHaMinutos(diferenca.inMinutes);
+    if (diferenca.inHours < 24) return l10n.historicoHaHoras(diferenca.inHours);
+    if (diferenca.inDays == 1) return l10n.historicoOntem;
+    return l10n.historicoHaDias(diferenca.inDays);
   }
 
   Future<void> _excluirEvento(int id) async {
@@ -167,7 +187,7 @@ class _HistoricoTabState extends State<HistoricoTab> {
           final selecionado = _filtroSelecionado == filtro;
           return FilterChip(
             label: Text(
-              filtro,
+              _rotuloFiltro(filtro),
               softWrap: true,
               overflow: TextOverflow.clip,
               style: TextStyle(
@@ -201,7 +221,7 @@ class _HistoricoTabState extends State<HistoricoTab> {
             const SizedBox(height: 12),
             Flexible(
               child: Text(
-                'Nenhum evento encontrado para este filtro.',
+                AppLocalizations.of(context)!.historicoNenhumEvento,
                 textAlign: TextAlign.center,
                 softWrap: true,
                 overflow: TextOverflow.clip,

@@ -30,3 +30,7 @@ web/build/
 .DS_Store
 *.swp
 *.swo
+
+# Artefato gerado automaticamente pelo flutter gen-l10n (relatório de
+# strings ainda não traduzidas) — não é código-fonte.
+untranslated_messages.json

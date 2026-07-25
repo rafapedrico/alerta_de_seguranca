@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
@@ -19,10 +20,14 @@ class CadastroScreen extends StatefulWidget {
 
 class _CadastroScreenState extends State<CadastroScreen> {
   static const Color _corPrincipal = Color(0xFF4C7040);
+  static const Color _corFundo = Color(0xFF14212E);
+  static const Color _corCampoFundo = Color(0xFF1E313F);
+  static const Color _corAcentoClaro = Color(0xFF9CCC65);
 
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
+  final _celularController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
 
@@ -33,6 +38,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
   void dispose() {
     _nomeController.dispose();
     _emailController.dispose();
+    _celularController.dispose();
     _senhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
@@ -60,7 +66,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: _corFundo,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -76,6 +82,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
                   _buildCampoNome(),
                   const SizedBox(height: 16),
                   _buildCampoEmail(),
+                  const SizedBox(height: 16),
+                  _buildCampoCelular(),
                   const SizedBox(height: 16),
                   _buildCampoSenha(),
                   const SizedBox(height: 16),
@@ -115,14 +123,14 @@ class _CadastroScreenState extends State<CadastroScreen> {
             fontSize: 22,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.3,
-            color: Colors.black87,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'Crie sua conta para começar',
+          AppLocalizations.of(context)!.cadastroSubtitulo,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          style: const TextStyle(fontSize: 13, color: Colors.white70),
         ),
       ],
     );
@@ -132,10 +140,14 @@ class _CadastroScreenState extends State<CadastroScreen> {
     return TextFormField(
       controller: _nomeController,
       textInputAction: TextInputAction.next,
-      decoration: _decoracaoInput(label: 'Nome completo', icone: Icons.person_outline),
+      style: const TextStyle(color: Colors.white),
+      decoration: _decoracaoInput(
+        label: AppLocalizations.of(context)!.campoNomeLabel,
+        icone: Icons.person_outline,
+      ),
       validator: (valor) {
         if (valor == null || valor.trim().isEmpty) {
-          return 'Informe seu nome';
+          return AppLocalizations.of(context)!.campoNomeObrigatorio;
         }
         return null;
       },
@@ -147,13 +159,40 @@ class _CadastroScreenState extends State<CadastroScreen> {
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
-      decoration: _decoracaoInput(label: 'E-mail', icone: Icons.email_outlined),
+      style: const TextStyle(color: Colors.white),
+      decoration: _decoracaoInput(
+        label: AppLocalizations.of(context)!.campoEmailLabel,
+        icone: Icons.email_outlined,
+      ),
       validator: (valor) {
         if (valor == null || valor.trim().isEmpty) {
-          return 'Informe seu e-mail';
+          return AppLocalizations.of(context)!.campoEmailObrigatorio;
         }
         if (!valor.contains('@') || !valor.contains('.')) {
-          return 'E-mail inválido';
+          return AppLocalizations.of(context)!.campoEmailInvalido;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCampoCelular() {
+    return TextFormField(
+      controller: _celularController,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.next,
+      style: const TextStyle(color: Colors.white),
+      decoration: _decoracaoInput(
+        label: AppLocalizations.of(context)!.campoCelularLabel,
+        icone: Icons.phone_android_outlined,
+      ),
+      validator: (valor) {
+        if (valor == null || valor.trim().isEmpty) {
+          return AppLocalizations.of(context)!.campoCelularObrigatorio;
+        }
+        final digitos = valor.replaceAll(RegExp(r'\D'), '');
+        if (digitos.length < 10) {
+          return AppLocalizations.of(context)!.campoCelularInvalido;
         }
         return null;
       },
@@ -165,23 +204,24 @@ class _CadastroScreenState extends State<CadastroScreen> {
       controller: _senhaController,
       obscureText: !_senhaVisivel,
       textInputAction: TextInputAction.next,
+      style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
-        label: 'Senha',
+        label: AppLocalizations.of(context)!.campoSenhaLabel,
         icone: Icons.lock_outline,
         sufixo: IconButton(
           icon: Icon(
             _senhaVisivel ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: Colors.grey,
+            color: Colors.white70,
           ),
           onPressed: () => setState(() => _senhaVisivel = !_senhaVisivel),
         ),
       ),
       validator: (valor) {
         if (valor == null || valor.isEmpty) {
-          return 'Informe uma senha';
+          return AppLocalizations.of(context)!.campoSenhaObrigatoria;
         }
         if (valor.length < 6) {
-          return 'A senha deve ter ao menos 6 caracteres';
+          return AppLocalizations.of(context)!.campoSenhaMinima;
         }
         return null;
       },
@@ -194,23 +234,24 @@ class _CadastroScreenState extends State<CadastroScreen> {
       obscureText: !_confirmarSenhaVisivel,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _criarContaMock(),
+      style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
-        label: 'Confirmar senha',
+        label: AppLocalizations.of(context)!.campoConfirmarSenhaLabel,
         icone: Icons.lock_outline,
         sufixo: IconButton(
           icon: Icon(
             _confirmarSenhaVisivel ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: Colors.grey,
+            color: Colors.white70,
           ),
           onPressed: () => setState(() => _confirmarSenhaVisivel = !_confirmarSenhaVisivel),
         ),
       ),
       validator: (valor) {
         if (valor == null || valor.isEmpty) {
-          return 'Confirme sua senha';
+          return AppLocalizations.of(context)!.campoConfirmarSenhaObrigatoria;
         }
         if (valor != _senhaController.text) {
-          return 'As senhas não coincidem';
+          return AppLocalizations.of(context)!.senhasNaoCoincidem;
         }
         return null;
       },
@@ -228,24 +269,28 @@ class _CadastroScreenState extends State<CadastroScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
-        child: const Text(
-          'Criar Conta',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        child: Text(
+          AppLocalizations.of(context)!.botaoCriarConta,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
   Widget _buildLinkVoltarParaLogin() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Wrap (em vez de Row) permite que o texto quebre para uma segunda
+    // linha em idiomas cuja tradução é mais longa que o espaço
+    // disponível, evitando overflow horizontal.
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Text('Já tem uma conta?', style: TextStyle(color: Colors.black54)),
+        Text(AppLocalizations.of(context)!.jaTemConta, style: const TextStyle(color: Colors.white70)),
         TextButton(
           onPressed: _voltarParaLogin,
-          child: const Text(
-            'Faça login',
-            style: TextStyle(color: _corPrincipal, fontWeight: FontWeight.bold),
+          child: Text(
+            AppLocalizations.of(context)!.facaLogin,
+            style: const TextStyle(color: _corAcentoClaro, fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -264,14 +309,15 @@ class _CadastroScreenState extends State<CadastroScreen> {
     );
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icone, color: Colors.grey),
+      labelStyle: const TextStyle(color: Colors.white70),
+      prefixIcon: Icon(icone, color: Colors.white70),
       suffixIcon: sufixo,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: _corCampoFundo,
       border: borda,
       enabledBorder: borda,
       focusedBorder: borda.copyWith(
-        borderSide: const BorderSide(color: _corPrincipal, width: 1.5),
+        borderSide: const BorderSide(color: _corAcentoClaro, width: 1.5),
       ),
       errorBorder: borda.copyWith(
         borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),

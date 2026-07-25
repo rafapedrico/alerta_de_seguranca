@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_navigator.dart';
@@ -15,6 +17,7 @@ import 'services/database_helper.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
 import 'services/font_scale_service.dart';
+import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/plano_limite_service.dart';
 import 'services/rotina_alarme_service.dart';
@@ -40,6 +43,7 @@ void main() async {
 
   await WallpaperService.inicializar();
   await FontScaleService.inicializar();
+  await LocaleService.inicializar();
   await DatabaseHelper().resetarSessaoAuditoria();
   await AlarmeService.inicializar();
   await NotificacaoService.inicializar();
@@ -284,25 +288,41 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
 
   @override
   Widget build(BuildContext context) {
-    const double fatorFonte = 1.0;
-
-    return MaterialApp(
-      navigatorKey: appNavigatorKey,
-      title: 'Security Check App',
-      debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: const TextScaler.linear(fatorFonte),
-          ),
-          child: child!,
-        );
-      },
-      home: _telaInicial(),
-      onGenerateRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (_) => _telaInicial(),
-          settings: settings,
+    return ValueListenableBuilder<Locale>(
+      valueListenable: LocaleService.localeNotifier,
+      builder: (context, locale, __) {
+        return ValueListenableBuilder<double>(
+          valueListenable: FontScaleService.fontScaleNotifier,
+          builder: (context, fatorFonte, _) {
+            return MaterialApp(
+              navigatorKey: appNavigatorKey,
+              title: 'Security Check App',
+              debugShowCheckedModeBanner: false,
+              locale: locale,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              builder: (context, child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(fatorFonte),
+                  ),
+                  child: child!,
+                );
+              },
+              home: _telaInicial(),
+              onGenerateRoute: (settings) {
+                return MaterialPageRoute(
+                  builder: (_) => _telaInicial(),
+                  settings: settings,
+                );
+              },
+            );
+          },
         );
       },
     );

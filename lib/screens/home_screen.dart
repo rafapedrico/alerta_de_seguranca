@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/historico_tab.dart';
@@ -28,11 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
 
-  final List<String> _titulos = const [
-    'Segurança',
-    'Família',
-    'Histórico',
-  ];
+  List<String> _titulos(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [l10n.tabSeguranca, l10n.tabFamilia, l10n.tabHistorico];
+  }
 
   void _aoSelecionarAba(int indice) {
     setState(() {
@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
-            title: const Text('Configurações'),
+            title: Text(AppLocalizations.of(context)!.appTituloConfiguracoes),
           ),
           body: const ConfiguracoesTab(),
         ),
@@ -68,20 +68,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final titulos = _titulos(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (_indiceAbaAtual == 1)
             IconButton(
               icon: const Icon(Icons.add_alarm),
-              tooltip: 'Adicionar Alarme',
+              tooltip: l10n.tooltipAdicionarAlarme,
               onPressed: () => _familiaTabKey.currentState?.abrirModalAdicionarAlarme(),
             ),
           if (_indiceAbaAtual == 2)
             IconButton(
               icon: const Icon(Icons.privacy_tip_outlined),
-              tooltip: 'Auditoria de Eventos Sensíveis',
+              tooltip: l10n.tooltipAuditoriaSensivel,
               onPressed: () => _abrirAuditoriaSensivel(context),
             ),
           IconButton(
@@ -100,18 +102,18 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _indiceAbaAtual,
         onTap: _aoSelecionarAba,
         type: BottomNavigationBarType.fixed,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.shield),
-            label: 'Segurança',
+            icon: const Icon(Icons.shield),
+            label: l10n.tabSeguranca,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Família',
+            icon: const Icon(Icons.people),
+            label: l10n.tabFamilia,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Histórico',
+            icon: const Icon(Icons.history),
+            label: l10n.tabHistorico,
           ),
         ],
       ),

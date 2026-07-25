@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
+import '../services/firebase_auth_service.dart';
+import '../services/locale_service.dart';
 import 'cadastro_screen.dart';
 
 /// Tela de Login do "SOS Security Personal".
@@ -24,6 +27,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   static const Color _corPrincipal = Color(0xFF4C7040);
+  static const Color _corFundo = Color(0xFF14212E);
+  static const Color _corCampoFundo = Color(0xFF1E313F);
+  static const Color _corAcentoClaro = Color(0xFF9CCC65);
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -44,7 +50,25 @@ class _LoginScreenState extends State<LoginScreen> {
   /// para o Login apertando o botão "voltar" do Android após logar).
   void _fazerLoginMock() {
     if (_formKey.currentState?.validate() != true) return;
+    _navegarParaFluxoPrincipal();
+  }
 
+  /// Simula o login social via Google (ver [FirebaseAuthService] para o
+  /// que precisa mudar quando a integração real com Firebase existir).
+  Future<void> _loginComGoogle() async {
+    final sucesso = await FirebaseAuthService().loginComGoogle();
+    if (!sucesso || !mounted) return;
+    _navegarParaFluxoPrincipal();
+  }
+
+  /// Simula o login social via Facebook (ver [FirebaseAuthService]).
+  Future<void> _loginComFacebook() async {
+    final sucesso = await FirebaseAuthService().loginComFacebook();
+    if (!sucesso || !mounted) return;
+    _navegarParaFluxoPrincipal();
+  }
+
+  void _navegarParaFluxoPrincipal() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) =>
@@ -55,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _abrirEsqueciMinhaSenha() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recuperação de senha em breve.')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.recuperacaoSenhaEmBreve)),
     );
   }
 
@@ -68,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: _corFundo,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -80,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildCabecalho(),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 32),
                   _buildCampoEmail(),
                   const SizedBox(height: 16),
                   _buildCampoSenha(),
@@ -88,14 +112,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: _abrirEsqueciMinhaSenha,
-                      child: const Text(
-                        'Esqueci minha senha',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      child: Text(
+                        AppLocalizations.of(context)!.esqueciMinhaSenha,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _buildBotaoEntrar(),
+                  const SizedBox(height: 24),
+                  _buildDivisorSocial(),
+                  const SizedBox(height: 20),
+                  _buildBotoesLoginSocial(),
                   const SizedBox(height: 20),
                   _buildLinkCadastro(),
                 ],
@@ -107,38 +135,97 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Topo: ícone de escudo centralizado dentro de um círculo com a cor
-  /// verde principal do app, seguido do nome oficial em destaque.
+  /// Topo: marca "Guardião X" (ícone + título + subtítulo) e a
+  /// ilustração central, recortadas do mockup de design original. A
+  /// imagem exibida depende do idioma selecionado em Configurações (ver
+  /// [LocaleService.caminhoImagemLoginPara]); se o arquivo do idioma
+  /// escolhido ainda não tiver sido adicionado a assets/images/, cai
+  /// automaticamente para a versão em português.
   Widget _buildCabecalho() {
-    return Column(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: ValueListenableBuilder<String>(
+        valueListenable: LocaleService.codigoIdiomaCompletoNotifier,
+        builder: (context, codigoIdioma, _) {
+          return Image.asset(
+            LocaleService.caminhoImagemLoginPara(codigoIdioma),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Image.asset(
+              LocaleService.imagemLoginPadrao,
+              fit: BoxFit.cover,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Divisor "ou entre com" entre o login por e-mail/senha e os botões
+  /// de login social.
+  Widget _buildDivisorSocial() {
+    return Row(
       children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: const BoxDecoration(
-            color: _corPrincipal,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.shield, color: Colors.white, size: 48),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'SOS Security Personal',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
-            color: Colors.black87,
+        const Expanded(child: Divider(color: Colors.white24)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            AppLocalizations.of(context)!.ouEntreCom,
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Entre para continuar protegido(a)',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        const Expanded(child: Divider(color: Colors.white24)),
+      ],
+    );
+  }
+
+  Widget _buildBotoesLoginSocial() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildBotaoSocial(
+            label: AppLocalizations.of(context)!.loginGoogle,
+            icone: const Text(
+              'G',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFEA4335),
+              ),
+            ),
+            onPressed: _loginComGoogle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildBotaoSocial(
+            label: AppLocalizations.of(context)!.loginFacebook,
+            icone: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+            onPressed: _loginComFacebook,
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBotaoSocial({
+    required String label,
+    required Widget icone,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: icone,
+        label: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.white38),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
     );
   }
 
@@ -147,16 +234,17 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
+      style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
-        label: 'E-mail',
+        label: AppLocalizations.of(context)!.campoEmailLabel,
         icone: Icons.email_outlined,
       ),
       validator: (valor) {
         if (valor == null || valor.trim().isEmpty) {
-          return 'Informe seu e-mail';
+          return AppLocalizations.of(context)!.campoEmailObrigatorio;
         }
         if (!valor.contains('@') || !valor.contains('.')) {
-          return 'E-mail inválido';
+          return AppLocalizations.of(context)!.campoEmailInvalido;
         }
         return null;
       },
@@ -169,20 +257,21 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: !_senhaVisivel,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _fazerLoginMock(),
+      style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
-        label: 'Senha',
+        label: AppLocalizations.of(context)!.campoSenhaLabel,
         icone: Icons.lock_outline,
         sufixo: IconButton(
           icon: Icon(
             _senhaVisivel ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: Colors.grey,
+            color: Colors.white70,
           ),
           onPressed: () => setState(() => _senhaVisivel = !_senhaVisivel),
         ),
       ),
       validator: (valor) {
         if (valor == null || valor.isEmpty) {
-          return 'Informe sua senha';
+          return AppLocalizations.of(context)!.campoSenhaObrigatoria;
         }
         return null;
       },
@@ -200,24 +289,28 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
-        child: const Text(
-          'Entrar',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        child: Text(
+          AppLocalizations.of(context)!.botaoEntrar,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
   Widget _buildLinkCadastro() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Wrap (em vez de Row) permite que o texto quebre para uma segunda
+    // linha em idiomas cuja tradução é mais longa que o espaço
+    // disponível, evitando overflow horizontal.
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Text('Não tem uma conta?', style: TextStyle(color: Colors.black54)),
+        Text(AppLocalizations.of(context)!.naoTemConta, style: const TextStyle(color: Colors.white70)),
         TextButton(
           onPressed: _abrirCadastro,
-          child: const Text(
-            'Cadastre-se',
-            style: TextStyle(color: _corPrincipal, fontWeight: FontWeight.bold),
+          child: Text(
+            AppLocalizations.of(context)!.cadastreSe,
+            style: const TextStyle(color: _corAcentoClaro, fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -237,14 +330,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icone, color: Colors.grey),
+      labelStyle: const TextStyle(color: Colors.white70),
+      prefixIcon: Icon(icone, color: Colors.white70),
       suffixIcon: sufixo,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: _corCampoFundo,
       border: borda,
       enabledBorder: borda,
       focusedBorder: borda.copyWith(
-        borderSide: const BorderSide(color: _corPrincipal, width: 1.5),
+        borderSide: const BorderSide(color: _corAcentoClaro, width: 1.5),
       ),
       errorBorder: borda.copyWith(
         borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),

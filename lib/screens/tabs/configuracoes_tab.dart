@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
 import '../../services/alarme_sonoro_service.dart';
+import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
@@ -131,13 +133,10 @@ Future<void> _selecionarSom(int? numero) async {
 
     if (!sucesso && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '🔇 Arquivo de som de teste vazio. Substitua o placeholder '
-            'na pasta assets/sounds.',
-          ),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.somTesteVazio),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 4),
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -177,20 +176,16 @@ Future<void> _selecionarSom(int? numero) async {
     if (codigo == null) return;
     setState(() => _idiomaSelecionado = codigo);
     await _localizationService.salvarIdioma(codigo);
+    // Aplica o novo idioma IMEDIATAMENTE em toda a árvore de widgets (ver
+    // LocaleService/main.dart) — pt/en/es têm tradução completa; os
+    // demais 8 idiomas do seletor ainda caem para o português até
+    // ganharem seu próprio arquivo .arb.
+    await LocaleService.definirIdioma(codigo);
     if (mounted) {
-      // Monta o texto de feedback JÁ TRADUZIDO para o próprio idioma
-      // recém-selecionado, usando o nome nativo (ex.: "English",
-      // "Español") para que um usuário estrangeiro compreenda o aviso
-      // imediatamente, sem depender do português.
       final nomeNativo = _localizationService.idiomaPorCodigo(codigo).nomeNativo;
-      final mensagem = AppStrings.traduzirComParametro(
-        codigo,
-        'idioma_alterado_snackbar',
-        {'idioma': nomeNativo},
-      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(mensagem),
+          content: Text(AppLocalizations.of(context)!.idiomaAlteradoSnackbar(nomeNativo)),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
         ),
@@ -236,11 +231,15 @@ Future<void> _selecionarSom(int? numero) async {
   /// Após a seleção, o número é limpo e salvo na tabela isolada
   /// 'contatos_emergencia' do SQLite.
   Future<void> _adicionarContatoDaAgenda() async {
+    // Capturado ANTES de qualquer 'await' para nunca usar o BuildContext
+    // após um async gap (ver uso na linha do fallback de nome abaixo).
+    final semNomeFallback = AppLocalizations.of(context)!.familiaSemNome;
+
     if (_contatosEmergencia.length >= _maxContatos) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ Você já cadastrou o máximo de $_maxContatos contatos.'),
+            content: Text(AppLocalizations.of(context)!.contatosMaximoAtingido(_maxContatos)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -253,8 +252,8 @@ Future<void> _selecionarSom(int? numero) async {
     if (!permitido) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Permissão de acesso aos contatos foi negada.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.contatosPermissaoNegada),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.redAccent,
           ),
@@ -278,8 +277,8 @@ Future<void> _selecionarSom(int? numero) async {
     if (contatoCompleto == null || contatoCompleto.phones.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Este contato não possui telefone cadastrado.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.contatoSemTelefone),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -289,15 +288,15 @@ Future<void> _selecionarSom(int? numero) async {
 
     final nome = contatoCompleto.displayName.trim().isNotEmpty
         ? contatoCompleto.displayName.trim()
-        : 'Sem nome';
+        : semNomeFallback;
     final telefoneOriginal = contatoCompleto.phones.first.number;
     final telefoneLimpo = _limparNumeroTelefone(telefoneOriginal);
 
     if (telefoneLimpo.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Número de telefone inválido.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.telefoneInvalido),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -330,7 +329,7 @@ Future<void> _selecionarSom(int? numero) async {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ $nome adicionado aos contatos de emergência!'),
+          content: Text(AppLocalizations.of(context)!.contatoAdicionado(nome)),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.green,
         ),
@@ -365,7 +364,7 @@ Future<void> _selecionarSom(int? numero) async {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⏳ Solicitação recebida. $nome será removido em 24 horas.'),
+          content: Text(AppLocalizations.of(context)!.contatoRemocaoSolicitada(nome)),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
         ),
@@ -416,13 +415,13 @@ Future<void> _selecionarSom(int? numero) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lock_outline, size: 22),
-            SizedBox(width: 8),
+            const Icon(Icons.lock_outline, size: 22),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'PIN Real',
+                AppLocalizations.of(ctx)!.pinRealTitulo,
                 softWrap: true,
                 overflow: TextOverflow.clip,
               ),
@@ -435,18 +434,18 @@ Future<void> _selecionarSom(int? numero) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Defina um PIN de 4 dígitos para acesso normal ao app.',
-                style: TextStyle(fontSize: 13),
+              Text(
+                AppLocalizations.of(ctx)!.pinRealDescricao,
+                style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: pinController,
-                decoration: const InputDecoration(
-                  labelText: 'PIN Real',
-                  hintText: 'Digite 4 números',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.pin),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(ctx)!.pinRealTitulo,
+                  hintText: AppLocalizations.of(ctx)!.pinRealHint,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.pin),
                   counterText: '',
                 ),
                 maxLength: 4,
@@ -455,9 +454,9 @@ Future<void> _selecionarSom(int? numero) async {
                 style: const TextStyle(fontSize: 24, letterSpacing: 12),
                 obscureText: true,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Informe o PIN';
-                  if (v.trim().length != 4) return 'Deve ter exatamente 4 dígitos';
-                  if (int.tryParse(v.trim()) == null) return 'Apenas números';
+                  if (v == null || v.trim().isEmpty) return AppLocalizations.of(ctx)!.pinInformarObrigatorio;
+                  if (v.trim().length != 4) return AppLocalizations.of(ctx)!.pinDeveTer4Digitos;
+                  if (int.tryParse(v.trim()) == null) return AppLocalizations.of(ctx)!.pinApenasNumeros;
                   return null;
                 },
               ),
@@ -467,7 +466,7 @@ Future<void> _selecionarSom(int? numero) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
+            child: Text(AppLocalizations.of(ctx)!.cancelar),
           ),
           FilledButton.icon(
             onPressed: () async {
@@ -476,7 +475,7 @@ Future<void> _selecionarSom(int? numero) async {
               if (ctx.mounted) Navigator.of(ctx).pop();
             },
             icon: const Icon(Icons.check, size: 18),
-            label: const Text('Salvar'),
+            label: Text(AppLocalizations.of(ctx)!.salvar),
           ),
         ],
       ),
@@ -523,8 +522,8 @@ Future<void> _selecionarSom(int? numero) async {
         SnackBar(
           content: Text(
             efetivadoInstantaneamente
-                ? '🔒 PIN definido com sucesso!'
-                : '🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.',
+                ? AppLocalizations.of(context)!.pinDefinidoComSucesso
+                : AppLocalizations.of(context)!.pinNovaSenhaEmVigor24h,
           ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
@@ -538,7 +537,7 @@ Future<void> _selecionarSom(int? numero) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Alterar Plano de Fundo'),
+        title: Text(AppLocalizations.of(ctx)!.alterarPlanoFundo),
         content: SizedBox(
           width: double.maxFinite,
           child: GridView.builder(
@@ -638,7 +637,7 @@ Future<void> _selecionarSom(int? numero) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Fechar'),
+            child: Text(AppLocalizations.of(ctx)!.fechar),
           ),
         ],
       ),
@@ -664,8 +663,8 @@ Future<void> _selecionarSom(int? numero) async {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎨 Plano de fundo alterado!'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.planoFundoAlterado),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -688,15 +687,15 @@ Future<void> _selecionarSom(int? numero) async {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                     child: Row(
                       children: [
-                        Icon(Icons.text_fields, color: Color(0xFF4C7040)),
-                        SizedBox(width: 8),
+                        const Icon(Icons.text_fields, color: Color(0xFF4C7040)),
+                        const SizedBox(width: 8),
                         Text(
-                          'Tamanho das Letras',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          AppLocalizations.of(context)!.tamanhoLetrasTitulo,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -770,7 +769,7 @@ Future<void> _selecionarSom(int? numero) async {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🔤 Tamanho das letras: ${FontScaleService.rotuloPara(fator)}'),
+          content: Text(AppLocalizations.of(context)!.tamanhoLetrasAlterado(FontScaleService.rotuloPara(fator))),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -786,34 +785,34 @@ Future<void> _selecionarSom(int? numero) async {
           children: [
             Icon(Icons.workspace_premium, color: Colors.amber.shade700),
             const SizedBox(width: 8),
-            const Text('Plano Premium'),
+            Text(AppLocalizations.of(ctx)!.planoPremiumTitulo),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _benefitRow(Icons.cloud_done, 'Alertas em nuvem em tempo real'),
+            _benefitRow(Icons.cloud_done, AppLocalizations.of(ctx)!.beneficioAlertasNuvem),
             const SizedBox(height: 8),
             _benefitRow(
               Icons.chat,
-              'Até 10 mensagens de contingência via WhatsApp',
+              AppLocalizations.of(ctx)!.beneficioMensagensWhatsapp,
             ),
             const SizedBox(height: 8),
-            _benefitRow(Icons.group, 'Criar grupos de alertas ilimitados'),
+            _benefitRow(Icons.group, AppLocalizations.of(ctx)!.beneficioGruposIlimitados),
             const SizedBox(height: 8),
             _benefitRow(
               Icons.lock,
-              'Chats criptografados com áudio e vídeo',
+              AppLocalizations.of(ctx)!.beneficioChatsCriptografados,
             ),
             const SizedBox(height: 8),
-            _benefitRow(Icons.backup, 'Backup automático na nuvem'),
+            _benefitRow(Icons.backup, AppLocalizations.of(ctx)!.beneficioBackupNuvem),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Agora não'),
+            child: Text(AppLocalizations.of(ctx)!.agoraNao),
           ),
           FilledButton.icon(
             onPressed: () {
@@ -821,7 +820,7 @@ Future<void> _selecionarSom(int? numero) async {
               _upgradeToPremium();
             },
             icon: Icon(Icons.star, color: Colors.amber.shade200),
-            label: const Text('Assinar R\$ 9,90/mês'),
+            label: Text(AppLocalizations.of(ctx)!.assinarPreco),
           ),
         ],
       ),
@@ -846,11 +845,11 @@ Future<void> _selecionarSom(int? numero) async {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.celebration, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('🎉 Plano Premium ativado!')),
+              const Icon(Icons.celebration, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text(AppLocalizations.of(context)!.planoPremiumAtivado)),
             ],
           ),
           backgroundColor: Colors.green.shade700,
@@ -886,7 +885,7 @@ Future<void> _selecionarSom(int? numero) async {
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
 
-        _sectionHeader(theme, Icons.security, 'Segurança'),
+        _sectionHeader(theme, Icons.security, AppLocalizations.of(context)!.tabSeguranca),
 
         ListTile(
           leading: CircleAvatar(
@@ -896,15 +895,15 @@ Future<void> _selecionarSom(int? numero) async {
               color: _pinReal != null ? Colors.green.shade700 : Colors.orange.shade700,
             ),
           ),
-          title: const Text(
-            'PIN Real',
+          title: Text(
+            AppLocalizations.of(context)!.pinRealTitulo,
             softWrap: true,
             overflow: TextOverflow.clip,
           ),
           subtitle: Text(
             _senhaPendente != null
-                ? '⏳ Nova senha pendente (aguardando 24h para ativar)'
-                : (_pinReal != null ? '✅ Definido' : '⚠️ Não definido'),
+                ? AppLocalizations.of(context)!.pinNovaSenhaPendente
+                : (_pinReal != null ? AppLocalizations.of(context)!.pinDefinido : AppLocalizations.of(context)!.pinNaoDefinido),
             softWrap: true,
             overflow: TextOverflow.clip,
             style: TextStyle(
@@ -923,11 +922,11 @@ Future<void> _selecionarSom(int? numero) async {
         // =========================================
         // SEÇÃO: CONTATOS DE EMERGÊNCIA
         // =========================================
-        _sectionHeader(theme, Icons.contact_emergency, 'Contatos de Emergência'),
+        _sectionHeader(theme, Icons.contact_emergency, AppLocalizations.of(context)!.familiaContatosEmergenciaTitulo),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Cadastre até $_maxContatos familiares que receberão o alerta em caso de emergência.',
+            AppLocalizations.of(context)!.contatosDescricao(_maxContatos),
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
@@ -950,12 +949,12 @@ Future<void> _selecionarSom(int? numero) async {
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'Nenhum contato cadastrado ainda.',
+              child: Text(
+                AppLocalizations.of(context)!.familiaNenhumContato,
                 textAlign: TextAlign.center,
                 softWrap: true,
                 overflow: TextOverflow.clip,
-                style: TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
             ),
           )
@@ -966,7 +965,7 @@ Future<void> _selecionarSom(int? numero) async {
               children: List.generate(_contatosEmergencia.length, (index) {
                 final contato = _contatosEmergencia[index];
                 final id = contato['id'] as int;
-                final nome = contato['nome'] as String? ?? 'Sem nome';
+                final nome = contato['nome'] as String? ?? AppLocalizations.of(context)!.familiaSemNome;
                 final telefone = contato['telefone'] as String? ?? '';
                 return Card(
                   elevation: 0,
@@ -1001,7 +1000,7 @@ Future<void> _selecionarSom(int? numero) async {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'Removendo em 24h...',
+                                  AppLocalizations.of(context)!.familiaRemovendoEm24h,
                                   softWrap: true,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -1023,7 +1022,7 @@ Future<void> _selecionarSom(int? numero) async {
                         ? const Icon(Icons.hourglass_bottom, color: Colors.orange)
                         : IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                            tooltip: 'Excluir contato',
+                            tooltip: AppLocalizations.of(context)!.tooltipExcluirContato,
                             onPressed: () => _excluirContato(id, nome),
                           ),
                   ),
@@ -1041,8 +1040,8 @@ Future<void> _selecionarSom(int? numero) async {
                   ? null
                   : _adicionarContatoDaAgenda,
               icon: const Icon(Icons.person_add_alt_1),
-              label: const Text(
-                '+ Adicionar Contato da Agenda',
+              label: Text(
+                AppLocalizations.of(context)!.adicionarContatoAgenda,
                 softWrap: true,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1062,15 +1061,15 @@ Future<void> _selecionarSom(int? numero) async {
         const SizedBox(height: 16),
         const Divider(),
 
-        _sectionHeader(theme, Icons.palette, 'Visual do Chat'),
+        _sectionHeader(theme, Icons.palette, AppLocalizations.of(context)!.visualDoChatTitulo),
 
         ListTile(
           leading: CircleAvatar(
             backgroundColor: Colors.purple.shade100,
             child: Icon(Icons.wallpaper, color: Colors.purple.shade700),
           ),
-          title: const Text(
-            'Alterar Plano de Fundo',
+          title: Text(
+            AppLocalizations.of(context)!.alterarPlanoFundo,
             softWrap: true,
             overflow: TextOverflow.clip,
           ),
@@ -1082,7 +1081,7 @@ Future<void> _selecionarSom(int? numero) async {
                           orElse: () => const _PresetWallpaper('Luz Clássica', 'light'),
                         )
                         .label
-                : 'Luz Clássica (padrão)',
+                : AppLocalizations.of(context)!.planoFundoPadrao,
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
@@ -1110,8 +1109,8 @@ Future<void> _selecionarSom(int? numero) async {
             backgroundColor: Colors.teal.shade50,
             child: Icon(Icons.text_fields, color: Colors.teal.shade700),
           ),
-          title: const Text(
-            'Tamanho das Letras',
+          title: Text(
+            AppLocalizations.of(context)!.tamanhoLetrasTitulo,
             softWrap: true,
             overflow: TextOverflow.clip,
           ),
@@ -1130,12 +1129,11 @@ Future<void> _selecionarSom(int? numero) async {
         // =========================================
         // SEÇÃO: ALERTA SONORO CUSTOMIZÁVEL (Etapa 1)
         // =========================================
-        _sectionHeader(theme, Icons.notifications_active, 'Alerta Sonoro'),
+        _sectionHeader(theme, Icons.notifications_active, AppLocalizations.of(context)!.alertaSonoroTitulo),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Escolha o som e a duração do alarme disparado ao término do '
-            'cronômetro de check-in.',
+            AppLocalizations.of(context)!.alertaSonoroDescricao,
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
@@ -1170,7 +1168,7 @@ Future<void> _selecionarSom(int? numero) async {
                     // manter o campo com altura mínima fixa.
                     isDense: false,
                     decoration: InputDecoration(
-                      labelText: 'Som do alarme',
+                      labelText: AppLocalizations.of(context)!.somAlarmeLabel,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1198,7 +1196,7 @@ Future<void> _selecionarSom(int? numero) async {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  tooltip: 'Testar/ouvir som',
+                  tooltip: AppLocalizations.of(context)!.tooltipTestarSom,
                   onPressed: () => _testarSom(_somSelecionado),
                   icon: Icon(
                     _somTestandoAgora == _somSelecionado
@@ -1222,12 +1220,11 @@ Future<void> _selecionarSom(int? numero) async {
         // =========================================
         // SEÇÃO: IDIOMA (Etapa 2 - Internacionalização)
         // =========================================
-        _sectionHeader(theme, Icons.language, 'Idioma'),
+        _sectionHeader(theme, Icons.language, AppLocalizations.of(context)!.configuracoesIdiomaTitulo),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Escolha o idioma do aplicativo. Suporte preparado para 11 '
-            'idiomas globais.',
+            AppLocalizations.of(context)!.configuracoesIdiomaDescricao,
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
@@ -1264,7 +1261,7 @@ Future<void> _selecionarSom(int? numero) async {
               // acomodar fontes maiores sem cortar o conteúdo.
               isDense: false,
               decoration: InputDecoration(
-                labelText: 'Idioma do aplicativo',
+                labelText: AppLocalizations.of(context)!.configuracoesIdiomaLabel,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1294,7 +1291,7 @@ Future<void> _selecionarSom(int? numero) async {
 
         const Divider(),
 
-        _sectionHeader(theme, Icons.workspace_premium, 'Plano'),
+        _sectionHeader(theme, Icons.workspace_premium, AppLocalizations.of(context)!.planoTitulo),
 
 
 
@@ -1327,11 +1324,11 @@ Future<void> _selecionarSom(int? numero) async {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Plano Familiar Ativo',
+                        Text(
+                          AppLocalizations.of(context)!.planoFamiliarAtivo,
                           softWrap: true,
                           overflow: TextOverflow.clip,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1339,7 +1336,7 @@ Future<void> _selecionarSom(int? numero) async {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Todos os recursos premium disponíveis',
+                          AppLocalizations.of(context)!.recursosPremiumDisponiveis,
                           softWrap: true,
                           overflow: TextOverflow.clip,
                           style: TextStyle(
@@ -1357,16 +1354,16 @@ Future<void> _selecionarSom(int? numero) async {
                       color: Colors.white.withOpacity(0.25),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star, color: Colors.white, size: 14),
-                        SizedBox(width: 4),
+                        const Icon(Icons.star, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
                         Text(
-                          'Premium',
+                          AppLocalizations.of(context)!.premiumBadge,
                           softWrap: true,
                           overflow: TextOverflow.clip,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -1412,7 +1409,7 @@ Future<void> _selecionarSom(int? numero) async {
                         const SizedBox(width: 10),
                         Flexible(
                           child: Text(
-                            'Premium',
+                            AppLocalizations.of(context)!.premiumBadge,
                             softWrap: true,
                             overflow: TextOverflow.clip,
                             style: TextStyle(
@@ -1425,22 +1422,22 @@ Future<void> _selecionarSom(int? numero) async {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Proteja quem você ama',
+                    Text(
+                      AppLocalizations.of(context)!.protejaQuemVoceAma,
                       softWrap: true,
                       overflow: TextOverflow.clip,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Mude para o Plano Premium',
+                    Text(
+                      AppLocalizations.of(context)!.mudeParaPremium,
                       softWrap: true,
                       overflow: TextOverflow.clip,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
                       ),
@@ -1454,11 +1451,11 @@ Future<void> _selecionarSom(int? numero) async {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
-                              'R\$ 9,90',
+                            Text(
+                              AppLocalizations.of(context)!.precoMensal,
                               softWrap: true,
                               overflow: TextOverflow.clip,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
@@ -1466,7 +1463,7 @@ Future<void> _selecionarSom(int? numero) async {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '/mês',
+                              AppLocalizations.of(context)!.porMes,
                               softWrap: true,
                               overflow: TextOverflow.clip,
                               style: TextStyle(
@@ -1489,7 +1486,7 @@ Future<void> _selecionarSom(int? numero) async {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Ver mais',
+                                AppLocalizations.of(context)!.verMais,
                                 softWrap: true,
                                 overflow: TextOverflow.clip,
                                 style: TextStyle(

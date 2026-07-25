@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'dart:async';
 import '../../services/database_helper.dart';
@@ -289,7 +290,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
     if (totalSegundos <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecione um tempo maior que zero!')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.segurancaSelecioneTempo)),
       );
       return;
     }
@@ -516,7 +517,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
           categoria: 'seguranca',
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Check-in desarmado com sucesso!'), backgroundColor: Colors.green),
+          SnackBar(content: Text(AppLocalizations.of(context)!.segurancaCheckinDesarmado), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -613,21 +614,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
       barrierDismissible: true,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirmar SOS?'),
-          content: const Text(
-            'Isso enviará imediatamente um SMS de emergência e um alerta '
-            'para os seus contatos cadastrados, com sua localização atual. '
-            'Deseja continuar?',
-          ),
+          title: Text(AppLocalizations.of(context)!.segurancaConfirmarSosTitulo),
+          content: Text(AppLocalizations.of(context)!.segurancaConfirmarSosConteudo),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(AppLocalizations.of(context)!.cancelar),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Confirmar SOS', style: TextStyle(color: Colors.white)),
+              child: Text(AppLocalizations.of(context)!.segurancaConfirmarSosBotao, style: const TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -643,8 +640,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🚨 SOS disparado! Contatos de emergência notificados.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.segurancaSosDisparado),
             backgroundColor: Colors.red,
           ),
         );
@@ -707,8 +704,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
                   const SizedBox(height: 12),
                   _buildCampoContexto(),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Daqui quanto tempo vou chegar',
+                  Text(
+                    AppLocalizations.of(context)!.segurancaTituloSecaoTempo,
                     textAlign: TextAlign.center,
                     softWrap: true,
                     overflow: TextOverflow.clip,
@@ -742,15 +739,15 @@ class _SegurancaTabState extends State<SegurancaTab> {
     if (_apiOnline == null) {
       cor = Colors.grey;
       icone = Icons.sync;
-      texto = 'Verificando servidor...';
+      texto = AppLocalizations.of(context)!.segurancaServidorVerificando;
     } else if (_apiOnline == true) {
       cor = Colors.green;
       icone = Icons.cloud_done;
-      texto = 'Servidor Online';
+      texto = AppLocalizations.of(context)!.segurancaServidorOnline;
     } else {
       cor = Colors.red;
       icone = Icons.cloud_off;
-      texto = 'Servidor Offline';
+      texto = AppLocalizations.of(context)!.segurancaServidorOffline;
     }
 
     return Align(
@@ -803,10 +800,10 @@ class _SegurancaTabState extends State<SegurancaTab> {
               child: TextField(
                 controller: _contextoController,
                 enabled: !_isTimerAtivo,
-                decoration: const InputDecoration(
-                  labelText: 'Dica de Contexto',
-                  hintText: 'Ex: Placa do carro / Ônibus / Localização',
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.segurancaDicaContextoLabel,
+                  hintText: AppLocalizations.of(context)!.segurancaDicaContextoHint,
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
                   border: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   enabledBorder: InputBorder.none,
@@ -838,8 +835,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
                 children: List.generate(24, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
               ),
             ),
-            const Text(
-              'Horas',
+            Text(
+              AppLocalizations.of(context)!.horasLabel,
               softWrap: true,
               overflow: TextOverflow.clip,
               style: _estiloLabelPicker,
@@ -859,8 +856,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
                 children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)))),
               ),
             ),
-            const Text(
-              'Minutos',
+            Text(
+              AppLocalizations.of(context)!.minutosLabel,
               softWrap: true,
               overflow: TextOverflow.clip,
               style: _estiloLabelPicker,
@@ -893,7 +890,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  _isTimerAtivo ? _formatarTempo(_segundosRestantes) : 'Fazer\nCheck-in',
+                  _isTimerAtivo ? _formatarTempo(_segundosRestantes) : AppLocalizations.of(context)!.segurancaFazerCheckin,
                   textAlign: TextAlign.center,
                   softWrap: true,
                   overflow: TextOverflow.clip,
@@ -905,7 +902,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                _isTimerAtivo ? 'Toque: desarmar' : 'Toque para iniciar',
+                _isTimerAtivo ? AppLocalizations.of(context)!.segurancaToqueDesarmar : AppLocalizations.of(context)!.segurancaToqueIniciar,
                 textAlign: TextAlign.center,
                 softWrap: true,
                 overflow: TextOverflow.clip,
@@ -936,9 +933,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         icon: const Icon(Icons.sos),
-        label: const Text(
-          'Botão de Pânico',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        label: Text(
+          AppLocalizations.of(context)!.segurancaBotaoPanico,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );

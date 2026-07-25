@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../services/emergency_alert_service.dart';
@@ -260,10 +261,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
               color: Colors.black.withOpacity(0.65),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              '📸 Toque no botão ou aperte VOLUME para tirar a foto',
+            child: Text(
+              AppLocalizations.of(context)!.cameraToqueOuVolume,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
@@ -301,15 +302,15 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
   }
 
   Widget _buildProcessandoEnvio() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: Colors.white),
-          SizedBox(height: 24),
+          const CircularProgressIndicator(color: Colors.white),
+          const SizedBox(height: 24),
           Text(
-            'Enviando...',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+            AppLocalizations.of(context)!.enviando,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
         ],
       ),
@@ -335,10 +336,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
             const Icon(Icons.warning_amber_rounded,
                 color: Colors.white, size: 96),
             const SizedBox(height: 24),
-            const Text(
-              'ATENÇÃO',
+            Text(
+              AppLocalizations.of(context)!.atencaoMaiuscula,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 38,
                 fontWeight: FontWeight.w900,
@@ -346,10 +347,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'ATENÇÃO, UMA MENSAGEM FOI ENVIADA AOS FAMILIARES COM A FOTO E LOCALIZAÇÃO. ESTA OPERAÇÃO NÃO PODE SER DESFEITA.',
+            Text(
+              AppLocalizations.of(context)!.mensagemEnviadaAviso,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -363,12 +364,16 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
                 const Icon(Icons.keyboard_arrow_up,
                     color: Colors.white70, size: 28),
                 const SizedBox(width: 6),
-                Text(
-                  'Deslize para cima para fechar',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    AppLocalizations.of(context)!.deslizeParaFechar,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

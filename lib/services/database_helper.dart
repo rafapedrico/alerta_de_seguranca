@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -46,6 +46,9 @@ class DatabaseHelper {
         timestamp_alteracao_senha TEXT,
         timestamp_solicitacao_auditoria TEXT,
         auditoria_liberada_sessao INTEGER NOT NULL DEFAULT 0,
+        aguardando_confirmacao_pin INTEGER NOT NULL DEFAULT 0,
+        contexto_timer_ativo TEXT,
+        timestamp_expiracao_alarme TEXT,
         som_alarme_selecionado INTEGER NOT NULL DEFAULT 1,
         duracao_som_alarme INTEGER NOT NULL DEFAULT 30,
         idioma_selecionado TEXT NOT NULL DEFAULT 'pt'
@@ -103,7 +106,11 @@ class DatabaseHelper {
         minuto INTEGER NOT NULL,
         dias_semana TEXT NOT NULL,
         ativo INTEGER NOT NULL DEFAULT 1,
-        etiqueta TEXT
+        etiqueta TEXT,
+        contexto_personalizado TEXT,
+        minutos_tolerancia INTEGER NOT NULL DEFAULT 10,
+        ultimo_disparo_epoch INTEGER,
+        alarme_pausado INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -272,6 +279,48 @@ class DatabaseHelper {
     // no lugar do horário normal.
     if (oldVersion < 12) {
       await db.execute(
+        'ALTER TABLE alarmes_rotina ADD COLUMN alarme_pausado INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    // Migration from v12 to v13: correção defensiva para instalações cujo
+    // banco foi criado diretamente na versão 12 por uma versão anterior de
+    // _onCreate que esquecia de incluir colunas já adicionadas pelas
+    // migrações v9/v10/v12 acima (aguardando_confirmacao_pin,
+    // contexto_timer_ativo, timestamp_expiracao_alarme, em user_config; e
+    // contexto_personalizado, minutos_tolerancia, ultimo_disparo_epoch,
+    // alarme_pausado, em alarmes_rotina) — causando erros
+    // "no such column" ao salvar alarmes de rotina ou o check-in de
+    // segurança. Cada ALTER TABLE é protegida por try/catch para ignorar
+    // "duplicate column" em quem já passou pelas migrações antigas
+    // normalmente e já possui essas colunas.
+    if (oldVersion < 13) {
+      Future<void> adicionarColunaSeAusente(String sql) async {
+        try {
+          await db.execute(sql);
+        } catch (_) {
+          // Coluna já existe — ignora.
+        }
+      }
+
+      await adicionarColunaSeAusente(
+        'ALTER TABLE user_config ADD COLUMN aguardando_confirmacao_pin INTEGER NOT NULL DEFAULT 0',
+      );
+      await adicionarColunaSeAusente(
+        'ALTER TABLE user_config ADD COLUMN contexto_timer_ativo TEXT',
+      );
+      await adicionarColunaSeAusente(
+        'ALTER TABLE user_config ADD COLUMN timestamp_expiracao_alarme TEXT',
+      );
+      await adicionarColunaSeAusente(
+        'ALTER TABLE alarmes_rotina ADD COLUMN contexto_personalizado TEXT',
+      );
+      await adicionarColunaSeAusente(
+        'ALTER TABLE alarmes_rotina ADD COLUMN minutos_tolerancia INTEGER NOT NULL DEFAULT 10',
+      );
+      await adicionarColunaSeAusente(
+        'ALTER TABLE alarmes_rotina ADD COLUMN ultimo_disparo_epoch INTEGER',
+      );
+      await adicionarColunaSeAusente(
         'ALTER TABLE alarmes_rotina ADD COLUMN alarme_pausado INTEGER NOT NULL DEFAULT 0',
       );
     }

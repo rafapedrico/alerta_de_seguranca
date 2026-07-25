@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 /// Diálogo leve (AlertDialog) para confirmação de PIN, exibido POR CIMA
 /// da tela atual (sem substituir toda a árvore/rota como a antiga
@@ -141,7 +142,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
       _errosConsecutivos = 0;
       setState(() {
         _verificando = true;
-        _mensagemErro = 'Alarme desligado'; // Altera a mensagem no próprio teclado
+        _mensagemErro = AppLocalizations.of(context)!.pinAlarmeDesligado; // Altera a mensagem no próprio teclado
       });
 
       // Aguarda 1 segundo para o usuário ler o feedback de sucesso antes de sair
@@ -169,7 +170,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
 
     if (mounted) {
       setState(() {
-        _mensagemErro = 'senha incorreta'; // Mensagem atualizada
+        _mensagemErro = AppLocalizations.of(context)!.pinSenhaIncorreta; // Mensagem atualizada
         _pinDigitado = ''; // Reseta os indicadores de círculos para nova tentativa
       });
     }
@@ -190,10 +191,10 @@ class _PinDialogContentState extends State<PinDialogContent> {
           children: [
             const Icon(Icons.lock_outline, color: Colors.white70, size: 40),
             const SizedBox(height: 10),
-            const Text(
-              'CONFIRME SEU PIN',
+            Text(
+              AppLocalizations.of(context)!.pinConfirmeSeuPin,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
@@ -205,8 +206,8 @@ class _PinDialogContentState extends State<PinDialogContent> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 exibirContagem
-                    ? 'Digite seu PIN para desarmar o check-in.'
-                    : 'Digite seu PIN para continuar.',
+                    ? AppLocalizations.of(context)!.pinDigiteParaDesarmar
+                    : AppLocalizations.of(context)!.pinDigiteParaContinuar,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
@@ -214,7 +215,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
             if (exibirContagem) ...[
               const SizedBox(height: 6),
               Text(
-                'Tempo de tolerância: ${widget.segundosTolerancia}s',
+                AppLocalizations.of(context)!.pinTempoTolerancia(widget.segundosTolerancia!),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.amber,
@@ -253,9 +254,9 @@ class _PinDialogContentState extends State<PinDialogContent> {
                         }
                         widget.aoCancelar?.call();
                       },
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.white70),
+                child: Text(
+                  AppLocalizations.of(context)!.cancelar,
+                  style: const TextStyle(color: Colors.white70),
                 ),
               ),
             ],

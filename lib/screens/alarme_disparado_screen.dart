@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
@@ -219,9 +220,9 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Alarme de rotina ativo.\nConfirme seu segurança para pausar.',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    Text(
+                      AppLocalizations.of(context)!.alarmeRotinaAtivoDescricao,
+                      style: const TextStyle(color: Colors.white70, fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
@@ -238,17 +239,21 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
                           ),
                         ),
                         onPressed: () => _desligarAlarmeEFechar(context),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.alarm_off, size: 26),
-                            SizedBox(width: 12),
-                            Text(
-                              'DESLIGAR ALARME',
-                              style: TextStyle(
-                                fontSize: 18, 
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.1,
+                            const Icon(Icons.alarm_off, size: 26),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                AppLocalizations.of(context)!.desligarAlarmeBotao,
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.1,
+                                ),
                               ),
                             ),
                           ],
