@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../firebase_options.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
@@ -33,6 +35,49 @@ const String chaveAlarmeFaseFinal = 'alarme_fase_final';
 /// instante exato em que ela começou no isolate headless.
 const String chaveAlarmeFaseFinalDeadlineEpochMs =
     'alarme_fase_final_deadline_epoch_ms';
+
+/// Chave (SharedPreferences) sinalizando que o alerta de emergência REAL
+/// da janela final já foi disparado (nuvem + SMS/local já tentados) —
+/// gravada pelo callback headless [_callbackJanelaFinalExpirada] DEPOIS
+/// de concluir o disparo. [AlarmeDisparadoScreen] usa isso como um
+/// fallback (o caminho PRIMÁRIO é o próprio diálogo de PIN em primeiro
+/// plano detectando a falha diretamente) para garantir que a tela pare o
+/// som, feche o teclado e mostre a confirmação mesmo se, por algum
+/// motivo, o diálogo em primeiro plano não tiver dado conta sozinho.
+const String chaveAlarmeEmergenciaDisparada = 'alarme_emergencia_disparada';
+
+/// Chave (SharedPreferences) sinalizando que o fluxo do alarme de rotina
+/// foi TOTALMENTE resolvido (PIN correto confirmado OU alerta de
+/// emergência já disparado) — sinal para QUALQUER instância de
+/// [AlarmeDisparadoScreen] parar seu próprio som e se fechar.
+///
+/// MOTIVO DE EXISTIR: como [RotinaCheckinAlarmActivity] é lançada via
+/// [android.content.Intent] puro (sem `FlutterEngineCache`, apesar do
+/// que um comentário antigo do código nativo afirmava), ela cria um
+/// engine Flutter/isolate Dart TOTALMENTE INDEPENDENTE do engine da
+/// `MainActivity` — cada um com sua PRÓPRIA cópia de todo o estado Dart
+/// (inclusive o AudioPlayer do som e a trava estática
+/// `_instanciaGraficaAberta`, que só protege contra duplicidade DENTRO
+/// do mesmo isolate). Na prática, isso significa que podem existir DUAS
+/// instâncias de [AlarmeDisparadoScreen] rodando em paralelo — uma
+/// dentro da MainActivity (empurrada pelo polling de
+/// `alarme_disparando_no_momento`) e outra dentro da
+/// RotinaCheckinAlarmActivity (lançada pelo caminho nativo de
+/// RotinaAlarmWakeService) — e resolver o fluxo em UMA delas (ex:
+/// confirmar o PIN) não interrompe automaticamente o som/timers da
+/// OUTRA, já que cada uma tem seu próprio AudioPlayer/Timer em memória.
+///
+/// Como o SharedPreferences É compartilhado entre isolates (é o mesmo
+/// arquivo nativo no disco), esta flag funciona como um sinal confiável
+/// entre eles: assim que qualquer instância resolve o fluxo, ela grava
+/// esta flag; TODAS as instâncias (via seu próprio polling de 1s) a
+/// detectam e se encerram — mesmo a(s) que não foram a que resolveu.
+///
+/// Diferente de `stop_current_alarm`/`alarme_disparando_no_momento`
+/// (que já são alterados no simples TOQUE do botão "Interromper
+/// Alarme", antes mesmo do PIN ser confirmado), esta flag SÓ vira
+/// `true` na resolução DEFINITIVA — nunca antes.
+const String chaveAlarmeFluxoResolvido = 'alarme_fluxo_resolvido';
 
 class RotinaAlarmeService {
   RotinaAlarmeService._internal();
@@ -83,15 +128,74 @@ class RotinaAlarmeService {
       _callbackCheckinRotina,
       exact: true,
       wakeup: true,
+      // CORREÇÃO (Doze/deep sleep): sem isto, o Android pode ADIAR o
+      // disparo deste alarme por minutos/horas quando o aparelho está em
+      // repouso profundo, mesmo sendo "exact" — `allowWhileIdle` (que o
+      // pacote traduz para `setExactAndAllowWhileIdle` nativo) é o que
+      // realmente garante o disparo no segundo programado independente
+      // do estado de energia do aparelho.
+      allowWhileIdle: true,
       rescheduleOnReboot: true,
       params: {'idAlarme': idAlarme},
     );
+
+    // Agenda também o alarme NATIVO paralelo (100% independente do
+    // Flutter/Dart, ver [RotinaAlarmNativeReceiver]) para o MESMO
+    // horário — é ele quem garante, de forma robusta a Doze, que o
+    // aparelho acorde e a tela do alarme abra mesmo se o isolate
+    // headless do android_alarm_manager_plus for suspenso/encerrado
+    // antes de conseguir agir.
+    await agendarAlarmeNativo(idAlarme, dataHoraDisparo);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('stop_current_alarm');
 
     debugPrint(
         '⏰ Alarme de rotina #$idAlarme agendado para ${dataHoraDisparo.toIso8601String()}');
+  }
+
+  /// Agenda o alarme NATIVO paralelo (ver `RotinaAlarmPlugin.kt` /
+  /// [RotinaAlarmNativeReceiver]) para o MESMO horário do alarme Dart
+  /// acima, usando `setExactAndAllowWhileIdle` diretamente no
+  /// `AlarmManager` do Android — um caminho que não depende de NENHUM
+  /// engine Flutter estar vivo para disparar. Nunca lança exceção; se a
+  /// chamada nativa falhar por qualquer motivo, o alarme Dart "normal"
+  /// ainda tenta funcionar por conta própria.
+  static Future<void> agendarAlarmeNativo(int idAlarme, DateTime dataHoraDisparo) async {
+    try {
+      await _canalRotinaAlarme.invokeMethod('agendarAlarmeNativo', {
+        'idAlarme': idAlarme,
+        'epochMillis': dataHoraDisparo.millisecondsSinceEpoch,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao agendar alarme nativo paralelo #$idAlarme: $e');
+    }
+  }
+
+  /// Cancela o alarme NATIVO paralelo agendado por [agendarAlarmeNativo].
+  /// Nunca lança exceção.
+  static Future<void> cancelarAlarmeNativo(int idAlarme) async {
+    try {
+      await _canalRotinaAlarme.invokeMethod('cancelarAlarmeNativo', {
+        'idAlarme': idAlarme,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao cancelar alarme nativo paralelo #$idAlarme: $e');
+    }
+  }
+
+  /// Libera o WakeLock e encerra o `RotinaAlarmWakeService` (ver
+  /// `RotinaAlarmWakeService.kt`) — DEVE ser chamado a partir do isolate
+  /// em PRIMEIRO PLANO assim que o fluxo do alarme de rotina for
+  /// resolvido (PIN confirmado ou alerta de emergência já disparado),
+  /// para não manter a CPU do aparelho acordada além do necessário.
+  /// Seguro mesmo se o serviço não estiver rodando; nunca lança exceção.
+  static Future<void> pararServicoForeground() async {
+    try {
+      await _canalRotinaAlarme.invokeMethod('pararServicoForeground');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar serviço em primeiro plano do alarme: $e');
+    }
   }
 
   static DateTime? _calcularProximoDisparo(int hora, int minuto, String diasSemanaCsv) {
@@ -124,6 +228,7 @@ class RotinaAlarmeService {
     await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
+    await cancelarAlarmeNativo(idAlarme);
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
     await _limparFlagsDeFaseFinal();
     debugPrint('⏰ Alarme de rotina #$idAlarme cancelado.');
@@ -133,6 +238,7 @@ class RotinaAlarmeService {
     await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
+    await cancelarAlarmeNativo(idAlarme);
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
     await _limparFlagsDeFaseFinal();
 
@@ -162,8 +268,24 @@ class RotinaAlarmeService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(chaveAlarmeFaseFinal);
       await prefs.remove(chaveAlarmeFaseFinalDeadlineEpochMs);
+      await prefs.remove(chaveAlarmeEmergenciaDisparada);
     } catch (e) {
       debugPrint('⚠️ Falha ao limpar flag de fase final: $e');
+    }
+  }
+
+  /// Cancela SOMENTE o alarme nativo da janela final (`_idJanelaFinal`),
+  /// sem tocar no check-in nem na tolerância. Usado por
+  /// [AlarmeDisparadoScreen] quando o PRÓPRIO diálogo de PIN em primeiro
+  /// plano já detectou a falha (PIN incorreto ou tempo esgotado) e já
+  /// disparou o alerta real por conta própria — evita que o alarme
+  /// nativo, agendado para o MESMO instante-limite, dispare de novo
+  /// alguns segundos/minutos depois e envie um alerta duplicado.
+  static Future<void> cancelarJanelaFinal(int idAlarme) async {
+    try {
+      await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
+    } catch (e) {
+      debugPrint('⚠️ Falha ao cancelar janela final do alarme #$idAlarme: $e');
     }
   }
 
@@ -206,20 +328,56 @@ class RotinaAlarmeService {
     }
   }
 
-  /// Faz o alarme de rotina "tocar novamente": traz a tela nativa de
-  /// volta ao primeiro plano (criando-a do zero se já tiver sido
-  /// fechada, ou apenas reforçando-a se ainda estiver viva) E reinicia o
-  /// som em loop — usado exclusivamente na transição para a JANELA FINAL
-  /// de 2 minutos, quando a tolerância expira sem confirmação (ver
-  /// [_callbackToleranciaExpirada]). Nunca lança exceção.
-  static Future<void> tocarAlarmeNovamente(int idAlarme) async {
+  /// Reinicia o som NATIVO (Kotlin/MediaPlayer) em loop, SOMENTE se já
+  /// houver uma `RotinaCheckinAlarmActivity` viva e registrada no
+  /// momento da chamada — usado como reforço, na transição para a
+  /// JANELA FINAL de 2 minutos, quando a tolerância expira sem
+  /// confirmação (ver [AlarmeDisparadoScreen._entrarNaFaseFinal]).
+  ///
+  /// Propositalmente NÃO lança nenhuma Activity/tela nova: se o app
+  /// estiver em primeiro plano rodando dentro da `MainActivity` comum
+  /// (cenário mais frequente), não há nenhuma `RotinaCheckinAlarmActivity`
+  /// para reiniciar e esta chamada é um no-op — nesse caso o som já é
+  /// garantido pelo AudioPlayer Dart do próprio
+  /// [AlarmeDisparadoScreen._tocarSomDoAlarme], que roda no mesmo engine
+  /// em primeiro plano que fez esta chamada.
+  ///
+  /// IMPORTANTE: DEVE ser chamado a partir do isolate EM PRIMEIRO PLANO —
+  /// NUNCA a partir de um callback headless do `android_alarm_manager_plus`.
+  /// O MethodChannel usado aqui só é registrado dentro de
+  /// `MainActivity.configureFlutterEngine` (ver `MainApplication.kt`), e
+  /// o engine headless criado pelo pacote NÃO possui esse (nem nenhum
+  /// outro) plugin local registrado — chamado de lá, sempre lançaria
+  /// `MissingPluginException` em silêncio (foi exatamente essa tentativa,
+  /// removida daqui, que resultava no som não voltando a tocar). Nunca
+  /// lança exceção.
+  static Future<void> reiniciarSomNativoSeAtivo() async {
     try {
-      await _canalRotinaAlarme.invokeMethod('tocarAlarmeNovamente', {
+      await _canalRotinaAlarme.invokeMethod('reiniciarSomSeAtivo');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao tentar reiniciar som nativo (best-effort): $e');
+    }
+  }
+
+  /// CORREÇÃO (bug real observado em teste): ao expirar a tolerância, a
+  /// tela permanecia apagada mesmo com o som Dart tocando corretamente —
+  /// `setTurnScreenOn`/`setShowWhenLocked` só têm efeito pleno quando a
+  /// Activity é CRIADA ou RETOMADA, e nada trazia a
+  /// `RotinaCheckinAlarmActivity` de volta ao primeiro plano nesse
+  /// momento. Este método (chamado por
+  /// [AlarmeDisparadoScreen._entrarNaFaseFinal]) faz nativamente, numa
+  /// única chamada: acende a tela fisicamente (WakeLock), garante que a
+  /// Activity exista/volte ao topo, e reinicia o som nativo se ela já
+  /// existia. DEVE ser chamado a partir do isolate em PRIMEIRO PLANO
+  /// (mesma restrição de [reiniciarSomNativoSeAtivo]). Nunca lança
+  /// exceção.
+  static Future<void> acordarParaFaseFinal(int idAlarme) async {
+    try {
+      await _canalRotinaAlarme.invokeMethod('acordarParaFaseFinal', {
         'idAlarme': idAlarme,
       });
     } catch (e) {
-      debugPrint(
-          '⚠️ Falha ao re-tocar o alarme de rotina #$idAlarme (janela final): $e');
+      debugPrint('⚠️ Falha ao acordar tela para a janela final: $e');
     }
   }
 
@@ -229,8 +387,14 @@ class RotinaAlarmeService {
     // confirmado dentro dela.
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
+    await cancelarAlarmeNativo(idAlarme);
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
     await _limparFlagsDeFaseFinal();
+    // Libera o WakeLock (ver RotinaAlarmWakeService) assim que o PIN
+    // correto é confirmado — chamado a partir do isolate em primeiro
+    // plano (esta função só é acionada pelo diálogo de PIN), portanto
+    // confiável.
+    await pararServicoForeground();
 
     // Encerra explicitamente qualquer sinalização de "alarme ainda
     // tocando" em disco — necessário porque, na janela final, o teclado
@@ -240,6 +404,12 @@ class RotinaAlarmeService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('stop_current_alarm', true);
       await prefs.remove('alarme_disparando_no_momento');
+      // Sinaliza a QUALQUER outra instância de AlarmeDisparadoScreen
+      // (possivelmente rodando num engine/isolate totalmente separado,
+      // ver documentação de [chaveAlarmeFluxoResolvido]) que o fluxo já
+      // foi resolvido — mesmo que não tenha sido ELA quem resolveu, deve
+      // parar seu próprio som e se fechar.
+      await prefs.setBool(chaveAlarmeFluxoResolvido, true);
     } catch (e) {
       debugPrint('⚠️ Falha ao limpar flags de alarme tocando: $e');
     }
@@ -287,6 +457,10 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   // 1. Grava no disco que o alarme está disparando para o main.dart saber
   await prefs.setBool('alarme_disparando_no_momento', true);
   await prefs.setBool('stop_current_alarm', false);
+  // Novo ciclo de alarme começando agora: reseta o sinal de "fluxo
+  // resolvido" do ciclo anterior (ver documentação de
+  // [chaveAlarmeFluxoResolvido]).
+  await prefs.remove(chaveAlarmeFluxoResolvido);
 
   // 2. Abre a interface nativa / traz o app para o primeiro plano IMEDIATAMENTE
   try {
@@ -296,9 +470,41 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   }
 
   // 3. Monitora a flag no SharedPreferences para interrupção instantânea
+  // durante a janela inicial (aguardando o toque em "Interromper
+  // Alarme"). CORREÇÃO (bug real observado em teste): este Timer NUNCA
+  // se cancelava sozinho além de detectar 'stop_current_alarm' — como o
+  // isolate headless permanece vivo (o WakeLock do RotinaAlarmWakeService
+  // impede o Doze de suspendê-lo), ele continuava rodando por MINUTOS,
+  // e ao detectar 'stop_current_alarm=true' durante a transição para a
+  // JANELA FINAL (que também usa essa mesma flag momentaneamente ao
+  // abrir o teclado, ver AlarmeDisparadoScreen._abrirTecladoPin),
+  // removia 'alarme_disparando_no_momento' no momento ERRADO —
+  // interferindo numa fase que não lhe dizia mais respeito. Agora ele
+  // também se cancela assim que detectar que o alarme avançou para a
+  // fase final ou para o disparo real, já que a partir daí quem manda
+  // nessas flags é o próprio fluxo da janela final.
+  int tentativasMonitoramentoInicial = 0;
   Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+    tentativasMonitoramentoInicial++;
+    // Teto de segurança (20 minutos): nunca deixa este monitoramento
+    // rodando indefinidamente caso, por qualquer motivo, nenhuma das
+    // condições de parada abaixo seja atingida.
+    if (tentativasMonitoramentoInicial > 6000) {
+      timer.cancel();
+      return;
+    }
+
     final prefsRelo = await SharedPreferences.getInstance();
-    await prefsRelo.reload(); 
+    await prefsRelo.reload();
+
+    if ((prefsRelo.getBool(chaveAlarmeFaseFinal) ?? false) ||
+        (prefsRelo.getBool(chaveAlarmeEmergenciaDisparada) ?? false)) {
+      debugPrint('🔇 [HEADLESS] Monitoramento inicial encerrado — o alarme '
+          'avançou para a janela final.');
+      timer.cancel();
+      return;
+    }
+
     if (prefsRelo.getBool('stop_current_alarm') == true) {
       try {
         timer.cancel(); // Finaliza o monitoramento de segurança
@@ -364,6 +570,7 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
       _callbackToleranciaExpirada,
       exact: true,
       wakeup: true,
+      allowWhileIdle: true, // bypassa Doze — ver comentário em _agendarNativo
       rescheduleOnReboot: false,
       params: {'idAlarme': idAlarme},
     );
@@ -430,13 +637,17 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
     debugPrint('⚠️ [HEADLESS] Falha ao sinalizar fase final em disco: $e');
   }
 
-  // Toca o alarme novamente (som + tela em primeiro plano) — ver
-  // [RotinaAlarmeService.tocarAlarmeNovamente].
-  try {
-    await RotinaAlarmeService.tocarAlarmeNovamente(idAlarme);
-  } catch (e) {
-    debugPrint('⚠️ [HEADLESS] Falha ao re-tocar alarme (janela final) #$idAlarme: $e');
-  }
+  // NÃO chama [RotinaAlarmeService.tocarAlarmeNovamente] AQUI: este
+  // callback roda no isolate HEADLESS do android_alarm_manager_plus, que
+  // não tem nenhum plugin/MethodChannel local registrado (ver
+  // `MainApplication.kt`) — a chamada sempre falharia em silêncio
+  // (MissingPluginException), e foi exatamente essa tentativa que
+  // resultava no som NÃO voltando a tocar. Em vez disso, a flag
+  // [chaveAlarmeFaseFinal] gravada acima é monitorada por
+  // [AlarmeDisparadoScreen] (que SEMPRE roda num engine em primeiro
+  // plano, com os plugins devidamente registrados) — é ELE quem
+  // efetivamente re-toca o som nativo e o som Dart assim que detecta a
+  // fase final, com no máximo ~1s de atraso.
 
   // Agenda o disparo REAL de emergência para daqui a 2 minutos, caso o
   // PIN correto não seja confirmado antes disso — ver
@@ -449,6 +660,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
       _callbackJanelaFinalExpirada,
       exact: true,
       wakeup: true,
+      allowWhileIdle: true, // bypassa Doze — ver comentário em _agendarNativo
       rescheduleOnReboot: false,
       params: {'idAlarme': idAlarme},
     );
@@ -507,6 +719,29 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     );
   } catch (_) {}
 
+  // CRÍTICO: este callback roda num isolate HEADLESS separado do
+  // isolate principal — `main()` (e o `Firebase.initializeApp()` que ele
+  // chama) NUNCA roda aqui. Sem isto, `Firebase.apps` fica vazio neste
+  // isolate e o disparo para a nuvem abaixo seria silenciosamente
+  // ignorado (nenhum log, nenhum erro) por
+  // [FirebaseSyncService._firebaseDisponivel]. `cloud_firestore` É um
+  // plugin padrão do pubspec (diferente do MethodChannel local do
+  // alarme/SMS) e por isso seu lado NATIVO já vem registrado
+  // automaticamente neste engine — só falta esta inicialização do lado
+  // Dart.
+  try {
+    if (Firebase.apps.isEmpty) {
+      // Timeout explícito (bug real observado em teste): sem conexão
+      // real com a internet, esta chamada pode ficar pendurada por
+      // tempo indefinido, travando TODO o disparo do alerta (inclusive
+      // o SMS nativo abaixo, que nem depende de internet).
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+          .timeout(const Duration(seconds: 8));
+    }
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao inicializar Firebase neste isolate: $e');
+  }
+
   // MESMA ordem crítica usada no resto do app: nuvem primeiro (rápida,
   // minimalista), depois o fluxo local completo (SMS nativo + backend).
   try {
@@ -524,5 +759,18 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     await DatabaseHelper().marcarAguardandoConfirmacaoPin();
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha ao marcar aguardando_confirmacao_pin: $e');
+  }
+
+  // Sinaliza (via disco) que o disparo REAL já foi concluído — usado por
+  // [AlarmeDisparadoScreen] como fallback (o caminho primário é o próprio
+  // diálogo de PIN em primeiro plano detectando a falha diretamente e
+  // reagindo na hora) para garantir que a tela pare o som, feche o
+  // teclado e mostre a confirmação mesmo se ela não tiver capturado o
+  // evento sozinha.
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(chaveAlarmeEmergenciaDisparada, true);
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao sinalizar emergência disparada: $e');
   }
 }

@@ -1,19 +1,9 @@
 package com.example.security_check_app
 
-import android.content.Context
-import android.media.Ringtone
-import android.media.RingtoneManager
-import android.os.Build
-import android.os.Vibrator
-import android.os.VibrationEffect
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
 
 open class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.security_check_app/rotina_alarme"
-    private var ringtone: Ringtone? = null
-    private var vibrator: Vibrator? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -23,35 +13,18 @@ open class MainActivity: FlutterActivity() {
         flutterEngine.plugins.add(VolumeSosPlugin())
         flutterEngine.plugins.add(LockscreenPlugin())
         flutterEngine.plugins.add(RotinaAlarmPlugin())
-        
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "iniciarTelaAlarme" -> {
-                    iniciarAlarmeNativo()
-                    result.success(true)
-                }
-                "pararAlarme" -> {
-                    pararAlarmeNativo()
-                    result.success(true)
-                }
-                else -> result.notImplemented()
-            }
-        }
-    }
 
-private fun iniciarAlarmeNativo() {
-        // Método limpo por design: o som customizado agora é disparado e gerenciado 
-        // diretamente via AudioPlayer na interface estável do Flutter (alarme_disparado_screen.dart).
-        println("📱 [NATIVO] Tela chamada com sucesso. Som gerenciado pelo Flutter.")
-    }
-
-    private fun pararAlarmeNativo() {
-        ringtone?.stop()
-        vibrator?.cancel()
-    }
-
-    override fun onDestroy() {
-        pararAlarmeNativo()
-        super.onDestroy()
+        // ATENÇÃO — NÃO registre aqui um MethodChannel manual no canal
+        // "com.example.security_check_app/rotina_alarme": esse canal já
+        // é de propriedade do [RotinaAlarmPlugin] (registrado logo acima).
+        // Um `MethodChannel(...).setMethodCallHandler{...}` manual no
+        // MESMO nome de canal, se chamado DEPOIS de
+        // `flutterEngine.plugins.add(RotinaAlarmPlugin())`, SOBRESCREVE
+        // silenciosamente o handler do plugin — foi exatamente esse bug
+        // (código legado, já removido) que fazia com que
+        // "pararAlarme"/"pausarAlarme"/"reiniciarSomSeAtivo" nunca
+        // chegassem à implementação real (RotinaAlarmSomBridge.pararSom(),
+        // fecharActivityAtiva(), etc.) sempre que o app rodava dentro
+        // desta Activity ou de RotinaCheckinAlarmActivity (que a estende).
     }
 }

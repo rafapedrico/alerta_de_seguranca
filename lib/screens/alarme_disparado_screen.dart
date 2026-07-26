@@ -54,6 +54,38 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   // final com um pequeno atraso.
   int? _deadlineEpochMs;
 
+  // ==========================================================
+  // CONFIRMAÇÃO FINAL (alerta de emergência já disparado de verdade)
+  // ==========================================================
+  // Protege contra disparo/processamento duplicado: tanto o próprio
+  // diálogo de PIN em primeiro plano (erro/tempo esgotado, caminho
+  // PRIMÁRIO) quanto o polling da flag [chaveAlarmeEmergenciaDisparada]
+  // gravada pelo callback headless (caminho de FALLBACK) podem tentar
+  // finalizar a tela — apenas o primeiro a chegar deve executar a
+  // sequência.
+  bool _alertaJaProcessado = false;
+
+  // Controla a UI de confirmação exibida após o alerta real ter sido
+  // disparado (ver [_finalizarComConfirmacao]).
+  bool _alertaDisparado = false;
+
+  // ==========================================================
+  // SINCRONIA ENTRE MÚLTIPLOS ENGINES (bug real observado em teste)
+  // ==========================================================
+  // RotinaCheckinAlarmActivity é lançada via Intent puro — cria um
+  // engine Flutter/isolate Dart TOTALMENTE SEPARADO do da MainActivity
+  // (apesar de um comentário antigo do código nativo afirmar o
+  // contrário). Isso significa que podem existir DUAS instâncias desta
+  // tela rodando em paralelo, cada uma com seu PRÓPRIO AudioPlayer e
+  // Timers — resolver o fluxo em UMA (ex: confirmar o PIN) não para
+  // automaticamente o som da OUTRA. [_fluxoEncerrado] é setado assim que
+  // ESTA instância souber, por qualquer meio (resolveu ela mesma OU
+  // detectou [chaveAlarmeFluxoResolvido] gravado por outra instância),
+  // que o ciclo terminou — usado para nunca processar/fechar duas vezes.
+  bool _fluxoEncerrado = false;
+
+  int? _idAlarmeAtual;
+
   @override
   void initState() {
     super.initState();
@@ -76,16 +108,45 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     // Interrompido em dispose() assim que o alarme for desarmado/fechado.
     LocationService().iniciarCicloDeAtualizacao();
 
-    // Verifica imediatamente se este disparo já nasceu na fase final
-    // (ex: a tela foi recriada depois de ter sido fechada durante a
-    // tolerância) e continua monitorando a cada 1s enquanto ainda não
-    // tivermos entrado nela — ver [_iniciarPollingFaseFinal].
-    _verificarFaseFinalNoDisco();
-    _iniciarPollingFaseFinal();
+    // Verifica imediatamente se este disparo já nasceu na fase final (ou
+    // com o alerta real já disparado — ex: a tela foi recriada após ter
+    // sido fechada) e continua monitorando a cada 1s enquanto a tela
+    // estiver montada — ver [_iniciarPollingDeSinalizacao].
+    _verificarSinalizacaoNoDisco();
+    _iniciarPollingDeSinalizacao();
 
-WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('📱 [INTERFACE] Botão azul montado! Carregando som customizado.');
+      _tocarSomDoAlarme();
+    });
+  }
 
+  @override
+  void dispose() {
+    if (!_souDuplicada) {
+      _instanciaGraficaAberta = false;
+      // Encerra o ciclo de localização iniciado em initState() — mantém o
+      // par iniciar/parar 1:1 exigido pela contagem de referências do
+      // LocationService (ver [LocationService.pararCicloDeAtualizacao]).
+      LocationService().pararCicloDeAtualizacao();
+    }
+    _pollFaseFinalTimer?.cancel();
+    _player.dispose();
+    super.dispose();
+  }
+
+  /// Carrega e toca o som de alarme customizado escolhido pelo usuário,
+  /// em loop. Extraído para ser reaproveitado tanto no primeiro toque
+  /// (initState) quanto ao ENTRAR NA FASE FINAL ([_entrarNaFaseFinal]) —
+  /// esse segundo ponto de chamada é o que garante que "o despertador
+  /// toca novamente" de verdade quando a tolerância expira, já que o som
+  /// NATIVO (Kotlin) não pode ser reiniciado de forma confiável a partir
+  /// do callback headless (ver comentário detalhado em
+  /// `RotinaAlarmeService.tocarAlarmeNovamente`) — este player Dart, por
+  /// rodar sempre no engine em primeiro plano desta tela, é a fonte de
+  /// som garantida.
+  Future<void> _tocarSomDoAlarme() async {
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload(); // Força a leitura atualizada do disco
       if (prefs.getBool('stop_current_alarm') == true) return;
@@ -125,33 +186,28 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
       }
 
       try {
-        await _player.setReleaseMode(ReleaseMode.loop);
-        await _player.play(AssetSource('sounds/$soundPath'));
-        debugPrint('🔊 Som customizado iniciado com sucesso na interface: $soundPath');
-      } catch (e) {
-        debugPrint('⚠️ Erro ao tocar áudio na interface: $e');
-      }
-    });
-  }
+        await _player.stop();
+      } catch (_) {}
 
-  @override
-  void dispose() {
-    if (!_souDuplicada) {
-      _instanciaGraficaAberta = false;
-      // Encerra o ciclo de localização iniciado em initState() — mantém o
-      // par iniciar/parar 1:1 exigido pela contagem de referências do
-      // LocationService (ver [LocationService.pararCicloDeAtualizacao]).
-      LocationService().pararCicloDeAtualizacao();
+      await _player.setReleaseMode(ReleaseMode.loop);
+      await _player.play(AssetSource('sounds/$soundPath'));
+      debugPrint('🔊 Som customizado iniciado com sucesso na interface: $soundPath');
+    } catch (e) {
+      debugPrint('⚠️ Erro ao tocar áudio na interface: $e');
     }
-    _pollFaseFinalTimer?.cancel();
-    _player.dispose();
-    super.dispose();
   }
 
-  /// Leitura única (ao montar a tela) da flag [chaveAlarmeFaseFinal].
-  Future<void> _verificarFaseFinalNoDisco() async {
+  /// Leitura única (ao montar a tela) das flags de fase final/alerta já
+  /// disparado.
+  Future<void> _verificarSinalizacaoNoDisco() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
+
+    if ((prefs.getBool(chaveAlarmeEmergenciaDisparada) ?? false) && !_alertaJaProcessado) {
+      await _aoDetectarEmergenciaDisparadaNoDisco();
+      return;
+    }
+
     final bool faseFinal = prefs.getBool(chaveAlarmeFaseFinal) ?? false;
     if (faseFinal && mounted && !_faseFinal) {
       _deadlineEpochMs = prefs.getInt(chaveAlarmeFaseFinalDeadlineEpochMs);
@@ -159,39 +215,124 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
     }
   }
 
-  /// Monitora a flag [chaveAlarmeFaseFinal] a cada 1 segundo enquanto a
-  /// tela estiver montada e ainda não tivermos entrado na fase final —
-  /// necessário porque o callback headless que marca essa flag roda num
-  /// isolate separado do desta UI (mesma técnica de "sinalização via
-  /// disco" já usada em `main.dart`/`alarme_disparando_no_momento`), e
-  /// esta tela pode já estar aberta (com o diálogo "normal" de PIN) no
-  /// momento exato em que a tolerância expira.
-  void _iniciarPollingFaseFinal() {
+  /// Monitora as flags de fase final / alerta disparado a cada 1 segundo
+  /// enquanto a tela estiver montada — necessário porque os callbacks
+  /// headless que gravam essas flags rodam num isolate separado do desta
+  /// UI (mesma técnica de "sinalização via disco" já usada em
+  /// `main.dart`/`alarme_disparando_no_momento`), e esta tela pode já
+  /// estar aberta (com o diálogo "normal" de PIN) no momento exato em
+  /// que a tolerância/janela final expira.
+  void _iniciarPollingDeSinalizacao() {
     _pollFaseFinalTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted) {
+      if (!mounted || _fluxoEncerrado) {
         timer.cancel();
         return;
       }
-      if (_faseFinal) return;
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
-      final bool faseFinal = prefs.getBool(chaveAlarmeFaseFinal) ?? false;
-      if (faseFinal && mounted && !_faseFinal) {
+
+      // PRIORIDADE MÁXIMA: o fluxo já foi resolvido por OUTRA instância
+      // desta mesma tela (engine/isolate separado, ver documentação de
+      // [chaveAlarmeFluxoResolvido]) — para tudo aqui e fecha em
+      // silêncio, sem reprocessar nem mostrar a própria confirmação.
+      if (prefs.getBool(chaveAlarmeFluxoResolvido) ?? false) {
+        await _aoDetectarResolvidoEmOutraInstancia();
+        return;
+      }
+
+      if (!_alertaJaProcessado && (prefs.getBool(chaveAlarmeEmergenciaDisparada) ?? false)) {
+        await _aoDetectarEmergenciaDisparadaNoDisco();
+        return;
+      }
+
+      if (!_faseFinal && (prefs.getBool(chaveAlarmeFaseFinal) ?? false)) {
         _deadlineEpochMs = prefs.getInt(chaveAlarmeFaseFinalDeadlineEpochMs);
         await _entrarNaFaseFinal();
       }
     });
   }
 
-  /// Transição para a janela final: o alarme "tocou novamente" (ver
-  /// [RotinaAlarmeService.tocarAlarmeNovamente]) — fecha o diálogo de PIN
-  /// "normal" se ainda estiver aberto (não faz sentido mantê-lo, com o
-  /// limite de 2 erros, por baixo do novo) e abre diretamente o diálogo
-  /// estrito de 2 minutos, sem exigir novo toque em "Interromper Alarme".
+  /// Fallback: reage à flag [chaveAlarmeEmergenciaDisparada] gravada pelo
+  /// callback headless [_callbackJanelaFinalExpirada] — usado apenas
+  /// quando o próprio diálogo de PIN em primeiro plano (caminho
+  /// primário, ver [_dispararAlertaDeFalhaDeDesarme]) não tiver
+  /// processado a falha sozinho. NÃO reenvia o alerta (o headless já o
+  /// fez) — só executa a parte de UI (parar som, fechar diálogo, mostrar
+  /// confirmação).
+  Future<void> _aoDetectarEmergenciaDisparadaNoDisco() async {
+    if (_alertaJaProcessado) return;
+    _alertaJaProcessado = true;
+    await _finalizarComConfirmacao();
+  }
+
+  /// Reage à flag [chaveAlarmeFluxoResolvido]: OUTRA instância desta
+  /// tela (rodando num engine/isolate separado — ver documentação
+  /// completa da flag) já resolveu o fluxo (PIN correto OU alerta
+  /// disparado). Esta instância apenas para seu PRÓPRIO som (nativo +
+  /// Dart) e se fecha SILENCIOSAMENTE — não reenvia nada nem mostra sua
+  /// própria tela de confirmação, já que a outra instância já cuidou
+  /// disso.
+  Future<void> _aoDetectarResolvidoEmOutraInstancia() async {
+    if (_fluxoEncerrado) return;
+    _fluxoEncerrado = true;
+    _alertaJaProcessado = true;
+    _pollFaseFinalTimer?.cancel();
+
+    debugPrint('🛑 [SINCRONIA MULTI-ENGINE] Fluxo já resolvido em outra '
+        'instância da tela do alarme — encerrando esta em silêncio.');
+
+    try {
+      const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
+      await canalNativo.invokeMethod('pararAlarme');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar som nativo (resolvido alhures): $e');
+    }
+    try {
+      await _player.stop();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar player Dart (resolvido alhures): $e');
+    }
+
+    if (_dialogoPinAberto && mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      _dialogoPinAberto = false;
+    }
+
+    if (!mounted) return;
+    if (widget.veioDoForeground) {
+      _fecharCaminhoTelaLigada(context);
+    } else {
+      await _fecharCaminhoTelaDesligada(context);
+    }
+  }
+
+  /// Transição para a janela final: o alarme "tocou novamente" — reforça
+  /// o som (Dart, garantido + nativo, melhor esforço), fecha o diálogo
+  /// de PIN "normal" se ainda estiver aberto (não faz sentido mantê-lo,
+  /// com o limite de 2 erros, por baixo do novo) e abre diretamente o
+  /// diálogo estrito de 2 minutos, sem exigir novo toque em "Interromper
+  /// Alarme".
   Future<void> _entrarNaFaseFinal() async {
     if (_faseFinal) return;
     _faseFinal = true;
     if (mounted) setState(() {});
+
+    // Garante que o usuário OUÇA o alarme de novo: o AudioPlayer Dart é
+    // a fonte CONFIÁVEL (roda neste mesmo engine em primeiro plano).
+    unawaited(_tocarSomDoAlarme());
+
+    // CORREÇÃO (bug real observado em teste): reiniciar apenas o som não
+    // bastava — com o aparelho bloqueado há alguns minutos, a TELA
+    // continuava apagada (ninguém via o teclado de PIN). Resolve o
+    // idAlarme PRIMEIRO e usa o método nativo combinado, que acende a
+    // tela fisicamente, traz a Activity de volta ao primeiro plano e
+    // reforça o som nativo — tudo em uma única chamada confiável (roda
+    // no engine em primeiro plano desta tela).
+    _idAlarmeAtual ??= await _resolverIdAlarmeMaisRecente();
+    if (_idAlarmeAtual != null) {
+      unawaited(RotinaAlarmeService.acordarParaFaseFinal(_idAlarmeAtual!));
+    }
 
     if (_dialogoPinAberto && mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -207,8 +348,11 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
 
   // --- CAMINHO 1: EXCLUSIVO PARA TELA LIGADA (Limpa toda e qualquer tela azul duplicada) ---
   void _fecharCaminhoTelaLigada(BuildContext context) {
-    // Garante que o diálogo do PIN feche primeiro
-    Navigator.of(context).pop();
+    // Garante que o diálogo do PIN feche primeiro (se ainda houver um
+    // aberto — a confirmação final não abre nenhum diálogo).
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
 
     // Varre a pilha limpando qualquer rota residual de alarme que tenha ficado sobreposta
     Navigator.of(context).popUntil((route) {
@@ -220,7 +364,9 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
 
   // --- CAMINHO 2: EXCLUSIVO PARA TELA DESLIGADA (Encerra o processo nativo) ---
   Future<void> _fecharCaminhoTelaDesligada(BuildContext context) async {
-    Navigator.of(context).pop();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
     await SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     debugPrint('🔓 [CAMINHO TELA DESLIGADA] Encerrando o processo nativo e voltando para o Android.');
   }
@@ -253,19 +399,6 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
   /// a busca do PIN esperado e o fluxo de confirmação/erro/expiração.
   Future<void> _abrirTecladoPin() async {
     try {
-      try {
-        await _player.stop();
-      } catch (e) {
-        debugPrint('⚠️ Erro ao parar player na interface: $e');
-      }
-
-      // --- CORREÇÃO CIRÚRGICA: Limpa o disco IMEDIATAMENTE para matar o loop do main.dart ---
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('stop_current_alarm', true);
-      await prefs.remove('alarme_disparando_no_momento');
-      await prefs.reload();
-      // ----------------------------------------------------------------------------------
-
       // Interrompe apenas o SOM nativo ao tocar no botão — NUNCA chama
       // [RotinaAlarmeService.pausarAlarme] aqui, pois ela cancelaria os
       // alarmes nativos de tolerância/janela final ANTES do PIN ser
@@ -273,6 +406,11 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
       // enquanto o PIN correto não for digitado, mesmo que o botão já
       // tenha sido tocado — só [RotinaAlarmeService.confirmarCheckinRotina]
       // (PIN correto) pode cancelá-los de verdade.
+      //
+      // NÃO para o [_player] aqui (diferente da versão anterior): na
+      // fase final ele PRECISA continuar tocando enquanto o teclado é
+      // exibido — só é interrompido de fato ao confirmar o PIN correto
+      // ou ao disparar o alerta real (ver [_finalizarComConfirmacao]).
       const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
       try {
         await canalNativo.invokeMethod('pararAlarme');
@@ -280,9 +418,16 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
         debugPrint('⚠️ Falha ao parar som nativo do alarme: $e');
       }
 
-      final idAlarme = await _resolverIdAlarmeMaisRecente();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
+      await prefs.reload();
+
+      final idAlarme = _idAlarmeAtual ?? await _resolverIdAlarmeMaisRecente();
+      _idAlarmeAtual = idAlarme;
 
       if (idAlarme == null) {
+        unawaited(RotinaAlarmeService.pararServicoForeground());
         if (mounted) {
           if (widget.veioDoForeground) {
             _fecharCaminhoTelaLigada(context);
@@ -323,9 +468,11 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
         pinEsperado: pinReal,
         segundosTolerancia: null,
         // Fase inicial: mantém o comportamento histórico (2 erros
-        // consecutivos disparam o alerta, sem prazo duro). Fase final:
-        // ZERO margem — 1 único erro já dispara, e há um prazo duro de
-        // até 2 minutos exibido ao vivo no próprio diálogo.
+        // consecutivos disparam o alerta, sem prazo duro, SEM mostrar
+        // confirmação — mantém o disfarce de segurança). Fase final:
+        // ZERO margem — 1 único erro já dispara, há um prazo duro de até
+        // 2 minutos exibido ao vivo, e a falha AGORA é transparente
+        // (para o som, fecha o teclado e mostra confirmação).
         limiteErrosConsecutivos: ehFaseFinal ? 1 : 2,
         segundosLimiteDuro: ehFaseFinal ? segundosLimiteDuro : null,
         aoAtingirLimiteDeErros: () => _dispararAlertaDeFalhaDeDesarme(
@@ -334,16 +481,27 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
                   'check-in do alarme de rotina, mesmo após o tempo de '
                   'tolerância já ter expirado.'
               : null,
+          mostrarConfirmacaoEFechar: ehFaseFinal,
         ),
         aoExpirarTempoLimite: ehFaseFinal
             ? () => _dispararAlertaDeFalhaDeDesarme(
                   motivo: 'O check-in do alarme de rotina não foi confirmado '
                       'dentro do prazo final de 2 minutos, mesmo após o '
                       'tempo de tolerância já ter expirado.',
+                  mostrarConfirmacaoEFechar: true,
                 )
             : null,
         aoConfirmarPinCorreto: () async {
           _dialogoPinAberto = false;
+          _fluxoEncerrado = true;
+          _pollFaseFinalTimer?.cancel();
+          try {
+            await _player.stop();
+          } catch (_) {}
+          // Grava chaveAlarmeFluxoResolvido (ver RotinaAlarmeService)
+          // para que qualquer OUTRA instância desta tela, rodando num
+          // engine separado (ver documentação da flag), pare seu
+          // próprio som e se feche também.
           await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
 
           if (!context.mounted) return;
@@ -369,12 +527,35 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
     }
   }
 
-  /// Dispara o alerta de emergência REAL por falha de desarme (nuvem
-  /// primeiro e aguardada, depois o fluxo local completo) — reaproveitado
-  /// tanto pelo limite de erros de PIN quanto pela expiração do prazo
-  /// duro da fase final. [motivo] nulo mantém o texto padrão histórico
-  /// ("PIN incorreto 2 vezes seguidas"), usado na fase inicial (regra 2).
-  Future<void> _dispararAlertaDeFalhaDeDesarme({String? motivo}) async {
+  /// Dispara o alerta de emergência REAL por falha de desarme na JANELA
+  /// FINAL (nuvem primeiro e aguardada, depois o fluxo local completo) —
+  /// acionado tanto pelo limite de erros de PIN quanto pela expiração do
+  /// prazo duro. Este é o caminho PRIMÁRIO (o polling da flag em disco,
+  /// ver [_aoDetectarEmergenciaDisparadaNoDisco], é só um fallback).
+  ///
+  /// [motivo] nulo mantém o texto padrão histórico ("PIN incorreto 2
+  /// vezes seguidas"), usado na fase INICIAL (regra 2) — nesse caso,
+  /// [mostrarConfirmacaoEFechar] permanece `false`, preservando o
+  /// disfarce de segurança (nada muda visualmente na tela). Na fase
+  /// FINAL, [mostrarConfirmacaoEFechar] é sempre `true`: não há mais
+  /// motivo para disfarçar — o usuário deve ver claramente que o alerta
+  /// foi enviado.
+  Future<void> _dispararAlertaDeFalhaDeDesarme({
+    String? motivo,
+    bool mostrarConfirmacaoEFechar = false,
+  }) async {
+    if (mostrarConfirmacaoEFechar) {
+      if (_alertaJaProcessado) return;
+      _alertaJaProcessado = true;
+
+      // Este caminho (primeiro plano) já está tratando a falha — cancela
+      // o alarme nativo da janela final para que ele não dispare de novo
+      // (duplicando o alerta) alguns instantes depois.
+      if (_idAlarmeAtual != null) {
+        unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+      }
+    }
+
     try {
       await FirebaseSyncService()
           .dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
@@ -388,6 +569,80 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
       debugPrint('⚠️ Falha ao disparar alerta de tentativa de '
           'desarme incorreta: $e');
     }
+
+    if (mostrarConfirmacaoEFechar) {
+      await _finalizarComConfirmacao();
+    }
+  }
+
+  /// Executa a sequência final da JANELA FINAL depois que o alerta real
+  /// já foi disparado (ou sinalizado como disparado pelo callback
+  /// headless, ver [_aoDetectarEmergenciaDisparadaNoDisco]):
+  /// 1. Para o alarme sonoro (nativo + Dart).
+  /// 2. Fecha o teclado de PIN, se ainda estiver aberto.
+  /// 3. Exibe a mensagem de confirmação de envio.
+  /// 4. Após alguns segundos, fecha esta tela automaticamente.
+  ///
+  /// Idempotente: protegida pela MESMA flag [_alertaJaProcessado] usada
+  /// em [_dispararAlertaDeFalhaDeDesarme], para nunca executar esta
+  /// sequência mais de uma vez.
+  Future<void> _finalizarComConfirmacao() async {
+    _fluxoEncerrado = true;
+    _pollFaseFinalTimer?.cancel();
+
+    // 1. Para o som — nativo (reliable a partir daqui, pois estamos no
+    // engine em primeiro plano) e Dart.
+    try {
+      const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
+      await canalNativo.invokeMethod('pararAlarme');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar som nativo ao finalizar: $e');
+    }
+    try {
+      await _player.stop();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar player Dart ao finalizar: $e');
+    }
+
+    // Libera o WakeLock nativo (ver RotinaAlarmWakeService) — não há mais
+    // motivo para manter a CPU acordada além deste ponto.
+    unawaited(RotinaAlarmeService.pararServicoForeground());
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
+      // Sinaliza a QUALQUER outra instância desta tela (engine/isolate
+      // separado, ver documentação de [chaveAlarmeFluxoResolvido]) que o
+      // fluxo já foi resolvido aqui — ela deve parar seu próprio som e
+      // se fechar em silêncio.
+      await prefs.setBool(chaveAlarmeFluxoResolvido, true);
+    } catch (_) {}
+
+    // 2. Fecha o teclado de PIN, se ainda estiver aberto.
+    if (_dialogoPinAberto && mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      _dialogoPinAberto = false;
+    }
+
+    // 3. Exibe a confirmação.
+    if (mounted) {
+      setState(() {
+        _alertaDisparado = true;
+        _faseFinal = true;
+      });
+    }
+
+    // 4. Fecha esta tela automaticamente após o usuário ter tempo de ler
+    // a confirmação.
+    await Future.delayed(const Duration(seconds: 5));
+    if (!mounted) return;
+
+    if (widget.veioDoForeground) {
+      _fecharCaminhoTelaLigada(context);
+    } else {
+      await _fecharCaminhoTelaDesligada(context);
+    }
   }
 
   @override
@@ -399,8 +654,12 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
           children: [
             Center(
               child: Icon(
-                _faseFinal ? Icons.warning_amber_rounded : Icons.security_rounded,
-                color: _faseFinal ? Colors.redAccent.withOpacity(0.25) : Colors.white10,
+                _alertaDisparado
+                    ? Icons.check_circle_rounded
+                    : (_faseFinal ? Icons.warning_amber_rounded : Icons.security_rounded),
+                color: _alertaDisparado
+                    ? Colors.greenAccent.withOpacity(0.35)
+                    : (_faseFinal ? Colors.redAccent.withOpacity(0.25) : Colors.white10),
                 size: 140,
               ),
             ),
@@ -412,23 +671,27 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _faseFinal
-                          ? AppLocalizations.of(context)!.alarmeRotinaFaseFinalDescricao
-                          : AppLocalizations.of(context)!.alarmeRotinaAtivoDescricao,
+                      _alertaDisparado
+                          ? AppLocalizations.of(context)!.alarmeRotinaAlertaEnviadoDescricao
+                          : (_faseFinal
+                              ? AppLocalizations.of(context)!.alarmeRotinaFaseFinalDescricao
+                              : AppLocalizations.of(context)!.alarmeRotinaAtivoDescricao),
                       style: TextStyle(
-                        color: _faseFinal ? Colors.redAccent : Colors.white70,
+                        color: _alertaDisparado
+                            ? Colors.greenAccent
+                            : (_faseFinal ? Colors.redAccent : Colors.white70),
                         fontSize: 16,
-                        fontWeight: _faseFinal ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            (_faseFinal || _alertaDisparado) ? FontWeight.bold : FontWeight.normal,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    // Na fase final o teclado de PIN já é aberto
-                    // automaticamente (ver [_entrarNaFaseFinal]) — o
-                    // botão não é mais necessário nem faz sentido (não há
-                    // mais uma segunda chance de "tolerância" para
-                    // ativar).
-                    if (!_faseFinal)
+                    // Botão "Interromper Alarme": só na fase inicial. Na
+                    // fase final o teclado já é aberto automaticamente, e
+                    // após a confirmação não há mais nenhuma ação
+                    // pendente do usuário.
+                    if (!_faseFinal && !_alertaDisparado)
                       SizedBox(
                         width: double.infinity,
                         height: 64,

@@ -201,6 +201,7 @@
 
   "alarmeRotinaAtivoDescricao": "المنبه الروتيني نشط.\nأكّد سلامتك لإيقافه مؤقتًا.",
   "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال دقيقتين وإلا سيتم إرسال تنبيه طوارئ.",
+  "alarmeRotinaAlertaEnviadoDescricao": "✅ تم إرسال تنبيه الطوارئ!\nتم إرسال موقعك والرسالة إلى السحابة وإلى جهات الاتصال المسجلة.",
   "desligarAlarmeBotao": "إيقاف المنبه",
 
   "cameraToqueOuVolume": "📸 اضغط على الزر أو اضغط على زر مستوى الصوت لالتقاط الصورة",

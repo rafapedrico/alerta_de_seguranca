@@ -1,8 +1,25 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_service.dart';
+
+/// Teto de tempo para QUALQUER chamada de rede ao Firestore neste
+/// serviço. CORREÇÃO (bug real observado em teste): sem isto, uma
+/// chamada ao Firestore sem conectividade real com a internet (ex:
+/// Wi-Fi só com acesso à rede local, sem rota para a internet) pode
+/// ficar PENDURADA por um tempo indefinido — diferente de `ApiService`
+/// (Dio), que já tinha timeouts explícitos, `cloud_firestore` não tem
+/// um teto padrão curto. Como o disparo de emergência (ver
+/// `rotina_alarme_service.dart`/`_callbackJanelaFinalExpirada`) `await`
+/// este serviço ANTES do SMS nativo (que não depende de internet), uma
+/// chamada pendurada aqui bloqueava o SMS inteiro — foi exatamente o que
+/// aconteceu num teste real: nenhum log apareceu depois da mensagem de
+/// entrada do callback, indicando que a execução ficou travada nesta
+/// chamada.
+const Duration _timeoutFirestore = Duration(seconds: 8);
 
 /// Serviço centralizado de sincronização com o Firebase/Firestore,
 /// atuando como uma camada de resiliência EXTRA e totalmente independente
@@ -75,7 +92,7 @@ class FirebaseSyncService {
           'atualizadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
-      );
+      ).timeout(_timeoutFirestore);
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao atualizar localização no Firestore: $e');
@@ -108,7 +125,7 @@ class FirebaseSyncService {
       await _documentoUsuario.set(
         {'contatosEmergencia': listaSincronizada},
         SetOptions(merge: true),
-      );
+      ).timeout(_timeoutFirestore);
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao sincronizar contatos de emergência: $e');
@@ -143,7 +160,7 @@ class FirebaseSyncService {
         if (motivo != null) 'motivo': motivo,
         'criadoEm': FieldValue.serverTimestamp(),
         'processado': false,
-      });
+      }).timeout(_timeoutFirestore);
       debugPrint(
           '☁️ [FirebaseSyncService] Alerta de tentativa de desarme incorreta enviado à nuvem.');
     } catch (e) {

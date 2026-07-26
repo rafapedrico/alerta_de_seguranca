@@ -3,6 +3,7 @@ package com.example.security_check_app
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,11 +23,14 @@ import io.flutter.embedding.engine.FlutterEngine
  * uma notificação local (`flutter_local_notifications`) sozinha não é
  * suficiente para sobrepor o Keyguard nem para tocar um som em loop de
  * forma confiável enquanto aguarda a interação do usuário. Iniciar esta
- * Activity diretamente via [Intent], com as flags de lockscreen
- * herdadas de [MainActivity], garante que a tela de confirmação (com o
- * botão "Pausar Alarme"/"Cheguei bem") realmente apareça por cima da
- * tela bloqueada, e que o alerta sonoro do check-in de rotina toque
- * mesmo com a tela apagada.
+ * Activity diretamente via [Intent] — agora também a partir de
+ * [RotinaAlarmWakeService], um caminho 100% nativo que sobrevive ao
+ * Doze/deep sleep — com as flags de Keyguard aplicadas no PRÓPRIO
+ * [onCreate] (ver abaixo; NÃO são herdadas de [MainActivity], que não
+ * define nenhuma), garante que a tela de confirmação (com o botão
+ * "Pausar Alarme"/"Cheguei bem") realmente apareça por cima da tela
+ * bloqueada, e que o alerta sonoro do check-in de rotina toque mesmo com
+ * a tela apagada.
  *
  * SOM EM LOOP (MediaPlayer nativo): esta Activity é responsável por
  * tocar, ela mesma, o som de alarme em loop assim que é criada
@@ -61,10 +65,39 @@ class RotinaCheckinAlarmActivity : MainActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         RotinaAlarmPlugin.registrarActivity(this)
-        // Reaplica toda a lógica de sobreposição ao Keyguard já
-        // implementada em MainActivity.onCreate (setShowWhenLocked,
-        // setTurnScreenOn, requestDismissKeyguard, flags legadas).
         super.onCreate(savedInstanceState)
+
+        // CORREÇÃO (bug real de Doze/lockscreen): MainActivity NÃO define
+        // nenhuma flag de Keyguard programaticamente — ela conta apenas
+        // com os atributos declarativos do AndroidManifest
+        // (`showWhenLocked`/`turnScreenOn`), que se mostraram
+        // insuficientes em testes reais com o aparelho bloqueado por
+        // vários minutos (Doze). Aplicamos aqui, explicitamente, o MESMO
+        // padrão já validado em [LockscreenCameraActivity] para o fluxo
+        // de SOS: `setShowWhenLocked`/`setTurnScreenOn` (API 27+) com
+        // fallback de flags de Window para versões antigas, garantindo
+        // que a tela do alarme SEMPRE apareça por cima do bloqueio e
+        // ACENDA o aparelho, mesmo vindo de uma Activity criada por um
+        // Service em segundo plano (ver [RotinaAlarmWakeService]).
+        //
+        // Propositalmente NÃO chamamos requestDismissKeyguard()/
+        // FLAG_DISMISS_KEYGUARD (mesma decisão de LockscreenCameraActivity):
+        // em aparelhos com bloqueio seguro (PIN/padrão/senha do sistema),
+        // isso acionaria a tela de autenticação NATIVA do Android por
+        // cima da nossa — confuso e desnecessário, já que o teclado de
+        // PIN do próprio app já cumpre esse papel.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+            )
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Impede que o teclado virtual do sistema suba automaticamente
         // por cima da tela de confirmação de check-in ao abrir esta
@@ -88,7 +121,7 @@ class RotinaCheckinAlarmActivity : MainActivity() {
             val durationSeconds = prefs.getInt("alarm_sound_duration", 30) // Padrão 30s
 
             val descritor = assets.openFd("flutter_assets/assets/sounds/$soundPath")
-            mediaPlayer = MediaPlayer().apply {
+            val novoPlayer = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
@@ -102,21 +135,43 @@ class RotinaCheckinAlarmActivity : MainActivity() {
                 start()
                 setVolume(1.0f, 1.0f)
             }
-            RotinaAlarmSomBridge.registrarPlayer(mediaPlayer)
+            mediaPlayer = novoPlayer
+            RotinaAlarmSomBridge.registrarPlayer(novoPlayer)
 
-            // Agendar parada automática após duração configurada
+            // Agendar parada automática após duração configurada.
+            // CORREÇÃO (crash real observado em teste, IllegalStateException
+            // em MediaPlayer.stop()): esta closure referencia [novoPlayer]
+            // (uma val LOCAL, capturada no instante em que este método foi
+            // chamado) em vez do campo mutável [mediaPlayer] — evita tentar
+            // parar/liberar um player DIFERENTE (mais novo) caso
+            // [reiniciarSom] tenha substituído [mediaPlayer] entretanto
+            // (ex: a janela final "tocando novamente" antes destes 30s
+            // originais terminarem). Também protege .stop() e .release()
+            // em blocos try/catch SEPARADOS: se o player já tiver sido
+            // parado/liberado por outro caminho (ex: MethodChannel
+            // "pararAlarme" chamado enquanto este Handler ainda esperava),
+            // a falha em .stop() não impede a tentativa de .release().
             Handler(Looper.getMainLooper()).postDelayed({
                 try {
-                    mediaPlayer?.let {
-                        it.stop()
-                        it.release()
-                        mediaPlayer = null
-                        RotinaAlarmSomBridge.registrarPlayer(null)
-                        Log.d("RotinaCheckin", "Som interrompido após $durationSeconds segundos")
+                    if (novoPlayer.isPlaying) {
+                        novoPlayer.stop()
                     }
                 } catch (e: Exception) {
-                    Log.e("RotinaCheckin", "Erro ao parar som automaticamente", e)
+                    Log.e("RotinaCheckin", "Erro ao parar som automaticamente (player já parado?)", e)
                 }
+                try {
+                    novoPlayer.release()
+                } catch (e: Exception) {
+                    Log.e("RotinaCheckin", "Erro ao liberar player automaticamente", e)
+                }
+                // Só limpa o campo/bridge se ainda apontarem para ESTE
+                // player específico — um [reiniciarSom] mais recente pode
+                // já ter os substituído por um player mais novo.
+                if (mediaPlayer === novoPlayer) {
+                    mediaPlayer = null
+                    RotinaAlarmSomBridge.registrarPlayer(null)
+                }
+                Log.d("RotinaCheckin", "Som interrompido após $durationSeconds segundos")
             }, durationSeconds * 1000L)
         } catch (e: Exception) {
             // Falha silenciosa: a tela de confirmação continua
@@ -128,7 +183,7 @@ class RotinaCheckinAlarmActivity : MainActivity() {
 
     /**
      * Reinicia a reprodução do som de alarme em loop — chamado pelo
-     * [RotinaAlarmPlugin] (método "tocarAlarmeNovamente") quando a
+     * [RotinaAlarmPlugin] (método "reiniciarSomSeAtivo") quando a
      * tolerância de check-in expira e o alarme precisa "tocar
      * novamente" para a janela final de 2 minutos. Para qualquer
      * MediaPlayer ainda em execução antes de iniciar um novo, evitando

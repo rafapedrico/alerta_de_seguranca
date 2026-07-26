@@ -201,6 +201,7 @@
 
   "alarmeRotinaAtivoDescricao": "定期アラームが有効です。\n一時停止するには安全確認をしてください。",
   "alarmeRotinaFaseFinalDescricao": "最終チャンス！アラームが再び鳴りました。\n2分以内にPINを入力してください。入力がない場合、緊急アラートが送信されます。",
+  "alarmeRotinaAlertaEnviadoDescricao": "✅ 緊急アラートを送信しました！\n位置情報とメッセージがクラウドと登録済みの連絡先に送信されました。",
   "desligarAlarmeBotao": "アラームを止める",
 
   "cameraToqueOuVolume": "📸 ボタンをタップするか音量ボタンを押して写真を撮影",

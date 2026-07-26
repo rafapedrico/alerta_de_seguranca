@@ -139,6 +139,20 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Monitoramento do botao fisico de SOS de seguranca pessoal"/>
         </service>
+
+        <!-- Alarme de rotina: caminho 100% nativo (bypassa Doze), acorda
+             o aparelho e garante o disparo mesmo com a tela bloqueada. -->
+        <receiver
+            android:name=".RotinaAlarmNativeReceiver"
+            android:exported="false"/>
+        <service
+            android:name=".RotinaAlarmWakeService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Alarme de rotina de seguranca pessoal (check-in)"/>
+        </service>
     </application>
 
     <queries>

@@ -201,6 +201,7 @@
 
   "alarmeRotinaAtivoDescricao": "Routinealarm aktiv.\nBestätige deine Sicherheit, um zu pausieren.",
   "alarmeRotinaFaseFinalDescricao": "LETZTE CHANCE! Der Alarm hat erneut geklingelt.\nGib deine PIN innerhalb von 2 Minuten ein, sonst wird ein Notfallalarm gesendet.",
+  "alarmeRotinaAlertaEnviadoDescricao": "✅ Notfallalarm gesendet!\nDein Standort und die Nachricht wurden an die Cloud und an die registrierten Kontakte gesendet.",
   "desligarAlarmeBotao": "ALARM AUSSCHALTEN",
 
   "cameraToqueOuVolume": "📸 Tippe auf die Taste oder drücke LAUTSTÄRKE, um das Foto zu machen",
