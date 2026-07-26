@@ -233,6 +233,108 @@ class EmergencyAlertService {
     await _enviarSms(contatosEmergencia, mensagemAlerta);
   }
 
+  /// Executa o fluxo de ALERTA DE TENTATIVA DE DESARME COM SENHA INCORRETA,
+  /// disparado quando o usuário (ou um possível invasor) falha ao
+  /// desarmar antecipadamente o cronômetro de segurança ou um alarme de
+  /// rotina (ver [PinDialogContent.aoAtingirLimiteDeErros] em
+  /// `widgets/pin_dialog.dart`) — seja por errar o PIN um determinado
+  /// número de vezes, seja por deixar uma janela de tempo esgotar sem
+  /// confirmação.
+  ///
+  /// [motivo] descreve exatamente o que aconteceu e é inserido na
+  /// mensagem enviada; por padrão descreve o cenário histórico ("PIN
+  /// incorreto 2 vezes seguidas"), mas chamadores com um cenário
+  /// diferente (ex: apenas 1 PIN incorreto na janela final do alarme de
+  /// rotina, ou o prazo de 2 minutos esgotado sem nenhuma tentativa)
+  /// DEVEM informar um texto preciso — nunca reutilize o padrão para um
+  /// cenário que ele não descreve corretamente, já que os contatos de
+  /// emergência usam essa mensagem para decidir como reagir.
+  ///
+  /// Diferente de [dispararAlertaDeEmergencia] (mensagem genérica de
+  /// check-in perdido), esta mensagem é explícita sobre o que ocorreu,
+  /// avisando os contatos de emergência cadastrados de que houve uma
+  /// tentativa de desarme com senha incorreta, incluindo a localização
+  /// atual (mesma estratégia de fallback em camadas: posição em memória ->
+  /// última conhecida -> nova leitura do GPS -> aviso de GPS
+  /// desativado/indisponível).
+  ///
+  /// Reaproveita o mesmo limite mensal de alertas do Plano Gratuito e o
+  /// mesmo canal nativo de SMS usado pelos demais fluxos de emergência, e é
+  /// protegido por try/catch em cada etapa para nunca travar o diálogo de
+  /// PIN que disparou este alerta, mesmo em caso de falha (GPS, SMS, banco).
+  Future<void> dispararAlertaTentativaDesarmeIncorreto({
+    Position? posicaoEmMemoria,
+    String? motivo,
+  }) async {
+    final String motivoTexto = motivo ??
+        'O PIN foi digitado incorretamente 2 vezes seguidas ao tentar '
+            'desarmar antecipadamente o sistema de segurança.';
+
+    debugPrint('🚨 [TENTATIVA DE DESARME INCORRETA] $motivoTexto');
+
+    // Regra de negócio (Plano Gratuito): mesmo limite mensal de 5 alertas
+    // se aplica aqui, evitando que tentativas repetidas de PIN incorreto
+    // esgotem a cota de SMS do usuário.
+    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
+    if (!podeDisparar) {
+      debugPrint(
+          '🚫 [TENTATIVA DE DESARME INCORRETA] Limite mensal de alertas do '
+          'Plano Gratuito atingido — disparo cancelado.');
+      return;
+    }
+    await PlanoLimiteService().incrementarAlertaUsado();
+
+    List<Map<String, dynamic>> contatosEmergencia = [];
+    try {
+      contatosEmergencia = await _db.getContatosEmergencia();
+    } catch (e) {
+      debugPrint('⚠️ [TENTATIVA DE DESARME INCORRETA] Falha ao buscar '
+          'contatos de emergência: $e');
+    }
+
+    final localizacaoFormatada =
+        await _obterLocalizacaoFormatada(posicaoEmMemoria: posicaoEmMemoria);
+
+    final mensagemAlerta =
+        '⚠️ ALERTA DE SEGURANÇA: TENTATIVA DE DESARME COM SENHA INCORRETA!\n'
+        '$motivoTexto\n'
+        'Localização: $localizacaoFormatada';
+
+    debugPrint('📋 [TENTATIVA DE DESARME INCORRETA] Mensagem enviada via '
+        'SMS: $mensagemAlerta');
+
+    try {
+      await _db.inserirEventoHistorico(
+        titulo: 'Tentativa de desarme com PIN incorreto',
+        descricao: '$motivoTexto Alerta enviado aos contatos de emergência. '
+            'Localização: $localizacaoFormatada',
+        categoria: 'critico',
+      );
+    } catch (e) {
+      debugPrint('⚠️ [TENTATIVA DE DESARME INCORRETA] Falha ao registrar '
+          'evento no histórico: $e');
+    }
+
+    // Dispara (fire-and-forget) o alerta também para o backend FastAPI, em
+    // paralelo ao SMS nativo abaixo.
+    _obterPosicaoBruta(posicaoEmMemoria: posicaoEmMemoria).then((posicao) {
+      if (posicao != null) {
+        ApiService().dispararAlertaWeb(
+          latitude: posicao.latitude,
+          longitude: posicao.longitude,
+          contexto: motivoTexto,
+          timestampLocal: DateTime.now(),
+        );
+      } else {
+        debugPrint('⚠️ [TENTATIVA DE DESARME INCORRETA] Localização '
+            'indisponível: alerta web não enviado (SMS nativo prossegue '
+            'normalmente).');
+      }
+    });
+
+    await _enviarSms(contatosEmergencia, mensagemAlerta);
+  }
+
   /// Envia o SMS de emergência para os [contatosEmergencia] informados,
   /// com a [mensagem] já pronta. Extraído para ser reaproveitado tanto
   /// pelo fluxo tradicional ([dispararAlertaDeEmergencia]) quanto pela

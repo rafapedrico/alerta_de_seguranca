@@ -200,6 +200,7 @@
   "verMais": "Vedi di più",
 
   "alarmeRotinaAtivoDescricao": "Allarme di routine attivo.\nConferma la tua sicurezza per metterlo in pausa.",
+  "alarmeRotinaFaseFinalDescricao": "ULTIMA POSSIBILITÀ! L'allarme è suonato di nuovo.\nInserisci il tuo PIN entro 2 minuti o verrà inviato un allarme di emergenza.",
   "desligarAlarmeBotao": "SPEGNI ALLARME",
 
   "cameraToqueOuVolume": "📸 Tocca il pulsante o premi VOLUME per scattare la foto",

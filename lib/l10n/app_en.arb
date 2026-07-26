@@ -204,6 +204,7 @@
   "verMais": "See more",
 
   "alarmeRotinaAtivoDescricao": "Routine alarm active.\nConfirm you're safe to pause it.",
+  "alarmeRotinaFaseFinalDescricao": "LAST CHANCE! The alarm rang again.\nEnter your PIN within 2 minutes or an emergency alert will be sent.",
   "desligarAlarmeBotao": "TURN OFF ALARM",
 
   "cameraToqueOuVolume": "📸 Tap the button or press VOLUME to take the photo",

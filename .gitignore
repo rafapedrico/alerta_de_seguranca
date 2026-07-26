@@ -34,3 +34,10 @@ web/build/
 # Artefato gerado automaticamente pelo flutter gen-l10n (relatório de
 # strings ainda não traduzidas) — não é código-fonte.
 untranslated_messages.json
+
+# Firebase Cloud Functions
+functions/node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log

@@ -200,6 +200,7 @@
   "verMais": "查看更多",
 
   "alarmeRotinaAtivoDescricao": "常规闹钟已启用。\n请确认安全以暂停闹钟。",
+  "alarmeRotinaFaseFinalDescricao": "最后机会！闹钟再次响起。\n请在2分钟内输入PIN码，否则将发送紧急警报。",
   "desligarAlarmeBotao": "关闭闹钟",
 
   "cameraToqueOuVolume": "📸 点击按钮或按音量键拍照",

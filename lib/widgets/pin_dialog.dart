@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -26,12 +28,16 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 ///   por trás em caso de erro de ciclo de vida (o app permanece
 ///   plenamente responsivo).
 ///
-/// PIN DE COAÇÃO (gatilho discreto de emergência): [aoErrarPinDuasVezes]
+/// PIN DE COAÇÃO (gatilho discreto de emergência): [aoAtingirLimiteDeErros]
 /// é um callback OPCIONAL, disparado internamente sempre que o usuário
-/// digitar o PIN incorreto 2 VEZES CONSECUTIVAS (o contador é resetado
-/// automaticamente após acionar o callback, e também sempre que o PIN
-/// correto for digitado). A interface NUNCA reflete esse gatilho — a
-/// mensagem de erro exibida é sempre a mesma ("PIN incorreto. Tente
+/// digitar o PIN incorreto [limiteErrosConsecutivos] VEZES CONSECUTIVAS
+/// (padrão: 2 — o contador é resetado automaticamente após acionar o
+/// callback, e também sempre que o PIN correto for digitado). Chamadores
+/// que precisem de um disparo já na PRIMEIRA tentativa errada (ex: a
+/// janela final de 2 minutos do alarme de rotina da Família, onde não há
+/// mais margem para uma segunda chance) podem passar
+/// `limiteErrosConsecutivos: 1`. A interface NUNCA reflete esse gatilho —
+/// a mensagem de erro exibida é sempre a mesma ("PIN incorreto. Tente
 /// novamente."), independentemente de qual erro consecutivo for,
 /// mantendo o disfarce de segurança 100% intacto diante de um possível
 /// agressor observando a tela. Toda a lógica real de disparo (chamar o
@@ -39,12 +45,26 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 /// fornece o callback (ver [SegurancaTab._dispararSosDeCoacao]) — este
 /// widget é propositalmente "burro" e não conhece nada sobre
 /// GPS/serviços de emergência.
+///
+/// LIMITE DURO DE TEMPO (opcional): quando [segundosLimiteDuro] é
+/// informado, o próprio diálogo passa a exibir uma contagem regressiva
+/// AO VIVO (reaproveitando o mesmo texto/estilo âmbar de
+/// [segundosTolerancia], porém atualizado a cada segundo via um Timer
+/// interno) e, ao chegar a zero SEM que o PIN correto tenha sido
+/// digitado, aciona [aoExpirarTempoLimite] uma única vez. O diálogo NUNCA
+/// se fecha sozinho por causa disso — continua aberto e funcional,
+/// aceitando o PIN correto mesmo depois do tempo esgotado — apenas o
+/// callback de expiração é dado como responsável por qualquer ação real
+/// (ex: disparar um alerta de emergência).
 Future<void> exibirDialogoPin({
   required BuildContext context,
   required String? pinEsperado,
   required Future<void> Function() aoConfirmarPinCorreto,
   int? segundosTolerancia,
-  Future<void> Function()? aoErrarPinDuasVezes,
+  Future<void> Function()? aoAtingirLimiteDeErros,
+  int limiteErrosConsecutivos = 2,
+  int? segundosLimiteDuro,
+  Future<void> Function()? aoExpirarTempoLimite,
   bool mostrarBotaoCancelar = false,
   VoidCallback? aoCancelar,
 }) {
@@ -56,7 +76,10 @@ Future<void> exibirDialogoPin({
         pinEsperado: pinEsperado,
         aoConfirmarPinCorreto: aoConfirmarPinCorreto,
         segundosTolerancia: segundosTolerancia,
-        aoErrarPinDuasVezes: aoErrarPinDuasVezes,
+        aoAtingirLimiteDeErros: aoAtingirLimiteDeErros,
+        limiteErrosConsecutivos: limiteErrosConsecutivos,
+        segundosLimiteDuro: segundosLimiteDuro,
+        aoExpirarTempoLimite: aoExpirarTempoLimite,
         mostrarBotaoCancelar: mostrarBotaoCancelar,
         aoCancelar: aoCancelar,
       );
@@ -70,7 +93,10 @@ class PinDialogContent extends StatefulWidget {
     required this.pinEsperado,
     required this.aoConfirmarPinCorreto,
     this.segundosTolerancia,
-    this.aoErrarPinDuasVezes,
+    this.aoAtingirLimiteDeErros,
+    this.limiteErrosConsecutivos = 2,
+    this.segundosLimiteDuro,
+    this.aoExpirarTempoLimite,
     this.mostrarBotaoCancelar = false,
     this.aoCancelar,
   });
@@ -79,9 +105,29 @@ class PinDialogContent extends StatefulWidget {
   final Future<void> Function() aoConfirmarPinCorreto;
   final int? segundosTolerancia;
 
-  /// Callback silencioso, opcional, acionado ao 2º erro consecutivo de
-  /// PIN. Ver documentação completa em [exibirDialogoPin].
-  final Future<void> Function()? aoErrarPinDuasVezes;
+  /// Callback silencioso, opcional, acionado ao atingir
+  /// [limiteErrosConsecutivos] erros consecutivos de PIN. Ver
+  /// documentação completa em [exibirDialogoPin].
+  final Future<void> Function()? aoAtingirLimiteDeErros;
+
+  /// Quantidade de erros consecutivos necessária para acionar
+  /// [aoAtingirLimiteDeErros]. Padrão 2 (mantém o comportamento histórico
+  /// de "PIN de coação"); passe 1 para disparos que não podem tolerar
+  /// nenhuma tentativa errada (ex: última chance antes de um alerta já
+  /// estar prestes a soar de qualquer forma).
+  final int limiteErrosConsecutivos;
+
+  /// Duração (em segundos) de um limite DURO de tempo, opcional. Quando
+  /// informado, o diálogo exibe uma contagem regressiva ao vivo e aciona
+  /// [aoExpirarTempoLimite] uma única vez ao chegar a zero sem o PIN
+  /// correto ter sido digitado. Ver documentação completa em
+  /// [exibirDialogoPin].
+  final int? segundosLimiteDuro;
+
+  /// Callback acionado uma única vez quando [segundosLimiteDuro] chega a
+  /// zero sem confirmação. O diálogo permanece aberto normalmente depois
+  /// disso.
+  final Future<void> Function()? aoExpirarTempoLimite;
 
   /// Quando `true`, exibe um botão de texto "Cancelar" abaixo do teclado
   /// numérico, permitindo fechar o diálogo sem digitar o PIN. Usado em
@@ -107,11 +153,63 @@ class _PinDialogContentState extends State<PinDialogContent> {
   bool _verificando = false;
 
   // Contador de erros consecutivos de PIN, usado exclusivamente para o
-  // gatilho silencioso do "PIN de coação" (ver [widget.aoErrarPinDuasVezes]).
+  // gatilho silencioso do "PIN de coação"
+  // (ver [widget.aoAtingirLimiteDeErros]/[widget.limiteErrosConsecutivos]).
   // É resetado para 0 tanto ao acionar o callback (evitando disparos
-  // repetidos a cada 2 erros subsequentes) quanto ao digitar o PIN
+  // repetidos a cada N erros subsequentes) quanto ao digitar o PIN
   // correto. NUNCA influencia a mensagem de erro exibida na tela.
   int _errosConsecutivos = 0;
+
+  // Limite duro de tempo (opcional, ver [widget.segundosLimiteDuro]):
+  // contagem regressiva ao vivo, atualizada a cada segundo, e flag para
+  // garantir que [widget.aoExpirarTempoLimite] só seja acionado UMA vez.
+  int? _segundosRestantesLimiteDuro;
+  Timer? _timerLimiteDuro;
+  bool _limiteDuroJaAcionado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.segundosLimiteDuro != null) {
+      _segundosRestantesLimiteDuro = widget.segundosLimiteDuro;
+      _timerLimiteDuro = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        final restante = (_segundosRestantesLimiteDuro ?? 1) - 1;
+        setState(() {
+          _segundosRestantesLimiteDuro = restante;
+        });
+        if (restante <= 0) {
+          timer.cancel();
+          _acionarLimiteDuroExpirado();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timerLimiteDuro?.cancel();
+    super.dispose();
+  }
+
+  /// Aciona [widget.aoExpirarTempoLimite] uma única vez (protegido por
+  /// [_limiteDuroJaAcionado] contra chamadas repetidas) quando o limite
+  /// duro de tempo chega a zero sem que o PIN correto tenha sido
+  /// digitado. O diálogo permanece aberto/funcional normalmente depois
+  /// disso — mantém o mesmo princípio de nunca se auto-fechar diante de
+  /// uma falha, usado em todo o restante do app.
+  Future<void> _acionarLimiteDuroExpirado() async {
+    if (_limiteDuroJaAcionado) return;
+    _limiteDuroJaAcionado = true;
+    if (widget.aoExpirarTempoLimite != null) {
+      try {
+        await widget.aoExpirarTempoLimite!.call();
+      } catch (_) {}
+    }
+  }
 
   void _pressionarTecla(String caractere) {
     if (_pinDigitado.length >= 4 || _verificando) return;
@@ -140,6 +238,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
 
     if (pinCorreto) {
       _errosConsecutivos = 0;
+      _timerLimiteDuro?.cancel();
       setState(() {
         _verificando = true;
         _mensagemErro = AppLocalizations.of(context)!.pinAlarmeDesligado; // Altera a mensagem no próprio teclado
@@ -161,10 +260,11 @@ class _PinDialogContentState extends State<PinDialogContent> {
     // --- NOVA LÓGICA: Mantém o teclado travado e exibe o aviso em minúsculas ---
     _errosConsecutivos++;
 
-    if (_errosConsecutivos >= 2 && widget.aoErrarPinDuasVezes != null) {
+    if (_errosConsecutivos >= widget.limiteErrosConsecutivos &&
+        widget.aoAtingirLimiteDeErros != null) {
       _errosConsecutivos = 0;
       try {
-        widget.aoErrarPinDuasVezes!.call();
+        widget.aoAtingirLimiteDeErros!.call();
       } catch (_) {}
     }
 
@@ -178,7 +278,13 @@ class _PinDialogContentState extends State<PinDialogContent> {
 
   @override
   Widget build(BuildContext context) {
-    final bool exibirContagem = widget.segundosTolerancia != null;
+    // O valor AO VIVO do limite duro (quando presente) tem prioridade
+    // sobre o valor estático de [widget.segundosTolerancia] — não faz
+    // sentido os dois coexistirem no mesmo diálogo, e os chamadores atuais
+    // só informam um ou outro.
+    final int? segundosParaExibir =
+        _segundosRestantesLimiteDuro ?? widget.segundosTolerancia;
+    final bool exibirContagem = segundosParaExibir != null;
 
     return Dialog(
       backgroundColor: const Color(0xFF1A1A1A),
@@ -215,7 +321,8 @@ class _PinDialogContentState extends State<PinDialogContent> {
             if (exibirContagem) ...[
               const SizedBox(height: 6),
               Text(
-                AppLocalizations.of(context)!.pinTempoTolerancia(widget.segundosTolerancia!),
+                AppLocalizations.of(context)!
+                    .pinTempoTolerancia(segundosParaExibir.clamp(0, 1 << 30)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.amber,

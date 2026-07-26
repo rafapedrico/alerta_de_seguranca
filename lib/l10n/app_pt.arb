@@ -204,6 +204,7 @@
   "verMais": "Ver mais",
 
   "alarmeRotinaAtivoDescricao": "Alarme de rotina ativo.\nConfirme sua segurança para pausar.",
+  "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 2 minutos ou um alerta de emergência será enviado.",
   "desligarAlarmeBotao": "DESLIGAR ALARME",
 
   "cameraToqueOuVolume": "📸 Toque no botão ou aperte VOLUME para tirar a foto",

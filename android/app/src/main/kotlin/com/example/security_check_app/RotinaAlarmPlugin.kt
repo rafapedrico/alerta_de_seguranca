@@ -36,6 +36,28 @@ class RotinaAlarmPlugin : FlutterPlugin {
                 activityReference = null
             }
         }
+
+        /**
+         * Reinicia o som em loop na Activity atualmente registrada (se
+         * houver uma viva e não finalizando). Retorna `true` se conseguiu
+         * encontrar e reiniciar o som em uma Activity já existente, ou
+         * `false` caso não haja nenhuma ativa no momento (cenário em que
+         * o chamador deve criar uma nova via [iniciarTelaAlarme], cujo
+         * próprio `onCreate` já toca o som).
+         */
+        fun reiniciarSomNaActivityAtiva(): Boolean {
+            return try {
+                val activity = activityReference?.get()
+                if (activity != null && !activity.isFinishing) {
+                    activity.reiniciarSom()
+                    true
+                } else {
+                    false
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -51,6 +73,29 @@ class RotinaAlarmPlugin : FlutterPlugin {
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao iniciar tela de alarme: ${e.message}", null)
+                        }
+                    }
+                    "tocarAlarmeNovamente" -> {
+                        try {
+                            val idAlarme = (call.argument<Int>("idAlarme")) ?: -1
+                            // Garante que a tela esteja em primeiro plano
+                            // (cria uma nova via Intent se já tiver sido
+                            // fechada, ou apenas a traz de volta/reforça as
+                            // flags via onNewIntent se ainda estiver viva).
+                            iniciarTelaAlarme(context, idAlarme)
+                            // Reinicia o som da Activity que ficar registrada
+                            // logo em seguida. Pequeno atraso para dar tempo
+                            // ao Android de concluir onCreate/onNewIntent e
+                            // registrar a Activity antes de tentarmos usá-la
+                            // — se a Activity acabou de ser CRIADA agora,
+                            // seu próprio onCreate já iniciou o som (este
+                            // reinício apenas o reforça, sem prejuízo).
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                reiniciarSomNaActivityAtiva()
+                            }, 350L)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao re-tocar alarme: ${e.message}", null)
                         }
                     }
                "pararAlarme", "pausarAlarme" -> {

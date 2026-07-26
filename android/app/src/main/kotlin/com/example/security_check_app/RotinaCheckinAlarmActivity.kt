@@ -126,6 +126,23 @@ class RotinaCheckinAlarmActivity : MainActivity() {
         }
     }
 
+    /**
+     * Reinicia a reprodução do som de alarme em loop — chamado pelo
+     * [RotinaAlarmPlugin] (método "tocarAlarmeNovamente") quando a
+     * tolerância de check-in expira e o alarme precisa "tocar
+     * novamente" para a janela final de 2 minutos. Para qualquer
+     * MediaPlayer ainda em execução antes de iniciar um novo, evitando
+     * duas instâncias tocando simultaneamente.
+     */
+    fun reiniciarSom() {
+        try {
+            RotinaAlarmSomBridge.pararSom()
+        } catch (_: Exception) {
+        }
+        mediaPlayer = null
+        iniciarSomEmLoop()
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         // Garante que os mesmos plugins locais (SmsSender,
         // VolumeSosPlugin, LockscreenPlugin, RotinaAlarmPlugin) sejam

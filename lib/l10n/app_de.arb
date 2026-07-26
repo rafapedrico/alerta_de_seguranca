@@ -200,6 +200,7 @@
   "verMais": "Mehr erfahren",
 
   "alarmeRotinaAtivoDescricao": "Routinealarm aktiv.\nBestätige deine Sicherheit, um zu pausieren.",
+  "alarmeRotinaFaseFinalDescricao": "LETZTE CHANCE! Der Alarm hat erneut geklingelt.\nGib deine PIN innerhalb von 2 Minuten ein, sonst wird ein Notfallalarm gesendet.",
   "desligarAlarmeBotao": "ALARM AUSSCHALTEN",
 
   "cameraToqueOuVolume": "📸 Tippe auf die Taste oder drücke LAUTSTÄRKE, um das Foto zu machen",

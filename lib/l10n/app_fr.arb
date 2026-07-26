@@ -200,6 +200,7 @@
   "verMais": "Voir plus",
 
   "alarmeRotinaAtivoDescricao": "Alarme de routine active.\nConfirmez votre sécurité pour la suspendre.",
+  "alarmeRotinaFaseFinalDescricao": "DERNIÈRE CHANCE ! L'alarme a sonné à nouveau.\nSaisissez votre code PIN dans les 2 minutes ou une alerte d'urgence sera envoyée.",
   "desligarAlarmeBotao": "ÉTEINDRE L'ALARME",
 
   "cameraToqueOuVolume": "📸 Touchez le bouton ou appuyez sur VOLUME pour prendre la photo",

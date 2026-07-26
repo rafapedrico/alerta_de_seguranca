@@ -7,6 +7,7 @@ import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/location_service.dart';
 import '../../services/emergency_alert_service.dart';
+import '../../services/firebase_sync_service.dart';
 import '../../services/alarme_service.dart';
 import '../../services/alarme_sonoro_service.dart';
 import '../../services/api_service.dart';
@@ -455,7 +456,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         pinEsperado: _pinRealConfirmado,
         segundosTolerancia: _segundosToleranciaBloqueio,
         aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
-        aoErrarPinDuasVezes: _dispararSosDeCoacao,
+        aoAtingirLimiteDeErros: _dispararSosDeCoacao,
       );
     }
 
@@ -574,25 +575,37 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// Callback silencioso passado ao [PinDialogContent] (ver
   /// [_ativarBloqueioDeSeguranca]), acionado automaticamente quando o
   /// usuário digita o PIN INCORRETO 2 vezes consecutivas. Dispara o
-  /// MESMO fluxo de emergência real usado pelo SOS manual/automático
-  /// (SMS nativo + alerta ao backend), mas de forma 100% SILENCIOSA:
-  /// nenhum SnackBar, nenhuma alteração visual no diálogo de PIN, nada
-  /// que possa denunciar o disparo a quem estiver observando a tela
-  /// (ex: um agressor coagindo o usuário a digitar o PIN).
+  /// alerta de tentativa de desarme com senha incorreta (SMS nativo com
+  /// localização + alerta ao backend), de forma 100% SILENCIOSA: nenhum
+  /// SnackBar, nenhuma alteração visual no diálogo de PIN, nada que possa
+  /// denunciar o disparo a quem estiver observando a tela (ex: um
+  /// agressor coagindo o usuário a digitar o PIN).
+  ///
+  /// ORDEM CRÍTICA: o alerta para a nuvem (Firebase) é disparado e
+  /// AGUARDADO PRIMEIRO, antes de qualquer outro processamento local —
+  /// garantindo que, mesmo que o aparelho seja destruído/desligado nos
+  /// segundos seguintes, a nuvem já tenha recebido o alerta. Só depois
+  /// disso o fluxo local (SMS nativo + backend FastAPI) é executado.
   ///
   /// Protegido por try/catch para nunca propagar exceção de volta ao
   /// diálogo de PIN, mantendo seu comportamento visual inalterado
   /// independentemente do resultado deste disparo.
   Future<void> _dispararSosDeCoacao() async {
     debugPrint('🚨 [PIN DE COAÇÃO] 2 PINs incorretos consecutivos detectados. '
-        'Disparando SOS silencioso.');
+        'Disparando alerta silencioso de tentativa de desarme incorreta.');
+
     try {
-      await _emergencyAlertService.dispararAlertaDeEmergencia(
-        contexto: _contextoController.text.trim(),
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
+    } catch (e) {
+      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar alerta prioritário na nuvem: $e');
+    }
+
+    try {
+      await _emergencyAlertService.dispararAlertaTentativaDesarmeIncorreto(
         posicaoEmMemoria: _locationService.ultimaPosicao,
       );
     } catch (e) {
-      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar SOS silencioso: $e');
+      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar alerta silencioso: $e');
     }
   }
 

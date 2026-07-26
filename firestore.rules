@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// ATENÇÃO — REGRAS TEMPORÁRIAS/ABERTAS, ALINHADAS AO ESTADO ATUAL DO APP:
+//
+// O app Flutter ainda não tem Firebase Auth real (login social hoje é
+// mockado, ver FirebaseAuthService) e usa um usuarioId fixo em memória
+// (ApiService.usuarioIdPadrao = 'usuario_dev_teste') igual ao já usado
+// pelo backend FastAPI local, que também não tem autenticação. Por isso,
+// estas regras liberam leitura/escrita sem exigir `request.auth` — do
+// contrário, TODA chamada do app ao Firestore seria negada e nada
+// funcionaria.
+//
+// TODO (antes de produção com usuários reais): assim que o Firebase Auth
+// for implementado de verdade, trocar `allow read, write: if true` por
+// algo como `allow read, write: if request.auth != null && request.auth.uid == usuarioId`
+// e ativar o App Check para impedir escrita por clientes não autorizados.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{usuarioId} {
+      // Documento único por usuário: localização atual + contatos de
+      // emergência sincronizados (ver FirebaseSyncService no app).
+      allow read, write: if true;
+
+      match /alertas/{alertaId} {
+        // O app só precisa CRIAR um novo alerta (ver
+        // FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto).
+        allow create: if true;
+        allow read: if true;
+        // Só a Cloud Function (via Admin SDK, que ignora estas regras)
+        // deve atualizar o alerta (ex: marcar como `processado`) — o
+        // cliente nunca deve alterar ou apagar um alerta já criado.
+        allow update, delete: if false;
+      }
+    }
+  }
+}

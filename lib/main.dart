@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_navigator.dart';
+import 'firebase_options.dart';
 import 'screens/alarme_disparado_screen.dart';
 import 'screens/camera_captura_screen.dart';
 import 'screens/home_screen.dart';
@@ -13,9 +15,11 @@ import 'screens/login_screen.dart';
 import 'services/alarme_service.dart';
 import 'services/api_service.dart';
 import 'services/captura_dissuasao_service.dart';
+import 'services/contatos_emergencia_service.dart';
 import 'services/database_helper.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
+import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
@@ -40,6 +44,24 @@ void main() async {
           _rotaInicialRotinaAlarme;
 
   EncryptionService().initialize();
+
+  // Camada extra de resiliência na nuvem (Firebase/Firestore): protegida
+  // por try/catch e NUNCA bloqueia o cold start do app — se o Firebase
+  // falhar ao inicializar (sem rede, projeto mal configurado, etc.), o
+  // app continua 100% funcional com SQLite local, alarmes nativos e SMS
+  // direto do aparelho, que não dependem do Firebase.
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    debugPrint('☁️ [Firebase] Inicializado com sucesso.');
+    // Sincroniza os contatos de emergência já cadastrados (mesmo que
+    // tenham sido criados antes desta funcionalidade existir) para que a
+    // nuvem já saiba a quem notificar, sem depender de o usuário editar
+    // algo primeiro. Fire-and-forget: nunca atrasa o cold start.
+    ContatosEmergenciaService.sincronizarAgora();
+  } catch (e) {
+    debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
+        'apenas com os recursos locais): $e');
+  }
 
   await WallpaperService.inicializar();
   await FontScaleService.inicializar();
@@ -365,6 +387,7 @@ class _TelaInicialComPossivelDialogoPinState
         pinEsperado: pinReal,
         segundosTolerancia: null,
         aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
+        aoAtingirLimiteDeErros: _aoErrarPinDuasVezes,
       );
     } catch (e) {
       debugPrint('⚠️ Falha ao exibir diálogo de PIN pendente: $e');
@@ -376,6 +399,23 @@ class _TelaInicialComPossivelDialogoPinState
       await DatabaseHelper().limparAguardandoConfirmacaoPin();
     } catch (e) {
       debugPrint('⚠️ Falha ao limpar flag de confirmação de PIN: $e');
+    }
+  }
+
+  Future<void> _aoErrarPinDuasVezes() async {
+    // ORDEM CRÍTICA: alerta para a nuvem primeiro e aguardado, antes de
+    // qualquer outro processamento — ver mesma lógica em
+    // SegurancaTab._dispararSosDeCoacao.
+    try {
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem: $e');
+    }
+    try {
+      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto();
+    } catch (e) {
+      debugPrint(
+          '⚠️ Falha ao disparar alerta de tentativa de desarme incorreta: $e');
     }
   }
 

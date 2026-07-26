@@ -19,20 +19,17 @@ dependencies:
   sqflite: ^2.3.0
   path: ^1.8.3
 
-  # Firebase / Login Social (Google e Facebook) — a configurar quando
-  # houver um projeto Firebase real (google-services.json) e as
-  # credenciais do Facebook Developer (App ID + Client Token). Até lá,
-  # os botões de login social em login_screen.dart chamam
-  # FirebaseAuthService, que apenas simula o login (mesmo padrão mock já
-  # usado no login/cadastro por e-mail). Para ativar de verdade:
-  # 1. Rodar `flutterfire configure` (gera google-services.json e
-  #    firebase_options.dart) ou adicionar o google-services.json manualmente.
-  # 2. Descomentar as linhas abaixo.
-  # 3. Substituir os corpos mockados de FirebaseAuthService pelas chamadas
-  #    reais (Firebase.initializeApp, GoogleSignIn, FacebookAuth, etc).
-  # firebase_core: ^2.24.0
+  # Firebase — projeto real "guardiaox" já configurado (ver
+  # android/app/google-services.json). firebase_core + cloud_firestore
+  # ativados para a camada de resiliência na nuvem (rastreamento de GPS
+  # periódico + alerta prioritário de tentativa de desarme incorreta, ver
+  # lib/services/firebase_sync_service.dart). firebase_auth e o login
+  # social (Google/Facebook) permanecem desativados/mockados por enquanto
+  # — para ativá-los de verdade, descomente as linhas abaixo e substitua
+  # os corpos mockados de FirebaseAuthService pelas chamadas reais.
+  firebase_core: ^2.32.0
+  cloud_firestore: ^4.17.5
   # firebase_auth: ^4.16.0
-  # cloud_firestore: ^4.14.0
   # google_sign_in: ^6.2.1
   # flutter_facebook_auth: ^6.2.1
 

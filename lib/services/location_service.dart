@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'firebase_sync_service.dart';
+
 /// Serviço centralizado de geolocalização proativa.
 ///
 /// Estratégia adotada (definida junto com o time de segurança):
@@ -25,6 +27,17 @@ import 'package:geolocator/geolocator.dart';
 ///    imediatamente essa última localização salva em memória por este
 ///    fluxo proativo, sem depender de uma nova consulta (lenta) ao GPS
 ///    no momento crítico.
+///
+/// 5. Camada extra de resiliência (Firebase): em PARALELO ao loop acima
+///    (independente dele), um segundo Timer dispara a cada 1 minuto
+///    enquanto o monitoramento estiver ativo, enviando a última posição
+///    ao Firestore via [FirebaseSyncService.atualizarLocalizacaoAtual]
+///    (sempre sobrescrevendo o mesmo documento, nunca acumulando
+///    histórico). Isso garante que, mesmo que o aparelho seja
+///    destruído/desligado/perca sinal, a nuvem já tenha uma posição com
+///    no máximo ~1 minuto de atraso. Funciona apenas enquanto o app
+///    estiver vivo (primeiro ou segundo plano) — não sobrevive ao
+///    processo do app sendo encerrado pelo Android.
 class LocationService {
   LocationService._internal();
   static final LocationService _instance = LocationService._internal();
@@ -34,12 +47,28 @@ class LocationService {
   /// cronômetro de check-in estiver ativo.
   static const Duration intervaloAtualizacao = Duration(minutes: 2);
 
+  /// Intervalo entre os envios periódicos de localização ao Firebase
+  /// (camada de resiliência na nuvem), independente do loop acima.
+  static const Duration intervaloAtualizacaoFirebase = Duration(minutes: 1);
+
   /// Última posição capturada em memória (a "Localização Atualizada").
   /// É sempre sobrescrita: nunca mantemos histórico, apenas o registro
   /// mais recente do aparelho.
   Position? _ultimaPosicao;
 
   Timer? _timerAtualizacao;
+  Timer? _timerFirebase;
+
+  // Contagem de referências: permite que MAIS DE UM consumidor (ex: o
+  // cronômetro da aba Segurança E, simultaneamente, um alarme de rotina
+  // disparado na aba Família) "peçam" o ciclo de atualização ao mesmo
+  // tempo, sem que um cancele o ciclo do outro por engano. Os Timers só
+  // são criados de fato na PRIMEIRA chamada de
+  // [iniciarCicloDeAtualizacao] (contador 0 -> 1) e só são cancelados na
+  // ÚLTIMA chamada correspondente de [pararCicloDeAtualizacao] (contador
+  // 1 -> 0) — cada consumidor deve manter seu próprio par
+  // iniciar/parar 1:1.
+  int _referenciasAtivas = 0;
 
   Position? get ultimaPosicao => _ultimaPosicao;
 
@@ -107,35 +136,79 @@ class LocationService {
     }
   }
 
-  /// Inicia o ciclo de vida do GPS atrelado ao cronômetro de check-in:
+  /// Inicia o ciclo de vida do GPS atrelado ao monitoramento ativo
+  /// (cronômetro de check-in da Segurança OU alarme de rotina disparado
+  /// na Família):
   ///
   /// 1. Faz o "warm-up": busca a localização atual imediatamente.
   /// 2. Agenda um Timer.periodic para repetir a captura a cada 2 minutos
-  ///    enquanto o cronômetro estiver ativo.
+  ///    enquanto o monitoramento permanecer ativo.
+  /// 3. Agenda um segundo Timer.periodic independente, a cada 1 minuto,
+  ///    enviando a localização ao Firebase (ver [_atualizarLocalizacaoNoFirebase]).
   ///
-  /// Deve ser chamado no exato momento em que o usuário clica em
-  /// "Iniciar Cronômetro".
+  /// Cada chamada DEVE ter uma chamada correspondente de
+  /// [pararCicloDeAtualizacao] quando aquele monitoramento específico
+  /// terminar — a contagem de referências ([_referenciasAtivas]) garante
+  /// que os Timers só parem quando TODOS os consumidores tiverem
+  /// encerrado, permitindo que a Segurança e a Família monitorem ao
+  /// mesmo tempo sem um cancelar o ciclo do outro.
   Future<void> iniciarCicloDeAtualizacao() async {
-    // Cancela qualquer ciclo anterior ainda em execução, por segurança.
-    pararCicloDeAtualizacao();
+    _referenciasAtivas++;
+    if (_referenciasAtivas > 1) {
+      // Já existe outro consumidor mantendo o ciclo ativo: apenas
+      // contabiliza mais um interessado, sem recriar os Timers.
+      return;
+    }
 
     // Passo 2 (Warm-up): busca IMEDIATA da localização precisa, em
-    // segundo plano, no exato momento em que o cronômetro é iniciado.
+    // segundo plano, no exato momento em que o monitoramento é iniciado.
     await capturarLocalizacaoAtual();
 
-    // Passo 3: loop de atualização a cada 2 minutos enquanto o cronômetro
-    // permanecer ativo.
+    // Passo 3: loop de atualização a cada 2 minutos enquanto o
+    // monitoramento permanecer ativo.
     _timerAtualizacao = Timer.periodic(intervaloAtualizacao, (timer) async {
       await capturarLocalizacaoAtual();
+    });
+
+    // Passo 5 (Firebase): warm-up + loop independente de 1 em 1 minuto,
+    // enviando a última localização à nuvem enquanto o monitoramento
+    // estiver ativo. Roda em paralelo ao loop de 2 minutos acima, sem
+    // interferir nele.
+    await _atualizarLocalizacaoNoFirebase();
+    _timerFirebase = Timer.periodic(intervaloAtualizacaoFirebase, (timer) async {
+      await _atualizarLocalizacaoNoFirebase();
     });
   }
 
   /// Interrompe o ciclo de atualização periódica de localização. Deve ser
-  /// chamado sempre que o cronômetro for parado/desarmado (com sucesso ou
-  /// por disparo de emergência).
+  /// chamado sempre que o monitoramento ativo daquele consumidor
+  /// específico for parado/desarmado (com sucesso ou por disparo de
+  /// emergência) — ver a contagem de referências em [_referenciasAtivas]:
+  /// os Timers só são efetivamente cancelados quando o último consumidor
+  /// ativo chamar este método.
   void pararCicloDeAtualizacao() {
+    if (_referenciasAtivas == 0) return;
+    _referenciasAtivas--;
+    if (_referenciasAtivas > 0) return;
+
     _timerAtualizacao?.cancel();
     _timerAtualizacao = null;
+    _timerFirebase?.cancel();
+    _timerFirebase = null;
+  }
+
+  /// Captura a posição atual (reaproveitando [capturarLocalizacaoAtual],
+  /// já com seu próprio fallback para a última posição em memória) e
+  /// envia ao Firestore via [FirebaseSyncService]. Não faz nada se nenhuma
+  /// posição estiver disponível (GPS desligado e sem posição anterior em
+  /// memória) — o próximo tick de 1 minuto tenta novamente.
+  Future<void> _atualizarLocalizacaoNoFirebase() async {
+    final posicao = await capturarLocalizacaoAtual();
+    if (posicao == null) return;
+    await FirebaseSyncService().atualizarLocalizacaoAtual(
+      latitude: posicao.latitude,
+      longitude: posicao.longitude,
+    );
   }
 
   /// Limpa a última localização guardada em memória. Opcionalmente pode
