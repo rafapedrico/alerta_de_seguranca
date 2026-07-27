@@ -203,6 +203,8 @@
   "alarmeRotinaFaseFinalDescricao": "DERNIÈRE CHANCE ! L'alarme a sonné à nouveau.\nSaisissez votre code PIN dans les 2 minutes ou une alerte d'urgence sera envoyée.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Alerte d'urgence envoyée !\nVotre position et le message ont été envoyés au cloud et aux contacts enregistrés.",
   "desligarAlarmeBotao": "ÉTEINDRE L'ALARME",
+  "fecharConfirmacaoBotao": "FERMER",
+  "fecharConfirmacaoDica": "Balayez vers le haut ou appuyez sur Fermer pour continuer",
 
   "cameraToqueOuVolume": "📸 Touchez le bouton ou appuyez sur VOLUME pour prendre la photo",
   "enviando": "Envoi en cours...",

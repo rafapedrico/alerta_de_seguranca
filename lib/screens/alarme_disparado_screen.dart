@@ -411,9 +411,17 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       // fase final ele PRECISA continuar tocando enquanto o teclado é
       // exibido — só é interrompido de fato ao confirmar o PIN correto
       // ou ao disparar o alerta real (ver [_finalizarComConfirmacao]).
+      //
+      // CORREÇÃO (bug real observado em teste — tela bloqueada): usava
+      // "pararAlarme" aqui, que no lado Kotlin (RotinaAlarmPlugin)
+      // também chama fecharActivityAtiva() — fechando a
+      // RotinaCheckinAlarmActivity (e o engine Flutter dentro dela)
+      // ANTES do teclado de PIN sequer aparecer, com o aparelho
+      // bloqueado. "silenciarSomSemFechar" faz SÓ a parte de áudio, sem
+      // encerrar a Activity.
       const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
       try {
-        await canalNativo.invokeMethod('pararAlarme');
+        await canalNativo.invokeMethod('silenciarSomSemFechar');
       } catch (e) {
         debugPrint('⚠️ Falha ao parar som nativo do alarme: $e');
       }
@@ -423,20 +431,16 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       await prefs.remove('alarme_disparando_no_momento');
       await prefs.reload();
 
+      // CORREÇÃO DE SEGURANÇA: mesmo que [idAlarme] não possa ser
+      // resolvido (caso raro — ex: alarme já reagendado/removido entre o
+      // disparo e o toque no botão), o app NUNCA deve fechar a tela sem
+      // exigir o PIN correto primeiro. Antes, esse caso caía num
+      // caminho que fechava direto, sem diálogo — um desvio de
+      // autenticação. Agora [idAlarme] segue nulo até o diálogo (só é
+      // usado dentro de [aoConfirmarPinCorreto] para decidir se chama
+      // [RotinaAlarmeService.confirmarCheckinRotina]).
       final idAlarme = _idAlarmeAtual ?? await _resolverIdAlarmeMaisRecente();
       _idAlarmeAtual = idAlarme;
-
-      if (idAlarme == null) {
-        unawaited(RotinaAlarmeService.pararServicoForeground());
-        if (mounted) {
-          if (widget.veioDoForeground) {
-            _fecharCaminhoTelaLigada(context);
-          } else {
-            await _fecharCaminhoTelaDesligada(context);
-          }
-        }
-        return;
-      }
 
       final config = await DatabaseHelper().getUserConfig();
       final pinReal = config?['pin_real'] as String? ?? '1234';
@@ -461,6 +465,8 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
               RotinaAlarmeService.duracaoJanelaFinal.inSeconds,
             );
       }
+
+      bool pinConfirmadoComSucesso = false;
 
       _dialogoPinAberto = true;
       await exibirDialogoPin(
@@ -492,17 +498,27 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
                 )
             : null,
         aoConfirmarPinCorreto: () async {
+          pinConfirmadoComSucesso = true;
           _dialogoPinAberto = false;
           _fluxoEncerrado = true;
           _pollFaseFinalTimer?.cancel();
           try {
             await _player.stop();
           } catch (_) {}
-          // Grava chaveAlarmeFluxoResolvido (ver RotinaAlarmeService)
-          // para que qualquer OUTRA instância desta tela, rodando num
-          // engine separado (ver documentação da flag), pare seu
-          // próprio som e se feche também.
-          await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
+          if (idAlarme != null) {
+            // Grava chaveAlarmeFluxoResolvido (ver RotinaAlarmeService)
+            // para que qualquer OUTRA instância desta tela, rodando num
+            // engine separado (ver documentação da flag), pare seu
+            // próprio som e se feche também. Também é aqui (PIN já
+            // validado) que o status na nuvem vira CONFIRMADO_SEGURA —
+            // ver [AlarmeAgendadoCloudService.marcarConfirmadoSeguro].
+            await RotinaAlarmeService.confirmarCheckinRotina(idAlarme);
+          } else {
+            // idAlarme não pôde ser resolvido (caso raro) — mesmo assim
+            // o PIN já foi validado acima antes de chegar aqui; apenas
+            // libera o WakeLock/serviço em primeiro plano com segurança.
+            unawaited(RotinaAlarmeService.pararServicoForeground());
+          }
 
           if (!context.mounted) return;
 
@@ -518,6 +534,23 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
         },
       );
       _dialogoPinAberto = false;
+
+      // REQUISITO DE SEGURANÇA: se o teclado fechou (ex: botão/gesto
+      // Voltar do sistema, já que este diálogo não tem botão "Cancelar")
+      // SEM o PIN correto E sem o alerta de emergência já ter sido
+      // disparado nesse meio-tempo (_fluxoEncerrado), o alarme NUNCA pode
+      // ficar silenciado — precisa voltar a tocar normalmente até a
+      // tolerância/janela final esgotar de verdade.
+      if (!pinConfirmadoComSucesso && !_fluxoEncerrado && mounted) {
+        debugPrint(
+            '🔔 Teclado de PIN fechado sem confirmação — retomando o som do alarme.');
+        try {
+          await prefs.setBool('stop_current_alarm', false);
+          await prefs.setBool('alarme_disparando_no_momento', true);
+        } catch (_) {}
+        unawaited(_tocarSomDoAlarme());
+        unawaited(RotinaAlarmeService.reiniciarSomNativoSeAtivo());
+      }
     } catch (e) {
       debugPrint('⚠️ Erro no fluxo de silenciamento e PIN: $e');
       _dialogoPinAberto = false;
@@ -544,6 +577,27 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     String? motivo,
     bool mostrarConfirmacaoEFechar = false,
   }) async {
+    // TRAVA CONTRA MENSAGENS DUPLICADAS: só a JANELA FINAL corre risco de
+    // disparo duplo (este diálogo de PIN em primeiro plano E o callback
+    // headless [_callbackJanelaFinalExpirada] podem detectar a MESMA
+    // falha quase simultaneamente) — por isso o eventoId (mesmo id em
+    // ambos os caminhos, ver documentação em
+    // [FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto]) só é
+    // calculado aqui. A fase inicial (2 erros, disfarçada) não tem
+    // contraparte headless — comportamento histórico inalterado.
+    String? eventoId;
+    if (mostrarConfirmacaoEFechar && _idAlarmeAtual != null) {
+      try {
+        final dados = await DatabaseHelper().buscarAlarmePorId(_idAlarmeAtual!);
+        final ultimoDisparoEpoch = dados?['ultimo_disparo_epoch'] as int?;
+        if (ultimoDisparoEpoch != null) {
+          eventoId = 'rotina_${_idAlarmeAtual}_$ultimoDisparoEpoch';
+        }
+      } catch (e) {
+        debugPrint('⚠️ Falha ao calcular eventoId de deduplicação: $e');
+      }
+    }
+
     if (mostrarConfirmacaoEFechar) {
       if (_alertaJaProcessado) return;
       _alertaJaProcessado = true;
@@ -557,14 +611,18 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     }
 
     try {
-      await FirebaseSyncService()
-          .dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
     } catch (e) {
       debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem: $e');
     }
     try {
-      await EmergencyAlertService()
-          .dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
     } catch (e) {
       debugPrint('⚠️ Falha ao disparar alerta de tentativa de '
           'desarme incorreta: $e');
@@ -580,8 +638,9 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   /// headless, ver [_aoDetectarEmergenciaDisparadaNoDisco]):
   /// 1. Para o alarme sonoro (nativo + Dart).
   /// 2. Fecha o teclado de PIN, se ainda estiver aberto.
-  /// 3. Exibe a mensagem de confirmação de envio.
-  /// 4. Após alguns segundos, fecha esta tela automaticamente.
+  /// 3. Exibe a mensagem de confirmação de envio, FIXA na tela — só é
+  ///    fechada quando o usuário desliza para cima ou toca em "Fechar"
+  ///    (ver [_fecharTelaConfirmacao]), nunca automaticamente.
   ///
   /// Idempotente: protegida pela MESMA flag [_alertaJaProcessado] usada
   /// em [_dispararAlertaDeFalhaDeDesarme], para nunca executar esta
@@ -625,19 +684,25 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       _dialogoPinAberto = false;
     }
 
-    // 3. Exibe a confirmação.
+    // 3. Exibe a confirmação — permanece fixa na tela (sem fechamento
+    // automático) até o usuário deslizar para cima ou tocar em "Fechar"
+    // (ver [_fecharTelaConfirmacao] e o gesto configurado em [build]).
     if (mounted) {
       setState(() {
         _alertaDisparado = true;
         _faseFinal = true;
       });
     }
+  }
 
-    // 4. Fecha esta tela automaticamente após o usuário ter tempo de ler
-    // a confirmação.
-    await Future.delayed(const Duration(seconds: 5));
+  /// Único ponto de fechamento da tela de confirmação verde — acionado
+  /// pelo gesto de deslizar para cima ou pelo botão "Fechar" (nunca
+  /// automaticamente, ver [_finalizarComConfirmacao]). Reaproveita os
+  /// mesmos dois caminhos de encerramento já validados (tela ligada vs.
+  /// tela desligada) para garantir que, no caso de tela desligada, o
+  /// aparelho retorne imediatamente ao bloqueio nativo do Android.
+  Future<void> _fecharTelaConfirmacao() async {
     if (!mounted) return;
-
     if (widget.veioDoForeground) {
       _fecharCaminhoTelaLigada(context);
     } else {
@@ -647,7 +712,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final Widget tela = Scaffold(
       backgroundColor: const Color(0xFF121212),
       body: SafeArea(
         child: Stack(
@@ -726,6 +791,45 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
                           ),
                         ),
                       ),
+                    // Tela de confirmação (pós-alerta): permanece fixa —
+                    // só sai por gesto explícito do usuário (swipe up,
+                    // capturado em todo o corpo da tela abaixo, ou este
+                    // botão "Fechar").
+                    if (_alertaDisparado) ...[
+                      const Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        color: Colors.white38,
+                        size: 32,
+                      ),
+                      Text(
+                        AppLocalizations.of(context)!.fecharConfirmacaoDica,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white38, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.greenAccent,
+                            side: const BorderSide(color: Colors.greenAccent),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                          ),
+                          onPressed: _fecharTelaConfirmacao,
+                          child: Text(
+                            AppLocalizations.of(context)!.fecharConfirmacaoBotao,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -733,6 +837,21 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
           ],
         ),
       ),
+    );
+
+    // Gesto de deslizar para cima: só encerra a tela de confirmação
+    // (pós-alerta) — nas fases anteriores (alarme ativo / fase final) o
+    // fechamento continua exclusivo do fluxo de PIN, sem alteração.
+    if (!_alertaDisparado) return tela;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: (details) {
+        if (details.velocity.pixelsPerSecond.dy < -250) {
+          _fecharTelaConfirmacao();
+        }
+      },
+      child: tela,
     );
   }
 }

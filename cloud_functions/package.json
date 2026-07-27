@@ -1,0 +1,22 @@
+{
+  "name": "cloud_functions_draft",
+  "description": "ESBOÇO (draft) — monitoramento agendado de alarmes via Firestore (heartbeat & cloud alert). Ainda NÃO conectado ao deploy — ver README.md.",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/scheduledAlarmMonitor.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.3.1",
+    "firebase-functions": "^5.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.57.0"
+  }
+}

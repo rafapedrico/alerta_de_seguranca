@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
 import 'api_service.dart';
@@ -262,15 +263,49 @@ class EmergencyAlertService {
   /// mesmo canal nativo de SMS usado pelos demais fluxos de emergência, e é
   /// protegido por try/catch em cada etapa para nunca travar o diálogo de
   /// PIN que disparou este alerta, mesmo em caso de falha (GPS, SMS, banco).
+  ///
+  /// [eventoId], quando informado, é a MESMA trava contra mensagens
+  /// duplicadas usada em
+  /// [FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto], só
+  /// que no nível LOCAL/dispositivo: como o mesmo evento (ex: janela
+  /// final do alarme de rotina #N) pode ser detectado por dois caminhos
+  /// concorrentes (diálogo de PIN em primeiro plano vs. callback
+  /// headless), uma flag em disco garante que o SMS nativo só seja
+  /// enviado UMA vez por [eventoId], mesmo que ambos os caminhos cheguem
+  /// a chamar este método.
   Future<void> dispararAlertaTentativaDesarmeIncorreto({
     Position? posicaoEmMemoria,
     String? motivo,
+    String? eventoId,
   }) async {
     final String motivoTexto = motivo ??
         'O PIN foi digitado incorretamente 2 vezes seguidas ao tentar '
             'desarmar antecipadamente o sistema de segurança.';
 
     debugPrint('🚨 [TENTATIVA DE DESARME INCORRETA] $motivoTexto');
+
+    // TRAVA CONTRA MENSAGENS DUPLICADAS (nível local): ver documentação
+    // do parâmetro [eventoId] acima. Sem [eventoId] (demais fluxos de
+    // emergência sem risco de disparo duplo), este bloco é ignorado —
+    // comportamento 100% inalterado.
+    if (eventoId != null && eventoId.isNotEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
+        final chaveTrava = 'sms_enviado_$eventoId';
+        if (prefs.getBool(chaveTrava) == true) {
+          debugPrint(
+              '🚫 [TENTATIVA DE DESARME INCORRETA] Evento #$eventoId já '
+              'processado por outro caminho — SMS não reenviado.');
+          return;
+        }
+        await prefs.setBool(chaveTrava, true);
+      } catch (e) {
+        debugPrint(
+            '⚠️ [TENTATIVA DE DESARME INCORRETA] Falha ao checar trava local '
+            'de duplicidade (evento #$eventoId): $e');
+      }
+    }
 
     // Regra de negócio (Plano Gratuito): mesmo limite mensal de 5 alertas
     // se aplica aqui, evitando que tentativas repetidas de PIN incorreto

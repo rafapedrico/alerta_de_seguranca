@@ -6,7 +6,10 @@ import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';
 import '../../services/api_service.dart';
 import '../../services/contatos_emergencia_service.dart';
+import '../../services/emergency_alert_service.dart';
+import '../../services/firebase_sync_service.dart';
 import '../../models/alarme_rotina.dart';
+import '../../widgets/pin_dialog.dart';
 
 /// Aba responsável pelo gerenciador de múltiplos alarmes de rotina de
 /// check-in, no estilo do despertador do iPhone: uma lista de alarmes,
@@ -127,6 +130,56 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
     return valor == 1 || valor == true;
   }
 
+  /// PROTEÇÃO PARA PAUSAR/EDITAR/EXCLUIR: exige o PIN correto antes de
+  /// qualquer uma dessas ações prosseguir. Reaproveita [exibirDialogoPin]
+  /// (mesmo componente do desarme do alarme de rotina), com
+  /// `mostrarBotaoCancelar: true` — como o diálogo não é
+  /// `barrierDismissible` mas NÃO bloqueia o botão/gesto de voltar do
+  /// sistema, apertar "Voltar" fecha o diálogo sem chamar
+  /// `aoConfirmarPinCorreto`, cancelando a ação (retorna `false` aqui).
+  /// Duas tentativas erradas de PIN disparam o alerta de emergência com
+  /// localização, exatamente como no desarme do alarme.
+  Future<bool> _confirmarComPin(String acaoDescricao) async {
+    if (!mounted) return false;
+    final config = await _db.getUserConfig();
+    final pinReal = config?['pin_real'] as String? ?? '1234';
+
+    bool confirmado = false;
+    if (!mounted) return false;
+    await exibirDialogoPin(
+      context: context,
+      pinEsperado: pinReal,
+      mostrarBotaoCancelar: true,
+      limiteErrosConsecutivos: 2,
+      aoConfirmarPinCorreto: () async {
+        confirmado = true;
+      },
+      aoAtingirLimiteDeErros: () => _dispararAlertaPinIncorretoNaFamilia(
+        motivo: 'PIN digitado incorretamente 2 vezes seguidas ao tentar '
+            '$acaoDescricao um alarme de rotina na aba Família.',
+      ),
+    );
+    return confirmado;
+  }
+
+  /// Mesmo padrão de disparo (nuvem primeiro, aguardada, depois o fluxo
+  /// local) já usado em todo o resto do app para tentativas de desarme
+  /// com PIN incorreto — ver
+  /// [FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto] e
+  /// [EmergencyAlertService.dispararAlertaTentativaDesarmeIncorreto].
+  Future<void> _dispararAlertaPinIncorretoNaFamilia({required String motivo}) async {
+    try {
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+    } catch (e) {
+      debugPrint('⚠️ [Família] Falha ao disparar alerta prioritário na nuvem: $e');
+    }
+    try {
+      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+    } catch (e) {
+      debugPrint('⚠️ [Família] Falha ao disparar alerta de tentativa de desarme incorreta: $e');
+    }
+  }
+
 Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     if (alarme.id == null) return;
 
@@ -136,6 +189,13 @@ Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     if (estaPausado && ativo) {
       await _despausarAlarmeManual(alarme);
       return;
+    }
+
+    // PROTEÇÃO: desativar pelo switch é, na prática, uma forma de
+    // "pausar" o alarme — exige o mesmo PIN que o gesto de deslizar.
+    if (!ativo) {
+      final confirmado = await _confirmarComPin('pausar');
+      if (!confirmado) return;
     }
 
     await _db.alternarAtivoAlarme(alarme.id!, ativo);
@@ -207,6 +267,20 @@ Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
       where: 'id = ?',
       whereArgs: [alarme.id],
     );
+
+    // CORREÇÃO (bug real observado em teste): a atualização do SQLite
+    // acima só controla o texto exibido nesta tela ("Pausado até
+    // 00:00") — sozinha, ela NUNCA cancelava o disparo já agendado no
+    // AndroidAlarmManager/alarme nativo paralelo, que continuava
+    // tocando normalmente no horário mesmo com o alarme "pausado". Esta
+    // chamada cancela de fato o disparo de hoje e reagenda diretamente
+    // para o próximo dia válido (ver
+    // [RotinaAlarmeService.pausarAlarmePorHoje]).
+    try {
+      await RotinaAlarmeService.pausarAlarmePorHoje(alarme.id!, alarme.toMap());
+    } catch (e) {
+      debugPrint('⚠️ Falha ao cancelar o disparo nativo do alarme pausado por hoje: $e');
+    }
 
     await _db.inserirEventoHistorico(
       titulo: 'Alarme de rotina pausado',
@@ -733,7 +807,7 @@ Widget _construirListaAlarmes() {
           ),
           confirmDismiss: (direction) async {
             if (direction == DismissDirection.endToStart) {
-              return await showDialog<bool>(
+              final confirmouIntencao = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeTitulo),
@@ -744,8 +818,11 @@ Widget _construirListaAlarmes() {
                       ],
                     ),
                   ) ?? false;
+              // PROTEÇÃO: exclusão só prossegue com o PIN correto.
+              if (!confirmouIntencao) return false;
+              return await _confirmarComPin('excluir');
             } else if (direction == DismissDirection.startToEnd && !estaPausadoHoje) {
-              return await showDialog<bool>(
+              final confirmouIntencao = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeTitulo),
@@ -756,6 +833,9 @@ Widget _construirListaAlarmes() {
                       ],
                     ),
                   ) ?? false;
+              // PROTEÇÃO: pausa só prossegue com o PIN correto.
+              if (!confirmouIntencao) return false;
+              return await _confirmarComPin('pausar');
             }
             return false;
           },
@@ -768,7 +848,12 @@ Widget _construirListaAlarmes() {
               side: BorderSide(color: estaPausadoHoje ? Colors.amber.shade300 : Colors.grey.shade200, width: estaPausadoHoje ? 1.5 : 1),
             ),
             child: GestureDetector(
-              onLongPress: () => _abrirModalAlarme(alarmeExistente: alarme),
+              onLongPress: () async {
+                // PROTEÇÃO: editar um alarme existente exige o PIN
+                // correto antes de abrir o formulário.
+                final confirmado = await _confirmarComPin('editar');
+                if (confirmado) _abrirModalAlarme(alarmeExistente: alarme);
+              },
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(

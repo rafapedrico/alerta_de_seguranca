@@ -207,6 +207,8 @@
   "alarmeRotinaFaseFinalDescricao": "¡ÚLTIMA OPORTUNIDAD! La alarma sonó de nuevo.\nIngresa tu PIN en 2 minutos o se enviará una alerta de emergencia.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ ¡Alerta de emergencia enviada!\nTu ubicación y el mensaje fueron enviados a la nube y a los contactos registrados.",
   "desligarAlarmeBotao": "APAGAR ALARMA",
+  "fecharConfirmacaoBotao": "CERRAR",
+  "fecharConfirmacaoDica": "Desliza hacia arriba o toca Cerrar para continuar",
 
   "cameraToqueOuVolume": "📸 Toca el botón o presiona VOLUMEN para tomar la foto",
   "enviando": "Enviando...",

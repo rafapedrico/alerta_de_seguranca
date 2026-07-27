@@ -106,10 +106,33 @@ class RotinaAlarmPlugin : FlutterPlugin {
                             // 1. Desliga o som nativo
                             RotinaAlarmSomBridge.pararSom()
                             // 2. O segredo da vitória: Força a Activity nativa do Android a fechar e sumir!
-                            fecharActivityAtiva() 
+                            fecharActivityAtiva()
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao parar alarme: ${e.message}", null)
+                        }
+                    }
+                    "silenciarSomSemFechar" -> {
+                        // CORREÇÃO (bug real observado em teste): diferente de
+                        // "pararAlarme"/"pausarAlarme" acima, este método
+                        // NUNCA chama [fecharActivityAtiva] — usado
+                        // exclusivamente pelo botão azul ("Interromper
+                        // Alarme") para silenciar o som ENQUANTO o teclado de
+                        // PIN é exibido, sem fechar a Activity nativa (e o
+                        // engine Flutter dentro dela) ANTES do PIN ser
+                        // digitado. Antes, o botão azul chamava
+                        // "pararAlarme", que fechava a Activity
+                        // (RotinaCheckinAlarmActivity, cenário de tela
+                        // bloqueada) e o teclado nunca chegava a aparecer.
+                        try {
+                            android.util.Log.d(
+                                "RotinaAlarmWakeService",
+                                "silenciarSomSemFechar: parando apenas o som nativo (Activity permanece aberta)",
+                            )
+                            RotinaAlarmSomBridge.pararSom()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao silenciar som: ${e.message}", null)
                         }
                     }
                     "setAlarmDuration" -> {
@@ -236,6 +259,12 @@ class RotinaAlarmPlugin : FlutterPlugin {
     }
 
     private fun iniciarTelaAlarme(context: Context, idAlarme: Int) {
+        // Marca o fluxo como "em andamento" para [RotinaAlarmWakeService]
+        // saber (via [RotinaAlarmFluxoState], persistido nativamente)
+        // que deve reabrir esta tela caso o usuário desbloqueie o
+        // aparelho ou arraste o app para fora dos Recentes antes do PIN
+        // correto ser digitado.
+        RotinaAlarmFluxoState.marcarEmAndamento(context, idAlarme)
         val intent = Intent(context, RotinaCheckinAlarmActivity::class.java).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or

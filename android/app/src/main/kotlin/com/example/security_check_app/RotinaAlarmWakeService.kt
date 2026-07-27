@@ -3,12 +3,20 @@ package com.example.security_check_app
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+
+private const val TAG = "RotinaAlarmWakeService"
 
 /**
  * Foreground Service que garante que o alarme de rotina "acorde" o
@@ -44,17 +52,51 @@ import androidx.core.app.NotificationCompat
  * [RotinaAlarmPlugin]), e tem um teto de segurança de 10 minutos para
  * NUNCA ficar preso indefinidamente drenando bateria caso esse sinal de
  * conclusão falhe por qualquer motivo.
+ *
+ * PERSISTÊNCIA CONTRA SWIPE/DESBLOQUEIO (nova regra de segurança): o
+ * alarme NUNCA deve parar de tocar/exigir o PIN só porque o usuário
+ * arrastou o app para fora dos Recentes ou desbloqueou o aparelho — só o
+ * PIN correto ou o esgotamento da tolerância podem encerrá-lo.
+ * `android:stopWithTask="false"` no manifest garante que este Service
+ * (que já roda em primeiro plano) não seja parado automaticamente por
+ * remoção de tarefa, e o [BroadcastReceiver] registrado dinamicamente
+ * abaixo reabre [RotinaCheckinAlarmActivity] sempre que o aparelho for
+ * desbloqueado ([Intent.ACTION_USER_PRESENT]) enquanto o fluxo
+ * ([RotinaAlarmFluxoState]) ainda não tiver sido resolvido.
  */
 class RotinaAlarmWakeService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
+    private var idAlarmeAtual: Int = -1
+    private var receiverRegistrado = false
+
+    private val receiverDesbloqueio = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val emAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
+            Log.d(
+                TAG,
+                "receiverDesbloqueio.onReceive: action=${intent?.action} emAndamento=$emAndamento " +
+                    "idAlarme=${RotinaAlarmFluxoState.idAlarmeAtual(applicationContext)}",
+            )
+            // Só reabre a tela se o fluxo REALMENTE ainda não tiver sido
+            // resolvido (PIN correto ou alerta já disparado) — evita
+            // reabrir uma tela de alarme já encerrado por qualquer
+            // desbloqueio/tela-ligada subsequente e não relacionado.
+            if (emAndamento) {
+                iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+            }
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)}")
         iniciarEmForeground()
         adquirirWakeLock()
+        registrarReceiverDeDesbloqueio()
 
-        val idAlarme = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
-        iniciarTelaDoAlarme(idAlarme)
+        idAlarmeAtual = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
+        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual)
+        iniciarTelaDoAlarme(idAlarmeAtual)
 
         // START_NOT_STICKY: não faz sentido o Android recriar este Service
         // sozinho sem o extra do idAlarme — o próprio alarme nativo (ou o
@@ -63,7 +105,65 @@ class RotinaAlarmWakeService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * CORREÇÃO (persistência contra swipe): se o Android remover a
+     * TAREFA (task) associada a este Service — ex: usuário arrastou o
+     * app para cima nos Recentes — enquanto o fluxo ainda estiver em
+     * andamento, reagenda a reabertura da tela do alarme logo em
+     * seguida, em vez de deixar o alerta "sumir" silenciosamente. O
+     * Service em si (`stopWithTask="false"`) já sobrevive à remoção da
+     * tarefa; isto cobre também a Activity, que É destruída nesse
+     * evento.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        val emAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
+        Log.d(TAG, "onTaskRemoved: emAndamento=$emAndamento — ${if (emAndamento) "reagendando reabertura em 500ms" else "nada a fazer (fluxo já resolvido)"}")
+        if (emAndamento) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                val aindaEmAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
+                Log.d(TAG, "onTaskRemoved (delayed 500ms): aindaEmAndamento=$aindaEmAndamento")
+                if (aindaEmAndamento) {
+                    iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+                }
+            }, 500L)
+        }
+    }
+
+    private fun registrarReceiverDeDesbloqueio() {
+        if (receiverRegistrado) return
+        try {
+            val filtro = IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            // RECEIVER_NOT_EXPORTED: ACTION_USER_PRESENT é enviado pelo
+            // próprio sistema (sempre entregue independente desta flag —
+            // ela só controla se OUTROS apps de terceiros poderiam forjar
+            // o broadcast para este receiver), exigido a partir do
+            // Android 13 (API 33) para registro dinâmico de receivers.
+            ContextCompat.registerReceiver(
+                this,
+                receiverDesbloqueio,
+                filtro,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            receiverRegistrado = true
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun desregistrarReceiverDeDesbloqueio() {
+        if (!receiverRegistrado) return
+        try {
+            unregisterReceiver(receiverDesbloqueio)
+        } catch (_: Exception) {
+        } finally {
+            receiverRegistrado = false
+        }
+    }
+
     private fun iniciarTelaDoAlarme(idAlarme: Int) {
+        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme")
         try {
             val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
                 addFlags(
@@ -74,10 +174,11 @@ class RotinaAlarmWakeService : Service() {
                 putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
             }
             startActivity(intent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Falha silenciosa: o WakeLock adquirido acima já ajuda o
             // caminho Dart/headless a completar seu trabalho mesmo que a
             // Activity não abra por algum motivo específico de fabricante.
+            Log.d(TAG, "iniciarTelaDoAlarme: falha ao iniciar Activity: ${e.message}")
         }
     }
 
@@ -101,7 +202,9 @@ class RotinaAlarmWakeService : Service() {
                 setReferenceCounted(false)
                 acquire(10 * 60 * 1000L)
             }
-        } catch (_: Exception) {
+            Log.d(TAG, "adquirirWakeLock: WakeLock adquirido (timeout 10min)")
+        } catch (e: Exception) {
+            Log.d(TAG, "adquirirWakeLock: falha: ${e.message}")
             wakeLock = null
         }
     }
@@ -110,8 +213,10 @@ class RotinaAlarmWakeService : Service() {
         try {
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()
+                Log.d(TAG, "liberarWakeLock: WakeLock liberado")
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.d(TAG, "liberarWakeLock: falha: ${e.message}")
         } finally {
             wakeLock = null
         }
@@ -155,6 +260,8 @@ class RotinaAlarmWakeService : Service() {
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
+        desregistrarReceiverDeDesbloqueio()
         liberarWakeLock()
         super.onDestroy()
     }
@@ -173,9 +280,79 @@ class RotinaAlarmWakeService : Service() {
          */
         fun parar(context: Context) {
             try {
+                Log.d(TAG, "parar: marcando fluxo como resolvido e parando o Service")
+                RotinaAlarmFluxoState.marcarResolvido(context)
                 context.stopService(Intent(context, RotinaAlarmWakeService::class.java))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.d(TAG, "parar: falha: ${e.message}")
             }
+        }
+    }
+}
+
+/**
+ * Estado do fluxo do alarme de rotina, persistido num arquivo
+ * [android.content.SharedPreferences] NATIVO próprio (independente do
+ * `FlutterSharedPreferences` usado pelo plugin `shared_preferences` do
+ * lado Dart, cujo formato de armazenamento interno pode mudar entre
+ * versões do plugin) — usado exclusivamente por componentes 100%
+ * nativos ([RotinaAlarmWakeService]) para decidir, de forma confiável e
+ * independente do Flutter, se o alarme ainda está "em andamento"
+ * (aguardando PIN) ou já foi resolvido, mesmo que nenhum engine Flutter
+ * esteja vivo no momento (ex: logo após um desbloqueio de tela).
+ *
+ * Marcado como "em andamento" em [RotinaAlarmWakeService.onStartCommand]
+ * (disparo inicial nativo) e em [RotinaAlarmPlugin] sempre que a tela do
+ * alarme é (re)aberta via MethodChannel (`iniciarTelaAlarme`/
+ * `acordarParaFaseFinal` — disparo/fase final vindos do lado Dart).
+ * Marcado como "resolvido" em [RotinaAlarmWakeService.parar], o MESMO
+ * ponto único já usado por `pararServicoForeground` (chamado tanto ao
+ * confirmar o PIN quanto ao disparar o alerta de emergência real — ver
+ * `RotinaAlarmeService` no lado Dart).
+ */
+object RotinaAlarmFluxoState {
+    private const val PREFS_NAME = "rotina_alarme_wake_state"
+    private const val CHAVE_EM_ANDAMENTO = "em_andamento"
+    private const val CHAVE_ID_ALARME = "id_alarme_atual"
+
+    fun marcarEmAndamento(context: Context, idAlarme: Int) {
+        try {
+            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme")
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(CHAVE_EM_ANDAMENTO, true)
+                .putInt(CHAVE_ID_ALARME, idAlarme)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun marcarResolvido(context: Context) {
+        try {
+            Log.d(TAG, "RotinaAlarmFluxoState.marcarResolvido")
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(CHAVE_EM_ANDAMENTO, false)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun estaEmAndamento(context: Context): Boolean {
+        return try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(CHAVE_EM_ANDAMENTO, false)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun idAlarmeAtual(context: Context): Int {
+        return try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getInt(CHAVE_ID_ALARME, -1)
+        } catch (_: Exception) {
+            -1
         }
     }
 }

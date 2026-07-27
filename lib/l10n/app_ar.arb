@@ -203,6 +203,8 @@
   "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال دقيقتين وإلا سيتم إرسال تنبيه طوارئ.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ تم إرسال تنبيه الطوارئ!\nتم إرسال موقعك والرسالة إلى السحابة وإلى جهات الاتصال المسجلة.",
   "desligarAlarmeBotao": "إيقاف المنبه",
+  "fecharConfirmacaoBotao": "إغلاق",
+  "fecharConfirmacaoDica": "اسحب لأعلى أو اضغط على إغلاق للمتابعة",
 
   "cameraToqueOuVolume": "📸 اضغط على الزر أو اضغط على زر مستوى الصوت لالتقاط الصورة",
   "enviando": "جارٍ الإرسال...",

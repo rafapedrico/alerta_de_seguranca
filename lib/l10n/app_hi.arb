@@ -203,6 +203,8 @@
   "alarmeRotinaFaseFinalDescricao": "आखिरी मौका! अलार्म फिर से बजा है।\n2 मिनट के भीतर अपना पिन दर्ज करें, नहीं तो एक आपातकालीन अलर्ट भेजा जाएगा।",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ आपातकालीन अलर्ट भेजा गया!\nआपका स्थान और संदेश क्लाउड और पंजीकृत संपर्कों को भेज दिए गए हैं।",
   "desligarAlarmeBotao": "अलार्म बंद करें",
+  "fecharConfirmacaoBotao": "बंद करें",
+  "fecharConfirmacaoDica": "जारी रखने के लिए ऊपर स्वाइप करें या बंद करें पर टैप करें",
 
   "cameraToqueOuVolume": "📸 फ़ोटो लेने के लिए बटन दबाएं या वॉल्यूम दबाएं",
   "enviando": "भेजा जा रहा है...",

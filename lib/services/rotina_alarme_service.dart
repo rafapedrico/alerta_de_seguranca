@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
+import 'alarme_agendado_cloud_service.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
@@ -198,6 +199,24 @@ class RotinaAlarmeService {
     }
   }
 
+  /// Calcula o próximo horário de disparo previsto para [alarmeMap] (o
+  /// MESMO algoritmo usado internamente por [agendarAlarme]), SEM agendar
+  /// nada — usado por `BackgroundLocationHeartbeatService` para decidir
+  /// se um alarme está dentro da janela de heartbeat (≤ 2h do disparo),
+  /// sem duplicar/arriscar divergir da lógica de agendamento real.
+  static DateTime? proximoDisparoPrevisto(Map<String, dynamic> alarmeMap) {
+    final hora = alarmeMap['hora'] as int? ?? 0;
+    final minuto = alarmeMap['minuto'] as int? ?? 0;
+    final diasSemanaCsv = alarmeMap['dias_semana'] as String? ?? '';
+
+    final proximo = _calcularProximoDisparo(hora, minuto, diasSemanaCsv);
+    if (proximo != null) return proximo;
+
+    final agora = DateTime.now();
+    final candidato = DateTime(agora.year, agora.month, agora.day, hora, minuto);
+    return candidato.isBefore(agora) ? null : candidato;
+  }
+
   static DateTime? _calcularProximoDisparo(int hora, int minuto, String diasSemanaCsv) {
     final dias = diasSemanaCsv
         .split(',')
@@ -232,6 +251,74 @@ class RotinaAlarmeService {
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
     await _limparFlagsDeFaseFinal();
     debugPrint('⏰ Alarme de rotina #$idAlarme cancelado.');
+  }
+
+  /// CORREÇÃO (bug real observado em teste): "pausar só por hoje"
+  /// (gesto de deslizar na aba Família, ver
+  /// `familia_tab.dart#_pausarAlarmePorHoje`) só gravava uma coluna no
+  /// SQLite (`alarme_pausado`) — nunca cancelava o disparo já agendado
+  /// no `AndroidAlarmManager`/alarme nativo paralelo, que continuava
+  /// tocando normalmente no horário. Este método cancela de fato TUDO
+  /// que estava agendado para hoje (mesmos 3 alarmes + o nativo
+  /// paralelo, igual [cancelarAlarme]/[pausarAlarme]) e reagenda
+  /// diretamente a partir de AMANHÃ, pulando o disparo de hoje por
+  /// completo — em vez de depender de uma checagem em tempo de disparo
+  /// (que exigiria o alarme acordar a tela/som antes de decidir abortar).
+  static Future<void> pausarAlarmePorHoje(
+    int idAlarme,
+    Map<String, dynamic> alarmeMap,
+  ) async {
+    await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
+    await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
+    await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
+    await cancelarAlarmeNativo(idAlarme);
+    await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
+    await _limparFlagsDeFaseFinal();
+
+    final hora = alarmeMap['hora'] as int? ?? 0;
+    final minuto = alarmeMap['minuto'] as int? ?? 0;
+    final diasSemanaCsv = alarmeMap['dias_semana'] as String? ?? '';
+
+    final proximoDisparo =
+        _calcularProximoDisparoAPartirDeAmanha(hora, minuto, diasSemanaCsv);
+    if (proximoDisparo != null) {
+      await _agendarNativo(idAlarme, proximoDisparo);
+    }
+
+    debugPrint(
+        '⏸️ Alarme de rotina #$idAlarme pausado só por hoje — próximo disparo real: $proximoDisparo.');
+  }
+
+  /// Mesmo algoritmo de [_calcularProximoDisparo], mas o offset de busca
+  /// começa em 1 (amanhã) em vez de 0 (hoje) — usado exclusivamente por
+  /// [pausarAlarmePorHoje] para garantir que o disparo de HOJE seja
+  /// pulado mesmo que o horário do alarme ainda não tenha passado.
+  static DateTime? _calcularProximoDisparoAPartirDeAmanha(
+    int hora,
+    int minuto,
+    String diasSemanaCsv,
+  ) {
+    final dias = diasSemanaCsv
+        .split(',')
+        .map((s) => int.tryParse(s.trim()))
+        .whereType<int>()
+        .toSet();
+    if (dias.isEmpty) return null;
+
+    final agora = DateTime.now();
+    for (int offset = 1; offset <= 8; offset++) {
+      final candidatoData = agora.add(Duration(days: offset));
+      if (!dias.contains(candidatoData.weekday)) continue;
+
+      return DateTime(
+        candidatoData.year,
+        candidatoData.month,
+        candidatoData.day,
+        hora,
+        minuto,
+      );
+    }
+    return null;
   }
 
   static Future<void> pausarAlarme(int idAlarme) async {
@@ -382,6 +469,13 @@ class RotinaAlarmeService {
   }
 
  static Future<void> confirmarCheckinRotina(int idAlarme) async {
+    // NOVO (heartbeat/alerta na nuvem): melhor esforço, nunca bloqueia
+    // nem lança exceção — avisa a coleção `alarmes_agendados` que o
+    // usuário está seguro, independente do fluxo local abaixo (100%
+    // intacto) continuar exatamente como antes. Ver
+    // [AlarmeAgendadoCloudService.marcarConfirmadoSeguro].
+    unawaited(AlarmeAgendadoCloudService().marcarConfirmadoSeguro(idAlarme.toString()));
+
     // 1. Limpa os timers pendentes locais de SMS e notificação — inclui
     // a janela final de 2 minutos, caso o PIN correto tenha sido
     // confirmado dentro dela.
@@ -461,6 +555,22 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
   // resolvido" do ciclo anterior (ver documentação de
   // [chaveAlarmeFluxoResolvido]).
   await prefs.remove(chaveAlarmeFluxoResolvido);
+
+  // CORREÇÃO (bug real observado em teste — "mensagem enviada"
+  // aparecendo na hora, antes até da tolerância começar): se o CICLO
+  // ANTERIOR deste mesmo alarme tiver terminado com o alerta de
+  // emergência REAL disparado (PIN nunca confirmado — o único caminho
+  // que NÃO passa por [confirmarCheckinRotina]/[cancelarAlarme]/
+  // [pausarAlarme], os únicos lugares que limpam essas flags),
+  // [chaveAlarmeEmergenciaDisparada]/[chaveAlarmeFaseFinal] ficavam
+  // gravadas no disco PARA SEMPRE. Como [AlarmeDisparadoScreen] lê essas
+  // flags assim que a tela abre (ver [_verificarSinalizacaoNoDisco]), o
+  // PRÓXIMO disparo deste alarme herdava o estado do ciclo anterior e
+  // pulava direto para a confirmação verde. Um novo ciclo começando
+  // agora nunca deve carregar sinalização de um ciclo já encerrado.
+  await prefs.remove(chaveAlarmeFaseFinal);
+  await prefs.remove(chaveAlarmeFaseFinalDeadlineEpochMs);
+  await prefs.remove(chaveAlarmeEmergenciaDisparada);
 
   // 2. Abre a interface nativa / traz o app para o primeiro plano IMEDIATAMENTE
   try {
@@ -699,12 +809,24 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
   } catch (_) {}
 
   String etiqueta = 'Alarme de rotina';
+  String? eventoId;
   try {
     final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
     if (dados != null) {
       etiqueta = (dados['etiqueta'] as String?)?.trim().isNotEmpty == true
           ? dados['etiqueta'] as String
           : etiqueta;
+      // TRAVA CONTRA MENSAGENS DUPLICADAS: MESMO eventoId calculado em
+      // [AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme] (mesmo
+      // idAlarme + mesmo `ultimo_disparo_epoch`, gravado uma única vez
+      // por disparo em [_callbackCheckinRotina]) — garante que, mesmo
+      // que este callback headless E o diálogo de PIN em primeiro plano
+      // detectem a falha quase ao mesmo tempo, só o primeiro a chegar no
+      // Firestore/trava local realmente envia a mensagem.
+      final ultimoDisparoEpoch = dados['ultimo_disparo_epoch'] as int?;
+      if (ultimoDisparoEpoch != null) {
+        eventoId = 'rotina_${idAlarme}_$ultimoDisparoEpoch';
+      }
     }
   } catch (_) {}
 
@@ -745,12 +867,18 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
   // MESMA ordem crítica usada no resto do app: nuvem primeiro (rápida,
   // minimalista), depois o fluxo local completo (SMS nativo + backend).
   try {
-    await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+    await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+      motivo: motivo,
+      eventoId: eventoId,
+    );
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha ao disparar alerta prioritário na nuvem (rotina): $e');
   }
   try {
-    await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(motivo: motivo);
+    await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(
+      motivo: motivo,
+      eventoId: eventoId,
+    );
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha durante o disparo de emergência de rotina: $e');
   }

@@ -152,20 +152,65 @@ class FirebaseSyncService {
   /// uma mensagem de SMS precisa sobre o que de fato aconteceu (ver
   /// mesmo parâmetro em
   /// [EmergencyAlertService.dispararAlertaTentativaDesarmeIncorreto]).
-  Future<void> dispararAlertaTentativaDesarmeIncorreto({String? motivo}) async {
-    if (!_firebaseDisponivel) return;
+  ///
+  /// [eventoId], quando informado, é usado como ID DETERMINÍSTICO do
+  /// documento (em vez do autoId padrão) — TRAVA CONTRA MENSAGENS
+  /// DUPLICADAS: como o mesmo evento de emergência (ex: janela final do
+  /// alarme de rotina #N) pode ser detectado por DOIS caminhos
+  /// concorrentes (o diálogo de PIN em primeiro plano E o callback
+  /// headless nativo, ver `rotina_alarme_service.dart`), uma
+  /// `runTransaction` garante que só o PRIMEIRO a chegar aqui realmente
+  /// cria o documento — o Cloud Function `onDocumentCreated` só dispara
+  /// UMA vez, mesmo que ambos os caminhos cheguem a chamar este método
+  /// para o MESMO [eventoId]. Retorna `false` (sem tentar de novo) se já
+  /// existir um documento para este evento.
+  ///
+  /// Sem [eventoId] (comportamento histórico, usado pelos demais fluxos
+  /// de emergência que não têm risco de disparo duplo — SOS físico, PIN
+  /// de coação, SOS manual), continua criando um novo documento com
+  /// autoId a cada chamada.
+  Future<bool> dispararAlertaTentativaDesarmeIncorreto({
+    String? motivo,
+    String? eventoId,
+  }) async {
+    if (!_firebaseDisponivel) return false;
     try {
-      await _documentoUsuario.collection('alertas').add({
-        'tipo': 'tentativa_desarme_incorreto',
-        if (motivo != null) 'motivo': motivo,
-        'criadoEm': FieldValue.serverTimestamp(),
-        'processado': false,
-      }).timeout(_timeoutFirestore);
+      if (eventoId != null && eventoId.isNotEmpty) {
+        final documentoEvento = _documentoUsuario.collection('alertas').doc(eventoId);
+        final foiCriadoAgora = await FirebaseFirestore.instance
+            .runTransaction<bool>((tx) async {
+          final snapshotAtual = await tx.get(documentoEvento);
+          if (snapshotAtual.exists) return false;
+          tx.set(documentoEvento, {
+            'tipo': 'tentativa_desarme_incorreto',
+            if (motivo != null) 'motivo': motivo,
+            'criadoEm': FieldValue.serverTimestamp(),
+            'processado': false,
+          });
+          return true;
+        }).timeout(_timeoutFirestore);
+
+        if (!foiCriadoAgora) {
+          debugPrint(
+              '☁️ [FirebaseSyncService] Alerta #$eventoId já registrado por '
+              'outro caminho — evitando disparo duplicado na nuvem.');
+          return false;
+        }
+      } else {
+        await _documentoUsuario.collection('alertas').add({
+          'tipo': 'tentativa_desarme_incorreto',
+          if (motivo != null) 'motivo': motivo,
+          'criadoEm': FieldValue.serverTimestamp(),
+          'processado': false,
+        }).timeout(_timeoutFirestore);
+      }
       debugPrint(
           '☁️ [FirebaseSyncService] Alerta de tentativa de desarme incorreta enviado à nuvem.');
+      return true;
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao enviar alerta prioritário à nuvem: $e');
+      return false;
     }
   }
 }

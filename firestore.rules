@@ -32,5 +32,17 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    match /alarmes_agendados/{idAlarme} {
+      // Documento de monitoramento agendado (ver AlarmeAgendadoModel /
+      // BackgroundLocationHeartbeatService / RotinaAlarmeService no app):
+      // o próprio aparelho precisa criar/atualizar (heartbeat de
+      // localização a cada 5 min) e marcar CONFIRMADO_SEGURA ao digitar o
+      // PIN correto. Mesma postura temporária/aberta do restante deste
+      // arquivo (ver TODO de autenticação no topo) — a Cloud Function
+      // agendada (functions/ ou cloud_functions/, via Admin SDK) que
+      // marca ALERTA_DISPARADO ignora estas regras de qualquer forma.
+      allow read, write: if true;
+    }
   }
 }

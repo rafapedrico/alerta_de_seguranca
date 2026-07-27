@@ -13,20 +13,19 @@
  *    e a lista de contatos de emergência (sincronizada a partir do SQLite
  *    local do usuário) do documento `usuarios/{usuarioId}`.
  * 4. Monta a mensagem de alerta com o link do Google Maps.
- * 5. Aciona o envio do SMS/notificação aos contatos — ver TODO explícito
- *    em `enviarSmsParaContatos` abaixo: o gateway de SMS (Twilio, AWS SNS,
- *    etc.) ainda NÃO foi conectado. Enquanto isso, a função apenas
- *    registra a mensagem que SERIA enviada e marca o alerta como
- *    "processado", para que o pipeline completo possa ser testado de
- *    ponta a ponta (Firestore -> trigger -> montagem da mensagem) mesmo
- *    sem custo de SMS real e sem exigir o plano Blaze para chamadas
- *    externas.
+ * 5. Aciona o envio do SMS real aos contatos via Twilio — ver
+ *    `smsGateway.js` (módulo compartilhado com `scheduledAlarmMonitor.js`).
+ *    Requer as credenciais Twilio configuradas no Secret Manager
+ *    (`firebase functions:secrets:set TWILIO_ACCOUNT_SID`, etc.) e o
+ *    projeto no plano Blaze (já ativado) — sem as credenciais, degrada
+ *    graciosamente para um aviso de log, sem quebrar o resto do fluxo.
  */
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
+const {enviarSmsParaTelefones, TWILIO_SECRETS} = require("./smsGateway");
 
 initializeApp();
 const db = getFirestore();
@@ -34,39 +33,18 @@ const db = getFirestore();
 const TIPO_TENTATIVA_DESARME_INCORRETO = "tentativa_desarme_incorreto";
 
 /**
- * TODO (gateway de SMS): ainda NÃO envia SMS de verdade — apenas loga o
- * que seria enviado. Quando o provedor for escolhido (Twilio, AWS SNS,
- * Zenvia, etc.), implemente a chamada real aqui e mantenha os try/catch
- * por contato, para que a falha de UM destinatário nunca impeça o envio
- * aos demais.
- *
- * IMPORTANTE: chamadas de rede para APIs externas (Twilio, etc.) só
- * funcionam com o projeto no plano Blaze (pay-as-you-go) do Firebase. No
- * plano gratuito (Spark), esta função roda normalmente até aqui, mas uma
- * chamada HTTP de saída seria bloqueada.
- *
- * Exemplo de integração futura com Twilio (pseudo-código):
- *   const accountSid = process.env.TWILIO_ACCOUNT_SID;
- *   const authToken = process.env.TWILIO_AUTH_TOKEN;
- *   const numeroRemetente = process.env.TWILIO_FROM_NUMBER;
- *   const twilio = require("twilio")(accountSid, authToken);
- *   for (const contato of contatos) {
- *     await twilio.messages.create({
- *       to: contato.telefone,
- *       from: numeroRemetente,
- *       body: mensagem,
- *     });
- *   }
+ * Extrai só os telefones de [contatos] (`{nome, telefone}[]`, formato
+ * sincronizado pelo app em `usuarios/{usuarioId}.contatosEmergencia`) e
+ * delega o envio real ao gateway compartilhado (ver `smsGateway.js`).
  *
  * @param {Array<{nome: string, telefone: string}>} contatos
  * @param {string} mensagem
  */
 async function enviarSmsParaContatos(contatos, mensagem) {
-  logger.warn(
-      "[enviarSmsParaContatos] Gateway de SMS ainda NAO configurado " +
-      "(TODO) - mensagem NAO foi enviada de verdade. " +
-      `Destinatarios: ${JSON.stringify(contatos)}. Mensagem: ${mensagem}`,
-  );
+  const telefones = contatos
+      .map((contato) => contato && contato.telefone)
+      .filter(Boolean);
+  await enviarSmsParaTelefones(telefones, mensagem);
 }
 
 /**
@@ -93,7 +71,10 @@ function montarTextoLocalizacao(latitude, longitude) {
 }
 
 exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
-    "usuarios/{usuarioId}/alertas/{alertaId}",
+    {
+      document: "usuarios/{usuarioId}/alertas/{alertaId}",
+      secrets: TWILIO_SECRETS,
+    },
     async (event) => {
       const snap = event.data;
       if (!snap) {
@@ -153,3 +134,10 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
       });
     },
 );
+
+// Monitoramento agendado (heartbeat & cloud alert) — ver
+// scheduledAlarmMonitor.js para o fluxo completo e o modelo de dados da
+// coleção `alarmes_agendados`. Reaproveita o mesmo `initializeApp()`
+// já chamado acima nesta mesma inicialização do processo.
+exports.monitorarAlarmesAgendados =
+  require("./scheduledAlarmMonitor").monitorarAlarmesAgendados;

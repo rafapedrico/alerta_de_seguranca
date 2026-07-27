@@ -203,6 +203,8 @@
   "alarmeRotinaFaseFinalDescricao": "最后机会！闹钟再次响起。\n请在2分钟内输入PIN码，否则将发送紧急警报。",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ 紧急警报已发送！\n您的位置和消息已发送到云端和已登记的联系人。",
   "desligarAlarmeBotao": "关闭闹钟",
+  "fecharConfirmacaoBotao": "关闭",
+  "fecharConfirmacaoDica": "向上滑动或点击关闭以继续",
 
   "cameraToqueOuVolume": "📸 点击按钮或按音量键拍照",
   "enviando": "发送中...",

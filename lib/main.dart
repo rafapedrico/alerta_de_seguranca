@@ -14,6 +14,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/alarme_service.dart';
 import 'services/api_service.dart';
+import 'services/background_location_heartbeat_service.dart';
 import 'services/captura_dissuasao_service.dart';
 import 'services/contatos_emergencia_service.dart';
 import 'services/database_helper.dart';
@@ -58,6 +59,13 @@ void main() async {
     // nuvem já saiba a quem notificar, sem depender de o usuário editar
     // algo primeiro. Fire-and-forget: nunca atrasa o cold start.
     ContatosEmergenciaService.sincronizarAgora();
+
+    // Camada A MAIS de resiliência na nuvem (monitoramento agendado, ver
+    // `BackgroundLocationHeartbeatService`): inicia o ciclo de heartbeat
+    // de localização (a cada 5 min, só quando faltar ≤2h para algum
+    // alarme de rotina ativo). Síncrono e não-bloqueante — nunca atrasa
+    // o cold start nem interfere no alarme local.
+    BackgroundLocationHeartbeatService().iniciar();
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
         'apenas com os recursos locais): $e');

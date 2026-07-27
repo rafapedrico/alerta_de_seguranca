@@ -207,6 +207,8 @@
   "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 2 minutos ou um alerta de emergência será enviado.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Alerta de emergência enviado!\nSua localização e a mensagem foram enviadas para a nuvem e para os contatos cadastrados.",
   "desligarAlarmeBotao": "DESLIGAR ALARME",
+  "fecharConfirmacaoBotao": "FECHAR",
+  "fecharConfirmacaoDica": "Deslize para cima ou toque em Fechar para continuar",
 
   "cameraToqueOuVolume": "📸 Toque no botão ou aperte VOLUME para tirar a foto",
   "enviando": "Enviando...",

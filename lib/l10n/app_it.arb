@@ -203,6 +203,8 @@
   "alarmeRotinaFaseFinalDescricao": "ULTIMA POSSIBILITÀ! L'allarme è suonato di nuovo.\nInserisci il tuo PIN entro 2 minuti o verrà inviato un allarme di emergenza.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Allarme di emergenza inviato!\nLa tua posizione e il messaggio sono stati inviati al cloud e ai contatti registrati.",
   "desligarAlarmeBotao": "SPEGNI ALLARME",
+  "fecharConfirmacaoBotao": "CHIUDI",
+  "fecharConfirmacaoDica": "Scorri verso l'alto o tocca Chiudi per continuare",
 
   "cameraToqueOuVolume": "📸 Tocca il pulsante o premi VOLUME per scattare la foto",
   "enviando": "Invio in corso...",
