@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "Questa e-mail è già registrata",
   "erroCadastroSenhaFraca": "La password è troppo debole",
   "erroCadastroGenerico": "Impossibile creare l'account. Riprova",
+  "cadastroEmailVerificacaoEnviado": "È stata inviata un'e-mail di conferma. Controlla la tua casella di posta prima di accedere.",
+  "emailNaoVerificadoTitulo": "E-mail non verificata",
+  "emailNaoVerificadoMensagem": "Devi confermare la tua e-mail prima di accedere. Controlla la tua casella di posta (e la cartella spam).",
+  "emailNaoVerificadoReenviar": "Invia di nuovo l'e-mail",
+  "emailVerificacaoReenviada": "E-mail di verifica inviata di nuovo.",
+  "emailVerificacaoReenvioFalhou": "Impossibile reinviare l'e-mail. Riprova più tardi.",
 
   "sairDaContaTitulo": "Esci",
   "sairDaContaConfirmar": "Esci",

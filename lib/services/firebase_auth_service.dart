@@ -2,9 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 /// Serviço central de autenticação do "Guardião X" — Firebase Auth real
-/// (e-mail/senha). O login social (Google/Facebook) permanece mockado por
-/// enquanto (sem Client ID/App ID configurados) — ver [loginComGoogle]/
-/// [loginComFacebook].
+/// (e-mail/senha), com barreira estrita de e-mail verificado: nenhuma
+/// sessão dá acesso ao app sem que `emailVerified == true` (ver
+/// verificação em [LoginScreen] e envio do e-mail em [CadastroScreen]).
+/// Não há login social (Google/Facebook) implementado — nenhum atalho ou
+/// bypass de autenticação deve existir neste serviço.
 ///
 /// Toda a arquitetura híbrida de alertas (carteira em USD, vínculo
 /// telefone/fcmToken, regras do Firestore) depende de um `uid` real: é
@@ -54,19 +56,20 @@ class FirebaseAuthService {
     }
   }
 
-  /// Simula o login social via Google. Retorna `true` em caso de
-  /// "sucesso" (sempre, neste mock) — ainda não há projeto Google
-  /// Sign-In configurado.
-  Future<bool> loginComGoogle() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return true;
+  /// Recarrega os dados do usuário atual diretamente do servidor —
+  /// necessário para obter o valor mais recente de `emailVerified`: o
+  /// SDK mantém um snapshot local que só reflete uma verificação
+  /// concluída (o usuário clicou no link do e-mail) depois de um reload
+  /// explícito. Chamado pela [LoginScreen] antes de checar
+  /// `emailVerified`, garantindo que a barreira de e-mail verificado
+  /// nunca libere acesso com base num estado desatualizado em cache.
+  Future<void> recarregarUsuarioAtual() async {
+    await _auth.currentUser?.reload();
   }
 
-  /// Simula o login social via Facebook. Retorna `true` em caso de
-  /// "sucesso" (sempre, neste mock) — ainda não há App ID do Facebook
-  /// configurado.
-  Future<bool> loginComFacebook() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return true;
+  /// Envia (ou reenvia) o e-mail de verificação para o usuário
+  /// atualmente autenticado. Não faz nada se não houver sessão ativa.
+  Future<void> enviarEmailVerificacao() async {
+    await _auth.currentUser?.sendEmailVerification();
   }
 }

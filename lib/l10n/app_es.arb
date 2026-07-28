@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "Este correo ya está registrado",
   "erroCadastroSenhaFraca": "La contraseña es demasiado débil",
   "erroCadastroGenerico": "No se pudo crear la cuenta. Inténtalo de nuevo",
+  "cadastroEmailVerificacaoEnviado": "Se envió un correo de confirmación. Por favor, revisa tu bandeja de entrada antes de iniciar sesión.",
+  "emailNaoVerificadoTitulo": "Correo no verificado",
+  "emailNaoVerificadoMensagem": "Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada (y la carpeta de spam).",
+  "emailNaoVerificadoReenviar": "Reenviar correo",
+  "emailVerificacaoReenviada": "Correo de verificación reenviado.",
+  "emailVerificacaoReenvioFalhou": "No se pudo reenviar el correo. Inténtalo de nuevo más tarde.",
 
   "sairDaContaTitulo": "Cerrar sesión",
   "sairDaContaConfirmar": "Salir",

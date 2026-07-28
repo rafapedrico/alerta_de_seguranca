@@ -71,9 +71,11 @@ void main() async {
     BackgroundLocationHeartbeatService().iniciar();
 
     // Lado "guardião" do pipeline híbrido de alerta (ver `FcmService`):
-    // só inicializa se já houver sessão ativa (cold start com o app já
-    // logado) — no primeiro login/cadastro, é a própria tela quem chama.
-    if (FirebaseAuthService().uidAtual != null) {
+    // só inicializa se já houver sessão ativa E com e-mail verificado
+    // (mesma barreira de `_telaInicial`/`LoginScreen._fazerLogin`) — no
+    // primeiro login/cadastro, é a própria tela quem chama.
+    if (FirebaseAuthService().uidAtual != null &&
+        (FirebaseAuthService().usuarioAtual?.emailVerified ?? false)) {
       FcmService().inicializar();
     }
 
@@ -328,15 +330,19 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// instante até a CameraCapturaScreen ser empurrada por cima.
   ///
   /// Fora desses casos especiais, decide entre Login e o fluxo principal
-  /// com base na sessão real do Firebase Auth: sem sessão ativa, mostra a
-  /// LoginScreen; com sessão ativa (app reaberto já logado), pula direto
-  /// para [TelaInicialComPossivelDialogoPin].
+  /// com base na sessão real do Firebase Auth: sem sessão ativa OU com
+  /// e-mail ainda não verificado, mostra a LoginScreen (mesma barreira
+  /// estrita aplicada no login, ver [LoginScreen._fazerLogin] — em
+  /// NENHUMA hipótese uma sessão com `emailVerified == false` pula direto
+  /// para dentro do app); com sessão ativa E verificada (app reaberto já
+  /// logado), pula direto para [TelaInicialComPossivelDialogoPin].
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
 
-    final bool sessaoAtiva =
-        Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
+    final bool sessaoAtiva = Firebase.apps.isNotEmpty &&
+        FirebaseAuthService().uidAtual != null &&
+        (FirebaseAuthService().usuarioAtual?.emailVerified ?? false);
     if (sessaoAtiva) {
       return TelaInicialComPossivelDialogoPin(
         aguardandoConfirmacaoPin: widget.aguardandoConfirmacaoPin,

@@ -1,21 +1,20 @@
-import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import '../main.dart' show TelaInicialComPossivelDialogoPin;
-import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
 ///
-/// Cria a conta real no Firebase Auth (e-mail/senha) e, em caso de
-/// sucesso, grava o perfil inicial em `usuarios/{uid}` (nome, e-mail,
-/// telefone em E.164, `saldoUsd: 0`) via [FirebaseSyncService] — é esse
-/// documento que a arquitetura híbrida de alertas (Push FCM + WhatsApp
-/// condicional + Carteira) usa para vincular telefone/fcmToken/saldo a um
-/// usuário real. Só então navega para o fluxo principal do app.
+/// Cria a conta real no Firebase Auth (e-mail/senha), grava o perfil
+/// inicial em `usuarios/{uid}` (nome, e-mail, telefone em E.164,
+/// `saldoUsd: 0`) via [FirebaseSyncService] e envia o e-mail de
+/// verificação. `createUserWithEmailAndPassword` autentica
+/// automaticamente o usuário recém-criado — mas como o e-mail ainda não
+/// foi confirmado, essa sessão é encerrada IMEDIATAMENTE em seguida e o
+/// usuário é devolvido à LoginScreen (nunca entra direto no app sem
+/// verificar o e-mail primeiro; é lá que a barreira de `emailVerified`
+/// é aplicada de verdade no próximo login).
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
 
@@ -62,9 +61,12 @@ class _CadastroScreenState extends State<CadastroScreen> {
     return '+55$limpo';
   }
 
-  /// Cria a conta real no Firebase Auth e grava o perfil inicial no
-  /// Firestore. Em caso de falha (e-mail já cadastrado, senha fraca,
-  /// etc.), exibe o erro em vez de navegar.
+  /// Cria a conta real no Firebase Auth, grava o perfil inicial no
+  /// Firestore e envia o e-mail de verificação. Sempre encerra a sessão
+  /// recém-criada antes de retornar à LoginScreen — em NENHUMA hipótese
+  /// (sucesso ou falha) esta tela navega para dentro do app. Em caso de
+  /// falha (e-mail já cadastrado, senha fraca, etc.), exibe o erro em
+  /// vez disso.
   Future<void> _criarConta() async {
     if (_formKey.currentState?.validate() != true) return;
     if (_criandoConta) return;
@@ -83,17 +85,24 @@ class _CadastroScreenState extends State<CadastroScreen> {
           email: _emailController.text.trim(),
           telefone: _normalizarTelefoneE164(_celularController.text.trim()),
         );
-        unawaited(FcmService().inicializar());
+        await FirebaseAuthService().enviarEmailVerificacao();
       }
 
+      // Encerra a sessão automática do createUserWithEmailAndPassword —
+      // o e-mail ainda não foi verificado, então este usuário NÃO deve
+      // permanecer autenticado. O login real (com a barreira de
+      // emailVerified) só acontece na LoginScreen.
+      await FirebaseAuthService().logout();
+
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const TelaInicialComPossivelDialogoPin(
-              aguardandoConfirmacaoPin: false),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.cadastroEmailVerificacaoEnviado),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
         ),
-        (route) => false,
       );
+      Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

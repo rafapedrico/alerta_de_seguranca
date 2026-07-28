@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "该邮箱已被注册",
   "erroCadastroSenhaFraca": "密码强度太弱",
   "erroCadastroGenerico": "无法创建账户，请重试",
+  "cadastroEmailVerificacaoEnviado": "确认邮件已发送。请在登录前检查您的收件箱。",
+  "emailNaoVerificadoTitulo": "邮箱未验证",
+  "emailNaoVerificadoMensagem": "登录前需要验证您的邮箱。请检查收件箱（以及垃圾邮件文件夹）。",
+  "emailNaoVerificadoReenviar": "重新发送邮件",
+  "emailVerificacaoReenviada": "验证邮件已重新发送。",
+  "emailVerificacaoReenvioFalhou": "无法重新发送邮件，请稍后重试。",
 
   "sairDaContaTitulo": "退出登录",
   "sairDaContaConfirmar": "退出",

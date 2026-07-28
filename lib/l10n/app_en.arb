@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "This email is already registered",
   "erroCadastroSenhaFraca": "The password is too weak",
   "erroCadastroGenerico": "Couldn't create the account. Please try again",
+  "cadastroEmailVerificacaoEnviado": "A confirmation email has been sent. Please check your inbox before signing in.",
+  "emailNaoVerificadoTitulo": "Email not verified",
+  "emailNaoVerificadoMensagem": "You need to confirm your email before signing in. Check your inbox (and spam folder).",
+  "emailNaoVerificadoReenviar": "Resend email",
+  "emailVerificacaoReenviada": "Verification email resent.",
+  "emailVerificacaoReenvioFalhou": "Couldn't resend the email. Please try again later.",
 
   "sairDaContaTitulo": "Sign out",
   "sairDaContaConfirmar": "Sign out",

@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "このメールアドレスは既に登録されています",
   "erroCadastroSenhaFraca": "パスワードが弱すぎます",
   "erroCadastroGenerico": "アカウントを作成できませんでした。もう一度お試しください",
+  "cadastroEmailVerificacaoEnviado": "確認メールを送信しました。ログインする前に受信箱をご確認ください。",
+  "emailNaoVerificadoTitulo": "メールが未確認です",
+  "emailNaoVerificadoMensagem": "ログインする前にメールアドレスの確認が必要です。受信箱（迷惑メールフォルダも）をご確認ください。",
+  "emailNaoVerificadoReenviar": "メールを再送信",
+  "emailVerificacaoReenviada": "確認メールを再送信しました。",
+  "emailVerificacaoReenvioFalhou": "メールを再送信できませんでした。しばらくしてから再度お試しください。",
 
   "sairDaContaTitulo": "ログアウト",
   "sairDaContaConfirmar": "ログアウト",

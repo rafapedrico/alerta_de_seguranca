@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "هذا البريد الإلكتروني مسجل بالفعل",
   "erroCadastroSenhaFraca": "كلمة المرور ضعيفة جدًا",
   "erroCadastroGenerico": "تعذر إنشاء الحساب. حاول مرة أخرى",
+  "cadastroEmailVerificacaoEnviado": "تم إرسال بريد إلكتروني للتأكيد. يرجى التحقق من صندوق الوارد قبل تسجيل الدخول.",
+  "emailNaoVerificadoTitulo": "البريد الإلكتروني غير موثّق",
+  "emailNaoVerificadoMensagem": "يجب تأكيد بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد (ومجلد البريد العشوائي).",
+  "emailNaoVerificadoReenviar": "إعادة إرسال البريد الإلكتروني",
+  "emailVerificacaoReenviada": "تمت إعادة إرسال بريد التحقق.",
+  "emailVerificacaoReenvioFalhou": "تعذرت إعادة إرسال البريد الإلكتروني. حاول مرة أخرى لاحقًا.",
 
   "sairDaContaTitulo": "تسجيل الخروج",
   "sairDaContaConfirmar": "تسجيل الخروج",

@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "Diese E-Mail ist bereits registriert",
   "erroCadastroSenhaFraca": "Das Passwort ist zu schwach",
   "erroCadastroGenerico": "Konto konnte nicht erstellt werden. Bitte erneut versuchen",
+  "cadastroEmailVerificacaoEnviado": "Eine Bestätigungs-E-Mail wurde gesendet. Bitte überprüfen Sie Ihren Posteingang, bevor Sie sich anmelden.",
+  "emailNaoVerificadoTitulo": "E-Mail nicht bestätigt",
+  "emailNaoVerificadoMensagem": "Sie müssen Ihre E-Mail bestätigen, bevor Sie sich anmelden können. Überprüfen Sie Ihren Posteingang (und den Spam-Ordner).",
+  "emailNaoVerificadoReenviar": "E-Mail erneut senden",
+  "emailVerificacaoReenviada": "Bestätigungs-E-Mail erneut gesendet.",
+  "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
 
   "sairDaContaTitulo": "Abmelden",
   "sairDaContaConfirmar": "Abmelden",

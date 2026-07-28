@@ -23,6 +23,13 @@
   "erroCadastroSenhaFraca": "A senha é muito fraca",
   "erroCadastroGenerico": "Não foi possível criar a conta. Tente novamente",
 
+  "cadastroEmailVerificacaoEnviado": "Um e-mail de confirmação foi enviado. Por favor, verifique sua caixa de entrada antes de realizar o login.",
+  "emailNaoVerificadoTitulo": "E-mail não verificado",
+  "emailNaoVerificadoMensagem": "Você precisa confirmar seu e-mail antes de entrar. Verifique sua caixa de entrada (e a pasta de spam).",
+  "emailNaoVerificadoReenviar": "Reenviar e-mail",
+  "emailVerificacaoReenviada": "E-mail de verificação reenviado.",
+  "emailVerificacaoReenvioFalhou": "Não foi possível reenviar o e-mail. Tente novamente mais tarde.",
+
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
 

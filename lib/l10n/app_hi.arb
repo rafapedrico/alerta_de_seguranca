@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "यह ईमेल पहले से पंजीकृत है",
   "erroCadastroSenhaFraca": "पासवर्ड बहुत कमज़ोर है",
   "erroCadastroGenerico": "खाता नहीं बन सका। कृपया पुनः प्रयास करें",
+  "cadastroEmailVerificacaoEnviado": "एक पुष्टिकरण ईमेल भेजा गया है। कृपया साइन इन करने से पहले अपना इनबॉक्स जांचें।",
+  "emailNaoVerificadoTitulo": "ईमेल सत्यापित नहीं है",
+  "emailNaoVerificadoMensagem": "साइन इन करने से पहले आपको अपना ईमेल सत्यापित करना होगा। अपना इनबॉक्स (और स्पैम फ़ोल्डर) जांचें।",
+  "emailNaoVerificadoReenviar": "ईमेल पुनः भेजें",
+  "emailVerificacaoReenviada": "सत्यापन ईमेल फिर से भेजा गया।",
+  "emailVerificacaoReenvioFalhou": "ईमेल फिर से नहीं भेजा जा सका। कृपया बाद में पुनः प्रयास करें।",
 
   "sairDaContaTitulo": "साइन आउट करें",
   "sairDaContaConfirmar": "साइन आउट करें",

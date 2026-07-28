@@ -22,6 +22,12 @@
   "erroCadastroEmailEmUso": "Этот e-mail уже зарегистрирован",
   "erroCadastroSenhaFraca": "Слишком простой пароль",
   "erroCadastroGenerico": "Не удалось создать аккаунт. Попробуйте снова",
+  "cadastroEmailVerificacaoEnviado": "Письмо с подтверждением отправлено. Проверьте почту перед входом.",
+  "emailNaoVerificadoTitulo": "E-mail не подтверждён",
+  "emailNaoVerificadoMensagem": "Перед входом необходимо подтвердить e-mail. Проверьте почтовый ящик (и папку «Спам»).",
+  "emailNaoVerificadoReenviar": "Отправить письмо повторно",
+  "emailVerificacaoReenviada": "Письмо с подтверждением отправлено повторно.",
+  "emailVerificacaoReenvioFalhou": "Не удалось повторно отправить письмо. Попробуйте позже.",
 
   "sairDaContaTitulo": "Выйти из аккаунта",
   "sairDaContaConfirmar": "Выйти",

@@ -11,16 +11,17 @@ import 'cadastro_screen.dart';
 
 /// Tela de Login do "SOS Security Personal".
 ///
-/// Login real via Firebase Auth (e-mail/senha) — em caso de sucesso,
-/// navega para o fluxo já existente do app
-/// ([TelaInicialComPossivelDialogoPin], que por sua vez exibe a
-/// [HomeScreen] com toda a lógica de segurança já implementada: check-in,
-/// PIN de coação, alarme nativo, etc.). Em caso de falha (usuário
-/// inexistente, senha incorreta, etc.), exibe a mensagem de erro em vez
-/// de navegar.
+/// Login real via Firebase Auth (e-mail/senha), com BARREIRA ESTRITA de
+/// e-mail verificado: após autenticar com sucesso, recarrega o usuário
+/// (`user.reload()`) e só libera o acesso ao fluxo principal
+/// ([TelaInicialComPossivelDialogoPin]) se `emailVerified == true`. Caso
+/// contrário, encerra a sessão imediatamente e exibe um diálogo
+/// explicando que é preciso confirmar o e-mail antes, com a opção de
+/// reenviar a mensagem de verificação — em NENHUMA hipótese de erro ou
+/// e-mail não verificado a navegação para a Home acontece.
 ///
-/// O login social (Google/Facebook) permanece mockado por enquanto — ver
-/// [FirebaseAuthService].
+/// Não há login social (Google/Facebook) implementado — nenhum atalho de
+/// autenticação deve existir nesta tela.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -47,11 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Login real via Firebase Auth. Em caso de sucesso, navega para o
-  /// fluxo principal do app ([TelaInicialComPossivelDialogoPin]),
-  /// substituindo a rota de Login na pilha de navegação (o usuário não
-  /// deve conseguir voltar para o Login apertando o botão "voltar" do
-  /// Android após logar). Em caso de falha, exibe o erro.
+  /// Login real via Firebase Auth. Em caso de sucesso, RECARREGA o
+  /// usuário e exige `emailVerified == true` antes de navegar para o
+  /// fluxo principal — se o e-mail ainda não foi confirmado, a sessão é
+  /// imediatamente encerrada (nunca fica logado sem verificação) e um
+  /// diálogo explica o bloqueio, com a opção de reenviar o e-mail. Em
+  /// qualquer outra falha (credenciais inválidas, muitas tentativas,
+  /// erro inesperado), exibe a mensagem correspondente e NUNCA navega.
   Future<void> _fazerLogin() async {
     if (_formKey.currentState?.validate() != true) return;
     if (_fazendoLogin) return;
@@ -62,6 +65,26 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         senha: _senhaController.text,
       );
+
+      // Recarrega ANTES de checar emailVerified — o SDK só reflete uma
+      // verificação concluída em outro dispositivo/aba depois de um
+      // reload explícito; sem isto, um e-mail já confirmado poderia ser
+      // erroneamente barrado por um snapshot local desatualizado.
+      await FirebaseAuthService().recarregarUsuarioAtual();
+      final usuario = FirebaseAuthService().usuarioAtual;
+
+      if (usuario == null || !usuario.emailVerified) {
+        if (mounted) {
+          await _exibirDialogoEmailNaoVerificado(usuario);
+        }
+        // Encerra a sessão SÓ DEPOIS do diálogo (que pode reenviar o
+        // e-mail usando a sessão ainda ativa) — garante que, ao sair
+        // desta função, NUNCA existe uma sessão autenticada com e-mail
+        // não verificado sobrevivendo.
+        await FirebaseAuthService().logout();
+        return;
+      }
+
       unawaited(FcmService().inicializar());
       if (!mounted) return;
       _navegarParaFluxoPrincipal();
@@ -70,6 +93,16 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_mensagemErroLogin(e)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      debugPrint('⚠️ [LoginScreen] Falha inesperada no login: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.erroLoginGenerico),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
         ),
@@ -94,19 +127,56 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Simula o login social via Google (ver [FirebaseAuthService] para o
-  /// que precisa mudar quando a integração real com Firebase existir).
-  Future<void> _loginComGoogle() async {
-    final sucesso = await FirebaseAuthService().loginComGoogle();
-    if (!sucesso || !mounted) return;
-    _navegarParaFluxoPrincipal();
+  /// Exibe o diálogo de bloqueio por e-mail não verificado, com a opção
+  /// de reenviar a mensagem de confirmação. [usuario] ainda está
+  /// autenticado neste ponto (o logout só acontece depois que este
+  /// diálogo fecha, ver [_fazerLogin]) — é isso que permite
+  /// `User.sendEmailVerification()` funcionar no botão "Reenviar".
+  Future<void> _exibirDialogoEmailNaoVerificado(User? usuario) async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.emailNaoVerificadoTitulo),
+        content: Text(l10n.emailNaoVerificadoMensagem),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.fechar),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _reenviarEmailVerificacao(usuario);
+            },
+            child: Text(l10n.emailNaoVerificadoReenviar),
+          ),
+        ],
+      ),
+    );
   }
 
-  /// Simula o login social via Facebook (ver [FirebaseAuthService]).
-  Future<void> _loginComFacebook() async {
-    final sucesso = await FirebaseAuthService().loginComFacebook();
-    if (!sucesso || !mounted) return;
-    _navegarParaFluxoPrincipal();
+  Future<void> _reenviarEmailVerificacao(User? usuario) async {
+    try {
+      await usuario?.sendEmailVerification();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.emailVerificacaoReenviada),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('⚠️ [LoginScreen] Falha ao reenviar e-mail de verificação: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.emailVerificacaoReenvioFalhou),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _navegarParaFluxoPrincipal() {
@@ -161,10 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   _buildBotaoEntrar(),
-                  const SizedBox(height: 24),
-                  _buildDivisorSocial(),
-                  const SizedBox(height: 20),
-                  _buildBotoesLoginSocial(),
                   const SizedBox(height: 20),
                   _buildLinkCadastro(),
                 ],
@@ -197,75 +263,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  /// Divisor "ou entre com" entre o login por e-mail/senha e os botões
-  /// de login social.
-  Widget _buildDivisorSocial() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Colors.white24)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            AppLocalizations.of(context)!.ouEntreCom,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-        ),
-        const Expanded(child: Divider(color: Colors.white24)),
-      ],
-    );
-  }
-
-  Widget _buildBotoesLoginSocial() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildBotaoSocial(
-            label: AppLocalizations.of(context)!.loginGoogle,
-            icone: const Text(
-              'G',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFEA4335),
-              ),
-            ),
-            onPressed: _loginComGoogle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildBotaoSocial(
-            label: AppLocalizations.of(context)!.loginFacebook,
-            icone: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
-            onPressed: _loginComFacebook,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBotaoSocial({
-    required String label,
-    required Widget icone,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: icone,
-        label: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.white38),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
       ),
     );
   }
