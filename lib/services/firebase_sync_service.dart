@@ -127,13 +127,21 @@ class FirebaseSyncService {
     }
   }
 
-  /// Confirma, para o pipeline híbrido de alerta, que ESTE usuário
-  /// recebeu e processou o Push de um alerta de terceiro (ver
-  /// [FcmService] — chamado ao processar uma mensagem `alerta_emergencia`
-  /// em primeiro ou segundo plano). Grava em
-  /// `entregas_alerta/{idEntrega}/confirmacoes/{uid}`, o único ponto do
-  /// pipeline em que o cliente escreve diretamente nessa coleção (ver
-  /// `firestore.rules`) — é essa confirmação que o job de transbordo
+  /// Confirma, para o pipeline híbrido de alerta, que o Push FCM deste
+  /// alerta foi ENTREGUE A ESTE DISPOSITIVO — ver [FcmService], que
+  /// chama este método assim que o handler `onMessage`/`onBackgroundMessage`
+  /// é executado pelo SO, o que só acontece quando o Firebase efetivamente
+  /// entrega a mensagem ao aparelho (inclusive com a tela bloqueada e o
+  /// app fechado). NÃO depende do usuário abrir a notificação, tocar
+  /// nela ou sequer olhar para o aparelho — é um sinal de ENTREGA, não de
+  /// leitura/abertura do app.
+  ///
+  /// Grava em `entregas_alerta/{idEntrega}/confirmacoes/{uid}`
+  /// (`entregueApp: true` + `status: 'entregue_dispositivo'`, redundantes
+  /// de propósito para deixar o critério inequívoco para quem ler o
+  /// documento), o único ponto do pipeline em que o cliente escreve
+  /// diretamente nessa coleção (ver `firestore.rules`) — é essa
+  /// confirmação que o job de transbordo
   /// (`functions/transbordoWhatsappMonitor.js`) verifica antes de decidir
   /// se cobra o WhatsApp de contingência para este contato.
   Future<void> confirmarEntregaAlerta(String idEntrega) async {
@@ -146,10 +154,11 @@ class FirebaseSyncService {
           .doc(_usuarioId)
           .set({
         'entregueApp': true,
+        'status': 'entregue_dispositivo',
         'entregueAppEm': FieldValue.serverTimestamp(),
       }).timeout(_timeoutFirestore);
       debugPrint(
-          '☁️ [FirebaseSyncService] Confirmação de entrega enviada para entregas_alerta/$idEntrega.');
+          '☁️ [FirebaseSyncService] Confirmação de ENTREGA NO DISPOSITIVO enviada para entregas_alerta/$idEntrega.');
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao confirmar entrega do alerta $idEntrega: $e');

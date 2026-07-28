@@ -19,6 +19,15 @@ import 'notificacao_service.dart';
 /// notificação é exibida (tela cheia sobre a lockscreen, mesmo padrão de
 /// `NotificacaoService.exibirNotificacaoAlarmeCompleto`) em vez de deixar
 /// o Android exibir automaticamente uma notificação padrão do sistema.
+///
+/// CRITÉRIO DE CANCELAMENTO DO WHATSAPP DE CONTINGÊNCIA: o job de
+/// transbordo (`functions/transbordoWhatsappMonitor.js`) cancela a
+/// cobrança quando o Push é confirmado como ENTREGUE NO DISPOSITIVO —
+/// não quando o usuário abre o app ou lê a notificação. Este serviço
+/// grava essa confirmação assim que `onMessage`/`onBackgroundMessage`
+/// executa (ver [_tratarDadosDoAlerta]), o que acontece automaticamente
+/// na entrega da mensagem pelo SO, mesmo com a tela bloqueada e o app
+/// fechado — nunca depende de interação do usuário.
 class FcmService {
   FcmService._internal();
   static final FcmService _instance = FcmService._internal();
@@ -84,11 +93,22 @@ class FcmService {
   }
 
   /// Lógica compartilhada entre primeiro e segundo plano: se for um
-  /// alerta de emergência de terceiro, mostra a notificação de tela
-  /// cheia e grava a confirmação de entrega no Firestore — é essa
-  /// confirmação que o job de transbordo
-  /// (`functions/transbordoWhatsappMonitor.js`) verifica antes de decidir
-  /// se cobra o WhatsApp de contingência para este contato.
+  /// alerta de emergência de terceiro, confirma a ENTREGA NO DISPOSITIVO
+  /// e só então tenta exibir a notificação de tela cheia.
+  ///
+  /// ORDEM CRÍTICA E DE PROPÓSITO: este método só é chamado quando o SO
+  /// já entregou a mensagem FCM a este aparelho (é exatamente isso que
+  /// dispara `onMessage`/`onBackgroundMessage`, mesmo com a tela
+  /// bloqueada e o app fechado) — ou seja, a mera execução deste método
+  /// JÁ É a prova de entrega no dispositivo, independente de qualquer
+  /// interação do usuário (abrir o app, tocar na notificação, etc.).
+  /// Por isso a confirmação ([FirebaseSyncService.confirmarEntregaAlerta])
+  /// é gravada PRIMEIRO, em seu próprio try/catch — uma falha ao MOSTRAR
+  /// a notificação de tela cheia (ex: canal ainda não criado, permissão
+  /// negada) NUNCA deve impedir o registro da entrega já confirmada pelo
+  /// FCM, o que faria o job de transbordo
+  /// (`functions/transbordoWhatsappMonitor.js`) cobrar WhatsApp
+  /// desnecessariamente mesmo com o Push já entregue.
   Future<void> _tratarDadosDoAlerta(Map<String, dynamic> data) async {
     if (data['tipo'] != _tipoAlertaEmergencia) return;
 
@@ -97,13 +117,21 @@ class FcmService {
     final nomeRemetente = data['nomeRemetente'] as String?;
     if (idEntrega == null) return;
 
-    await NotificacaoService.exibirNotificacaoAlertaRecebido(
-      idEntrega: idEntrega,
-      mensagem: mensagem,
-      nomeRemetente: nomeRemetente,
-    );
+    try {
+      await FirebaseSyncService().confirmarEntregaAlerta(idEntrega);
+      debugPrint('✅ [Confirmação de Entrega Enviada] entregas_alerta/$idEntrega');
+    } catch (e) {
+      debugPrint('⚠️ [FcmService] Falha ao confirmar entrega no dispositivo: $e');
+    }
 
-    await FirebaseSyncService().confirmarEntregaAlerta(idEntrega);
-    debugPrint('✅ [Confirmação de Entrega Enviada] entregas_alerta/$idEntrega');
+    try {
+      await NotificacaoService.exibirNotificacaoAlertaRecebido(
+        idEntrega: idEntrega,
+        mensagem: mensagem,
+        nomeRemetente: nomeRemetente,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [FcmService] Falha ao exibir notificação de alerta recebido: $e');
+    }
   }
 }

@@ -25,11 +25,25 @@ const db = getFirestore();
 const STATUS_PROCESSANDO = "PROCESSANDO";
 const STATUS_FINALIZADO = "FINALIZADO";
 
+// Valor de `status` gravado em `confirmacoes/{uid}` (ver
+// FirebaseSyncService.confirmarEntregaAlerta no Flutter) quando o Push é
+// entregue ao dispositivo — nome explícito de propósito, para deixar
+// claro no próprio schema que o critério é ENTREGA, não abertura/leitura
+// do app.
+const STATUS_ENTREGUE_DISPOSITIVO = "entregue_dispositivo";
+
 /**
- * Ids (`uid`) dos contatos que já confirmaram a entrega do Push no app —
- * ver `entregas_alerta/{idEntrega}/confirmacoes/{uidDestino}`, gravado
- * pelo próprio app do "guardião" ao processar a notificação (ver
- * `FirebaseSyncService.confirmarEntregaAlerta` no Flutter).
+ * CRITÉRIO DE CANCELAMENTO DO WHATSAPP DE CONTINGÊNCIA: um contato só
+ * conta como "confirmado" — e portanto NUNCA gera cobrança — quando o
+ * Push FCM foi CONFIRMADAMENTE ENTREGUE AO DISPOSITIVO de destino
+ * (`entregueApp === true` e/ou `status === 'entregue_dispositivo'`, ver
+ * `entregas_alerta/{idEntrega}/confirmacoes/{uidDestino}`). Este sinal é
+ * gravado pelo app assim que o SO entrega a mensagem — mesmo com a tela
+ * bloqueada e o app completamente fechado (ver
+ * `FcmService._tratarDadosDoAlerta` no Flutter) — e NUNCA depende do
+ * familiar efetivamente abrir o app, tocar na notificação ou ler o
+ * alerta. Checar os dois campos (em vez de só um) torna o critério
+ * robusto a qual dos dois nomes um cliente específico gravou.
  *
  * @param {FirebaseFirestore.DocumentReference} entregaRef
  * @return {Promise<Set<string>>}
@@ -38,16 +52,20 @@ async function buscarUidsConfirmados(entregaRef) {
   const snap = await entregaRef.collection("confirmacoes").get();
   const uids = new Set();
   snap.forEach((doc) => {
-    if (doc.data().entregueApp === true) uids.add(doc.id);
+    const dados = doc.data();
+    const entregueNoDispositivo =
+        dados.entregueApp === true || dados.status === STATUS_ENTREGUE_DISPOSITIVO;
+    if (entregueNoDispositivo) uids.add(doc.id);
   });
   return uids;
 }
 
 /**
  * Decide e (se aplicável) executa a contingência via WhatsApp para UM
- * contato que não confirmou a entrega do Push a tempo. Nunca lança
- * exceção — cada contato é isolado em seu próprio try/catch para não
- * derrubar o processamento dos demais.
+ * contato cujo dispositivo não confirmou a ENTREGA do Push a tempo
+ * (nunca por falta de abertura/leitura do app — ver
+ * [buscarUidsConfirmados]). Nunca lança exceção — cada contato é isolado
+ * em seu próprio try/catch para não derrubar o processamento dos demais.
  *
  * @param {string} usuarioId
  * @param {{nome: string, telefone: string, whatsappHabilitado: boolean}} contato
@@ -89,7 +107,8 @@ async function processarContingenciaContato(usuarioId, contato, idEntrega, mensa
  * Roda a cada 1 minuto: busca `entregas_alerta` com prazo de transbordo
  * vencido, reivindica cada documento (transação, evitando corrida com
  * outra execução concorrente) e aplica a regra de contingência para cada
- * contato que ainda não confirmou a entrega do Push no app.
+ * contato cujo DISPOSITIVO ainda não confirmou a entrega do Push (ver
+ * critério em [buscarUidsConfirmados] — entrega, não abertura do app).
  */
 exports.processarTransbordoAlertas = onSchedule(
     {
