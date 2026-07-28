@@ -20,6 +20,8 @@ import 'services/contatos_emergencia_service.dart';
 import 'services/database_helper.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
+import 'services/fcm_service.dart';
+import 'services/firebase_auth_service.dart';
 import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/locale_service.dart';
@@ -27,6 +29,7 @@ import 'services/notificacao_service.dart';
 import 'services/plano_limite_service.dart';
 import 'services/rotina_alarme_service.dart';
 import 'services/volume_sos_service.dart';
+import 'services/wallet_service.dart';
 import 'services/wallpaper_service.dart';
 import 'widgets/pin_dialog.dart';
 
@@ -66,6 +69,19 @@ void main() async {
     // alarme de rotina ativo). Síncrono e não-bloqueante — nunca atrasa
     // o cold start nem interfere no alarme local.
     BackgroundLocationHeartbeatService().iniciar();
+
+    // Lado "guardião" do pipeline híbrido de alerta (ver `FcmService`):
+    // só inicializa se já houver sessão ativa (cold start com o app já
+    // logado) — no primeiro login/cadastro, é a própria tela quem chama.
+    if (FirebaseAuthService().uidAtual != null) {
+      FcmService().inicializar();
+    }
+
+    // Escuta o stream de compras (in_app_purchase) desde o cold start —
+    // necessário para não perder a confirmação de uma recarga que
+    // terminou de processar enquanto o app estava fechado/em segundo
+    // plano (ver WalletService).
+    WalletService();
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
         'apenas com os recursos locais): $e');
@@ -310,9 +326,22 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// LoginScreen: ela tem campos de texto e, mesmo sem autofocus, não deve
   /// chegar a existir sobre a lockscreen. Uma tela preta neutra ocupa esse
   /// instante até a CameraCapturaScreen ser empurrada por cima.
+  ///
+  /// Fora desses casos especiais, decide entre Login e o fluxo principal
+  /// com base na sessão real do Firebase Auth: sem sessão ativa, mostra a
+  /// LoginScreen; com sessão ativa (app reaberto já logado), pula direto
+  /// para [TelaInicialComPossivelDialogoPin].
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
+
+    final bool sessaoAtiva =
+        Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
+    if (sessaoAtiva) {
+      return TelaInicialComPossivelDialogoPin(
+        aguardandoConfirmacaoPin: widget.aguardandoConfirmacaoPin,
+      );
+    }
     return const LoginScreen();
   }
 

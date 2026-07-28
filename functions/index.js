@@ -13,39 +13,30 @@
  *    e a lista de contatos de emergência (sincronizada a partir do SQLite
  *    local do usuário) do documento `usuarios/{usuarioId}`.
  * 4. Monta a mensagem de alerta com o link do Google Maps.
- * 5. Aciona o envio do SMS real aos contatos via Twilio — ver
- *    `smsGateway.js` (módulo compartilhado com `scheduledAlarmMonitor.js`).
- *    Requer as credenciais Twilio configuradas no Secret Manager
- *    (`firebase functions:secrets:set TWILIO_ACCOUNT_SID`, etc.) e o
- *    projeto no plano Blaze (já ativado) — sem as credenciais, degrada
- *    graciosamente para um aviso de log, sem quebrar o resto do fluxo.
+ * 5. Aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`):
+ *    Push FCM gratuito para os contatos que têm o app instalado, com
+ *    WhatsApp/Twilio como contingência paga só depois de 60s sem
+ *    confirmação de entrega (ver `transbordoWhatsappMonitor.js`) — e só
+ *    para contatos com a chave "Notificar via WhatsApp" ligada e saldo
+ *    suficiente na Carteira do usuário.
  */
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
-const {enviarSmsParaTelefones, TWILIO_SECRETS} = require("./smsGateway");
 
+// IMPORTANTE: initializeApp() precisa rodar ANTES de qualquer módulo que
+// chame getFirestore()/getMessaging() em seu próprio escopo top-level
+// (ver alertaHibridoService.js, walletService.js, comprasService.js,
+// scheduledAlarmMonitor.js, transbordoWhatsappMonitor.js) — por isso
+// esses `require`s só acontecem DEPOIS da linha abaixo, nunca antes.
 initializeApp();
 const db = getFirestore();
 
-const TIPO_TENTATIVA_DESARME_INCORRETO = "tentativa_desarme_incorreto";
+const {dispararAlertaHibrido} = require("./alertaHibridoService");
 
-/**
- * Extrai só os telefones de [contatos] (`{nome, telefone}[]`, formato
- * sincronizado pelo app em `usuarios/{usuarioId}.contatosEmergencia`) e
- * delega o envio real ao gateway compartilhado (ver `smsGateway.js`).
- *
- * @param {Array<{nome: string, telefone: string}>} contatos
- * @param {string} mensagem
- */
-async function enviarSmsParaContatos(contatos, mensagem) {
-  const telefones = contatos
-      .map((contato) => contato && contato.telefone)
-      .filter(Boolean);
-  await enviarSmsParaTelefones(telefones, mensagem);
-}
+const TIPO_TENTATIVA_DESARME_INCORRETO = "tentativa_desarme_incorreto";
 
 /**
  * @param {number} latitude
@@ -73,7 +64,6 @@ function montarTextoLocalizacao(latitude, longitude) {
 exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
     {
       document: "usuarios/{usuarioId}/alertas/{alertaId}",
-      secrets: TWILIO_SECRETS,
     },
     async (event) => {
       const snap = event.data;
@@ -120,10 +110,15 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
       if (contatos.length === 0) {
         logger.warn(
             `Usuário ${usuarioId} não possui contatos de emergência ` +
-            "sincronizados no Firestore — nenhum SMS será enviado.",
+            "sincronizados no Firestore — nenhum alerta será disparado.",
         );
       } else {
-        await enviarSmsParaContatos(contatos, mensagem);
+        await dispararAlertaHibrido({
+          usuarioId,
+          contatos,
+          mensagem,
+          origem: "tentativa_desarme",
+        });
       }
 
       await snap.ref.update({
@@ -141,3 +136,15 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
 // já chamado acima nesta mesma inicialização do processo.
 exports.monitorarAlarmesAgendados =
   require("./scheduledAlarmMonitor").monitorarAlarmesAgendados;
+
+// Job agendado do "transbordo" WhatsApp (ver transbordoWhatsappMonitor.js)
+// — decide, 60s após cada Push FCM, quem realmente precisa (e pode ser
+// cobrado por) da contingência via WhatsApp/Twilio.
+exports.processarTransbordoAlertas =
+  require("./transbordoWhatsappMonitor").processarTransbordoAlertas;
+
+// Callable de verificação de compra de créditos (ver comprasService.js)
+// — recarga da Carteira em USD via Google Play, com verificação
+// server-side antes de creditar qualquer saldo.
+exports.confirmarCompraCredito =
+  require("./comprasService").confirmarCompraCredito;

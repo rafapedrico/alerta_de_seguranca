@@ -16,6 +16,46 @@
   "botaoEntrar": "Anmelden",
   "esqueciMinhaSenha": "Passwort vergessen",
   "recuperacaoSenhaEmBreve": "Passwort-Wiederherstellung bald verfügbar.",
+  "erroLoginCredenciaisInvalidas": "E-Mail oder Passwort falsch",
+  "erroLoginMuitasTentativas": "Zu viele Versuche. Bitte später erneut versuchen",
+  "erroLoginGenerico": "Anmeldung fehlgeschlagen. Bitte erneut versuchen",
+  "erroCadastroEmailEmUso": "Diese E-Mail ist bereits registriert",
+  "erroCadastroSenhaFraca": "Das Passwort ist zu schwach",
+  "erroCadastroGenerico": "Konto konnte nicht erstellt werden. Bitte erneut versuchen",
+
+  "sairDaContaTitulo": "Abmelden",
+  "sairDaContaConfirmar": "Abmelden",
+
+  "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (0,10 $ USD)",
+
+  "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
+  "alertaRecebidoDe": "{nome} könnte in Gefahr sein",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "Standort auf der Karte anzeigen",
+
+  "carteiraTitulo": "Guthaben-Wallet",
+  "carteiraMenuItem": "Guthaben-Wallet",
+  "carteiraSaldoAtual": "Aktuelles Guthaben",
+  "carteiraAteNEnvios": "bis zu {n} Versendungen",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "Warnungen über die App sind 100% kostenlos. WhatsApp-Notfallnachrichten kosten je 0,10 $ USD.",
+  "carteiraRecarregarTitulo": "Aufladen",
+  "carteiraHistoricoTitulo": "Verlauf",
+  "carteiraHistoricoVazio": "Noch keine Bewegungen.",
+  "carteiraTipoRecarga": "Aufladung",
+  "carteiraTipoDesconto": "WhatsApp-Versand",
+  "carteiraCompraSucesso": "Guthaben erfolgreich hinzugefügt!",
+  "carteiraCompraFalhaVerificacao": "Kauf konnte nicht bestätigt werden. Bitte erneut versuchen.",
+  "carteiraCompraErro": "Kauf konnte nicht abgeschlossen werden.",
+  "carteiraLojaIndisponivel": "Store derzeit nicht verfügbar.",
   "ouEntreCom": "oder anmelden mit",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

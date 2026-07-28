@@ -20,18 +20,23 @@ dependencies:
   path: ^1.8.3
 
   # Firebase — projeto real "guardiaox" já configurado (ver
-  # android/app/google-services.json). firebase_core + cloud_firestore
-  # ativados para a camada de resiliência na nuvem (rastreamento de GPS
-  # periódico + alerta prioritário de tentativa de desarme incorreta, ver
-  # lib/services/firebase_sync_service.dart). firebase_auth e o login
-  # social (Google/Facebook) permanecem desativados/mockados por enquanto
-  # — para ativá-los de verdade, descomente as linhas abaixo e substitua
-  # os corpos mockados de FirebaseAuthService pelas chamadas reais.
+  # android/app/google-services.json). firebase_auth ativado (login/cadastro
+  # reais por e-mail/senha, ver lib/services/firebase_auth_service.dart);
+  # login social (Google/Facebook) permanece mockado por enquanto.
+  # firebase_messaging ativado para o Push App-para-App de alerta híbrido
+  # (ver lib/services/fcm_service.dart) e cloud_functions para as chamadas
+  # callable (ex: confirmação de compra de créditos da Carteira).
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
-  # firebase_auth: ^4.16.0
+  firebase_auth: ^4.16.0
+  firebase_messaging: ^14.9.4
+  cloud_functions: ^4.7.6
   # google_sign_in: ^6.2.1
   # flutter_facebook_auth: ^6.2.1
+
+  # Compras consumíveis (recarga da Carteira em USD) — Google Play apenas,
+  # não há projeto iOS neste repositório.
+  in_app_purchase: ^3.2.0
 
   # Encryption
   encrypt: ^5.0.3

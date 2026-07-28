@@ -16,6 +16,46 @@
   "botaoEntrar": "Sign In",
   "esqueciMinhaSenha": "Forgot my password",
   "recuperacaoSenhaEmBreve": "Password recovery coming soon.",
+  "erroLoginCredenciaisInvalidas": "Incorrect email or password",
+  "erroLoginMuitasTentativas": "Too many attempts. Try again later",
+  "erroLoginGenerico": "Couldn't sign in. Please try again",
+  "erroCadastroEmailEmUso": "This email is already registered",
+  "erroCadastroSenhaFraca": "The password is too weak",
+  "erroCadastroGenerico": "Couldn't create the account. Please try again",
+
+  "sairDaContaTitulo": "Sign out",
+  "sairDaContaConfirmar": "Sign out",
+
+  "contatoWhatsappSwitchLabel": "Notify via WhatsApp ($0.10 USD)",
+
+  "alertaRecebidoTitulo": "Security alert received",
+  "alertaRecebidoDe": "{nome} may be in danger",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "View location on map",
+
+  "carteiraTitulo": "Credit Wallet",
+  "carteiraMenuItem": "Credit Wallet",
+  "carteiraSaldoAtual": "Current balance",
+  "carteiraAteNEnvios": "up to {n} sends",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "In-app alerts are 100% free. WhatsApp contingency messages cost $0.10 USD each.",
+  "carteiraRecarregarTitulo": "Top up",
+  "carteiraHistoricoTitulo": "History",
+  "carteiraHistoricoVazio": "No transactions yet.",
+  "carteiraTipoRecarga": "Top-up",
+  "carteiraTipoDesconto": "WhatsApp send",
+  "carteiraCompraSucesso": "Credits added successfully!",
+  "carteiraCompraFalhaVerificacao": "Couldn't verify the purchase. Please try again.",
+  "carteiraCompraErro": "Couldn't complete the purchase.",
+  "carteiraLojaIndisponivel": "Store unavailable right now.",
   "ouEntreCom": "or sign in with",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

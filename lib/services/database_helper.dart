@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -77,7 +77,8 @@ class DatabaseHelper {
         nome TEXT NOT NULL,
         telefone TEXT NOT NULL,
         exclusao_pendente INTEGER NOT NULL DEFAULT 0,
-        timestamp_solicitacao TEXT
+        timestamp_solicitacao TEXT,
+        whatsapp_habilitado INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -324,6 +325,22 @@ class DatabaseHelper {
         'ALTER TABLE alarmes_rotina ADD COLUMN alarme_pausado INTEGER NOT NULL DEFAULT 0',
       );
     }
+    // Migration from v13 to v14: adiciona 'whatsapp_habilitado' na tabela
+    // 'contatos_emergencia' — chave por contato ("Notificar via WhatsApp
+    // ($0.10 USD)", ver ConfiguracoesTab) da arquitetura híbrida de
+    // alertas: só contatos com esta flag ligada podem gerar cobrança de
+    // WhatsApp de contingência (ver functions/transbordoWhatsappMonitor.js).
+    // Desligado por padrão (0), preservando o saldo do usuário até que ele
+    // ative explicitamente cada contato.
+    if (oldVersion < 14) {
+      try {
+        await db.execute(
+          'ALTER TABLE contatos_emergencia ADD COLUMN whatsapp_habilitado INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {
+        // Coluna já existe — ignora.
+      }
+    }
   }
 
 
@@ -498,6 +515,22 @@ class DatabaseHelper {
   Future<int> deletarContatoEmergencia(int id) async {
     final db = await database;
     return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
+  /// envio) para este contato específico — ver Switch "Notificar via
+  /// WhatsApp" em ConfiguracoesTab. Refletido no Firestore por
+  /// [FirebaseSyncService.sincronizarContatosEmergencia] e consumido pela
+  /// Cloud Function de transbordo (functions/transbordoWhatsappMonitor.js)
+  /// para decidir se pode cobrar do saldo do usuário.
+  Future<int> atualizarWhatsappHabilitado(int id, bool habilitado) async {
+    final db = await database;
+    return await db.update(
+      'contatos_emergencia',
+      {'whatsapp_habilitado': habilitado ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   /// Marca um contato de emergência como "exclusão pendente", iniciando a

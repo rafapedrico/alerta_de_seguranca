@@ -14,12 +14,12 @@
  * `AlarmeAgendadoModel` no app Flutter,
  * `lib/models/alarme_agendado_model.dart`):
  *   idAlarme: string
+ *   usuarioId: string (uid do Firebase Auth, dono do alarme)
  *   dataHoraDisparo: Timestamp
  *   prazoFinalEpochMs: number (dataHoraDisparo + tolerância + janela final)
  *   status: "PENDENTE" | "CONFIRMADO_SEGURA" | "ALERTA_DISPARADO"
  *   ultimaLocalizacao: { lat, lng, timestamp }
- *   telefonesEmergencia: string[]
- *   tokensGuardioes: string[]
+ *   contatosEmergencia: {nome, telefone, whatsappHabilitado}[]
  *   etiqueta: string
  *   contextoPersonalizado: string
  *
@@ -35,46 +35,19 @@
  *    `prazoFinalEpochMs` já passou (o MESMO instante em que o alerta
  *    real dispararia localmente — dataHoraDisparo + tolerância + janela
  *    final, não o horário bruto do alarme), marca ALERTA_DISPARADO e
- *    dispara o alerta (FCM para `tokensGuardioes` + WhatsApp/Twilio para
- *    `telefonesEmergencia`).
+ *    aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`).
  */
 
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
-const {getMessaging} = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
-const {enviarSmsParaTelefones, TWILIO_SECRETS} = require("./smsGateway");
+const {dispararAlertaHibrido} = require("./alertaHibridoService");
 
 const db = getFirestore();
 
 const COLECAO_ALARMES_AGENDADOS = "alarmes_agendados";
 const STATUS_PENDENTE = "PENDENTE";
 const STATUS_ALERTA_DISPARADO = "ALERTA_DISPARADO";
-
-/**
- * Notificação App-para-App aos "guardiões" (contatos com o app
- * instalado) via FCM multicast. Best-effort: um token inválido/expirado
- * nunca deve derrubar o processamento do alarme inteiro.
- *
- * @param {Array<string>} tokens
- * @param {string} titulo
- * @param {string} corpo
- */
-async function notificarGuardioesPorFcm(tokens, titulo, corpo) {
-  if (!tokens || tokens.length === 0) return;
-  try {
-    const resposta = await getMessaging().sendEachForMulticast({
-      tokens,
-      notification: {title: titulo, body: corpo},
-    });
-    logger.info(
-        `[notificarGuardioesPorFcm] ${resposta.successCount} enviado(s), ` +
-        `${resposta.failureCount} falha(s) de ${tokens.length} token(s).`,
-    );
-  } catch (e) {
-    logger.error("[notificarGuardioesPorFcm] Falha ao enviar multicast FCM", e);
-  }
-}
 
 /**
  * Janela de frescor da localização: uma `ultimaLocalizacao` só é
@@ -142,7 +115,6 @@ exports.monitorarAlarmesAgendados = onSchedule(
     {
       schedule: "every 2 minutes",
       timeZone: "America/Sao_Paulo",
-      secrets: TWILIO_SECRETS,
     },
     async () => {
       const agoraEpochMs = Date.now();
@@ -201,14 +173,12 @@ exports.monitorarAlarmesAgendados = onSchedule(
               (contexto ? `\nContexto: ${contexto}` : "") +
               `\nLocalização: ${localizacaoTexto}`;
 
-          await Promise.allSettled([
-            enviarSmsParaTelefones(dados.telefonesEmergencia || [], mensagem),
-            notificarGuardioesPorFcm(
-                dados.tokensGuardioes || [],
-                "Alerta de segurança",
-                mensagem,
-            ),
-          ]);
+          await dispararAlertaHibrido({
+            usuarioId: dados.usuarioId,
+            contatos: dados.contatosEmergencia || [],
+            mensagem,
+            origem: "alarme_rotina",
+          });
         } catch (e) {
           // Nunca deixa a falha de UM alarme interromper o processamento
           // dos demais nesta execução.

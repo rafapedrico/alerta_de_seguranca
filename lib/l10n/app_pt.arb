@@ -16,6 +16,46 @@
   "botaoEntrar": "Entrar",
   "esqueciMinhaSenha": "Esqueci minha senha",
   "recuperacaoSenhaEmBreve": "Recuperação de senha em breve.",
+  "erroLoginCredenciaisInvalidas": "E-mail ou senha incorretos",
+  "erroLoginMuitasTentativas": "Muitas tentativas. Tente novamente mais tarde",
+  "erroLoginGenerico": "Não foi possível entrar. Tente novamente",
+  "erroCadastroEmailEmUso": "Este e-mail já está cadastrado",
+  "erroCadastroSenhaFraca": "A senha é muito fraca",
+  "erroCadastroGenerico": "Não foi possível criar a conta. Tente novamente",
+
+  "sairDaContaTitulo": "Sair da conta",
+  "sairDaContaConfirmar": "Sair",
+
+  "contatoWhatsappSwitchLabel": "Notificar via WhatsApp ($0.10 USD)",
+
+  "alertaRecebidoTitulo": "Alerta de segurança recebido",
+  "alertaRecebidoDe": "{nome} pode estar em perigo",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "Ver localização no mapa",
+
+  "carteiraTitulo": "Carteira de Créditos",
+  "carteiraMenuItem": "Carteira de Créditos",
+  "carteiraSaldoAtual": "Saldo atual",
+  "carteiraAteNEnvios": "até {n} envios",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "Alertas via App são 100% gratuitos. Envios de contingência via WhatsApp custam $0.10 USD cada.",
+  "carteiraRecarregarTitulo": "Recarregar",
+  "carteiraHistoricoTitulo": "Histórico",
+  "carteiraHistoricoVazio": "Nenhuma movimentação ainda.",
+  "carteiraTipoRecarga": "Recarga",
+  "carteiraTipoDesconto": "Envio de WhatsApp",
+  "carteiraCompraSucesso": "Créditos adicionados com sucesso!",
+  "carteiraCompraFalhaVerificacao": "Não foi possível confirmar a compra. Tente novamente.",
+  "carteiraCompraErro": "Não foi possível concluir a compra.",
+  "carteiraLojaIndisponivel": "Loja indisponível no momento.",
   "ouEntreCom": "ou entre com",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

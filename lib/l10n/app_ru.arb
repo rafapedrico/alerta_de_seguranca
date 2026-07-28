@@ -16,6 +16,46 @@
   "botaoEntrar": "Войти",
   "esqueciMinhaSenha": "Забыли пароль",
   "recuperacaoSenhaEmBreve": "Восстановление пароля скоро будет доступно.",
+  "erroLoginCredenciaisInvalidas": "Неверный e-mail или пароль",
+  "erroLoginMuitasTentativas": "Слишком много попыток. Повторите позже",
+  "erroLoginGenerico": "Не удалось войти. Попробуйте снова",
+  "erroCadastroEmailEmUso": "Этот e-mail уже зарегистрирован",
+  "erroCadastroSenhaFraca": "Слишком простой пароль",
+  "erroCadastroGenerico": "Не удалось создать аккаунт. Попробуйте снова",
+
+  "sairDaContaTitulo": "Выйти из аккаунта",
+  "sairDaContaConfirmar": "Выйти",
+
+  "contatoWhatsappSwitchLabel": "Уведомлять через WhatsApp ($0.10 USD)",
+
+  "alertaRecebidoTitulo": "Получено оповещение безопасности",
+  "alertaRecebidoDe": "{nome} может быть в опасности",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "Посмотреть местоположение на карте",
+
+  "carteiraTitulo": "Кошелёк кредитов",
+  "carteiraMenuItem": "Кошелёк кредитов",
+  "carteiraSaldoAtual": "Текущий баланс",
+  "carteiraAteNEnvios": "до {n} отправок",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "Оповещения через приложение полностью бесплатны. Резервная отправка через WhatsApp стоит $0.10 USD за сообщение.",
+  "carteiraRecarregarTitulo": "Пополнить",
+  "carteiraHistoricoTitulo": "История",
+  "carteiraHistoricoVazio": "Пока нет операций.",
+  "carteiraTipoRecarga": "Пополнение",
+  "carteiraTipoDesconto": "Отправка WhatsApp",
+  "carteiraCompraSucesso": "Кредиты успешно добавлены!",
+  "carteiraCompraFalhaVerificacao": "Не удалось подтвердить покупку. Попробуйте снова.",
+  "carteiraCompraErro": "Не удалось завершить покупку.",
+  "carteiraLojaIndisponivel": "Магазин сейчас недоступен.",
   "ouEntreCom": "или войдите через",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

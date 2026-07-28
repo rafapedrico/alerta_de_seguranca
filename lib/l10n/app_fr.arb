@@ -16,6 +16,46 @@
   "botaoEntrar": "Se connecter",
   "esqueciMinhaSenha": "Mot de passe oublié",
   "recuperacaoSenhaEmBreve": "Récupération du mot de passe bientôt disponible.",
+  "erroLoginCredenciaisInvalidas": "E-mail ou mot de passe incorrect",
+  "erroLoginMuitasTentativas": "Trop de tentatives. Réessayez plus tard",
+  "erroLoginGenerico": "Connexion impossible. Veuillez réessayer",
+  "erroCadastroEmailEmUso": "Cet e-mail est déjà utilisé",
+  "erroCadastroSenhaFraca": "Le mot de passe est trop faible",
+  "erroCadastroGenerico": "Impossible de créer le compte. Veuillez réessayer",
+
+  "sairDaContaTitulo": "Se déconnecter",
+  "sairDaContaConfirmar": "Se déconnecter",
+
+  "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (0,10 $ USD)",
+
+  "alertaRecebidoTitulo": "Alerte de sécurité reçue",
+  "alertaRecebidoDe": "{nome} pourrait être en danger",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "Voir la position sur la carte",
+
+  "carteiraTitulo": "Portefeuille de crédits",
+  "carteiraMenuItem": "Portefeuille de crédits",
+  "carteiraSaldoAtual": "Solde actuel",
+  "carteiraAteNEnvios": "jusqu'à {n} envois",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "Les alertes via l'application sont 100% gratuites. Les envois de secours via WhatsApp coûtent 0,10 $ USD chacun.",
+  "carteiraRecarregarTitulo": "Recharger",
+  "carteiraHistoricoTitulo": "Historique",
+  "carteiraHistoricoVazio": "Aucun mouvement pour l'instant.",
+  "carteiraTipoRecarga": "Recharge",
+  "carteiraTipoDesconto": "Envoi WhatsApp",
+  "carteiraCompraSucesso": "Crédits ajoutés avec succès !",
+  "carteiraCompraFalhaVerificacao": "Impossible de confirmer l'achat. Veuillez réessayer.",
+  "carteiraCompraErro": "Impossible de terminer l'achat.",
+  "carteiraLojaIndisponivel": "Boutique indisponible pour le moment.",
   "ouEntreCom": "ou connectez-vous avec",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

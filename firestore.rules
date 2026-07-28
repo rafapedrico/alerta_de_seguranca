@@ -1,35 +1,54 @@
 rules_version = '2';
 
-// ATENÇÃO — REGRAS TEMPORÁRIAS/ABERTAS, ALINHADAS AO ESTADO ATUAL DO APP:
-//
-// O app Flutter ainda não tem Firebase Auth real (login social hoje é
-// mockado, ver FirebaseAuthService) e usa um usuarioId fixo em memória
-// (ApiService.usuarioIdPadrao = 'usuario_dev_teste') igual ao já usado
-// pelo backend FastAPI local, que também não tem autenticação. Por isso,
-// estas regras liberam leitura/escrita sem exigir `request.auth` — do
-// contrário, TODA chamada do app ao Firestore seria negada e nada
-// funcionaria.
-//
-// TODO (antes de produção com usuários reais): assim que o Firebase Auth
-// for implementado de verdade, trocar `allow read, write: if true` por
-// algo como `allow read, write: if request.auth != null && request.auth.uid == usuarioId`
-// e ativar o App Check para impedir escrita por clientes não autorizados.
+// Regras de produção: o app usa Firebase Auth real (e-mail/senha, ver
+// FirebaseAuthService) e cada documento de usuário é identificado pelo
+// `uid` do Firebase Auth — não mais pelo antigo `usuarioId` fixo em
+// memória. Toda leitura/escrita exige `request.auth != null` e, na
+// maioria dos casos, que `request.auth.uid` seja o dono do recurso.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /usuarios/{usuarioId} {
-      // Documento único por usuário: localização atual + contatos de
-      // emergência sincronizados (ver FirebaseSyncService no app).
-      allow read, write: if true;
+      // Documento por usuário: perfil (nome/email/telefone/fcmToken),
+      // localização atual, contatos de emergência sincronizados (ver
+      // FirebaseSyncService) e saldo da Carteira em USD.
+      allow read: if request.auth != null && request.auth.uid == usuarioId;
+
+      // Criação do perfil (cadastro, ver
+      // FirebaseSyncService.criarPerfilInicial) — só o próprio dono, sem
+      // restrição extra de campos (é o único momento em que `saldoUsd`
+      // pode ser gravado pelo cliente, sempre com valor inicial 0).
+      allow create: if request.auth != null && request.auth.uid == usuarioId;
+
+      // Atualizações do próprio dono (localização periódica, contatos de
+      // emergência, fcmToken, etc.) — TRAVA CRÍTICA: `saldoUsd` nunca pode
+      // mudar de valor numa escrita originada pelo cliente. Todo crédito
+      // (compra verificada) ou débito (contingência WhatsApp) de saldo é
+      // feito exclusivamente pelas Cloud Functions via Admin SDK, que
+      // ignora estas regras.
+      allow update: if request.auth != null &&
+          request.auth.uid == usuarioId &&
+          request.resource.data.saldoUsd == resource.data.saldoUsd;
+
+      allow delete: if false;
 
       match /alertas/{alertaId} {
         // O app só precisa CRIAR um novo alerta (ver
         // FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto).
-        allow create: if true;
-        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == usuarioId;
+        allow read: if request.auth != null && request.auth.uid == usuarioId;
         // Só a Cloud Function (via Admin SDK, que ignora estas regras)
         // deve atualizar o alerta (ex: marcar como `processado`) — o
         // cliente nunca deve alterar ou apagar um alerta já criado.
         allow update, delete: if false;
+      }
+
+      match /historicoCreditos/{registroId} {
+        // Extrato da Carteira (recargas e descontos de $0.10 por envio de
+        // WhatsApp) — só leitura para o dono; toda escrita é feita pelas
+        // Cloud Functions (ver functions/walletService.js), nunca pelo
+        // cliente, evitando saldo/histórico fraudulento.
+        allow read: if request.auth != null && request.auth.uid == usuarioId;
+        allow write: if false;
       }
     }
 
@@ -37,12 +56,38 @@ service cloud.firestore {
       // Documento de monitoramento agendado (ver AlarmeAgendadoModel /
       // BackgroundLocationHeartbeatService / RotinaAlarmeService no app):
       // o próprio aparelho precisa criar/atualizar (heartbeat de
-      // localização a cada 5 min) e marcar CONFIRMADO_SEGURA ao digitar o
-      // PIN correto. Mesma postura temporária/aberta do restante deste
-      // arquivo (ver TODO de autenticação no topo) — a Cloud Function
-      // agendada (functions/ ou cloud_functions/, via Admin SDK) que
-      // marca ALERTA_DISPARADO ignora estas regras de qualquer forma.
-      allow read, write: if true;
+      // localização a cada 2 min) e marcar CONFIRMADO_SEGURA ao digitar o
+      // PIN correto — sempre restrito ao dono (`usuarioId` gravado no
+      // próprio documento). A Cloud Function agendada (que marca
+      // ALERTA_DISPARADO) usa o Admin SDK e ignora estas regras.
+      allow read: if request.auth != null &&
+          request.auth.uid == resource.data.usuarioId;
+      allow create: if request.auth != null &&
+          request.auth.uid == request.resource.data.usuarioId;
+      allow update: if request.auth != null &&
+          request.auth.uid == resource.data.usuarioId;
+      allow delete: if false;
+    }
+
+    match /entregas_alerta/{idEntrega} {
+      // Rastreamento do pipeline híbrido de alerta (Push FCM + transbordo
+      // condicional para WhatsApp, ver functions/alertaHibridoService.js
+      // e functions/transbordoWhatsappMonitor.js) — inteiramente gerido
+      // pelas Cloud Functions via Admin SDK. O cliente nunca lê nem
+      // escreve o documento principal diretamente.
+      allow read, write: if false;
+
+      match /confirmacoes/{uidDestino} {
+        // Único ponto de escrita do cliente neste pipeline: o app do
+        // "guardião" que recebeu o Push grava aqui a confirmação de
+        // entrega (ver FcmService/FirebaseSyncService.confirmarEntregaAlerta)
+        // — só o próprio destinatário pode confirmar a própria entrega.
+        // É essa confirmação que o job de transbordo (a cada 1 min)
+        // verifica antes de decidir se cobra o WhatsApp de contingência.
+        allow create, update: if request.auth != null &&
+            request.auth.uid == uidDestino;
+        allow read, delete: if false;
+      }
     }
   }
 }

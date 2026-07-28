@@ -1,16 +1,21 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
+import '../services/fcm_service.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/firebase_sync_service.dart';
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
 ///
-/// MOCK/TEMPORÁRIO: assim como a [LoginScreen], não existe ainda
-/// integração real com backend — o botão "Criar Conta" apenas simula um
-/// cadastro bem-sucedido (sem persistir nada em servidor) e navega
-/// DIRETAMENTE para o fluxo principal já existente do app
-/// ([TelaInicialComPossivelDialogoPin]), substituindo toda a pilha de
-/// navegação (Login + Cadastro), de forma que o usuário recém-cadastrado
-/// não volte para essas telas ao apertar "voltar".
+/// Cria a conta real no Firebase Auth (e-mail/senha) e, em caso de
+/// sucesso, grava o perfil inicial em `usuarios/{uid}` (nome, e-mail,
+/// telefone em E.164, `saldoUsd: 0`) via [FirebaseSyncService] — é esse
+/// documento que a arquitetura híbrida de alertas (Push FCM + WhatsApp
+/// condicional + Carteira) usa para vincular telefone/fcmToken/saldo a um
+/// usuário real. Só então navega para o fluxo principal do app.
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
 
@@ -33,6 +38,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
 
   bool _senhaVisivel = false;
   bool _confirmarSenhaVisivel = false;
+  bool _criandoConta = false;
 
   @override
   void dispose() {
@@ -44,19 +50,75 @@ class _CadastroScreenState extends State<CadastroScreen> {
     super.dispose();
   }
 
-  /// MOCK: simula a criação de conta com sucesso e navega direto para o
-  /// fluxo principal do app, removendo Login e Cadastro da pilha de
-  /// navegação.
-  void _criarContaMock() {
-    if (_formKey.currentState?.validate() != true) return;
+  /// Normaliza o celular digitado para o formato E.164 exigido tanto pelo
+  /// Firestore (campo `telefone`, usado para vincular contas via FCM)
+  /// quanto pelo Twilio no backend — mesmo critério de
+  /// `normalizarTelefoneE164` em `functions/smsGateway.js`: números sem
+  /// "+" recebem o prefixo do Brasil ("+55"), mesmo público-alvo do
+  /// restante do app.
+  String _normalizarTelefoneE164(String celular) {
+    final limpo = celular.replaceAll(RegExp(r'[^\d+]'), '');
+    if (limpo.startsWith('+')) return limpo;
+    return '+55$limpo';
+  }
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) =>
-            const TelaInicialComPossivelDialogoPin(aguardandoConfirmacaoPin: false),
-      ),
-      (route) => false,
-    );
+  /// Cria a conta real no Firebase Auth e grava o perfil inicial no
+  /// Firestore. Em caso de falha (e-mail já cadastrado, senha fraca,
+  /// etc.), exibe o erro em vez de navegar.
+  Future<void> _criarConta() async {
+    if (_formKey.currentState?.validate() != true) return;
+    if (_criandoConta) return;
+
+    setState(() => _criandoConta = true);
+    try {
+      final credencial = await FirebaseAuthService().criarConta(
+        email: _emailController.text.trim(),
+        senha: _senhaController.text,
+      );
+
+      final uid = credencial.user?.uid;
+      if (uid != null) {
+        await FirebaseSyncService().criarPerfilInicial(
+          nome: _nomeController.text.trim(),
+          email: _emailController.text.trim(),
+          telefone: _normalizarTelefoneE164(_celularController.text.trim()),
+        );
+        unawaited(FcmService().inicializar());
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const TelaInicialComPossivelDialogoPin(
+              aguardandoConfirmacaoPin: false),
+        ),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_mensagemErroCadastro(e)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _criandoConta = false);
+    }
+  }
+
+  String _mensagemErroCadastro(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return AppLocalizations.of(context)!.erroCadastroEmailEmUso;
+      case 'weak-password':
+        return AppLocalizations.of(context)!.erroCadastroSenhaFraca;
+      case 'invalid-email':
+        return AppLocalizations.of(context)!.campoEmailInvalido;
+      default:
+        return AppLocalizations.of(context)!.erroCadastroGenerico;
+    }
   }
 
   void _voltarParaLogin() {
@@ -233,7 +295,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
       controller: _confirmarSenhaController,
       obscureText: !_confirmarSenhaVisivel,
       textInputAction: TextInputAction.done,
-      onFieldSubmitted: (_) => _criarContaMock(),
+      onFieldSubmitted: (_) => _criarConta(),
       style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
         label: AppLocalizations.of(context)!.campoConfirmarSenhaLabel,
@@ -262,14 +324,23 @@ class _CadastroScreenState extends State<CadastroScreen> {
     return SizedBox(
       height: 52,
       child: ElevatedButton(
-        onPressed: _criarContaMock,
+        onPressed: _criandoConta ? null : _criarConta,
         style: ElevatedButton.styleFrom(
           backgroundColor: _corPrincipal,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
-        child: Text(
+        child: _criandoConta
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
           AppLocalizations.of(context)!.botaoCriarConta,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),

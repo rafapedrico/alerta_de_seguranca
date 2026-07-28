@@ -97,6 +97,15 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Canal padrão do firebase_messaging para mensagens que
+             chegam sem um canal explícito — mesmo id do canal de
+             "Alerta de Emergência Recebido" criado em tempo de execução
+             por NotificacaoService.inicializar() (Importance.max,
+             fullScreenIntent). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="alerta_emergencia_recebido" />
+
         <receiver
             android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
             android:exported="false"/>

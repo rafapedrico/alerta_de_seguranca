@@ -16,6 +16,46 @@
   "botaoEntrar": "लॉगिन करें",
   "esqueciMinhaSenha": "पासवर्ड भूल गए",
   "recuperacaoSenhaEmBreve": "पासवर्ड रिकवरी जल्द ही उपलब्ध होगी।",
+  "erroLoginCredenciaisInvalidas": "ईमेल या पासवर्ड गलत है",
+  "erroLoginMuitasTentativas": "बहुत सारे प्रयास। कृपया बाद में पुनः प्रयास करें",
+  "erroLoginGenerico": "साइन इन नहीं हो सका। कृपया पुनः प्रयास करें",
+  "erroCadastroEmailEmUso": "यह ईमेल पहले से पंजीकृत है",
+  "erroCadastroSenhaFraca": "पासवर्ड बहुत कमज़ोर है",
+  "erroCadastroGenerico": "खाता नहीं बन सका। कृपया पुनः प्रयास करें",
+
+  "sairDaContaTitulo": "साइन आउट करें",
+  "sairDaContaConfirmar": "साइन आउट करें",
+
+  "contatoWhatsappSwitchLabel": "WhatsApp के ज़रिए सूचित करें ($0.10 USD)",
+
+  "alertaRecebidoTitulo": "सुरक्षा अलर्ट प्राप्त हुआ",
+  "alertaRecebidoDe": "{nome} खतरे में हो सकते हैं",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "मानचित्र पर स्थान देखें",
+
+  "carteiraTitulo": "क्रेडिट वॉलेट",
+  "carteiraMenuItem": "क्रेडिट वॉलेट",
+  "carteiraSaldoAtual": "वर्तमान बैलेंस",
+  "carteiraAteNEnvios": "{n} भेजने तक",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "ऐप के ज़रिए अलर्ट 100% मुफ़्त हैं। WhatsApp बैकअप संदेश प्रत्येक $0.10 USD में आते हैं।",
+  "carteiraRecarregarTitulo": "रिचार्ज करें",
+  "carteiraHistoricoTitulo": "इतिहास",
+  "carteiraHistoricoVazio": "अभी तक कोई गतिविधि नहीं।",
+  "carteiraTipoRecarga": "रिचार्ज",
+  "carteiraTipoDesconto": "WhatsApp भेजा गया",
+  "carteiraCompraSucesso": "क्रेडिट सफलतापूर्वक जोड़े गए!",
+  "carteiraCompraFalhaVerificacao": "खरीद की पुष्टि नहीं हो सकी। कृपया पुनः प्रयास करें।",
+  "carteiraCompraErro": "खरीद पूरी नहीं हो सकी।",
+  "carteiraLojaIndisponivel": "स्टोर फ़िलहाल उपलब्ध नहीं है।",
   "ouEntreCom": "या इसके साथ लॉगिन करें",
   "loginGoogle": "गूगल",
   "loginFacebook": "फेसबुक",

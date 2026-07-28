@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/alarme_agendado_model.dart';
 import 'alarme_agendado_cloud_service.dart';
 import 'database_helper.dart';
+import 'firebase_auth_service.dart';
 import 'location_service.dart';
 import 'rotina_alarme_service.dart';
 
@@ -35,7 +36,7 @@ const Duration intervaloHeartbeat = Duration(minutes: 2);
 ///    `alarmes_agendados/{idAlarme}` atualizado com `dataHoraDisparo`,
 ///    `prazoFinalDisparo` (dataHoraDisparo + tolerância + janela final —
 ///    o MESMO instante em que o alerta real dispararia localmente) e
-///    `telefonesEmergencia`, para que a Cloud Function agendada consiga
+///    `contatosEmergencia`, para que a Cloud Function agendada consiga
 ///    agir mesmo que o aparelho nunca mais responda depois disso.
 /// 2. **Localização recente (≤2h)**: dentro desta janela mais estreita,
 ///    também captura o GPS a cada ciclo e o anexa ao mesmo documento
@@ -76,6 +77,9 @@ class BackgroundLocationHeartbeatService {
 
   Future<void> _executarCiclo() async {
     try {
+      final usuarioId = FirebaseAuthService().uidAtual;
+      if (usuarioId == null) return;
+
       final alarmes = await DatabaseHelper().listarAlarmes();
       final agora = DateTime.now();
 
@@ -116,7 +120,7 @@ class BackgroundLocationHeartbeatService {
       final posicao =
           precisaLocalizacao ? await LocationService().capturarLocalizacaoAtual() : null;
 
-      final telefones = await _resolverTelefonesEmergencia();
+      final contatos = await _resolverContatosEmergencia();
 
       for (final candidato in candidatos) {
         final idAlarme = (candidato.alarme['id'] as int?)?.toString();
@@ -128,9 +132,10 @@ class BackgroundLocationHeartbeatService {
         await AlarmeAgendadoCloudService().registrarAlarmeAgendado(
           AlarmeAgendadoModel(
             idAlarme: idAlarme,
+            usuarioId: usuarioId,
             dataHoraDisparo: candidato.proximoDisparo,
             prazoFinalDisparo: candidato.prazoFinal,
-            telefonesEmergencia: telefones,
+            contatosEmergencia: contatos,
             etiqueta: (candidato.alarme['etiqueta'] as String?) ?? '',
             contextoPersonalizado:
                 (candidato.alarme['contexto_personalizado'] as String?) ?? '',
@@ -153,16 +158,25 @@ class BackgroundLocationHeartbeatService {
     }
   }
 
-  Future<List<String>> _resolverTelefonesEmergencia() async {
+  /// Mesmo formato `{nome, telefone, whatsappHabilitado}` gravado em
+  /// `usuarios/{uid}.contatosEmergencia` (ver
+  /// `FirebaseSyncService.sincronizarContatosEmergencia`), repassado
+  /// junto com o alarme agendado para a Cloud Function de disparo poder
+  /// aplicar as mesmas regras de contingência via WhatsApp.
+  Future<List<Map<String, dynamic>>> _resolverContatosEmergencia() async {
     try {
       final contatos = await DatabaseHelper().getContatosEmergencia();
       return contatos
-          .map((c) => (c['telefone'] as String?) ?? '')
-          .where((telefone) => telefone.isNotEmpty)
+          .map((c) => {
+                'nome': (c['nome'] as String?) ?? '',
+                'telefone': (c['telefone'] as String?) ?? '',
+                'whatsappHabilitado': (c['whatsapp_habilitado'] as int?) == 1,
+              })
+          .where((c) => (c['telefone'] as String).isNotEmpty)
           .toList();
     } catch (e) {
       debugPrint(
-          '⚠️ [BackgroundLocationHeartbeatService] Falha ao resolver telefones de emergência: $e');
+          '⚠️ [BackgroundLocationHeartbeatService] Falha ao resolver contatos de emergência: $e');
       return const [];
     }
   }

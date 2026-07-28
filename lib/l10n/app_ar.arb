@@ -16,6 +16,46 @@
   "botaoEntrar": "تسجيل الدخول",
   "esqueciMinhaSenha": "نسيت كلمة المرور",
   "recuperacaoSenhaEmBreve": "استعادة كلمة المرور ستكون متاحة قريبًا.",
+  "erroLoginCredenciaisInvalidas": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+  "erroLoginMuitasTentativas": "محاولات كثيرة جدًا. حاول مرة أخرى لاحقًا",
+  "erroLoginGenerico": "تعذر تسجيل الدخول. حاول مرة أخرى",
+  "erroCadastroEmailEmUso": "هذا البريد الإلكتروني مسجل بالفعل",
+  "erroCadastroSenhaFraca": "كلمة المرور ضعيفة جدًا",
+  "erroCadastroGenerico": "تعذر إنشاء الحساب. حاول مرة أخرى",
+
+  "sairDaContaTitulo": "تسجيل الخروج",
+  "sairDaContaConfirmar": "تسجيل الخروج",
+
+  "contatoWhatsappSwitchLabel": "الإشعار عبر واتساب (0.10 دولار أمريكي)",
+
+  "alertaRecebidoTitulo": "تم استلام تنبيه أمني",
+  "alertaRecebidoDe": "قد يكون {nome} في خطر",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "عرض الموقع على الخريطة",
+
+  "carteiraTitulo": "محفظة الأرصدة",
+  "carteiraMenuItem": "محفظة الأرصدة",
+  "carteiraSaldoAtual": "الرصيد الحالي",
+  "carteiraAteNEnvios": "حتى {n} إرسال",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "التنبيهات عبر التطبيق مجانية بنسبة 100٪. رسائل واتساب الاحتياطية تكلف 0.10 دولار أمريكي لكل رسالة.",
+  "carteiraRecarregarTitulo": "إعادة الشحن",
+  "carteiraHistoricoTitulo": "السجل",
+  "carteiraHistoricoVazio": "لا توجد حركات بعد.",
+  "carteiraTipoRecarga": "شحن",
+  "carteiraTipoDesconto": "إرسال واتساب",
+  "carteiraCompraSucesso": "تمت إضافة الرصيد بنجاح!",
+  "carteiraCompraFalhaVerificacao": "تعذر تأكيد عملية الشراء. حاول مرة أخرى.",
+  "carteiraCompraErro": "تعذر إتمام عملية الشراء.",
+  "carteiraLojaIndisponivel": "المتجر غير متاح حاليًا.",
   "ouEntreCom": "أو سجّل الدخول باستخدام",
   "loginGoogle": "جوجل",
   "loginFacebook": "فيسبوك",

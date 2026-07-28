@@ -16,6 +16,46 @@
   "botaoEntrar": "ログイン",
   "esqueciMinhaSenha": "パスワードをお忘れの方",
   "recuperacaoSenhaEmBreve": "パスワード復旧機能は近日公開予定です。",
+  "erroLoginCredenciaisInvalidas": "メールアドレスまたはパスワードが正しくありません",
+  "erroLoginMuitasTentativas": "試行回数が多すぎます。しばらくしてから再度お試しください",
+  "erroLoginGenerico": "ログインできませんでした。もう一度お試しください",
+  "erroCadastroEmailEmUso": "このメールアドレスは既に登録されています",
+  "erroCadastroSenhaFraca": "パスワードが弱すぎます",
+  "erroCadastroGenerico": "アカウントを作成できませんでした。もう一度お試しください",
+
+  "sairDaContaTitulo": "ログアウト",
+  "sairDaContaConfirmar": "ログアウト",
+
+  "contatoWhatsappSwitchLabel": "WhatsAppで通知する（$0.10 USD）",
+
+  "alertaRecebidoTitulo": "安全警報を受信しました",
+  "alertaRecebidoDe": "{nome}さんが危険な状態かもしれません",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "地図で位置を確認",
+
+  "carteiraTitulo": "クレジットウォレット",
+  "carteiraMenuItem": "クレジットウォレット",
+  "carteiraSaldoAtual": "現在の残高",
+  "carteiraAteNEnvios": "最大{n}回送信可能",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "アプリ内アラートは完全無料です。WhatsAppによる予備通知は1件$0.10 USDかかります。",
+  "carteiraRecarregarTitulo": "チャージ",
+  "carteiraHistoricoTitulo": "履歴",
+  "carteiraHistoricoVazio": "まだ履歴がありません。",
+  "carteiraTipoRecarga": "チャージ",
+  "carteiraTipoDesconto": "WhatsApp送信",
+  "carteiraCompraSucesso": "クレジットが正常に追加されました！",
+  "carteiraCompraFalhaVerificacao": "購入を確認できませんでした。もう一度お試しください。",
+  "carteiraCompraErro": "購入を完了できませんでした。",
+  "carteiraLojaIndisponivel": "現在ストアを利用できません。",
   "ouEntreCom": "または次でログイン",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

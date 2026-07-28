@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-import 'api_service.dart';
+import 'firebase_auth_service.dart';
 
 /// Teto de tempo para QUALQUER chamada de rede ao Firestore neste
 /// serviço. CORREÇÃO (bug real observado em teste): sem isto, uma
@@ -58,20 +58,103 @@ class FirebaseSyncService {
   /// Nome da coleção raiz no Firestore.
   static const String _colecaoUsuarios = 'usuarios';
 
-  /// Mesmo identificador de usuário/dispositivo já usado pelo
-  /// [ApiService] (backend FastAPI local), mantendo os dois pilares de
-  /// nuvem referenciando o mesmo "usuário" enquanto não há autenticação
-  /// real (Firebase Auth) implementada no app.
-  static String get _usuarioId => ApiService.usuarioIdPadrao;
+  /// `uid` do Firebase Auth do usuário logado — identifica o documento
+  /// `usuarios/{uid}` em todo este serviço. `null` se não houver sessão
+  /// ativa (não deve acontecer no fluxo normal, já que a Home só é
+  /// alcançada após login/cadastro reais, ver `main.dart`).
+  static String? get _usuarioId => FirebaseAuthService().uidAtual;
 
   /// `true` somente se [Firebase.initializeApp] tiver sido chamado com
-  /// sucesso no `main()`. Evita qualquer tentativa de acesso ao Firestore
-  /// (e a exceção nativa que isso geraria) caso a inicialização tenha
-  /// falhado silenciosamente no cold start.
-  bool get _firebaseDisponivel => Firebase.apps.isNotEmpty;
+  /// sucesso no `main()` E houver um usuário autenticado. Evita qualquer
+  /// tentativa de acesso ao Firestore (e a exceção nativa que isso
+  /// geraria) caso a inicialização tenha falhado silenciosamente no cold
+  /// start, ou caso este serviço seja chamado antes do login (ex: telas
+  /// de Login/Cadastro).
+  bool get _firebaseDisponivel =>
+      Firebase.apps.isNotEmpty && _usuarioId != null;
 
   DocumentReference<Map<String, dynamic>> get _documentoUsuario =>
       FirebaseFirestore.instance.collection(_colecaoUsuarios).doc(_usuarioId);
+
+  /// Cria (via merge) o documento `usuarios/{uid}` logo após o cadastro
+  /// bem-sucedido no Firebase Auth ([FirebaseAuthService.criarConta]).
+  /// [telefone] deve já vir normalizado em E.164 (ver
+  /// `normalizarTelefoneE164` usado em [CadastroScreen]) — é por ele que
+  /// a Cloud Function resolve, na hora de um alerta, quais contatos de
+  /// emergência têm conta no app (ver `alertaHibridoService.js`).
+  ///
+  /// `saldoUsd: 0` só é gravado AQUI (cadastro) — nenhum outro ponto do
+  /// app cliente deve voltar a escrever este campo depois disso; toda
+  /// alteração de saldo passa exclusivamente por Cloud Functions (ver
+  /// `functions/walletService.js`).
+  Future<void> criarPerfilInicial({
+    required String nome,
+    required String email,
+    required String telefone,
+  }) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario.set(
+        {
+          'nome': nome,
+          'email': email,
+          'telefone': telefone,
+          'saldoUsd': 0,
+          'criadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao criar perfil inicial do usuário: $e');
+    }
+  }
+
+  /// Grava/atualiza o token FCM atual do aparelho em
+  /// `usuarios/{uid}.fcmToken` — é por ele que a Cloud Function resolve,
+  /// na hora de um alerta, para onde enviar o Push App-para-App gratuito
+  /// (ver [FcmService], que chama este método na inicialização e sempre
+  /// que o token for renovado pelo `onTokenRefresh`).
+  Future<void> atualizarFcmToken(String token) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario.set(
+        {'fcmToken': token},
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken: $e');
+    }
+  }
+
+  /// Confirma, para o pipeline híbrido de alerta, que ESTE usuário
+  /// recebeu e processou o Push de um alerta de terceiro (ver
+  /// [FcmService] — chamado ao processar uma mensagem `alerta_emergencia`
+  /// em primeiro ou segundo plano). Grava em
+  /// `entregas_alerta/{idEntrega}/confirmacoes/{uid}`, o único ponto do
+  /// pipeline em que o cliente escreve diretamente nessa coleção (ver
+  /// `firestore.rules`) — é essa confirmação que o job de transbordo
+  /// (`functions/transbordoWhatsappMonitor.js`) verifica antes de decidir
+  /// se cobra o WhatsApp de contingência para este contato.
+  Future<void> confirmarEntregaAlerta(String idEntrega) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('entregas_alerta')
+          .doc(idEntrega)
+          .collection('confirmacoes')
+          .doc(_usuarioId)
+          .set({
+        'entregueApp': true,
+        'entregueAppEm': FieldValue.serverTimestamp(),
+      }).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [FirebaseSyncService] Confirmação de entrega enviada para entregas_alerta/$idEntrega.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao confirmar entrega do alerta $idEntrega: $e');
+    }
+  }
 
   /// Sobrescreve (via merge, nunca acumula) a última localização
   /// conhecida do usuário no documento `usuarios/{usuarioId}`. Deve ser
@@ -118,6 +201,10 @@ class FirebaseSyncService {
           .map((contato) => {
                 'nome': (contato['nome'] as String?) ?? '',
                 'telefone': (contato['telefone'] as String?) ?? '',
+                // Ver Switch "Notificar via WhatsApp ($0.10 USD)" em
+                // ConfiguracoesTab — só contatos com esta flag ligada
+                // podem gerar cobrança de WhatsApp de contingência.
+                'whatsappHabilitado': (contato['whatsapp_habilitado'] as int?) == 1,
               })
           .where((contato) => (contato['telefone'] as String).isNotEmpty)
           .toList();

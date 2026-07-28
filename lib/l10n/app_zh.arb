@@ -16,6 +16,46 @@
   "botaoEntrar": "登录",
   "esqueciMinhaSenha": "忘记密码",
   "recuperacaoSenhaEmBreve": "密码找回功能即将上线。",
+  "erroLoginCredenciaisInvalidas": "邮箱或密码错误",
+  "erroLoginMuitasTentativas": "尝试次数过多，请稍后再试",
+  "erroLoginGenerico": "登录失败，请重试",
+  "erroCadastroEmailEmUso": "该邮箱已被注册",
+  "erroCadastroSenhaFraca": "密码强度太弱",
+  "erroCadastroGenerico": "无法创建账户，请重试",
+
+  "sairDaContaTitulo": "退出登录",
+  "sairDaContaConfirmar": "退出",
+
+  "contatoWhatsappSwitchLabel": "通过WhatsApp通知（$0.10 USD）",
+
+  "alertaRecebidoTitulo": "收到安全警报",
+  "alertaRecebidoDe": "{nome}可能处于危险中",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "在地图上查看位置",
+
+  "carteiraTitulo": "信用钱包",
+  "carteiraMenuItem": "信用钱包",
+  "carteiraSaldoAtual": "当前余额",
+  "carteiraAteNEnvios": "最多可发送{n}次",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "应用内提醒完全免费。WhatsApp应急发送每条收费$0.10美元。",
+  "carteiraRecarregarTitulo": "充值",
+  "carteiraHistoricoTitulo": "历史记录",
+  "carteiraHistoricoVazio": "暂无记录。",
+  "carteiraTipoRecarga": "充值",
+  "carteiraTipoDesconto": "WhatsApp发送",
+  "carteiraCompraSucesso": "积分添加成功！",
+  "carteiraCompraFalhaVerificacao": "无法确认购买，请重试。",
+  "carteiraCompraErro": "无法完成购买。",
+  "carteiraLojaIndisponivel": "商店暂时不可用。",
   "ouEntreCom": "或通过以下方式登录",
   "loginGoogle": "谷歌",
   "loginFacebook": "脸书",

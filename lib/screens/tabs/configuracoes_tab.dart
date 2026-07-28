@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../app_navigator.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
 import '../../services/alarme_sonoro_service.dart';
+import '../../services/firebase_auth_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
+import '../carteira_screen.dart';
+import '../login_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 
@@ -342,6 +346,16 @@ Future<void> _selecionarSom(int? numero) async {
   /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
   /// como "exclusao_pendente" e continua recebendo alertas de emergência
   /// normalmente até que o prazo de 24h expire.
+  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
+  /// envio) para o contato [id] — ver arquitetura híbrida de alertas: só
+  /// dispara WhatsApp após 60s sem confirmação de entrega no app E com
+  /// esta chave ligada E saldo suficiente na Carteira.
+  Future<void> _alternarWhatsappHabilitado(int id, bool habilitado) async {
+    await _db.atualizarWhatsappHabilitado(id, habilitado);
+    await _carregarContatosEmergencia();
+    ContatosEmergenciaService.notificarAlteracao();
+  }
+
   Future<void> _excluirContato(int id, String nome) async {
     await _db.solicitarExclusaoContatoEmergencia(id);
 
@@ -859,6 +873,36 @@ Future<void> _selecionarSom(int? numero) async {
     }
   }
 
+  /// Encerra a sessão do Firebase Auth e volta para a LoginScreen,
+  /// limpando toda a pilha de navegação — usa a [appNavigatorKey] global
+  /// (em vez do `context` local desta aba) porque esta tela pode estar
+  /// aninhada várias rotas abaixo da raiz do app.
+  Future<void> _sairDaConta() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(AppLocalizations.of(ctx)!.sairDaContaTitulo),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(AppLocalizations.of(ctx)!.cancelar),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(AppLocalizations.of(ctx)!.sairDaContaConfirmar),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+
+    await FirebaseAuthService().logout();
+    appNavigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -967,6 +1011,7 @@ Future<void> _selecionarSom(int? numero) async {
                 final id = contato['id'] as int;
                 final nome = contato['nome'] as String? ?? AppLocalizations.of(context)!.familiaSemNome;
                 final telefone = contato['telefone'] as String? ?? '';
+                final whatsappHabilitado = (contato['whatsapp_habilitado'] as int?) == 1;
                 return Card(
                   elevation: 0,
                   color: Colors.white,
@@ -975,7 +1020,10 @@ Future<void> _selecionarSom(int? numero) async {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  child: ListTile(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                  ListTile(
                     leading: CircleAvatar(
                       backgroundColor: const Color(0xFFE8F5E9),
                       child: Text(
@@ -1025,6 +1073,22 @@ Future<void> _selecionarSom(int? numero) async {
                             tooltip: AppLocalizations.of(context)!.tooltipExcluirContato,
                             onPressed: () => _excluirContato(id, nome),
                           ),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const Icon(Icons.chat, size: 20, color: Color(0xFF4C7040)),
+                    title: Text(
+                      AppLocalizations.of(context)!.contatoWhatsappSwitchLabel,
+                      softWrap: true,
+                      overflow: TextOverflow.clip,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    value: whatsappHabilitado,
+                    onChanged: (valor) => _alternarWhatsappHabilitado(id, valor),
+                  ),
+                    ],
                   ),
                 );
               }),
@@ -1291,6 +1355,25 @@ Future<void> _selecionarSom(int? numero) async {
 
         const Divider(),
 
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.green.shade50,
+            child: Icon(Icons.account_balance_wallet, color: Colors.green.shade700),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.carteiraMenuItem,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CarteiraScreen()),
+          ),
+        ),
+
+        const Divider(),
+
         _sectionHeader(theme, Icons.workspace_premium, AppLocalizations.of(context)!.planoTitulo),
 
 
@@ -1511,6 +1594,21 @@ Future<void> _selecionarSom(int? numero) async {
               ),
             ),
           ),
+
+        const Divider(),
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.red.shade50,
+            child: Icon(Icons.logout, color: Colors.red.shade700),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.sairDaContaTitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
+          onTap: _sairDaConta,
+        ),
+
         const SizedBox(height: 24),
       ],
           ),

@@ -7,6 +7,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "prazoFinalEpochMs", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "entregas_alerta",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "prazoTransbordoEpochMs", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

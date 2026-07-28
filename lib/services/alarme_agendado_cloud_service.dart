@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/alarme_agendado_model.dart';
+import 'firebase_auth_service.dart';
 
 /// Mesmo teto de timeout já usado por [FirebaseSyncService] — sem isto,
 /// uma chamada ao Firestore sem conectividade real (Wi-Fi só com rede
@@ -25,17 +26,27 @@ class AlarmeAgendadoCloudService {
 
   static const String _colecao = 'alarmes_agendados';
 
-  bool get _firebaseDisponivel => Firebase.apps.isNotEmpty;
+  bool get _firebaseDisponivel =>
+      Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
 
-  DocumentReference<Map<String, dynamic>> _documento(String idAlarme) =>
-      FirebaseFirestore.instance.collection(_colecao).doc(idAlarme);
+  /// Id do documento namespaced por usuário (`{uid}_{idAlarme}`) — evita
+  /// colisão entre o mesmo `idAlarme` local (autoincrement do SQLite) de
+  /// dois usuários diferentes, e casa com a regra de segurança do
+  /// Firestore que restringe leitura/escrita ao dono (`usuarioId`
+  /// gravado no próprio documento, ver `firestore.rules`).
+  DocumentReference<Map<String, dynamic>> _documento(String idAlarme) {
+    final uid = FirebaseAuthService().uidAtual;
+    return FirebaseFirestore.instance
+        .collection(_colecao)
+        .doc('${uid}_$idAlarme');
+  }
 
   /// Cria/atualiza (via merge, nunca acumula) o documento do alarme
   /// agendado — chamado a cada ciclo do
   /// `BackgroundLocationHeartbeatService` enquanto o alarme estiver
   /// dentro da janela de heartbeat (≤ 2h do disparo previsto),
   /// substituindo sempre `dataHoraDisparo`, `ultimaLocalizacao` e
-  /// `telefonesEmergencia` pelos valores mais recentes. Preserva o
+  /// `contatosEmergencia` pelos valores mais recentes. Preserva o
   /// `status` já gravado na nuvem (nunca sobrescreve de volta para
   /// PENDENTE um alarme já confirmado/alertado) a menos que o documento
   /// ainda não exista.

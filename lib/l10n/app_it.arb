@@ -16,6 +16,46 @@
   "botaoEntrar": "Accedi",
   "esqueciMinhaSenha": "Ho dimenticato la password",
   "recuperacaoSenhaEmBreve": "Recupero password disponibile a breve.",
+  "erroLoginCredenciaisInvalidas": "E-mail o password errati",
+  "erroLoginMuitasTentativas": "Troppi tentativi. Riprova più tardi",
+  "erroLoginGenerico": "Impossibile accedere. Riprova",
+  "erroCadastroEmailEmUso": "Questa e-mail è già registrata",
+  "erroCadastroSenhaFraca": "La password è troppo debole",
+  "erroCadastroGenerico": "Impossibile creare l'account. Riprova",
+
+  "sairDaContaTitulo": "Esci",
+  "sairDaContaConfirmar": "Esci",
+
+  "contatoWhatsappSwitchLabel": "Notifica via WhatsApp ($0.10 USD)",
+
+  "alertaRecebidoTitulo": "Avviso di sicurezza ricevuto",
+  "alertaRecebidoDe": "{nome} potrebbe essere in pericolo",
+  "@alertaRecebidoDe": {
+    "placeholders": {
+      "nome": {"type": "String"}
+    }
+  },
+  "alertaRecebidoVerNoMapa": "Vedi posizione sulla mappa",
+
+  "carteiraTitulo": "Portafoglio Crediti",
+  "carteiraMenuItem": "Portafoglio Crediti",
+  "carteiraSaldoAtual": "Saldo attuale",
+  "carteiraAteNEnvios": "fino a {n} invii",
+  "@carteiraAteNEnvios": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "carteiraNotaExplicativa": "Gli avvisi tramite app sono 100% gratuiti. Gli invii di emergenza via WhatsApp costano $0.10 USD ciascuno.",
+  "carteiraRecarregarTitulo": "Ricarica",
+  "carteiraHistoricoTitulo": "Cronologia",
+  "carteiraHistoricoVazio": "Nessun movimento ancora.",
+  "carteiraTipoRecarga": "Ricarica",
+  "carteiraTipoDesconto": "Invio WhatsApp",
+  "carteiraCompraSucesso": "Crediti aggiunti con successo!",
+  "carteiraCompraFalhaVerificacao": "Impossibile verificare l'acquisto. Riprova.",
+  "carteiraCompraErro": "Impossibile completare l'acquisto.",
+  "carteiraLojaIndisponivel": "Negozio non disponibile al momento.",
   "ouEntreCom": "oppure accedi con",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",

@@ -106,7 +106,23 @@ class AlarmeAgendadoModel {
 
   final AlarmeAgendadoStatus status;
   final UltimaLocalizacaoModel? ultimaLocalizacao;
-  final List<String> telefonesEmergencia;
+
+  /// Dono do documento (`uid` do Firebase Auth) — necessário para que as
+  /// regras do Firestore (`firestore.rules`) restrinjam leitura/escrita a
+  /// quem é dono do alarme, e para o id do documento ser namespaced por
+  /// usuário (ver [AlarmeAgendadoCloudService]), evitando colisão entre o
+  /// mesmo `idAlarme` local de dois usuários diferentes.
+  final String usuarioId;
+
+  /// Contatos de emergência no formato `{nome, telefone,
+  /// whatsappHabilitado}` — mesmo formato gravado em
+  /// `usuarios/{uid}.contatosEmergencia` (ver
+  /// `FirebaseSyncService.sincronizarContatosEmergencia`). A Cloud
+  /// Function de disparo (`functions/alertaHibridoService.js`) resolve
+  /// dinamicamente, por telefone, quais desses contatos têm conta no app
+  /// (Push FCM gratuito) e usa `whatsappHabilitado` + o saldo em USD do
+  /// usuário para decidir a contingência via WhatsApp.
+  final List<Map<String, dynamic>> contatosEmergencia;
 
   /// Etiqueta do alarme (ex: "Corrida no parque") e contexto
   /// personalizado (ex: "Vou por essa trilha, aviso quando voltar"),
@@ -116,33 +132,27 @@ class AlarmeAgendadoModel {
   final String etiqueta;
   final String contextoPersonalizado;
 
-  /// Tokens FCM dos "guardiões" (contatos com o app instalado) para
-  /// notificação App-para-App — campo modelado desde já para a Cloud
-  /// Function poder enviar `sendEachForMulticast`, mas ainda sem uma UI
-  /// no app para o usuário vincular guardiões; por padrão fica vazio.
-  final List<String> tokensGuardioes;
-
   const AlarmeAgendadoModel({
     required this.idAlarme,
     required this.dataHoraDisparo,
     required this.prazoFinalDisparo,
+    required this.usuarioId,
     this.status = AlarmeAgendadoStatus.pendente,
     this.ultimaLocalizacao,
-    this.telefonesEmergencia = const [],
-    this.tokensGuardioes = const [],
+    this.contatosEmergencia = const [],
     this.etiqueta = '',
     this.contextoPersonalizado = '',
   });
 
   Map<String, dynamic> toFirestore() => {
         'idAlarme': idAlarme,
+        'usuarioId': usuarioId,
         'dataHoraDisparo': Timestamp.fromDate(dataHoraDisparo),
         'prazoFinalEpochMs': prazoFinalDisparo.millisecondsSinceEpoch,
         'status': status.valorFirestore,
         if (ultimaLocalizacao != null)
           'ultimaLocalizacao': ultimaLocalizacao!.toMap(),
-        'telefonesEmergencia': telefonesEmergencia,
-        'tokensGuardioes': tokensGuardioes,
+        'contatosEmergencia': contatosEmergencia,
         'etiqueta': etiqueta,
         'contextoPersonalizado': contextoPersonalizado,
       };
@@ -155,6 +165,7 @@ class AlarmeAgendadoModel {
     final prazoFinalEpochMs = dados['prazoFinalEpochMs'] as int?;
     return AlarmeAgendadoModel(
       idAlarme: (dados['idAlarme'] as String?) ?? idDocumento,
+      usuarioId: (dados['usuarioId'] as String?) ?? '',
       dataHoraDisparo:
           dataHora is Timestamp ? dataHora.toDate() : DateTime.now(),
       prazoFinalDisparo: prazoFinalEpochMs != null
@@ -164,10 +175,9 @@ class AlarmeAgendadoModel {
       ultimaLocalizacao: UltimaLocalizacaoModel.fromMap(
         dados['ultimaLocalizacao'] as Map<String, dynamic>?,
       ),
-      telefonesEmergencia:
-          (dados['telefonesEmergencia'] as List?)?.cast<String>() ?? const [],
-      tokensGuardioes:
-          (dados['tokensGuardioes'] as List?)?.cast<String>() ?? const [],
+      contatosEmergencia:
+          (dados['contatosEmergencia'] as List?)?.cast<Map<String, dynamic>>() ??
+              const [],
       etiqueta: (dados['etiqueta'] as String?) ?? '',
       contextoPersonalizado: (dados['contextoPersonalizado'] as String?) ?? '',
     );

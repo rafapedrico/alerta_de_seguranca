@@ -1,34 +1,78 @@
 # Cloud Functions — Guardião X (projeto Firebase "guardiaox")
 
-Camada de resiliência na nuvem: quando o app detecta 2 PINs incorretos
-consecutivos no desarme antecipado (abas Família ou Segurança), ele grava
-um alerta minimalista no Firestore (`usuarios/{usuarioId}/alertas`). Esta
-função é disparada automaticamente por esse evento, busca a última
-localização conhecida do usuário (atualizada a cada 1 minuto pelo app
-enquanto o monitoramento estiver ativo) e os contatos de emergência
-sincronizados, monta a mensagem de alerta e aciona o envio.
+Camada de resiliência na nuvem, com dois gatilhos de alerta e um pipeline
+híbrido de entrega compartilhado por ambos:
 
-## Pendência conhecida: gateway de SMS
+- **Reativo** (`aoReceberAlertaTentativaDesarme`, `index.js`): dispara
+  quando o app grava um alerta minimalista em
+  `usuarios/{usuarioId}/alertas` (2 PINs incorretos consecutivos no
+  desarme antecipado).
+- **Agendado** (`monitorarAlarmesAgendados`, `scheduledAlarmMonitor.js`):
+  roda a cada 2 minutos e verifica `alarmes_agendados` em busca de
+  check-ins de rotina vencidos sem confirmação (dead man's switch de 48h).
 
-`enviarSmsParaContatos` em `index.js` **ainda não envia SMS de verdade** —
-apenas registra (`logger.warn`) o que seria enviado e marca o alerta como
-`processado`. Isso permite testar todo o pipeline (Firestore → trigger →
-montagem da mensagem) sem custo e sem exigir o plano Blaze para chamadas
-externas.
+## Pipeline híbrido de entrega (`alertaHibridoService.js`)
 
-Para ativar o envio real, escolha um gateway de SMS (Twilio, AWS SNS,
-Zenvia, Infobip, etc.), adicione a dependência correspondente ao
-`package.json` e implemente a chamada dentro de `enviarSmsParaContatos`
-(há um exemplo comentado com Twilio no próprio arquivo).
+Ambos os gatilhos acima terminam chamando `dispararAlertaHibrido`:
+
+1. Resolve, por telefone, quais dos contatos de emergência têm conta no
+   app (`usuarios` com `telefone` igual) e envia um Push FCM gratuito
+   (alta prioridade) para quem foi encontrado.
+2. Cria `entregas_alerta/{id}` com prazo de 60s (`prazoTransbordoEpochMs`).
+3. O job agendado `processarTransbordoAlertas`
+   (`transbordoWhatsappMonitor.js`, roda a cada 1 min) verifica, depois
+   desse prazo, quem NÃO confirmou a entrega no app
+   (`entregas_alerta/{id}/confirmacoes/{uid}`) e, só para esses contatos:
+   - Se `whatsappHabilitado` estiver desligado no contato → cancela.
+   - Se o saldo (`usuarios/{uid}.saldoUsd`) for menor que $0.10 → cancela.
+   - Caso contrário, debita $0.10 (via `walletService.js`, transação
+     atômica) e envia o WhatsApp de contingência via Twilio
+     (`smsGateway.js`).
+
+Logs em cada etapa: `[FCM Enviado]`, `[Aguardando 60s]`,
+`[Verificando Chave/Saldo USD]`, `[Desconto Aplicado]` /
+`[Operação Cancelada]`.
+
+## Carteira em USD (`walletService.js` + `comprasService.js`)
+
+`saldoUsd` e a subcoleção `historicoCreditos` só podem ser alterados pelo
+Admin SDK (ver `firestore.rules`) — nunca pelo cliente. Créditos entram
+por `confirmarCompraCredito` (callable `onCall`), que verifica a compra
+via Google Play Developer API antes de creditar (fail-closed: sem
+verificação bem-sucedida, nenhum saldo é dado). Requer:
+
+1. Os produtos consumíveis criados no Play Console
+   (`credito_usd_1`, `credito_usd_5`, `credito_usd_10`).
+2. Uma service account do Google Cloud com acesso à Play Developer API
+   habilitado no Play Console ("Ver ordens financeiras e gerenciar
+   assinaturas"), salva como secret:
+   ```bash
+   firebase functions:secrets:set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+   ```
+   Sem este secret configurado, `confirmarCompraCredito` rejeita toda
+   compra (loga o motivo) em vez de creditar sem verificação.
+
+## Gateway de WhatsApp (Twilio)
+
+`smsGateway.js` envia via Twilio WhatsApp Sandbox — cada destinatário
+precisa ter feito o opt-in do sandbox antes de poder receber mensagens.
+Credenciais via Secret Manager:
+
+```bash
+firebase functions:secrets:set TWILIO_ACCOUNT_SID
+firebase functions:secrets:set TWILIO_AUTH_TOKEN
+firebase functions:secrets:set TWILIO_FROM_NUMBER
+```
+
+Sem essas credenciais configuradas, o envio degrada graciosamente para um
+aviso de log (não quebra o restante do pipeline).
 
 ## Pré-requisitos para deploy
 
 1. **Plano Blaze (pay-as-you-go)** no projeto `guardiaox` — necessário
-   para que a função consiga fazer chamadas de rede a APIs externas (o
-   gateway de SMS). Sem isso, o deploy funciona, mas qualquer chamada de
-   saída para fora do Google será bloqueada.
-   - Console do Firebase → Configurações do projeto → Uso e faturamento
-     → Detalhes e configurações → Alterar plano.
+   para chamadas de rede a APIs externas (Twilio, Google Play Developer
+   API). Console do Firebase → Configurações do projeto → Uso e
+   faturamento → Detalhes e configurações → Alterar plano.
 2. Firebase CLI instalado e autenticado: `npm install -g firebase-tools`
    seguido de `firebase login`.
 3. Dentro de `functions/`: `npm install`.
@@ -38,15 +82,16 @@ Zenvia, Infobip, etc.), adicione a dependência correspondente ao
 ```bash
 # Da raiz do projeto (onde está firebase.json):
 firebase deploy --only functions
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 ## Regras do Firestore (`firestore.rules`)
 
-Estão **temporariamente abertas** (sem exigir autenticação), pois o app
-ainda não tem Firebase Auth real — mesma situação do backend FastAPI
-local, que também não tem autenticação. Há um `TODO` explícito no arquivo
-descrevendo como travá-las assim que o login real for implementado.
+Exigem Firebase Auth real (`request.auth.uid`) — cada usuário só lê/edita
+o próprio documento em `usuarios/{uid}`, `saldoUsd` e `historicoCreditos`
+são somente leitura para o cliente, e `entregas_alerta` é inteiramente
+gerido pelas Cloud Functions (exceto a subcoleção `confirmacoes`, onde
+cada usuário só grava a própria confirmação de entrega).
 
 ## Testando localmente (emulador)
 

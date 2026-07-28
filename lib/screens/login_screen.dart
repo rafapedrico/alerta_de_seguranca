@@ -1,23 +1,26 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
+import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/locale_service.dart';
 import 'cadastro_screen.dart';
 
 /// Tela de Login do "SOS Security Personal".
 ///
-/// MOCK/TEMPORÁRIO: por enquanto não existe integração real com backend
-/// de autenticação — o botão "Entrar" apenas simula um login bem-sucedido
-/// (sem validar e-mail/senha contra nenhum servidor) e navega diretamente
-/// para o fluxo já existente do app ([TelaInicialComPossivelDialogoPin],
-/// que por sua vez exibe a [HomeScreen] com toda a lógica de segurança
-/// já implementada: check-in, PIN de coação, alarme nativo, etc.).
+/// Login real via Firebase Auth (e-mail/senha) — em caso de sucesso,
+/// navega para o fluxo já existente do app
+/// ([TelaInicialComPossivelDialogoPin], que por sua vez exibe a
+/// [HomeScreen] com toda a lógica de segurança já implementada: check-in,
+/// PIN de coação, alarme nativo, etc.). Em caso de falha (usuário
+/// inexistente, senha incorreta, etc.), exibe a mensagem de erro em vez
+/// de navegar.
 ///
-/// Esta tela é puramente visual/de UX nesta etapa. A troca por um fluxo
-/// de autenticação real (validação de credenciais, persistência de
-/// sessão/token, tela de erro em caso de falha) fica para uma etapa
-/// futura.
+/// O login social (Google/Facebook) permanece mockado por enquanto — ver
+/// [FirebaseAuthService].
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -35,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
   bool _senhaVisivel = false;
+  bool _fazendoLogin = false;
 
   @override
   void dispose() {
@@ -43,14 +47,51 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// MOCK: simula um login bem-sucedido sem nenhuma validação real de
-  /// backend, e navega diretamente para o fluxo principal do app já
-  /// existente ([TelaInicialComPossivelDialogoPin]), substituindo a rota
-  /// de Login na pilha de navegação (o usuário não deve conseguir voltar
-  /// para o Login apertando o botão "voltar" do Android após logar).
-  void _fazerLoginMock() {
+  /// Login real via Firebase Auth. Em caso de sucesso, navega para o
+  /// fluxo principal do app ([TelaInicialComPossivelDialogoPin]),
+  /// substituindo a rota de Login na pilha de navegação (o usuário não
+  /// deve conseguir voltar para o Login apertando o botão "voltar" do
+  /// Android após logar). Em caso de falha, exibe o erro.
+  Future<void> _fazerLogin() async {
     if (_formKey.currentState?.validate() != true) return;
-    _navegarParaFluxoPrincipal();
+    if (_fazendoLogin) return;
+
+    setState(() => _fazendoLogin = true);
+    try {
+      await FirebaseAuthService().login(
+        email: _emailController.text.trim(),
+        senha: _senhaController.text,
+      );
+      unawaited(FcmService().inicializar());
+      if (!mounted) return;
+      _navegarParaFluxoPrincipal();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_mensagemErroLogin(e)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _fazendoLogin = false);
+    }
+  }
+
+  String _mensagemErroLogin(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return AppLocalizations.of(context)!.erroLoginCredenciaisInvalidas;
+      case 'invalid-email':
+        return AppLocalizations.of(context)!.campoEmailInvalido;
+      case 'too-many-requests':
+        return AppLocalizations.of(context)!.erroLoginMuitasTentativas;
+      default:
+        return AppLocalizations.of(context)!.erroLoginGenerico;
+    }
   }
 
   /// Simula o login social via Google (ver [FirebaseAuthService] para o
@@ -256,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: _senhaController,
       obscureText: !_senhaVisivel,
       textInputAction: TextInputAction.done,
-      onFieldSubmitted: (_) => _fazerLoginMock(),
+      onFieldSubmitted: (_) => _fazerLogin(),
       style: const TextStyle(color: Colors.white),
       decoration: _decoracaoInput(
         label: AppLocalizations.of(context)!.campoSenhaLabel,
@@ -282,14 +323,23 @@ class _LoginScreenState extends State<LoginScreen> {
     return SizedBox(
       height: 52,
       child: ElevatedButton(
-        onPressed: _fazerLoginMock,
+        onPressed: _fazendoLogin ? null : _fazerLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: _corPrincipal,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
-        child: Text(
+        child: _fazendoLogin
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
           AppLocalizations.of(context)!.botaoEntrar,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
