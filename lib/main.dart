@@ -20,7 +20,6 @@ import 'services/contatos_emergencia_service.dart';
 import 'services/database_helper.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
-import 'services/fcm_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
@@ -57,6 +56,16 @@ void main() async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('☁️ [Firebase] Inicializado com sucesso.');
+
+    // POLÍTICA DE SEGURANÇA (Opção A): todo cold start encerra qualquer
+    // sessão do Firebase Auth persistida no disco — o app NUNCA deve
+    // abrir direto na Home usando uma sessão antiga, mesmo que o
+    // dispositivo/emulador já tivesse um login válido de uma execução
+    // anterior. Login (com a barreira de `emailVerified`) volta a ser
+    // exigido a cada abertura. Feito o mais cedo possível, antes de
+    // qualquer serviço abaixo que dependa de `FirebaseAuthService().uidAtual`.
+    await FirebaseAuthService().logout();
+
     // Sincroniza os contatos de emergência já cadastrados (mesmo que
     // tenham sido criados antes desta funcionalidade existir) para que a
     // nuvem já saiba a quem notificar, sem depender de o usuário editar
@@ -67,17 +76,10 @@ void main() async {
     // `BackgroundLocationHeartbeatService`): inicia o ciclo de heartbeat
     // de localização (a cada 5 min, só quando faltar ≤2h para algum
     // alarme de rotina ativo). Síncrono e não-bloqueante — nunca atrasa
-    // o cold start nem interfere no alarme local.
+    // o cold start nem interfere no alarme local. Sem sessão ativa logo
+    // após o logout forçado acima, o serviço aguarda o próximo login
+    // real para voltar a sincronizar com a nuvem.
     BackgroundLocationHeartbeatService().iniciar();
-
-    // Lado "guardião" do pipeline híbrido de alerta (ver `FcmService`):
-    // só inicializa se já houver sessão ativa E com e-mail verificado
-    // (mesma barreira de `_telaInicial`/`LoginScreen._fazerLogin`) — no
-    // primeiro login/cadastro, é a própria tela quem chama.
-    if (FirebaseAuthService().uidAtual != null &&
-        (FirebaseAuthService().usuarioAtual?.emailVerified ?? false)) {
-      FcmService().inicializar();
-    }
 
     // Escuta o stream de compras (in_app_purchase) desde o cold start —
     // necessário para não perder a confirmação de uma recarga que
@@ -329,25 +331,18 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// chegar a existir sobre a lockscreen. Uma tela preta neutra ocupa esse
   /// instante até a CameraCapturaScreen ser empurrada por cima.
   ///
-  /// Fora desses casos especiais, decide entre Login e o fluxo principal
-  /// com base na sessão real do Firebase Auth: sem sessão ativa OU com
-  /// e-mail ainda não verificado, mostra a LoginScreen (mesma barreira
-  /// estrita aplicada no login, ver [LoginScreen._fazerLogin] — em
-  /// NENHUMA hipótese uma sessão com `emailVerified == false` pula direto
-  /// para dentro do app); com sessão ativa E verificada (app reaberto já
-  /// logado), pula direto para [TelaInicialComPossivelDialogoPin].
+  /// POLÍTICA DE SEGURANÇA (Opção A): fora desses casos especiais de
+  /// emergência, SEMPRE mostra a LoginScreen — o app nunca pula direto
+  /// para dentro do fluxo principal com base numa sessão persistida do
+  /// Firebase Auth. Isso é garantido em duas camadas: `main()` já força
+  /// `FirebaseAuthService().logout()` a cada cold start antes de chamar
+  /// `runApp`, e esta função nem chega a checar sessão — só entra em
+  /// [TelaInicialComPossivelDialogoPin] através da navegação explícita
+  /// feita por [LoginScreen] após um login real com `emailVerified ==
+  /// true` (ver [LoginScreen._fazerLogin]).
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
-
-    final bool sessaoAtiva = Firebase.apps.isNotEmpty &&
-        FirebaseAuthService().uidAtual != null &&
-        (FirebaseAuthService().usuarioAtual?.emailVerified ?? false);
-    if (sessaoAtiva) {
-      return TelaInicialComPossivelDialogoPin(
-        aguardandoConfirmacaoPin: widget.aguardandoConfirmacaoPin,
-      );
-    }
     return const LoginScreen();
   }
 

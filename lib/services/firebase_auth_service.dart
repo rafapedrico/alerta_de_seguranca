@@ -8,6 +8,12 @@ import 'package:flutter/foundation.dart';
 /// Não há login social (Google/Facebook) implementado — nenhum atalho ou
 /// bypass de autenticação deve existir neste serviço.
 ///
+/// POLÍTICA DE SEGURANÇA (Opção A): sessões do Firebase Auth NUNCA
+/// sobrevivem a um cold start — `main()` chama [logout] incondicionalmente
+/// logo após inicializar o Firebase, antes de `runApp`, para que o app
+/// sempre reabra na `LoginScreen` e exija credenciais de novo (ver
+/// `_telaInicial` em `main.dart`).
+///
 /// Toda a arquitetura híbrida de alertas (carteira em USD, vínculo
 /// telefone/fcmToken, regras do Firestore) depende de um `uid` real: é
 /// ele que passa a identificar o documento em `usuarios/{uid}` no lugar
