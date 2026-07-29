@@ -35,6 +35,18 @@ class FcmService {
 
   static const String _tipoAlertaEmergencia = 'alerta_emergencia';
 
+  /// Tipos de push da aba Monitoramento (ver `functions/monitoramentoService.js`
+  /// e `functions/monitoramentoExpiracaoMonitor.js`) — notificações NORMAIS
+  /// (sem tela cheia, sem confirmação de entrega/transbordo), distintas do
+  /// pipeline de alerta de emergência acima.
+  static const Set<String> _tiposPushMonitoramento = {
+    'solicitacao_monitoramento',
+    'monitoramento_aprovado',
+    'monitoramento_negado',
+    'monitoramento_bloqueado',
+    'monitoramento_expirado',
+  };
+
   bool _inicializado = false;
 
   /// Deve ser chamado uma única vez, logo após o login/cadastro (ou no
@@ -92,9 +104,27 @@ class FcmService {
     }
   }
 
-  /// Lógica compartilhada entre primeiro e segundo plano: se for um
-  /// alerta de emergência de terceiro, confirma a ENTREGA NO DISPOSITIVO
-  /// e só então tenta exibir a notificação de tela cheia.
+  /// Lógica compartilhada entre primeiro e segundo plano: despacha o
+  /// tratamento conforme o campo `tipo` da mensagem data-only recebida —
+  /// alerta de emergência de terceiro ([_tratarAlertaEmergencia]) ou push
+  /// da aba Monitoramento ([_tratarPushMonitoramento]). Qualquer outro
+  /// `tipo` (ou ausente) é ignorado silenciosamente.
+  Future<void> _tratarDadosDoAlerta(Map<String, dynamic> data) async {
+    final tipo = data['tipo'] as String?;
+
+    if (tipo == _tipoAlertaEmergencia) {
+      await _tratarAlertaEmergencia(data);
+      return;
+    }
+
+    if (tipo != null && _tiposPushMonitoramento.contains(tipo)) {
+      await _tratarPushMonitoramento(data, tipo);
+      return;
+    }
+  }
+
+  /// Se for um alerta de emergência de terceiro, confirma a ENTREGA NO
+  /// DISPOSITIVO e só então tenta exibir a notificação de tela cheia.
   ///
   /// ORDEM CRÍTICA E DE PROPÓSITO: este método só é chamado quando o SO
   /// já entregou a mensagem FCM a este aparelho (é exatamente isso que
@@ -109,9 +139,7 @@ class FcmService {
   /// FCM, o que faria o job de transbordo
   /// (`functions/transbordoWhatsappMonitor.js`) cobrar WhatsApp
   /// desnecessariamente mesmo com o Push já entregue.
-  Future<void> _tratarDadosDoAlerta(Map<String, dynamic> data) async {
-    if (data['tipo'] != _tipoAlertaEmergencia) return;
-
+  Future<void> _tratarAlertaEmergencia(Map<String, dynamic> data) async {
     final idEntrega = data['idEntrega'] as String?;
     final mensagem = (data['mensagem'] as String?) ?? '';
     final nomeRemetente = data['nomeRemetente'] as String?;
@@ -132,6 +160,44 @@ class FcmService {
       );
     } catch (e) {
       debugPrint('⚠️ [FcmService] Falha ao exibir notificação de alerta recebido: $e');
+    }
+  }
+
+  /// Exibe a notificação NORMAL (sem tela cheia, sem som/vibração
+  /// persistentes — ver [NotificacaoService.exibirNotificacaoMonitoramento])
+  /// para um push da aba Monitoramento, funcionando com o app em
+  /// primeiro plano, segundo plano ou totalmente fechado. Diferente de
+  /// [_tratarAlertaEmergencia], não há nenhuma confirmação de
+  /// entrega/transbordo a registrar aqui — a expiração de 24h da
+  /// solicitação (ver `monitoramentoExpiracaoMonitor.js`) é decidida
+  /// inteiramente no servidor a partir do Firestore, não da entrega deste
+  /// Push.
+  ///
+  /// [tipo] é `'solicitacao_monitoramento'` (nome vem de `nomeSolicitante`,
+  /// quem está pedindo a localização) ou uma resposta a uma solicitação
+  /// já enviada — `'monitoramento_aprovado'`, `'monitoramento_negado'`,
+  /// `'monitoramento_bloqueado'` ou `'monitoramento_expirado'` (nome vem
+  /// de `nomeAlvo`, quem respondeu/deixou expirar).
+  Future<void> _tratarPushMonitoramento(
+    Map<String, dynamic> data,
+    String tipo,
+  ) async {
+    final idPermissao = data['idPermissao'] as String?;
+    if (idPermissao == null) return;
+
+    final nomeContraparte = tipo == 'solicitacao_monitoramento'
+        ? data['nomeSolicitante'] as String?
+        : data['nomeAlvo'] as String?;
+
+    try {
+      await NotificacaoService.exibirNotificacaoMonitoramento(
+        tipo: tipo,
+        idPermissao: idPermissao,
+        nomeContraparte: nomeContraparte,
+      );
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FcmService] Falha ao exibir notificação de monitoramento ($tipo): $e');
     }
   }
 }

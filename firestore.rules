@@ -50,6 +50,22 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid == usuarioId;
         allow write: if false;
       }
+
+      match /monitoramento/atual {
+        // Espelho GRAVADO PELO PRÓPRIO DONO (mesmo heartbeat de
+        // localização já usado pelo alarme de pânico, ver
+        // FirebaseSyncService.atualizarLocalizacaoAtual) num documento
+        // SEPARADO do `usuarios/{usuarioId}` principal — necessário
+        // porque aquele documento tem campos estritamente privados
+        // (saldoUsd, fcmToken) que NUNCA podem ser lidos por terceiros,
+        // enquanto este espelho existe justamente para ser lido por quem
+        // tiver uma permissão "aprovado" na aba Monitoramento.
+        allow read: if request.auth != null &&
+            (request.auth.uid == usuarioId ||
+             (exists(/databases/$(database)/documents/permissoes_monitoramento/$(usuarioId + '__' + request.auth.uid)) &&
+              get(/databases/$(database)/documents/permissoes_monitoramento/$(usuarioId + '__' + request.auth.uid)).data.status == 'aprovado'));
+        allow write: if request.auth != null && request.auth.uid == usuarioId;
+      }
     }
 
     match /alarmes_agendados/{idAlarme} {
@@ -88,6 +104,41 @@ service cloud.firestore {
             request.auth.uid == uidDestino;
         allow read, delete: if false;
       }
+    }
+
+    match /permissoes_monitoramento/{permissaoId} {
+      // Permissão bilateral de compartilhamento de localização GPS em
+      // tempo real (aba Monitoramento, ver MonitoramentoService e
+      // functions/monitoramentoService.js). `uidAlvo` é quem COMPARTILHA
+      // a localização; `uidSolicitante` é quem a VÊ.
+      //
+      // Leitura: qualquer uma das duas partes envolvidas.
+      allow read: if request.auth != null &&
+          request.auth.uid in [resource.data.uidAlvo, resource.data.uidSolicitante];
+
+      // Criação/reabertura (pendente -> nova solicitação) é feita
+      // EXCLUSIVAMENTE pela Cloud Function callable `solicitarMonitoramento`
+      // via Admin SDK (que ignora estas regras) — resolve o uid pelo
+      // telefone server-side, evitando que o cliente precise consultar
+      // `usuarios` por telefone diretamente. O cliente nunca cria este
+      // documento.
+      allow create: if false;
+
+      // Atualização: só o ALVO (dono da própria localização) pode
+      // responder/alternar o status, e apenas para os valores que
+      // representam uma decisão sua (aprovar/negar a solicitação
+      // recebida, ou bloquear/desbloquear um compartilhamento já
+      // aprovado) — nunca para "pendente" (só a Cloud Function reabre um
+      // ciclo) nem "expirado" (só o job agendado). Os demais campos
+      // (uidAlvo, uidSolicitante, telefones, nomes) são imutáveis nesta
+      // escrita do cliente.
+      allow update: if request.auth != null &&
+          request.auth.uid == resource.data.uidAlvo &&
+          request.resource.data.uidAlvo == resource.data.uidAlvo &&
+          request.resource.data.uidSolicitante == resource.data.uidSolicitante &&
+          request.resource.data.status in ['aprovado', 'negado', 'bloqueado'];
+
+      allow delete: if false;
     }
   }
 }

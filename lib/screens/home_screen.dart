@@ -2,36 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
+import 'tabs/monitoramento_tab.dart';
 import 'tabs/historico_tab.dart';
 import 'tabs/configuracoes_tab.dart';
 import 'auditoria_sensivel_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// Índice da aba exibida ao abrir esta tela — usado para abrir
+  /// diretamente na aba Monitoramento (índice 2) ao tocar numa
+  /// notificação de push de solicitação/resposta de localização (ver
+  /// NotificacaoService.exibirNotificacaoMonitoramento). `0` (Segurança)
+  /// no fluxo normal de login/cold start.
+  final int abaInicial;
+
+  const HomeScreen({super.key, this.abaInicial = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _indiceAbaAtual = 0;
+  late int _indiceAbaAtual = widget.abaInicial;
 
   // GlobalKey usada para acionar, a partir do AppBar global (botão "+"),
   // o modal de "Adicionar Alarme" definido dentro da FamiliaTab.
   final GlobalKey<FamiliaTabState> _familiaTabKey = GlobalKey<FamiliaTabState>();
 
-  // Ordem exata das abas: Segurança, Família, Histórico
+  // GlobalKey usada para acionar, a partir do AppBar global (botão "+"),
+  // o modal de "Adicionar Contato" definido dentro da MonitoramentoTab —
+  // mesmo padrão de [_familiaTabKey].
+  final GlobalKey<MonitoramentoTabState> _monitoramentoTabKey =
+      GlobalKey<MonitoramentoTabState>();
+
+  // Ordem exata das abas: Segurança, Família, Monitoramento, Histórico
   late final List<Widget> _telas = [
     const SegurancaTab(),
     FamiliaTab(key: _familiaTabKey),
+    MonitoramentoTab(key: _monitoramentoTabKey),
     const HistoricoTab(),
   ];
 
 
   List<String> _titulos(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return [l10n.tabSeguranca, l10n.tabFamilia, l10n.tabHistorico];
+    return [l10n.tabSeguranca, l10n.tabFamilia, l10n.tabMonitoramento, l10n.tabHistorico];
   }
 
   void _aoSelecionarAba(int indice) {
@@ -82,6 +97,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           if (_indiceAbaAtual == 2)
             IconButton(
+              icon: const Icon(Icons.person_add_alt_1),
+              tooltip: l10n.monitoramentoAdicionarContato,
+              onPressed: () => _monitoramentoTabKey.currentState?.abrirModalAdicionarContato(),
+            ),
+          if (_indiceAbaAtual == 3)
+            IconButton(
               icon: const Icon(Icons.privacy_tip_outlined),
               tooltip: l10n.tooltipAuditoriaSensivel,
               onPressed: () => _abrirAuditoriaSensivel(context),
@@ -110,6 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: const Icon(Icons.people),
             label: l10n.tabFamilia,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.location_on_outlined),
+            label: l10n.tabMonitoramento,
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.history),

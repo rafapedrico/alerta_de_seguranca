@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -112,6 +112,34 @@ class DatabaseHelper {
         minutos_tolerancia INTEGER NOT NULL DEFAULT 10,
         ultimo_disparo_epoch INTEGER,
         alarme_pausado INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // Table: monitoramento_contatos - lista de contatos da aba
+    // Monitoramento, TOTALMENTE INDEPENDENTE de 'contatos_emergencia'
+    // (que continua exclusiva do alarme/pânico). Cada linha representa um
+    // familiar com quem o usuário pode trocar permissão de localização
+    // GPS em tempo real, nas DUAS direções possíveis, cada uma com seu
+    // próprio ciclo de aprovação via `permissoes_monitoramento` no
+    // Firestore (ver MonitoramentoService):
+    // - status_ver_localizacao: estado da MINHA solicitação para ver a
+    //   localização DELE ('nao_solicitado', 'pendente', 'aprovado',
+    //   'negado', 'expirado').
+    // - status_compartilhamento: estado do compartilhamento da MINHA
+    //   localização COM ELE ('inexistente', 'pendente', 'aprovado',
+    //   'bloqueado') — só deixa de ser 'inexistente' quando ELE solicitou
+    //   minha localização ao menos uma vez.
+    // uid_contato fica NULL até a primeira resolução por telefone (ver
+    // Cloud Function callable 'solicitarMonitoramento').
+    await db.execute('''
+      CREATE TABLE monitoramento_contatos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        telefone TEXT NOT NULL,
+        uid_contato TEXT,
+        status_ver_localizacao TEXT NOT NULL DEFAULT 'nao_solicitado',
+        status_compartilhamento TEXT NOT NULL DEFAULT 'inexistente',
+        criado_em INTEGER NOT NULL
       )
     ''');
   }
@@ -340,6 +368,24 @@ class DatabaseHelper {
       } catch (_) {
         // Coluna já existe — ignora.
       }
+    }
+    // Migration from v14 to v15: cria a tabela 'monitoramento_contatos',
+    // usada pela nova aba Monitoramento — lista de contatos TOTALMENTE
+    // INDEPENDENTE de 'contatos_emergencia', com permissão bilateral de
+    // compartilhamento de localização GPS em tempo real via Firestore
+    // (coleção `permissoes_monitoramento`, ver MonitoramentoService).
+    if (oldVersion < 15) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS monitoramento_contatos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nome TEXT NOT NULL,
+          telefone TEXT NOT NULL,
+          uid_contato TEXT,
+          status_ver_localizacao TEXT NOT NULL DEFAULT 'nao_solicitado',
+          status_compartilhamento TEXT NOT NULL DEFAULT 'inexistente',
+          criado_em INTEGER NOT NULL
+        )
+      ''');
     }
   }
 
@@ -1000,6 +1046,130 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
     if (config == null) return;
     final id = config['id'] as int;
     await updateUserConfig({'id': id, 'idioma_selecionado': codigoIdioma});
+  }
+
+  // ==========================================================
+  // MONITORAMENTO — CONTATOS E STATUS DE PERMISSÃO (aba Monitoramento)
+  // ==========================================================
+  // Tabela 'monitoramento_contatos', totalmente independente de
+  // 'contatos_emergencia'. Cada contato pode ter até duas relações de
+  // permissão simultâneas e independentes no Firestore (coleção
+  // `permissoes_monitoramento`, ver MonitoramentoService):
+  //   Bloco A ("ver localização dele"): status_ver_localizacao.
+  //   Bloco B ("compartilhar minha localização com ele"): status_compartilhamento.
+  // As colunas de status aqui são um CACHE local (para exibição imediata
+  // e uso offline) — a fonte de verdade é sempre o documento no
+  // Firestore, mantido sincronizado pelos listeners do MonitoramentoService.
+
+  /// Retorna todos os contatos de monitoramento cadastrados, ordenados
+  /// por id.
+  Future<List<Map<String, dynamic>>> listarContatosMonitoramento() async {
+    final db = await database;
+    return await db.query('monitoramento_contatos', orderBy: 'id ASC');
+  }
+
+  /// Busca um único contato de monitoramento pelo id.
+  Future<Map<String, dynamic>?> buscarContatoMonitoramentoPorId(int id) async {
+    final db = await database;
+    final result = await db.query(
+      'monitoramento_contatos',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  /// Busca um contato de monitoramento já resolvido para o [uid] informado
+  /// — usado para localizar/criar a linha local correspondente quando uma
+  /// solicitação de localização é RECEBIDA de alguém que ainda não estava
+  /// na lista local (ver MonitoramentoService.responderSolicitacao).
+  Future<Map<String, dynamic>?> buscarContatoMonitoramentoPorUid(
+    String uid,
+  ) async {
+    final db = await database;
+    final result = await db.query(
+      'monitoramento_contatos',
+      where: 'uid_contato = ?',
+      whereArgs: [uid],
+      limit: 1,
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  /// Insere um novo contato de monitoramento. Retorna o id gerado.
+  Future<int> inserirContatoMonitoramento({
+    required String nome,
+    required String telefone,
+  }) async {
+    final db = await database;
+    return await db.insert('monitoramento_contatos', {
+      'nome': nome,
+      'telefone': telefone,
+      'criado_em': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Edita apenas o nome (apelido local) de um contato de monitoramento já
+  /// cadastrado — o telefone não é editável após criado, pois é a chave de
+  /// resolução do uid no Firestore.
+  Future<int> atualizarNomeContatoMonitoramento(int id, String nome) async {
+    final db = await database;
+    return await db.update(
+      'monitoramento_contatos',
+      {'nome': nome},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Remove definitivamente um contato de monitoramento pelo id. Exclusão
+  /// IMEDIATA (sem trava de 24h, diferente de contatos_emergencia) — não
+  /// revoga, por si só, nenhuma permissão já concedida no Firestore.
+  Future<int> deletarContatoMonitoramento(int id) async {
+    final db = await database;
+    return await db.delete(
+      'monitoramento_contatos',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Grava o uid do Firebase Auth resolvido para este contato (pelo
+  /// telefone, via Cloud Function callable 'solicitarMonitoramento').
+  Future<int> atualizarUidContatoMonitoramento(int id, String uid) async {
+    final db = await database;
+    return await db.update(
+      'monitoramento_contatos',
+      {'uid_contato': uid},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Atualiza o cache local do status do Bloco A ("ver localização dele"):
+  /// 'nao_solicitado' | 'pendente' | 'aprovado' | 'negado' | 'expirado'.
+  Future<int> atualizarStatusVerLocalizacao(int id, String status) async {
+    final db = await database;
+    return await db.update(
+      'monitoramento_contatos',
+      {'status_ver_localizacao': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Atualiza o cache local do status do Bloco B ("compartilhar minha
+  /// localização com ele"): 'inexistente' | 'pendente' | 'aprovado' |
+  /// 'bloqueado'.
+  Future<int> atualizarStatusCompartilhamento(int id, String status) async {
+    final db = await database;
+    return await db.update(
+      'monitoramento_contatos',
+      {'status_compartilhamento': status},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }
 

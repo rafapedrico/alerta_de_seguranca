@@ -176,18 +176,38 @@ class FirebaseSyncService {
     required double longitude,
   }) async {
     if (!_firebaseDisponivel) return;
+    final agora = FieldValue.serverTimestamp();
     try {
       await _documentoUsuario.set(
         {
           'latitude': latitude,
           'longitude': longitude,
-          'atualizadoEm': FieldValue.serverTimestamp(),
+          'atualizadoEm': agora,
         },
         SetOptions(merge: true),
       ).timeout(_timeoutFirestore);
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao atualizar localização no Firestore: $e');
+    }
+
+    // Espelha a MESMA leitura de GPS em `usuarios/{uid}/monitoramento/atual`
+    // — documento SEPARADO do principal acima, com regra de leitura
+    // própria (ver firestore.rules) que permite acesso a qualquer usuário
+    // com permissão "aprovado" na aba Monitoramento (MonitoramentoService),
+    // sem expor os demais campos privados do documento principal
+    // (saldoUsd, fcmToken). Best-effort e independente da escrita acima —
+    // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
+    // pânico.
+    try {
+      await _documentoUsuario.collection('monitoramento').doc('atual').set({
+        'latitude': latitude,
+        'longitude': longitude,
+        'atualizadoEm': agora,
+      }).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao espelhar localização para a aba Monitoramento: $e');
     }
   }
 

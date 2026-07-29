@@ -148,3 +148,17 @@ exports.processarTransbordoAlertas =
 // server-side antes de creditar qualquer saldo.
 exports.confirmarCompraCredito =
   require("./comprasService").confirmarCompraCredito;
+
+// Aba Monitoramento (ver monitoramentoService.js): permissão bilateral e
+// explícita de compartilhamento de localização GPS em tempo real,
+// totalmente independente do pipeline de alerta de emergência acima.
+// - Callable acionada pelo botão "Solicitar Localização" no app.
+const monitoramentoService = require("./monitoramentoService");
+exports.solicitarMonitoramento = monitoramentoService.solicitarMonitoramento;
+// - Trigger que notifica o solicitante quando o alvo aprova/nega/bloqueia.
+exports.aoAtualizarPermissaoMonitoramento =
+  monitoramentoService.aoAtualizarPermissaoMonitoramento;
+// - Job agendado (regra das 24h) que expira solicitações pendentes sem
+// resposta (ver monitoramentoExpiracaoMonitor.js).
+exports.monitorarExpiracaoMonitoramento =
+  require("./monitoramentoExpiracaoMonitor").monitorarExpiracaoMonitoramento;

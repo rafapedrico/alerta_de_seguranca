@@ -11,6 +11,7 @@ import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
 import '../main.dart';
 import '../screens/alarme_disparado_screen.dart';
 import '../screens/alerta_recebido_screen.dart';
+import '../screens/home_screen.dart';
 import 'database_helper.dart';
 import 'rotina_alarme_service.dart';
 
@@ -47,6 +48,18 @@ class NotificacaoService {
   static const String canalAlertaRecebidoDescricao =
       'Alertas de segurança de contatos que cadastraram este aparelho como emergência.';
 
+  /// Canal Android dedicado aos pushes da aba Monitoramento (solicitação
+  /// recebida, aprovada, recusada, bloqueada ou expirada — ver
+  /// [FcmService] e `functions/monitoramentoService.js`). Deliberadamente
+  /// SEPARADO dos canais acima: são notificações NORMAIS (sem tela cheia,
+  /// sem som/vibração persistentes) — a aba Monitoramento é exclusivamente
+  /// de visualização/gerenciamento e nunca deve se comportar como um
+  /// alarme/sirene.
+  static const String canalMonitoramentoId = 'monitoramento';
+  static const String canalMonitoramentoNome = 'Monitoramento de Localização';
+  static const String canalMonitoramentoDescricao =
+      'Solicitações e respostas de compartilhamento de localização entre familiares na aba Monitoramento.';
+
   /// Id da ação rápida "Cheguei bem" exibida na notificação.
   static const String acaoConfirmarId = 'confirmar_checkin_rotina';
 
@@ -81,10 +94,17 @@ class NotificacaoService {
       description: canalAlertaRecebidoDescricao,
       importance: Importance.max,
     );
+    const canalMonitoramento = AndroidNotificationChannel(
+      canalMonitoramentoId,
+      canalMonitoramentoNome,
+      description: canalMonitoramentoDescricao,
+      importance: Importance.high,
+    );
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await implementacaoAndroid?.createNotificationChannel(canal);
     await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
+    await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
 
     _inicializado = true;
   }
@@ -220,6 +240,83 @@ class NotificacaoService {
     );
   }
 
+  /// Exibe uma notificação NORMAL (sem `fullScreenIntent`, sem som/
+  /// vibração persistentes, `ongoing: false`) para os eventos de push da
+  /// aba Monitoramento — solicitação de localização recebida, aprovada,
+  /// recusada, bloqueada ou expirada (ver [FcmService._tratarPushMonitoramento]
+  /// e `functions/monitoramentoService.js`/`monitoramentoExpiracaoMonitor.js`).
+  /// Garante que o usuário seja avisado mesmo com o app fechado/em
+  /// segundo plano, SEM se comportar como um alarme/sirene — a aba
+  /// Monitoramento é exclusivamente de visualização/gerenciamento.
+  ///
+  /// Ao tocar na notificação, abre a HomeScreen diretamente na aba
+  /// Monitoramento (índice 2, ver [_processarRespostaPayloadJson]).
+  static Future<void> exibirNotificacaoMonitoramento({
+    required String tipo,
+    required String idPermissao,
+    String? nomeContraparte,
+  }) async {
+    await inicializar();
+
+    final nome = (nomeContraparte != null && nomeContraparte.trim().isNotEmpty)
+        ? nomeContraparte.trim()
+        : 'um contato';
+
+    final String titulo;
+    final String corpo;
+    switch (tipo) {
+      case 'solicitacao_monitoramento':
+        titulo = '📍 Solicitação de localização';
+        corpo = '$nome está solicitando a sua localização.';
+        break;
+      case 'monitoramento_aprovado':
+        titulo = '📍 Localização liberada';
+        corpo = '$nome permitiu que você veja a localização dele(a).';
+        break;
+      case 'monitoramento_negado':
+        titulo = '📍 Solicitação recusada';
+        corpo = '$nome recusou a sua solicitação de localização.';
+        break;
+      case 'monitoramento_bloqueado':
+        titulo = '📍 Compartilhamento bloqueado';
+        corpo = '$nome bloqueou o compartilhamento da localização com você.';
+        break;
+      case 'monitoramento_expirado':
+        titulo = '📍 Solicitação expirada';
+        corpo = 'Sua solicitação de localização para $nome expirou sem resposta.';
+        break;
+      default:
+        // Tipo de push de monitoramento ainda não mapeado — ignora em vez
+        // de exibir uma notificação vazia/confusa.
+        return;
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      canalMonitoramentoId,
+      canalMonitoramentoNome,
+      channelDescription: canalMonitoramentoDescricao,
+      importance: Importance.high,
+      priority: Priority.high,
+      autoCancel: true,
+    );
+
+    const details = NotificationDetails(android: androidDetails);
+    final payload = jsonEncode({
+      'tipo': 'monitoramento_push',
+      'idPermissao': idPermissao,
+    });
+
+    await _plugin.show(
+      // Faixa de id dedicada — evita colidir com check-in (idAlarme),
+      // alarme completo (idAlarme+10000) e alerta recebido (30000+...).
+      90000 + (idPermissao.hashCode.abs() % 9000),
+      titulo,
+      corpo,
+      details,
+      payload: payload,
+    );
+  }
+
   /// Cancela (remove) a notificação de check-in de rotina exibida para
   /// o [idAlarme] informado. Chamado tanto quando o usuário confirma o
   /// check-in quanto quando o disparo de emergência já ocorreu (a
@@ -254,11 +351,12 @@ class NotificacaoService {
   static void _processarResposta(NotificationResponse resposta) {
     final payload = resposta.payload ?? '';
 
-    // Payload JSON (ver exibirNotificacaoAlertaRecebido) — alerta de
-    // emergência de OUTRO usuário, distinto do alarme de rotina do
+    // Payload JSON — alerta de emergência de OUTRO usuário (ver
+    // exibirNotificacaoAlertaRecebido) ou push da aba Monitoramento (ver
+    // exibirNotificacaoMonitoramento), distintos do alarme de rotina do
     // próprio usuário tratado no restante deste método.
     if (payload.startsWith('{')) {
-      _processarRespostaAlertaRecebido(payload);
+      _processarRespostaPayloadJson(payload);
       return;
     }
 
@@ -311,13 +409,29 @@ class NotificacaoService {
     }
   }
 
-  /// Decodifica o payload JSON de um alerta de emergência de terceiro
-  /// (ver [exibirNotificacaoAlertaRecebido]) e navega para
-  /// [AlertaRecebidoScreen]. Protegido contra payload malformado — nunca
-  /// deixa a interação com a notificação derrubar o app.
-  static void _processarRespostaAlertaRecebido(String payload) {
+  /// Decodifica um payload JSON de notificação e roteia para a tela
+  /// correta conforme o campo `tipo`:
+  /// - `'monitoramento_push'` (ver [exibirNotificacaoMonitoramento]): abre
+  ///   a HomeScreen diretamente na aba Monitoramento (índice 2).
+  /// - qualquer outro valor (compatibilidade com payloads antigos, ver
+  ///   [exibirNotificacaoAlertaRecebido]): alerta de emergência de
+  ///   terceiro, navega para [AlertaRecebidoScreen].
+  ///
+  /// Protegido contra payload malformado — nunca deixa a interação com a
+  /// notificação derrubar o app.
+  static void _processarRespostaPayloadJson(String payload) {
     try {
       final dados = jsonDecode(payload) as Map<String, dynamic>;
+
+      if (dados['tipo'] == 'monitoramento_push') {
+        appNavigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(abaInicial: 2),
+          ),
+        );
+        return;
+      }
+
       appNavigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => AlertaRecebidoScreen(
@@ -329,7 +443,7 @@ class NotificacaoService {
         ),
       );
     } catch (e) {
-      debugPrint('⚠️ [NotificacaoService] Falha ao processar payload de alerta recebido: $e');
+      debugPrint('⚠️ [NotificacaoService] Falha ao processar payload JSON da notificação: $e');
     }
   }
 
