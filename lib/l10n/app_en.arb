@@ -178,6 +178,7 @@
   "monitoramentoNomeLabel": "Name",
   "monitoramentoTelefoneLabel": "Phone",
   "monitoramentoSalvarContato": "Save",
+  "monitoramentoCamposObrigatorios": "Please fill in name and phone to continue.",
   "monitoramentoEditarNomeTooltip": "Edit name",
   "monitoramentoExcluirContatoTooltip": "Delete contact",
   "monitoramentoExcluirContatoTitulo": "Delete contact?",

@@ -174,6 +174,7 @@
   "monitoramentoNomeLabel": "姓名",
   "monitoramentoTelefoneLabel": "电话",
   "monitoramentoSalvarContato": "保存",
+  "monitoramentoCamposObrigatorios": "请填写姓名和电话号码以继续。",
   "monitoramentoEditarNomeTooltip": "编辑姓名",
   "monitoramentoExcluirContatoTooltip": "删除联系人",
   "monitoramentoExcluirContatoTitulo": "删除联系人?",

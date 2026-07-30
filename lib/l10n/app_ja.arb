@@ -174,6 +174,7 @@
   "monitoramentoNomeLabel": "名前",
   "monitoramentoTelefoneLabel": "電話番号",
   "monitoramentoSalvarContato": "保存",
+  "monitoramentoCamposObrigatorios": "名前と電話番号を入力してください。",
   "monitoramentoEditarNomeTooltip": "名前を編集",
   "monitoramentoExcluirContatoTooltip": "連絡先を削除",
   "monitoramentoExcluirContatoTitulo": "連絡先を削除しますか?",

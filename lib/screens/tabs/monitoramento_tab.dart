@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -171,8 +172,25 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 labelText: l10n.monitoramentoTelefoneLabel,
+                // Sem isso, o label às vezes não flutua acima da borda a
+                // tempo (efeito visível ao digitar rápido no teclado
+                // numérico) e fica sobreposto aos dígitos já digitados.
+                floatingLabelBehavior: FloatingLabelBehavior.always,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.phone_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _importarContatoDaAgenda(
+                  nomeController: nomeController,
+                  telefoneController: telefoneController,
+                ),
+                icon: const Icon(Icons.contact_phone_outlined, size: 18),
+                label: Text(l10n.adicionarContatoAgenda),
+                style: TextButton.styleFrom(foregroundColor: _corDestaque),
               ),
             ),
           ],
@@ -184,7 +202,21 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _corDestaque),
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () {
+              final nome = nomeController.text.trim();
+              final telefone = telefoneController.text.trim();
+              if (nome.isEmpty || telefone.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.monitoramentoCamposObrigatorios),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+              Navigator.of(ctx).pop(true);
+            },
             child: Text(l10n.monitoramentoSalvarContato),
           ),
         ],
@@ -197,6 +229,57 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     if (nome.isEmpty || telefone.isEmpty) return;
 
     await _servico.adicionarContato(nome: nome, telefone: telefone);
+  }
+
+  /// Abre o seletor nativo de contatos (mesmo mecanismo usado na aba
+  /// Configurações, ver `ConfiguracoesTabState._adicionarContatoDaAgenda`)
+  /// e apenas PRE-PREENCHE os campos do diálogo — quem confirma o
+  /// cadastro continua sendo o botão "Salvar", dando ao usuário a chance
+  /// de revisar/editar antes de gravar.
+  Future<void> _importarContatoDaAgenda({
+    required TextEditingController nomeController,
+    required TextEditingController telefoneController,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final bool permitido = await FlutterContacts.requestPermission(readonly: true);
+    if (!permitido) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.contatosPermissaoNegada),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    Contact? contatoSelecionado;
+    try {
+      contatoSelecionado = await FlutterContacts.openExternalPick();
+    } catch (_) {
+      contatoSelecionado = null;
+    }
+    if (contatoSelecionado == null) return;
+
+    final contatoCompleto = await FlutterContacts.getContact(contatoSelecionado.id);
+    if (contatoCompleto == null || contatoCompleto.phones.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.contatoSemTelefone),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final nome = contatoCompleto.displayName.trim();
+    if (nome.isNotEmpty) nomeController.text = nome;
+    telefoneController.text = contatoCompleto.phones.first.number;
   }
 
   Future<void> _editarNomeContato(Map<String, dynamic> contato) async {

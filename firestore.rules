@@ -112,9 +112,16 @@ service cloud.firestore {
       // functions/monitoramentoService.js). `uidAlvo` é quem COMPARTILHA
       // a localização; `uidSolicitante` é quem a VÊ.
       //
-      // Leitura: qualquer uma das duas partes envolvidas.
+      // Leitura: qualquer uma das duas partes envolvidas. Escrita como OR
+      // de igualdades diretas (em vez de `auth.uid in [...]`) porque o
+      // validador de queries do Firestore só consegue provar, a partir dos
+      // filtros de uma `list`, comparações no formato
+      // `resource.data.campo == request.auth.uid` — o formato `in [...]`
+      // não é reconhecido e faz a query inteira cair em PERMISSION_DENIED
+      // mesmo quando o solicitante tem permissão legítima.
       allow read: if request.auth != null &&
-          request.auth.uid in [resource.data.uidAlvo, resource.data.uidSolicitante];
+          (request.auth.uid == resource.data.uidAlvo ||
+           request.auth.uid == resource.data.uidSolicitante);
 
       // Criação/reabertura (pendente -> nova solicitação) é feita
       // EXCLUSIVAMENTE pela Cloud Function callable `solicitarMonitoramento`
