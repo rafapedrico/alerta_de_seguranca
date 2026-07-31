@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "مشاركة موقعي",
+  "monitoramentoPermitirReceberLocalizacao": "السماح بإرسال موقعي",
   "monitoramentoSecaoVerLocalizacao": "موقع أفراد العائلة",
   "monitoramentoAdicionarContato": "إضافة جهة اتصال",
   "monitoramentoNomeLabel": "الاسم",

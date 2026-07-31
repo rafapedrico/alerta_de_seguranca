@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "Condividi la mia posizione",
+  "monitoramentoPermitirReceberLocalizacao": "Consenti di inviare la mia posizione",
   "monitoramentoSecaoVerLocalizacao": "Posizione dei familiari",
   "monitoramentoAdicionarContato": "Aggiungi Contatto",
   "monitoramentoNomeLabel": "Nome",

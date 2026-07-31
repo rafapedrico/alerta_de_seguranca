@@ -211,6 +211,25 @@ exports.aoAtualizarPermissaoMonitoramento = onDocumentUpdated(
       if (antes.status === depois.status) return;
       if (depois.status === STATUS_EXPIRADO) return;
 
+      // Auditoria: toda vez que o ALVO nega ou bloqueia o compartilhamento
+      // da própria localização com um solicitante específico, registra no
+      // log — é o ponto server-side onde essa decisão de negação
+      // individual fica rastreável (a leitura em si, quando negada pela
+      // regra do Firestore em `usuarios/{uid}/monitoramento/atual`,
+      // acontece inteiramente dentro do motor de regras, sem passar por
+      // nenhuma Cloud Function, logo não pode ser logada aqui).
+      if (depois.status === STATUS_NEGADO || depois.status === STATUS_BLOQUEADO) {
+        logger.warn(
+            `[permissaoMonitoramento] NEGADA: ${depois.uidAlvo} ` +
+            `(${depois.telefoneAlvo || "sem telefone"}) definiu status ` +
+            `"${depois.status}" para ${depois.uidSolicitante} ` +
+            `(${depois.telefoneSolicitante || "sem telefone"}) — ` +
+            `permissaoId=${event.params.permissaoId}. Solicitações futuras ` +
+            "deste número para ver a localização serão negadas pela regra " +
+            "de leitura em usuarios/{uid}/monitoramento/atual.",
+        );
+      }
+
       const tiposPorStatus = {
         [STATUS_APROVADO]: "monitoramento_aprovado",
         [STATUS_NEGADO]: "monitoramento_negado",
@@ -226,6 +245,112 @@ exports.aoAtualizarPermissaoMonitoramento = onDocumentUpdated(
       });
     },
 );
+
+/**
+ * Callable `onCall` chamada pelo app (ver
+ * `lib/services/monitoramento_service.dart`,
+ * `definirPermissaoCompartilhamento`) ao alternar o Switch de
+ * pré-autorização exibido em CADA card da lista "Localização de
+ * familiares" — permite ao dono da localização CONCEDER ou BLOQUEAR
+ * preventivamente o acesso de um contato específico, mesmo que ele nunca
+ * tenha solicitado antes (pula o ciclo `pendente` -> aprovar/negar, pois
+ * quem está decidindo aqui é o próprio dono, não quem solicita).
+ *
+ * Resolve o uid do contato pelo telefone SERVER-SIDE, no mesmo padrão de
+ * `solicitarMonitoramento` — o cliente nunca consulta `usuarios` por
+ * telefone diretamente (ver `firestore.rules`).
+ *
+ * data: {telefoneContato: string, permitir: boolean}
+ * return: {sucesso: true, uidContato: string, status: string, permissaoId: string}
+ */
+exports.definirPermissaoCompartilhamento = onCall(async (request) => {
+  const uidAlvo = request.auth && request.auth.uid;
+  if (!uidAlvo) {
+    throw new HttpsError("unauthenticated", "É necessário estar autenticado.");
+  }
+
+  const {telefoneContato, permitir} = request.data || {};
+  const telefoneNormalizado = normalizarTelefoneE164(telefoneContato);
+  if (!telefoneNormalizado) {
+    throw new HttpsError("invalid-argument", "Telefone inválido.");
+  }
+  if (typeof permitir !== "boolean") {
+    throw new HttpsError("invalid-argument", "Parâmetro 'permitir' inválido.");
+  }
+
+  const alvoSnap = await db.collection("usuarios").doc(uidAlvo).get();
+  const alvo = alvoSnap.exists ? alvoSnap.data() : {};
+
+  const contatoQuery = await db.collection("usuarios")
+      .where("telefone", "==", telefoneNormalizado)
+      .limit(1)
+      .get();
+  if (contatoQuery.empty) {
+    throw new HttpsError(
+        "not-found", "Este número ainda não possui conta no Guardião X.",
+    );
+  }
+
+  const contatoDoc = contatoQuery.docs[0];
+  const uidSolicitante = contatoDoc.id;
+  const contato = contatoDoc.data();
+
+  if (uidSolicitante === uidAlvo) {
+    throw new HttpsError(
+        "invalid-argument",
+        "Não é possível definir permissão para o próprio número.",
+    );
+  }
+
+  const novoStatus = permitir ? STATUS_APROVADO : STATUS_BLOQUEADO;
+  const permissaoId = montarIdPermissao(uidAlvo, uidSolicitante);
+  const permissaoRef = db.collection(COLECAO_PERMISSOES).doc(permissaoId);
+
+  await db.runTransaction(async (tx) => {
+    const snapAtual = await tx.get(permissaoRef);
+    const dadosAtuais = snapAtual.exists ? snapAtual.data() : null;
+    const agora = Timestamp.now();
+
+    tx.set(permissaoRef, {
+      uidAlvo,
+      uidSolicitante,
+      telefoneAlvo: alvo.telefone || telefoneNormalizado,
+      telefoneSolicitante: contato.telefone || telefoneNormalizado,
+      nomeAlvo: alvo.nome || "",
+      nomeSolicitante: contato.nome || "",
+      status: novoStatus,
+      criadoEm: dadosAtuais ? dadosAtuais.criadoEm || agora : agora,
+      atualizadoEm: agora,
+      respondidoEm: agora,
+      expiraEm: null,
+    }, {merge: true});
+  });
+
+  // Auditoria da pré-autorização direta — mesmo critério de log do
+  // trigger `aoAtualizarPermissaoMonitoramento` acima, mas aqui cobre
+  // também o caso de PRIMEIRA definição (documento inexistente antes),
+  // que não passa por aquele trigger de `onDocumentUpdated`.
+  if (novoStatus === STATUS_BLOQUEADO) {
+    logger.warn(
+        `[definirPermissaoCompartilhamento] NEGADA (pré-autorização): ` +
+        `${uidAlvo} bloqueou preventivamente ${uidSolicitante} ` +
+        `(${telefoneNormalizado}) — permissaoId=${permissaoId}.`,
+    );
+  } else {
+    logger.info(
+        `[definirPermissaoCompartilhamento] ${uidAlvo} concedeu ` +
+        `pré-autorização a ${uidSolicitante} (${telefoneNormalizado}) — ` +
+        `permissaoId=${permissaoId}.`,
+    );
+  }
+
+  return {
+    sucesso: true,
+    uidContato: uidSolicitante,
+    status: novoStatus,
+    permissaoId,
+  };
+});
 
 module.exports.COLECAO_PERMISSOES = COLECAO_PERMISSOES;
 module.exports.STATUS_PENDENTE = STATUS_PENDENTE;

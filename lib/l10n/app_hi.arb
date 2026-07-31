@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "मेरा स्थान साझा करें",
+  "monitoramentoPermitirReceberLocalizacao": "मेरा स्थान भेजने की अनुमति दें",
   "monitoramentoSecaoVerLocalizacao": "परिवार के सदस्यों का स्थान",
   "monitoramentoAdicionarContato": "संपर्क जोड़ें",
   "monitoramentoNomeLabel": "नाम",

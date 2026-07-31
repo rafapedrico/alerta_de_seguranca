@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "Делиться моим местоположением",
+  "monitoramentoPermitirReceberLocalizacao": "Разрешить отправлять моё местоположение",
   "monitoramentoSecaoVerLocalizacao": "Местоположение родных",
   "monitoramentoAdicionarContato": "Добавить контакт",
   "monitoramentoNomeLabel": "Имя",

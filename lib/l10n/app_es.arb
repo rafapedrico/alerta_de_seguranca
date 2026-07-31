@@ -172,7 +172,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "Compartir mi ubicación",
+  "monitoramentoPermitirReceberLocalizacao": "Permitir enviar mi ubicación",
   "monitoramentoSecaoVerLocalizacao": "Ubicación de familiares",
   "monitoramentoAdicionarContato": "Agregar Contacto",
   "monitoramentoNomeLabel": "Nombre",

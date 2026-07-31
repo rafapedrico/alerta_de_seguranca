@@ -1,16 +1,18 @@
 /**
- * Gateway de mensagens real (Twilio, Sandbox do WhatsApp) — módulo
+ * Gateway de mensagens real (Twilio, WhatsApp Business API) — módulo
  * compartilhado usado tanto pela Cloud Function reativa
  * (`aoReceberAlertaTentativaDesarme`, ver `index.js`) quanto pela
  * agendada (`monitorarAlarmesAgendados`, ver `scheduledAlarmMonitor.js`),
  * para nunca duplicar a lógica de envio.
  *
- * Envia via WhatsApp (não SMS puro): o número de origem configurado é o
- * Sandbox da Twilio (`whatsapp:+14155238886`) — cada número de DESTINO
- * precisa ter feito o "opt-in" do sandbox (enviar a palavra-código de
- * ativação pelo WhatsApp para esse mesmo número) ANTES de poder receber
- * qualquer mensagem daqui. Sem esse opt-in, o envio falha com erro da
- * Twilio (ex: 63016 "recipient has not opted in").
+ * Envia via WhatsApp usando o número comercial aprovado pela Meta (NÃO
+ * mais o Sandbox da Twilio) e um Content Template pré-aprovado
+ * ("alerta_guardiao", Content SID [CONTENT_SID_ALERTA] abaixo) — fora da
+ * janela de 24h de conversa ativa, a API oficial do WhatsApp só aceita
+ * mensagens de negócio (business-initiated) nesse formato de template;
+ * enviar texto livre (`body`) fora da janela falha com o erro Twilio
+ * 63016 ("outside messaging window"). O texto dinâmico do alerta entra
+ * como variável `{{1}}` do template (ver `contentVariables` abaixo).
  *
  * Credenciais (Account SID, Auth Token, número de origem) NUNCA ficam no
  * código nem em variáveis de ambiente comuns — são declaradas como
@@ -18,7 +20,7 @@
  *
  *   firebase functions:secrets:set TWILIO_ACCOUNT_SID
  *   firebase functions:secrets:set TWILIO_AUTH_TOKEN
- *   firebase functions:secrets:set TWILIO_FROM_NUMBER   (ex: whatsapp:+14155238886)
+ *   firebase functions:secrets:set TWILIO_FROM_NUMBER   (ex: whatsapp:+15817095728)
  *
  * Cada função que precisar enviar mensagens deve declarar
  * `secrets: TWILIO_SECRETS` nas suas opções (ver uso em
@@ -37,6 +39,13 @@ const twilioFromNumber = defineSecret("TWILIO_FROM_NUMBER");
 // passada diretamente) nas opções de qualquer função que chame
 // [enviarSmsParaTelefones].
 const TWILIO_SECRETS = [twilioAccountSid, twilioAuthToken, twilioFromNumber];
+
+// Content SID do template "alerta_guardiao" ("Alerta Guardião-X: {{1}}"),
+// aprovado pela Meta/Twilio para envio de mensagens de negócio fora da
+// janela de 24h. Não é credencial (não precisa de Secret Manager), mas
+// fica isolado aqui — junto do restante da configuração Twilio — para
+// que uma eventual troca de template não exija mexer nos chamadores.
+const CONTENT_SID_ALERTA = "HXccd14dd3758f94be24ab3ea1c162362b";
 
 /**
  * Normaliza um telefone para o formato E.164 exigido pelo Twilio (ex:
@@ -103,16 +112,22 @@ async function enviarSmsParaTelefones(telefones, mensagem) {
       const resultado = await client.messages.create({
         to: `whatsapp:${telefone}`,
         from: fromNumber,
-        body: mensagem,
+        contentSid: CONTENT_SID_ALERTA,
+        // A API de Content da Twilio exige as variáveis como uma STRING
+        // JSON (não um objeto), com chaves numéricas em string
+        // correspondendo aos placeholders `{{1}}`, `{{2}}` etc. do
+        // template aprovado.
+        contentVariables: JSON.stringify({"1": mensagem}),
       });
       logger.info(
-          `[enviarSmsParaTelefones] Mensagem WhatsApp enviada para ${telefone} ` +
+          `[enviarSmsParaTelefones] Mensagem WhatsApp (template ` +
+          `${CONTENT_SID_ALERTA}) enviada para ${telefone} ` +
           `(sid: ${resultado.sid}, status: ${resultado.status}).`,
       );
     } catch (e) {
       logger.error(
           `[enviarSmsParaTelefones] Falha ao enviar WhatsApp para ${telefone} ` +
-          "(verifique se este número fez o opt-in do Sandbox Twilio)", e,
+          "(verifique o status do template/sender no Console da Twilio)", e,
       );
     }
   }

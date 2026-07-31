@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "分享我的位置",
+  "monitoramentoPermitirReceberLocalizacao": "允许发送我的位置",
   "monitoramentoSecaoVerLocalizacao": "家人的位置",
   "monitoramentoAdicionarContato": "添加联系人",
   "monitoramentoNomeLabel": "姓名",

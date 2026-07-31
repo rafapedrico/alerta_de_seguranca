@@ -20,9 +20,12 @@ import 'firebase_auth_service.dart';
 /// cada uma com seu próprio ciclo de vida:
 /// - Bloco A ("ver localização dele"): documento onde EU sou
 ///   `uidSolicitante` — ver [solicitarLocalizacao].
-/// - Bloco B ("compartilhar minha localização com ele"): documento onde
-///   EU sou `uidAlvo` — só passa a existir quando ELE me solicitou ao
-///   menos uma vez — ver [responderSolicitacao]/[alternarCompartilhamento].
+/// - Compartilhamento ("compartilhar minha localização com ele"):
+///   documento onde EU sou `uidAlvo` — pode ser concedido/bloqueado
+///   REATIVAMENTE (ele me solicita, eu respondo — ver
+///   [responderSolicitacao]) ou PROATIVAMENTE, direto no switch de cada
+///   contato, mesmo sem ele nunca ter solicitado — ver
+///   [definirPermissaoCompartilhamento].
 ///
 /// As colunas `status_ver_localizacao`/`status_compartilhamento` da
 /// tabela local são apenas um CACHE para exibição imediata/offline — a
@@ -90,7 +93,7 @@ class MonitoramentoService {
   /// Remove definitivamente o contato da lista local. NÃO revoga, por si
   /// só, nenhuma permissão já concedida no Firestore — o compartilhamento
   /// de localização continua ativo até ser bloqueado explicitamente (ver
-  /// [alternarCompartilhamento]).
+  /// [definirPermissaoCompartilhamento]).
   Future<void> removerContato(int id) async {
     await DatabaseHelper().deletarContatoMonitoramento(id);
     _notificarAlteracao();
@@ -171,9 +174,10 @@ class MonitoramentoService {
 
   /// Responde a uma solicitação recebida, aprovando ou negando. Só o alvo
   /// (dono da própria localização) pode escrever este status — ver
-  /// `firestore.rules`. Ao aprovar, garante que o solicitante também
-  /// exista na minha lista local (o Bloco B só é exibido para contatos já
-  /// resolvidos localmente), criando a linha automaticamente se ausente.
+  /// `firestore.rules`. Garante que o solicitante também exista na minha
+  /// lista local (o switch de pré-autorização só é exibido para contatos
+  /// já resolvidos localmente), criando a linha automaticamente se
+  /// ausente.
   Future<void> responderSolicitacao({
     required String permissaoId,
     required bool aprovar,
@@ -217,63 +221,64 @@ class MonitoramentoService {
     }
   }
 
-  /// Variante de [responderSolicitacao] que busca os dados do
-  /// solicitante diretamente do próprio documento antes de responder —
-  /// usada pela seção "Compartilhar minha localização" da UI (Etapa 2),
-  /// que já está posicionada sobre o card do contato e só precisa do
-  /// [permissaoId] e da decisão do usuário.
-  Future<void> responderSolicitacaoPorId({
-    required String permissaoId,
-    required bool aprovar,
-  }) async {
-    if (!_firebaseDisponivel) return;
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection(colecaoPermissoes)
-          .doc(permissaoId)
-          .get();
-      final dados = snap.data();
-      if (dados == null) return;
-
-      await responderSolicitacao(
-        permissaoId: permissaoId,
-        aprovar: aprovar,
-        uidSolicitante: dados['uidSolicitante'] as String? ?? '',
-        nomeSolicitante: dados['nomeSolicitante'] as String? ?? '',
-        telefoneSolicitante: dados['telefoneSolicitante'] as String? ?? '',
-      );
-    } catch (e) {
-      debugPrint(
-          '⚠️ [MonitoramentoService] Falha ao responder solicitação $permissaoId: $e');
-    }
-  }
-
-  /// Liga/desliga o compartilhamento da MINHA localização com um contato
-  /// que já teve a solicitação aprovada anteriormente — reativação DIRETA
-  /// (sem nova solicitação/aprovação), pois a permissão já existe no
-  /// Firestore, só transiciona entre `aprovado` e `bloqueado`.
-  Future<void> alternarCompartilhamento({
+  /// Define diretamente — sem esperar uma solicitação prévia do contato —
+  /// se o contato local [idContatoLocal] pode receber a MINHA localização.
+  /// Usada pelo Switch de pré-autorização exibido em CADA card da lista
+  /// "Localização de familiares", via Cloud Function callable
+  /// `definirPermissaoCompartilhamento`, que resolve o uid do contato pelo
+  /// telefone server-side e cria/atualiza o documento em
+  /// `permissoes_monitoramento` diretamente como `aprovado`/`bloqueado`
+  /// (pula o ciclo `pendente`, pois quem decide aqui é o dono da própria
+  /// localização).
+  ///
+  /// Retorna:
+  /// - `'sucesso'`: permissão definida.
+  /// - `'numero_nao_encontrado'`: telefone não corresponde a nenhuma conta.
+  /// - `'proprio_numero'`: o telefone informado é o do próprio usuário.
+  /// - `'erro'`: falha de rede/servidor.
+  Future<String> definirPermissaoCompartilhamento({
     required int idContatoLocal,
-    required String permissaoId,
-    required bool compartilhar,
+    required bool permitir,
   }) async {
-    if (!_firebaseDisponivel) return;
-    final novoStatus = compartilhar ? statusAprovado : statusBloqueado;
+    if (!_firebaseDisponivel) return 'erro';
+
+    final contato =
+        await DatabaseHelper().buscarContatoMonitoramentoPorId(idContatoLocal);
+    if (contato == null) return 'erro';
 
     try {
-      await FirebaseFirestore.instance
-          .collection(colecaoPermissoes)
-          .doc(permissaoId)
-          .update({
-        'status': novoStatus,
-        'atualizadoEm': FieldValue.serverTimestamp(),
+      final resultado = await FirebaseFunctions.instance
+          .httpsCallable('definirPermissaoCompartilhamento')
+          .call<Map<String, dynamic>>({
+        'telefoneContato': contato['telefone'],
+        'permitir': permitir,
       });
-      await DatabaseHelper()
-          .atualizarStatusCompartilhamento(idContatoLocal, novoStatus);
+
+      final dados = resultado.data;
+      final uidContato = dados['uidContato'] as String?;
+      final status = dados['status'] as String?;
+
+      if (uidContato != null) {
+        await DatabaseHelper()
+            .atualizarUidContatoMonitoramento(idContatoLocal, uidContato);
+      }
+      if (status != null) {
+        await DatabaseHelper()
+            .atualizarStatusCompartilhamento(idContatoLocal, status);
+      }
       _notificarAlteracao();
+
+      return 'sucesso';
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'not-found') return 'numero_nao_encontrado';
+      if (e.code == 'invalid-argument') return 'proprio_numero';
+      debugPrint(
+          '⚠️ [MonitoramentoService] Falha ao definir permissão de compartilhamento: ${e.code} ${e.message}');
+      return 'erro';
     } catch (e) {
       debugPrint(
-          '⚠️ [MonitoramentoService] Falha ao alternar compartilhamento $permissaoId: $e');
+          '⚠️ [MonitoramentoService] Falha ao definir permissão de compartilhamento: $e');
+      return 'erro';
     }
   }
 

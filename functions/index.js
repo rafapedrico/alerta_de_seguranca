@@ -158,6 +158,11 @@ exports.solicitarMonitoramento = monitoramentoService.solicitarMonitoramento;
 // - Trigger que notifica o solicitante quando o alvo aprova/nega/bloqueia.
 exports.aoAtualizarPermissaoMonitoramento =
   monitoramentoService.aoAtualizarPermissaoMonitoramento;
+// - Callable acionada pelo Switch de pré-autorização em cada card da
+// lista "Localização de familiares" (concede/bloqueia diretamente, sem
+// esperar uma solicitação prévia do contato).
+exports.definirPermissaoCompartilhamento =
+  monitoramentoService.definirPermissaoCompartilhamento;
 // - Job agendado (regra das 24h) que expira solicitações pendentes sem
 // resposta (ver monitoramentoExpiracaoMonitor.js).
 exports.monitorarExpiracaoMonitoramento =

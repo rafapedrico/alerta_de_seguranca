@@ -168,7 +168,7 @@
     "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
   },
 
-  "monitoramentoSecaoCompartilhar": "自分の位置情報を共有",
+  "monitoramentoPermitirReceberLocalizacao": "自分の位置情報の送信を許可",
   "monitoramentoSecaoVerLocalizacao": "家族の位置情報",
   "monitoramentoAdicionarContato": "連絡先を追加",
   "monitoramentoNomeLabel": "名前",

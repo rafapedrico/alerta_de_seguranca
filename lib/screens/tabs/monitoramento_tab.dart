@@ -20,14 +20,18 @@ const Color _corDestaque = Color(0xFF4C7040);
 /// teclado de PIN nem dispara qualquer som de alarme/sirene — apenas lê e
 /// escreve permissões e localização na nuvem.
 ///
-/// Duas seções, espelhando as duas direções independentes de permissão:
-/// - "Localização de familiares" (Bloco A, `uidSolicitante` = eu): lista
-///   TODOS os contatos cadastrados localmente, com o gerenciamento do
-///   próprio contato (editar nome/excluir) e o controle de solicitar/ver
-///   a localização de cada um.
-/// - "Compartilhar minha localização" (Bloco B, `uidAlvo` = eu): lista
-///   apenas os contatos que já solicitaram MINHA localização ao menos uma
-///   vez, com o switch ON/OFF de bloqueio/desbloqueio.
+/// Lista única "Localização de familiares" com TODOS os contatos
+/// cadastrados localmente. Cada card reúne as duas direções independentes
+/// de permissão para aquele contato:
+/// - "Solicitar Localização" (`uidSolicitante` = eu): pede para VER a
+///   localização dele.
+/// - Switch de pré-autorização (`uidAlvo` = eu): permite CONCEDER ou
+///   BLOQUEAR, individualmente e preventivamente, se ELE pode receber a
+///   MINHA localização — mesmo que ele nunca tenha solicitado antes (ver
+///   [MonitoramentoService.definirPermissaoCompartilhamento]). Pedidos
+///   recebidos enquanto a tela está aberta continuam sendo interceptados
+///   por um diálogo de consentimento explícito antes de qualquer decisão
+///   automática.
 class MonitoramentoTab extends StatefulWidget {
   const MonitoramentoTab({super.key});
 
@@ -149,77 +153,93 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     final l10n = AppLocalizations.of(context)!;
     final nomeController = TextEditingController();
     final telefoneController = TextEditingController();
+    String? erroValidacao;
 
+    // StatefulBuilder (em vez de SnackBar) porque um SnackBar disparado a
+    // partir do `context` da tela fica renderizado ATRÁS da barreira do
+    // AlertDialog (dialogs abrem em uma rota separada, acima do Scaffold
+    // onde o SnackBar é ancorado) — o aviso de campos obrigatórios ficava
+    // efetivamente invisível. Exibindo o erro dentro do próprio diálogo,
+    // ele fica sempre visível e some assim que o usuário corrige os campos.
     final salvou = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.monitoramentoAdicionarContato),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nomeController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l10n.monitoramentoNomeLabel,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: telefoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: l10n.monitoramentoTelefoneLabel,
-                // Sem isso, o label às vezes não flutua acima da borda a
-                // tempo (efeito visível ao digitar rápido no teclado
-                // numérico) e fica sobreposto aos dígitos já digitados.
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.phone_outlined),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _importarContatoDaAgenda(
-                  nomeController: nomeController,
-                  telefoneController: telefoneController,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          title: Text(l10n.monitoramentoAdicionarContato),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nomeController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.monitoramentoNomeLabel,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
-                icon: const Icon(Icons.contact_phone_outlined, size: 18),
-                label: Text(l10n.adicionarContatoAgenda),
-                style: TextButton.styleFrom(foregroundColor: _corDestaque),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: telefoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: l10n.monitoramentoTelefoneLabel,
+                  // Sem isso, o label às vezes não flutua acima da borda a
+                  // tempo (efeito visível ao digitar rápido no teclado
+                  // numérico) e fica sobreposto aos dígitos já digitados.
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _importarContatoDaAgenda(
+                    nomeController: nomeController,
+                    telefoneController: telefoneController,
+                  ),
+                  icon: const Icon(Icons.contact_phone_outlined, size: 18),
+                  label: Text(l10n.adicionarContatoAgenda),
+                  style: TextButton.styleFrom(foregroundColor: _corDestaque),
+                ),
+              ),
+              if (erroValidacao != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  erroValidacao!,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancelar),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _corDestaque),
+              onPressed: () {
+                final nome = nomeController.text.trim();
+                final telefone = telefoneController.text.trim();
+                if (nome.isEmpty || telefone.isEmpty) {
+                  setStateDialog(() {
+                    erroValidacao = l10n.monitoramentoCamposObrigatorios;
+                  });
+                  return;
+                }
+                Navigator.of(ctx).pop(true);
+              },
+              child: Text(l10n.monitoramentoSalvarContato),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancelar),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _corDestaque),
-            onPressed: () {
-              final nome = nomeController.text.trim();
-              final telefone = telefoneController.text.trim();
-              if (nome.isEmpty || telefone.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l10n.monitoramentoCamposObrigatorios),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
-                return;
-              }
-              Navigator.of(ctx).pop(true);
-            },
-            child: Text(l10n.monitoramentoSalvarContato),
-          ),
-        ],
       ),
     );
 
@@ -414,15 +434,6 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
                           ),
                           const SizedBox(height: 8),
                           ..._contatos.map(_construirCardVerLocalizacao),
-                          const SizedBox(height: 16),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          _construirCabecalhoSecao(
-                            icone: Icons.share_location,
-                            titulo: l10n.monitoramentoSecaoCompartilhar,
-                          ),
-                          const SizedBox(height: 8),
-                          ..._contatos.map(_construirCardCompartilhar),
                         ],
                       ],
                     ),
@@ -537,7 +548,8 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
             ),
             const SizedBox(height: 4),
             _construirBlocoVerLocalizacao(contato, id, l10n),
-            const SizedBox(height: 4),
+            const Divider(height: 20),
+            _construirSwitchCompartilhar(contato, l10n),
           ],
         ),
       ),
@@ -684,110 +696,48 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   }
 
   // ------------------------------------------------------------
-  // Seção "Compartilhar minha localização" (Bloco B)
+  // Switch de pré-autorização — "Permitir receber minha localização"
   // ------------------------------------------------------------
 
-  Widget _construirCardCompartilhar(Map<String, dynamic> contato) {
+  /// Switch individual exibido em CADA card da lista, independentemente
+  /// de o contato já ter solicitado a MINHA localização alguma vez — ver
+  /// [MonitoramentoService.definirPermissaoCompartilhamento]. Sem
+  /// documento de permissão ainda existente (contato nunca resolvido /
+  /// nunca autorizado), o padrão é BLOQUEADO (nega por padrão).
+  Widget _construirSwitchCompartilhar(
+    Map<String, dynamic> contato,
+    AppLocalizations l10n,
+  ) {
     final uid = contato['uid_contato'] as String?;
-    if (uid == null) return const SizedBox.shrink();
+    final permissaoId = uid != null
+        ? _servico.idPermissaoParaCompartilhar(uid)
+        : null;
 
-    final permissaoId = _servico.idPermissaoParaCompartilhar(uid);
-    if (permissaoId == null) return const SizedBox.shrink();
-
-    final id = contato['id'] as int;
-    final nome = contato['nome'] as String? ?? '';
-    final l10n = AppLocalizations.of(context)!;
+    if (permissaoId == null) {
+      return _linhaSwitchCompartilhar(
+        contato: contato,
+        status: contato['status_compartilhamento'] as String? ??
+            MonitoramentoService.statusCompartilharInexistente,
+        l10n: l10n,
+      );
+    }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: _servico.statusPermissaoStream(permissaoId),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data?.exists != true) {
-          // Este contato nunca solicitou a MINHA localização — nada a
-          // exibir nesta seção para ele.
-          return const SizedBox.shrink();
-        }
-
-        final status = snapshot.data!.data()?['status'] as String?;
-
-        return Card(
-          elevation: 0,
-          color: Colors.white.withOpacity(0.92),
-          margin: const EdgeInsets.only(bottom: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: _construirConteudoCompartilhar(
-              status: status,
-              nome: nome,
-              idContato: id,
-              permissaoId: permissaoId,
-              l10n: l10n,
-            ),
-          ),
-        );
+        final status = snapshot.data?.data()?['status'] as String? ??
+            (contato['status_compartilhamento'] as String? ??
+                MonitoramentoService.statusCompartilharInexistente);
+        return _linhaSwitchCompartilhar(contato: contato, status: status, l10n: l10n);
       },
     );
   }
 
-  Widget _construirConteudoCompartilhar({
-    required String? status,
-    required String nome,
-    required int idContato,
-    required String permissaoId,
+  Widget _linhaSwitchCompartilhar({
+    required Map<String, dynamic> contato,
+    required String status,
     required AppLocalizations l10n,
   }) {
-    if (status == MonitoramentoService.statusPendente) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _construirAvatar(nome),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  nome,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.monitoramentoSolicitacaoRecebidaConteudo(nome),
-            style: const TextStyle(fontSize: 13),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => _servico.responderSolicitacaoPorId(
-                  permissaoId: permissaoId,
-                  aprovar: false,
-                ),
-                child: Text(l10n.monitoramentoBloquearRecusar),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _corDestaque),
-                onPressed: () => _servico.responderSolicitacaoPorId(
-                  permissaoId: permissaoId,
-                  aprovar: true,
-                ),
-                child: Text(l10n.monitoramentoPermitir),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
     final compartilhando = status == MonitoramentoService.statusAprovado;
     final String rotuloStatus = compartilhando
         ? l10n.monitoramentoStatusAprovado
@@ -795,12 +745,10 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
 
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      secondary: _construirAvatar(nome),
+      dense: true,
       title: Text(
-        nome,
-        softWrap: true,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        l10n.monitoramentoPermitirReceberLocalizacao,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
         rotuloStatus,
@@ -812,10 +760,32 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       ),
       activeColor: _corDestaque,
       value: compartilhando,
-      onChanged: (valor) => _servico.alternarCompartilhamento(
-        idContatoLocal: idContato,
-        permissaoId: permissaoId,
-        compartilhar: valor,
+      onChanged: (valor) => _alternarPermissaoCompartilhar(contato, valor),
+    );
+  }
+
+  Future<void> _alternarPermissaoCompartilhar(
+    Map<String, dynamic> contato,
+    bool permitir,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final id = contato['id'] as int;
+    final resultado = await _servico.definirPermissaoCompartilhamento(
+      idContatoLocal: id,
+      permitir: permitir,
+    );
+    if (!mounted || resultado == 'sucesso') return;
+
+    final mensagem = switch (resultado) {
+      'numero_nao_encontrado' => l10n.monitoramentoNumeroNaoEncontrado,
+      'proprio_numero' => l10n.monitoramentoProprioNumero,
+      _ => l10n.monitoramentoErroSolicitar,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.redAccent,
       ),
     );
   }
