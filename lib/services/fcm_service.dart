@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../app_navigator.dart';
 import '../firebase_options.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
+import 'alertas_recebidos_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'notificacao_service.dart';
@@ -50,20 +53,53 @@ class FcmService {
     'monitoramento_expirado',
   };
 
-  bool _inicializado = false;
+  bool _infraestruturaRegistrada = false;
+  bool _listenerDeRenovacaoRegistrado = false;
 
-  /// Deve ser chamado uma única vez, logo após o login/cadastro (ou no
-  /// cold start já autenticado, ver `main.dart`) — sem usuário logado não
-  /// há `uid` para vincular o token.
-  Future<void> inicializar() async {
-    if (_inicializado) return;
+  /// Registra o handler de background do FCM, solicita a permissão de
+  /// notificação (`POST_NOTIFICATIONS`) e liga o listener de primeiro
+  /// plano — nada disto depende de um usuário autenticado, então deve
+  /// rodar uma única vez por processo, o mais cedo possível (ver
+  /// `main.dart`, logo após `Firebase.initializeApp()`).
+  ///
+  /// CORREÇÃO: antes, todo este registro só acontecia dentro de
+  /// [inicializar], chamado exclusivamente em `login_screen.dart` após um
+  /// login manual bem-sucedido — como a política "Opção A"
+  /// (`FirebaseAuthService().logout()` a cada cold start) sempre deixa o
+  /// app sem sessão logo no início, um aparelho recém-instalado (ou que
+  /// ainda não completou o primeiro login nesta execução) ficava sem o
+  /// handler de background e sem a permissão de notificação armados —
+  /// alertas chegando nessa janela eram perdidos silenciosamente. Separar
+  /// este registro (sem dependência de login) da sincronização do token
+  /// (que precisa de `uid`, ver [inicializar]) resolve isso: agora a
+  /// entrega/exibição da notificação funciona independente de estar
+  /// logado no momento em que o Push chega.
+  Future<void> registrarInfraestrutura() async {
+    if (_infraestruturaRegistrada) return;
     if (Firebase.apps.isEmpty) return;
 
     try {
       FirebaseMessaging.onBackgroundMessage(_aoReceberMensagemEmSegundoPlano);
+      await FirebaseMessaging.instance.requestPermission();
+      FirebaseMessaging.onMessage.listen(_processarMensagem);
+      _infraestruturaRegistrada = true;
+    } catch (e) {
+      debugPrint('⚠️ [FcmService] Falha ao registrar infraestrutura de FCM: $e');
+    }
+  }
 
+  /// Sincroniza o `fcmToken` atual do aparelho com `usuarios/{uid}.fcmToken`
+  /// — deve ser chamado a cada login bem-sucedido (não só uma vez por
+  /// processo: "Sair da conta" em Configurações permite logar de novo com
+  /// outra conta sem cold start, ver `configuracoes_tab.dart`), já que
+  /// precisa do `uid` da sessão ativa para saber em qual documento gravar.
+  /// Garante primeiro que [registrarInfraestrutura] já rodou.
+  Future<void> inicializar() async {
+    await registrarInfraestrutura();
+    if (Firebase.apps.isEmpty) return;
+
+    try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
 
       final token = await messaging.getToken();
       if (token != null) {
@@ -71,16 +107,15 @@ class FcmService {
         debugPrint('📲 [FcmService] Token FCM inicial sincronizado.');
       }
 
-      messaging.onTokenRefresh.listen((novoToken) {
-        FirebaseSyncService().atualizarFcmToken(novoToken);
-        debugPrint('📲 [FcmService] Token FCM renovado e sincronizado.');
-      });
-
-      FirebaseMessaging.onMessage.listen(_processarMensagem);
-
-      _inicializado = true;
+      if (!_listenerDeRenovacaoRegistrado) {
+        messaging.onTokenRefresh.listen((novoToken) {
+          FirebaseSyncService().atualizarFcmToken(novoToken);
+          debugPrint('📲 [FcmService] Token FCM renovado e sincronizado.');
+        });
+        _listenerDeRenovacaoRegistrado = true;
+      }
     } catch (e) {
-      debugPrint('⚠️ [FcmService] Falha ao inicializar: $e');
+      debugPrint('⚠️ [FcmService] Falha ao sincronizar token FCM: $e');
     }
   }
 
@@ -154,6 +189,11 @@ class FcmService {
     final idEntrega = data['idEntrega'] as String?;
     final mensagem = (data['mensagem'] as String?) ?? '';
     final nomeRemetente = data['nomeRemetente'] as String?;
+    final fotoUrl = data['fotoUrl'] as String?;
+    // Valores do FCM `data` chegam sempre como String — ver
+    // functions/alertaHibridoService.js, que serializa com `.toString()`.
+    final latitude = double.tryParse((data['latitude'] as String?) ?? '');
+    final longitude = double.tryParse((data['longitude'] as String?) ?? '');
     if (idEntrega == null) return;
 
     try {
@@ -163,11 +203,26 @@ class FcmService {
       debugPrint('⚠️ [FcmService] Falha ao confirmar entrega no dispositivo: $e');
     }
 
+    // Persiste localmente (indicador de "não visualizado" no HomeScreen +
+    // item clicável na aba Histórico, ver AlertasRecebidosService) —
+    // best-effort, nunca bloqueia os passos acima/abaixo.
+    unawaited(AlertasRecebidosService.registrarAlertaRecebido(
+      idEntrega: idEntrega,
+      nomeRemetente: nomeRemetente,
+      mensagem: mensagem,
+      latitude: latitude,
+      longitude: longitude,
+      fotoUrl: fotoUrl,
+    ));
+
     try {
       await NotificacaoService.exibirNotificacaoAlertaRecebido(
         idEntrega: idEntrega,
         mensagem: mensagem,
         nomeRemetente: nomeRemetente,
+        fotoUrl: fotoUrl,
+        latitude: latitude,
+        longitude: longitude,
       );
     } catch (e) {
       debugPrint('⚠️ [FcmService] Falha ao exibir notificação de alerta recebido: $e');

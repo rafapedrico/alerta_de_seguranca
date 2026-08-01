@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../app_navigator.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
+import '../services/contatos_emergencia_service.dart';
 import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/locale_service.dart';
@@ -89,6 +90,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       unawaited(FcmService().inicializar());
+
+      // CORREÇÃO (Bug de entrega): a política "Opção A" desloga a sessão
+      // a cada cold start (ver `main.dart`), então o único momento em que
+      // sabemos o `uid` correto é logo após um login bem-sucedido como
+      // este — sincroniza aqui os contatos de emergência já cadastrados
+      // no SQLite local com `usuarios/{uid}.contatosEmergencia`, sem
+      // depender de o usuário editar algo primeiro. Sem isto, a Cloud
+      // Function de alerta (`functions/index.js`) podia ler uma lista
+      // vazia/desatualizada e não disparar nem o Push nem o WhatsApp.
+      unawaited(ContatosEmergenciaService.sincronizarAgora());
+
       if (!mounted) return;
       _navegarParaFluxoPrincipal();
     } on FirebaseAuthException catch (e) {

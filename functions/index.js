@@ -2,17 +2,25 @@
  * Cloud Functions do projeto Firebase "guardiaox" — camada de resiliência
  * na nuvem do Guardião X (security_check_app).
  *
- * FLUXO IMPLEMENTADO (tentativa de desarme com PIN incorreto):
+ * FLUXO IMPLEMENTADO (documento criado em `usuarios/{usuarioId}/alertas`):
  * 1. O app Flutter escreve, de forma minimalista e o mais rápido possível,
  *    um documento em `usuarios/{usuarioId}/alertas/{alertaId}` assim que
- *    detecta 2 PINs incorretos consecutivos no desarme antecipado (ver
- *    FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto no app).
+ *    detecta um evento de emergência — ver `FirebaseSyncService` no app:
+ *    - `tentativa_desarme_incorreto`: 2 PINs incorretos consecutivos.
+ *    - `sos_fisico`: botão físico (Volume+) ou botão de SOS manual da aba
+ *      Segurança (ver `SosDisparoService`), com `latitude`/`longitude`
+ *      capturadas NA HORA do disparo (P1 da sequência unificada).
+ *    - `sos_fisico_foto`: foto capturada em seguida (P2), com `fotoUrl`
+ *      apontando para o arquivo já enviado ao Firebase Storage.
  * 2. Esta função é acionada automaticamente por esse `onDocumentCreated`.
- * 3. Ela resgata a ÚLTIMA localização conhecida (gravada periodicamente a
- *    cada 1 minuto pelo app, ver FirebaseSyncService.atualizarLocalizacaoAtual)
- *    e a lista de contatos de emergência (sincronizada a partir do SQLite
- *    local do usuário) do documento `usuarios/{usuarioId}`.
- * 4. Monta a mensagem de alerta com o link do Google Maps.
+ * 3. Ela resolve a localização a usar na mensagem: prioriza
+ *    `alerta.latitude`/`alerta.longitude` (mais precisas, capturadas no
+ *    exato instante do disparo) e só cai para a ÚLTIMA localização
+ *    conhecida gravada no documento do usuário
+ *    (`FirebaseSyncService.atualizarLocalizacaoAtual`) quando o alerta não
+ *    as informa (caso do PIN incorreto, que não captura GPS na hora).
+ * 4. Monta a mensagem de alerta (texto varia por `tipo`) com o link do
+ *    Google Maps.
  * 5. Aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`):
  *    Push FCM gratuito para os contatos que têm o app instalado, com
  *    WhatsApp/Twilio como contingência paga só depois de 60s sem
@@ -35,8 +43,16 @@ initializeApp();
 const db = getFirestore();
 
 const {dispararAlertaHibrido} = require("./alertaHibridoService");
+const {TWILIO_SECRETS} = require("./smsGateway");
 
 const TIPO_TENTATIVA_DESARME_INCORRETO = "tentativa_desarme_incorreto";
+const TIPO_SOS_FISICO = "sos_fisico";
+const TIPO_SOS_FISICO_FOTO = "sos_fisico_foto";
+const TIPOS_ALERTA_TRATADOS = new Set([
+  TIPO_TENTATIVA_DESARME_INCORRETO,
+  TIPO_SOS_FISICO,
+  TIPO_SOS_FISICO_FOTO,
+]);
 
 /**
  * @param {number} latitude
@@ -64,6 +80,12 @@ function montarTextoLocalizacao(latitude, longitude) {
 exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
     {
       document: "usuarios/{usuarioId}/alertas/{alertaId}",
+      // Necessário mesmo aqui (não só no job de transbordo) porque, com a
+      // chave global "Enviar também via WhatsApp" ligada, o WhatsApp pode
+      // ser enviado de forma SÍNCRONA dentro de `dispararAlertaHibrido`
+      // (ver `enviarWhatsappSimultaneoParaContatos`), exigindo os
+      // segredos do Twilio já injetados nesta execução.
+      secrets: TWILIO_SECRETS,
     },
     async (event) => {
       const snap = event.data;
@@ -75,7 +97,7 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
       const alerta = snap.data();
       const {usuarioId} = event.params;
 
-      if (alerta.tipo !== TIPO_TENTATIVA_DESARME_INCORRETO) {
+      if (!TIPOS_ALERTA_TRATADOS.has(alerta.tipo)) {
         logger.info(
             `Alerta tipo "${alerta.tipo}" ainda não tratado por esta ` +
             "função — ignorado.",
@@ -87,25 +109,49 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
       const usuarioSnap = await usuarioRef.get();
       const usuario = usuarioSnap.exists ? usuarioSnap.data() : {};
 
-      const localizacaoTexto = montarTextoLocalizacao(
-          usuario && usuario.latitude,
-          usuario && usuario.longitude,
-      );
+      // Prioriza as coordenadas do PRÓPRIO documento de alerta — gravadas
+      // NA HORA do disparo pelo `SosDisparoService` (P1 da sequência
+      // unificada do botão físico/SOS manual) — antes de cair para a
+      // última localização conhecida do usuário (fluxo de PIN incorreto,
+      // que não captura GPS na hora do disparo).
+      const latitude = typeof alerta.latitude === "number" ?
+          alerta.latitude : (usuario && usuario.latitude);
+      const longitude = typeof alerta.longitude === "number" ?
+          alerta.longitude : (usuario && usuario.longitude);
+      const localizacaoTexto = montarTextoLocalizacao(latitude, longitude);
       const contatos = (usuario && usuario.contatosEmergencia) || [];
 
-      // `motivo` descreve exatamente o que aconteceu (ver
-      // FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto no
-      // app) — cai no texto histórico apenas se o documento não o
-      // informar (compatibilidade com alertas antigos/de teste).
-      const motivo = alerta.motivo ||
-          "O PIN foi digitado incorretamente 2 vezes seguidas ao tentar " +
-          "desarmar antecipadamente o sistema de segurança.";
-
-      const mensagem =
-          "⚠️ ALERTA DE SEGURANÇA (via nuvem): TENTATIVA DE DESARME COM " +
-          "SENHA INCORRETA!\n" +
-          `${motivo}\n` +
-          `Localização: ${localizacaoTexto}`;
+      let mensagem;
+      if (alerta.tipo === TIPO_TENTATIVA_DESARME_INCORRETO) {
+        // `motivo` descreve exatamente o que aconteceu (ver
+        // FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto no
+        // app) — cai no texto histórico apenas se o documento não o
+        // informar (compatibilidade com alertas antigos/de teste).
+        const motivo = alerta.motivo ||
+            "O PIN foi digitado incorretamente 2 vezes seguidas ao tentar " +
+            "desarmar antecipadamente o sistema de segurança.";
+        mensagem =
+            "⚠️ ALERTA DE SEGURANÇA (via nuvem): TENTATIVA DE DESARME COM " +
+            "SENHA INCORRETA!\n" +
+            `${motivo}\n` +
+            `Localização: ${localizacaoTexto}`;
+      } else if (alerta.tipo === TIPO_SOS_FISICO) {
+        // P1 da sequência unificada (ver SosDisparoService no app) —
+        // botão físico de Volume+ ou botão de SOS manual da aba
+        // Segurança, com sessão autenticada disponível.
+        mensagem =
+            "🚨 SOS DE EMERGÊNCIA!\n" +
+            `Localização: ${localizacaoTexto}`;
+      } else {
+        // TIPO_SOS_FISICO_FOTO — P2 da sequência unificada: foto já
+        // enviada ao Firebase Storage, `fotoUrl` é um link (com token de
+        // acesso) para visualização direta, sem exigir login no app.
+        const fotoUrl = alerta.fotoUrl || "";
+        mensagem =
+            "📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\n" +
+            `Foto: ${fotoUrl}\n` +
+            `Localização: ${localizacaoTexto}`;
+      }
 
       if (contatos.length === 0) {
         logger.warn(
@@ -117,7 +163,23 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
           usuarioId,
           contatos,
           mensagem,
-          origem: "tentativa_desarme",
+          // `alerta.origem`, quando informado (ver SosDisparoService no
+          // app), é mais específico que `alerta.tipo` para fins de
+          // log/telemetria (ex: distingue botão físico de SOS manual,
+          // mesmo os dois usando `tipo: "sos_fisico"`).
+          origem: alerta.origem || alerta.tipo,
+          // Chave global "Enviar também via WhatsApp" (ver
+          // ConfiguracoesTab) — quando ligada, o WhatsApp de contingência
+          // é tentado IMEDIATAMENTE, em paralelo ao Push, em vez de
+          // esperar os 60s normais de transbordo.
+          enviarWhatsappSimultaneo: usuario && usuario.enviarWhatsappSimultaneo === true,
+          fotoUrl: alerta.tipo === TIPO_SOS_FISICO_FOTO ? alerta.fotoUrl : undefined,
+          // Coordenadas ESTRUTURADAS (além de já estarem embutidas como
+          // texto em `mensagem`) — o app do guardião usa isso para
+          // habilitar o botão "Ver no Mapa" sem precisar fazer parsing
+          // de texto livre (ver NotificacaoService/AlertaRecebidoScreen).
+          latitude: typeof latitude === "number" ? latitude : undefined,
+          longitude: typeof longitude === "number" ? longitude : undefined,
         });
       }
 

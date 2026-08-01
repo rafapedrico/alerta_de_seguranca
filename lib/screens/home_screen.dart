@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../services/alertas_recebidos_service.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/monitoramento_tab.dart';
@@ -34,6 +35,16 @@ class _HomeScreenState extends State<HomeScreen> {
   // mesmo padrão de [_familiaTabKey].
   final GlobalKey<MonitoramentoTabState> _monitoramentoTabKey =
       GlobalKey<MonitoramentoTabState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Indicador de "não visualizado" no ícone da aba Histórico (item 4
+    // do pedido de UX do guardião) — recarrega a contagem toda vez que a
+    // Home é (re)construída, garantindo que reflita alertas recebidos
+    // enquanto o app estava fechado/em segundo plano.
+    AlertasRecebidosService.atualizarContagem();
+  }
 
   // Ordem exata das abas: Segurança, Família, Monitoramento, Histórico
   late final List<Widget> _telas = [
@@ -101,12 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: l10n.monitoramentoAdicionarContato,
               onPressed: () => _monitoramentoTabKey.currentState?.abrirModalAdicionarContato(),
             ),
-          if (_indiceAbaAtual == 3)
-            IconButton(
-              icon: const Icon(Icons.privacy_tip_outlined),
-              tooltip: l10n.tooltipAuditoriaSensivel,
-              onPressed: () => _abrirAuditoriaSensivel(context),
-            ),
+          // Ícone do escudo: leva à seção protegida onde ficam os alertas
+          // ENVIADOS pelo próprio usuário (categoria 'critico' —
+          // AuditoriaSensivelScreen, com liberação por tempo de 2h).
+          // Sempre visível no cabeçalho, independente da aba atual.
+          IconButton(
+            icon: const Icon(Icons.shield_outlined),
+            tooltip: l10n.tooltipAuditoriaSensivel,
+            onPressed: () => _abrirAuditoriaSensivel(context),
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => _abrirConfiguracoes(context),
@@ -139,7 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
             label: l10n.tabMonitoramento,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.history),
+            icon: ValueListenableBuilder<int>(
+              valueListenable: AlertasRecebidosService.naoVisualizados,
+              builder: (context, contagem, _) {
+                return Badge(
+                  isLabelVisible: contagem > 0,
+                  label: Text('$contagem'),
+                  child: const Icon(Icons.history),
+                );
+              },
+            ),
             label: l10n.tabHistorico,
           ),
         ],

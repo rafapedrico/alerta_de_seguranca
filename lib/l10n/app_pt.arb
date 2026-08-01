@@ -34,6 +34,8 @@
   "sairDaContaConfirmar": "Sair",
 
   "contatoWhatsappSwitchLabel": "Notificar via WhatsApp ($0.10 USD)",
+  "whatsappSimultaneoTitulo": "Enviar também via WhatsApp",
+  "whatsappSimultaneoDescricao": "Envia o alerta imediatamente por WhatsApp junto com o Push, sem esperar a confirmação de entrega, descontando o valor da Carteira para cada contato habilitado.",
 
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
   "alertaRecebidoDe": "{nome} pode estar em perigo",
@@ -43,6 +45,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "Ver localização no mapa",
+  "alertaRecebidoBaixarFoto": "Baixar Foto",
+  "alertaRecebidoCompartilhar": "Compartilhar",
+  "alertaRecebidoFotoSalva": "Foto salva na galeria.",
+  "alertaRecebidoPermissaoNegada": "Permissão negada para salvar a foto.",
+  "alertaRecebidoFalhaSalvar": "Não foi possível salvar a foto.",
+  "alertaRecebidoFalhaCompartilhar": "Não foi possível compartilhar a foto.",
+  "alertaRecebidoFotoIndisponivel": "Não foi possível carregar a foto.",
+  "alertaRecebidoTentarNovo": "Tentar novamente",
 
   "carteiraTitulo": "Carteira de Créditos",
   "carteiraMenuItem": "Carteira de Créditos",
@@ -123,6 +133,10 @@
   "segurancaToqueDesarmar": "Toque: desarmar",
   "segurancaToqueIniciar": "Toque para iniciar",
   "segurancaBotaoPanico": "Botão de Pânico",
+  "deviceAdminTitulo": "Bloqueio automático de tela",
+  "deviceAdminDescricaoInativo": "Permite que o app bloqueie a tela automaticamente ao final do SOS de emergência. Requer uma permissão especial do Android, concedida uma única vez.",
+  "deviceAdminDescricaoAtivo": "Ativado — a tela será bloqueada automaticamente ao final da sequência de SOS.",
+  "deviceAdminBotaoAtivar": "Ativar",
 
   "familiaAlarmeRemovido": "🗑️ Alarme removido com sucesso.",
   "familiaAlarmePausadoAte": "⏸️ Alarme pausado até as 00:00 de hoje.",
@@ -236,6 +250,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "Nenhum evento encontrado para este filtro.",
+  "historicoLimparBotao": "Limpar Histórico",
+  "historicoLimparConfirmarTitulo": "Limpar histórico?",
+  "historicoLimparConfirmarConteudo": "Esta ação remove permanentemente as mensagens desta categoria. Não pode ser desfeita.",
 
   "contatosMaximoAtingido": "⚠️ Você já cadastrou o máximo de {max} contatos.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

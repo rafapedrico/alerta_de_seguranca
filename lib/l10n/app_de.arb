@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "Abmelden",
 
   "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (0,10 $ USD)",
+  "whatsappSimultaneoTitulo": "Auch über WhatsApp senden",
+  "whatsappSimultaneoDescricao": "Sendet den Alarm sofort per WhatsApp zusammen mit der Push-Benachrichtigung, ohne auf die Zustellbestätigung zu warten, und zieht den Betrag für jeden aktivierten Kontakt von der Wallet ab.",
 
   "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
   "alertaRecebidoDe": "{nome} könnte in Gefahr sein",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "Standort auf der Karte anzeigen",
+  "alertaRecebidoBaixarFoto": "Foto herunterladen",
+  "alertaRecebidoCompartilhar": "Teilen",
+  "alertaRecebidoFotoSalva": "Foto in der Galerie gespeichert.",
+  "alertaRecebidoPermissaoNegada": "Berechtigung zum Speichern des Fotos verweigert.",
+  "alertaRecebidoFalhaSalvar": "Foto konnte nicht gespeichert werden.",
+  "alertaRecebidoFalhaCompartilhar": "Foto konnte nicht geteilt werden.",
+  "alertaRecebidoFotoIndisponivel": "Foto konnte nicht geladen werden.",
+  "alertaRecebidoTentarNovo": "Erneut versuchen",
 
   "carteiraTitulo": "Guthaben-Wallet",
   "carteiraMenuItem": "Guthaben-Wallet",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "Tippen: deaktivieren",
   "segurancaToqueIniciar": "Zum Starten tippen",
   "segurancaBotaoPanico": "Panik-Knopf",
+  "deviceAdminTitulo": "Automatische Bildschirmsperre",
+  "deviceAdminDescricaoInativo": "Ermöglicht der App, den Bildschirm am Ende des Notfall-SOS automatisch zu sperren. Erfordert eine spezielle Android-Berechtigung, die einmalig erteilt wird.",
+  "deviceAdminDescricaoAtivo": "Aktiviert — der Bildschirm wird am Ende der SOS-Sequenz automatisch gesperrt.",
+  "deviceAdminBotaoAtivar": "Aktivieren",
 
   "familiaAlarmeRemovido": "🗑️ Alarm erfolgreich entfernt.",
   "familiaAlarmePausadoAte": "⏸️ Alarm bis heute Mitternacht pausiert.",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "Kein Ereignis für diesen Filter gefunden.",
+  "historicoLimparBotao": "Verlauf löschen",
+  "historicoLimparConfirmarTitulo": "Verlauf löschen?",
+  "historicoLimparConfirmarConteudo": "Diese Aktion entfernt die Nachrichten dieser Kategorie dauerhaft. Sie kann nicht rückgängig gemacht werden.",
 
   "contatosMaximoAtingido": "⚠️ Du hast bereits das Maximum von {max} Kontakten registriert.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

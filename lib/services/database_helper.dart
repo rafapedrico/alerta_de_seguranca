@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 15,
+      version: 17,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -39,7 +39,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         pin_real TEXT,
         tempo_padrao_timer INTEGER,
-        forcando_whatsapp INTEGER NOT NULL DEFAULT 0,
+        enviar_whatsapp_simultaneo INTEGER NOT NULL DEFAULT 0,
         tipo_plano TEXT NOT NULL DEFAULT 'free',
         plano_de_fundo_url TEXT,
         senha_pendente TEXT,
@@ -140,6 +140,28 @@ class DatabaseHelper {
         status_ver_localizacao TEXT NOT NULL DEFAULT 'nao_solicitado',
         status_compartilhamento TEXT NOT NULL DEFAULT 'inexistente',
         criado_em INTEGER NOT NULL
+      )
+    ''');
+
+    // Table: alertas_terceiros_recebidos - alertas de emergência de
+    // OUTROS usuários recebidos via Push FCM (ver FcmService/
+    // NotificacaoService), persistidos localmente para: (1) permitir um
+    // indicador de "não visualizado" no HomeScreen e (2) aparecerem como
+    // itens clicáveis na aba Histórico, roteando para o mapa (alertas de
+    // localização) ou para a tela de foto (alertas com foto_url).
+    // id_entrega é UNIQUE para nunca duplicar caso o FCM reentregue a
+    // mesma mensagem.
+    await db.execute('''
+      CREATE TABLE alertas_terceiros_recebidos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_entrega TEXT UNIQUE,
+        nome_remetente TEXT,
+        mensagem TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        foto_url TEXT,
+        recebido_em TEXT NOT NULL,
+        visualizado INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -387,6 +409,46 @@ class DatabaseHelper {
         )
       ''');
     }
+    // Migration from v15 to v16: substitui o campo morto 'forcando_whatsapp'
+    // (nunca lido por nenhuma lógica de envio — resquício de uma versão
+    // anterior à arquitetura híbrida de alertas) pela chave GLOBAL real
+    // "Enviar também via WhatsApp" (ver [UserConfig]/ConfiguracoesTab):
+    // quando ligada, o alerta passa a ser enviado de forma SIMULTÂNEA
+    // (App + WhatsApp) para os contatos habilitados, em vez de aguardar o
+    // transbordo de 60s (ver functions/alertaHibridoService.js). A coluna
+    // antiga 'forcando_whatsapp' permanece fisicamente na tabela — mesma
+    // convenção das demais migrações deste arquivo, que nunca fazem DROP/
+    // RENAME COLUMN por segurança de compatibilidade entre versões do
+    // SQLite nos aparelhos — mas não é mais lida nem gravada pelo app.
+    if (oldVersion < 16) {
+      try {
+        await db.execute(
+          'ALTER TABLE user_config ADD COLUMN enviar_whatsapp_simultaneo INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (_) {
+        // Coluna já existe — ignora.
+      }
+    }
+    // Migration from v16 to v17: cria a tabela 'alertas_terceiros_recebidos'
+    // — alertas de emergência de outros usuários recebidos via Push FCM,
+    // persistidos localmente para o indicador de "não visualizado" no
+    // HomeScreen e para aparecerem como itens clicáveis na aba Histórico
+    // (ver NotificacaoService/FcmService/AlertasRecebidosService).
+    if (oldVersion < 17) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS alertas_terceiros_recebidos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id_entrega TEXT UNIQUE,
+          nome_remetente TEXT,
+          mensagem TEXT NOT NULL,
+          latitude REAL,
+          longitude REAL,
+          foto_url TEXT,
+          recebido_em TEXT NOT NULL,
+          visualizado INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    }
   }
 
 
@@ -579,6 +641,24 @@ class DatabaseHelper {
     );
   }
 
+  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp" (ver
+  /// ConfiguracoesTab) — distinta do switch por contato "Notificar via
+  /// WhatsApp" ([atualizarWhatsappHabilitado] acima). Quando ligada, o
+  /// alerta é enviado de forma SIMULTÂNEA (App + WhatsApp) para cada
+  /// contato com "Notificar via WhatsApp" ativo e saldo suficiente na
+  /// Carteira, em vez de aguardar os 60s normais de transbordo (ver
+  /// functions/transbordoWhatsappMonitor.js). Refletida no Firestore por
+  /// [FirebaseSyncService.atualizarEnviarWhatsappSimultaneo].
+  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'enviar_whatsapp_simultaneo': ativo ? 1 : 0,
+    });
+  }
+
   /// Marca um contato de emergência como "exclusão pendente", iniciando a
   /// trava de segurança de 24h. O contato NÃO é removido imediatamente,
   /// apenas sinalizado com o timestamp da solicitação. Continua sendo
@@ -695,6 +775,24 @@ class DatabaseHelper {
   Future<int> deletarEventoHistorico(int id) async {
     final db = await database;
     return await db.delete('historico', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Remove TODOS os eventos locais de uma [categoria] específica —
+  /// usado pela opção "Limpar Histórico" (ex: 'sistema', ou 'critico'
+  /// pela tela de Auditoria de Eventos Sensíveis).
+  Future<void> limparHistoricoPorCategoria(String categoria) async {
+    final db = await database;
+    await db.delete('historico', where: 'categoria = ?', whereArgs: [categoria]);
+  }
+
+  /// Remove TODOS os eventos locais exibidos na aba Histórico Geral —
+  /// ou seja, tudo MENOS a categoria 'critico' (exclusiva da tela de
+  /// Auditoria de Eventos Sensíveis, nunca tocada por esta função). Usado
+  /// pela opção "Limpar Histórico" quando o filtro "Todos" está
+  /// selecionado.
+  Future<void> limparHistoricoGeral() async {
+    final db = await database;
+    await db.delete('historico', where: 'categoria != ?', whereArgs: ['critico']);
   }
 
   // ==========================================
@@ -1169,6 +1267,96 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       {'status_compartilhamento': status},
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  // ==========================================================
+  // ALERTAS DE TERCEIROS RECEBIDOS (indicador de não visualizado +
+  // aba Histórico) — ver AlertasRecebidosService/FcmService.
+  // ==========================================================
+
+  /// Insere um alerta de terceiro recebido via Push FCM. Idempotente por
+  /// `id_entrega` (UNIQUE) — se o FCM reentregar a mesma mensagem, a
+  /// segunda tentativa é silenciosamente ignorada (`ConflictAlgorithm.ignore`)
+  /// em vez de duplicar a linha.
+  Future<void> inserirAlertaTerceiroRecebido({
+    String? idEntrega,
+    String? nomeRemetente,
+    required String mensagem,
+    double? latitude,
+    double? longitude,
+    String? fotoUrl,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'alertas_terceiros_recebidos',
+      {
+        'id_entrega': idEntrega,
+        'nome_remetente': nomeRemetente,
+        'mensagem': mensagem,
+        'latitude': latitude,
+        'longitude': longitude,
+        'foto_url': fotoUrl,
+        'recebido_em': DateTime.now().toIso8601String(),
+        'visualizado': 0,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Retorna todos os alertas de terceiros recebidos, mais recente primeiro.
+  Future<List<Map<String, dynamic>>> getAlertasTerceirosRecebidos() async {
+    final db = await database;
+    return await db.query('alertas_terceiros_recebidos', orderBy: 'id DESC');
+  }
+
+  /// Conta quantos alertas de terceiros recebidos ainda não foram
+  /// visualizados — usado para o badge no ícone da aba Histórico.
+  Future<int> contarAlertasTerceirosNaoVisualizados() async {
+    final db = await database;
+    final resultado = await db.rawQuery(
+      'SELECT COUNT(*) AS total FROM alertas_terceiros_recebidos WHERE visualizado = 0',
+    );
+    return Sqflite.firstIntValue(resultado) ?? 0;
+  }
+
+  /// Marca um alerta de terceiro como visualizado pelo seu [id] local.
+  Future<void> marcarAlertaTerceiroVisualizado(int id) async {
+    final db = await database;
+    await db.update(
+      'alertas_terceiros_recebidos',
+      {'visualizado': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Remove definitivamente um alerta de terceiro recebido pelo seu [id]
+  /// local — acionado pelo gesto de "arrastar para excluir" (Dismissible)
+  /// na aba Histórico.
+  Future<void> deletarAlertaTerceiroRecebido(int id) async {
+    final db = await database;
+    await db.delete('alertas_terceiros_recebidos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Remove TODOS os alertas de terceiros recebidos de uma vez — usado
+  /// pela opção "Limpar Histórico" quando o filtro "Alerta de segurança
+  /// recebido" está selecionado.
+  Future<void> limparAlertasTerceirosRecebidos() async {
+    final db = await database;
+    await db.delete('alertas_terceiros_recebidos');
+  }
+
+  /// Marca um alerta de terceiro como visualizado pelo seu [idEntrega] —
+  /// usado quando só temos esse identificador (ex: toque direto na
+  /// notificação Push, sem passar pela lista da aba Histórico).
+  Future<void> marcarAlertaTerceiroVisualizadoPorIdEntrega(String idEntrega) async {
+    final db = await database;
+    await db.update(
+      'alertas_terceiros_recebidos',
+      {'visualizado': 1},
+      where: 'id_entrega = ?',
+      whereArgs: [idEntrega],
     );
   }
 }

@@ -12,6 +12,8 @@ import '../../services/alarme_service.dart';
 import '../../services/alarme_sonoro_service.dart';
 import '../../services/api_service.dart';
 import '../../services/captura_dissuasao_service.dart';
+import '../../services/device_admin_service.dart';
+import '../../services/sos_disparo_service.dart';
 import '../../widgets/pin_dialog.dart';
 
 
@@ -24,7 +26,7 @@ class SegurancaTab extends StatefulWidget {
   State<SegurancaTab> createState() => _SegurancaTabState();
 }
 
-class _SegurancaTabState extends State<SegurancaTab> {
+class _SegurancaTabState extends State<SegurancaTab> with WidgetsBindingObserver {
   final DatabaseHelper _db = DatabaseHelper();
   final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
   final AlarmeService _alarmeService = AlarmeService();
@@ -68,6 +70,13 @@ class _SegurancaTabState extends State<SegurancaTab> {
   Timer? _timer;
   bool _isTimerAtivo = false;
   int _segundosRestantes = 0;
+
+  // P4 da sequência unificada de SOS (ver SosDisparoService): estado do
+  // consentimento de Administrador do Dispositivo, único jeito de
+  // bloquear a tela nativamente ao deslizar a tela vermelha de alerta
+  // para cima (ver DeviceAdminService/CameraCapturaScreen).
+  bool _deviceAdminAtivo = false;
+  bool _carregandoDeviceAdmin = true;
 
   // Estado de Bloqueio por PIN
   Timer? _timerToleranciaBloqueio;
@@ -115,7 +124,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _carregarConfiguracoesSeguranca();
+    _carregarStatusDeviceAdmin();
 
     // Regra de negócio 1 (Permissão ao Iniciar): assim que a tela de
     // Segurança é aberta, o app já verifica/solicita a permissão de
@@ -134,6 +145,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _contextoController.dispose();
     _cancelarTodosOsTimers();
     // Interrompe o loop de atualização de localização (se ainda ativo) ao
@@ -143,6 +155,27 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // tela ser destruída.
     _alarmeSonoroService.pararAlarme();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reflete na UI a decisão do usuário no diálogo NATIVO de Device
+    // Admin (ver DeviceAdminService.solicitarAtivacao) assim que o app
+    // volta ao primeiro plano — não há callback direto para esse
+    // resultado, então basta reconsultar o status.
+    if (state == AppLifecycleState.resumed) {
+      _carregarStatusDeviceAdmin();
+    }
+  }
+
+  Future<void> _carregarStatusDeviceAdmin() async {
+    final ativo = await DeviceAdminService().estaAtivo();
+    if (mounted) {
+      setState(() {
+        _deviceAdminAtivo = ativo;
+        _carregandoDeviceAdmin = false;
+      });
+    }
   }
 
 
@@ -647,10 +680,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
     if (confirmou != true || !mounted) return;
 
     try {
-      await _emergencyAlertService.dispararAlertaDeEmergencia(
-        contexto: _contextoController.text.trim(),
-        posicaoEmMemoria: _locationService.ultimaPosicao,
-      );
+      // P1 da sequência unificada de SOS (ver SosDisparoService): captura
+      // localização + timestamp e despacha IMEDIATAMENTE via App-para-App
+      // + WhatsApp (pipeline híbrido), com fallback automático para SMS
+      // nativo se não houver sessão autenticada.
+      await SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -659,10 +693,9 @@ class _SegurancaTabState extends State<SegurancaTab> {
           ),
         );
       }
-      // Recurso de Captura e Dissuasão: disparado logo após o SOS
-      // manual confirmado pelo usuário. Verifica o limite mensal de
-      // fotos do Plano Gratuito internamente antes de abrir a câmera.
-      await CapturaDissuasaoService().abrirCapturaSePermitido();
+      // P2: abre a câmera (Recurso de Captura e Dissuasão) — checa o
+      // limite mensal de fotos do Plano Gratuito internamente.
+      await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: 'sos_manual');
     } catch (e) {
       debugPrint('⚠️ Falha ao disparar SOS manual: $e');
     }
@@ -730,6 +763,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
                   _buildBotaoCheckIn(),
                   const SizedBox(height: 24),
                   _buildBotaoSos(),
+                  const SizedBox(height: 16),
+                  _buildCartaoDeviceAdmin(),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -950,6 +985,60 @@ class _SegurancaTabState extends State<SegurancaTab> {
           AppLocalizations.of(context)!.segurancaBotaoPanico,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+
+  /// P4 da sequência unificada de SOS: cartão de consentimento explícito
+  /// para a permissão de Administrador do Dispositivo (ver
+  /// [DeviceAdminService]) — única forma de bloquear a tela nativamente
+  /// ao final do SOS. Deliberadamente pedido AQUI, com antecedência,
+  /// nunca durante o próprio pânico.
+  Widget _buildCartaoDeviceAdmin() {
+    if (_carregandoDeviceAdmin) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _deviceAdminAtivo ? const Color(0xFFE8F5E9) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _deviceAdminAtivo ? Colors.green.shade200 : Colors.grey.shade300,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _deviceAdminAtivo ? Icons.lock : Icons.lock_open,
+            color: _deviceAdminAtivo ? const Color(0xFF4C7040) : Colors.black45,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.deviceAdminTitulo,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _deviceAdminAtivo
+                      ? AppLocalizations.of(context)!.deviceAdminDescricaoAtivo
+                      : AppLocalizations.of(context)!.deviceAdminDescricaoInativo,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          if (!_deviceAdminAtivo) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => DeviceAdminService().solicitarAtivacao(),
+              child: Text(AppLocalizations.of(context)!.deviceAdminBotaoAtivar),
+            ),
+          ],
+        ],
       ),
     );
   }

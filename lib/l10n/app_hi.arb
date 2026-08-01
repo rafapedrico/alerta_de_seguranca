@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "साइन आउट करें",
 
   "contatoWhatsappSwitchLabel": "WhatsApp के ज़रिए सूचित करें ($0.10 USD)",
+  "whatsappSimultaneoTitulo": "WhatsApp के ज़रिए भी भेजें",
+  "whatsappSimultaneoDescricao": "डिलीवरी की पुष्टि का इंतज़ार किए बिना, पुश नोटिफिकेशन के साथ ही तुरंत WhatsApp के ज़रिए भी अलर्ट भेजता है, और हर सक्षम संपर्क के लिए वॉलेट से राशि काट लेता है।",
 
   "alertaRecebidoTitulo": "सुरक्षा अलर्ट प्राप्त हुआ",
   "alertaRecebidoDe": "{nome} खतरे में हो सकते हैं",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "मानचित्र पर स्थान देखें",
+  "alertaRecebidoBaixarFoto": "फ़ोटो डाउनलोड करें",
+  "alertaRecebidoCompartilhar": "शेयर करें",
+  "alertaRecebidoFotoSalva": "फ़ोटो गैलरी में सेव हो गई।",
+  "alertaRecebidoPermissaoNegada": "फ़ोटो सेव करने की अनुमति नहीं मिली।",
+  "alertaRecebidoFalhaSalvar": "फ़ोटो सेव नहीं हो सकी।",
+  "alertaRecebidoFalhaCompartilhar": "फ़ोटो शेयर नहीं हो सकी।",
+  "alertaRecebidoFotoIndisponivel": "फ़ोटो लोड नहीं हो सकी।",
+  "alertaRecebidoTentarNovo": "फिर से कोशिश करें",
 
   "carteiraTitulo": "क्रेडिट वॉलेट",
   "carteiraMenuItem": "क्रेडिट वॉलेट",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "टैप करें: निष्क्रिय करें",
   "segurancaToqueIniciar": "शुरू करने के लिए टैप करें",
   "segurancaBotaoPanico": "पैनिक बटन",
+  "deviceAdminTitulo": "स्वचालित स्क्रीन लॉक",
+  "deviceAdminDescricaoInativo": "ऐप को इमरजेंसी SOS के अंत में स्क्रीन को अपने आप लॉक करने देता है। इसके लिए Android की एक विशेष अनुमति चाहिए, जो एक बार दी जाती है।",
+  "deviceAdminDescricaoAtivo": "सक्रिय — SOS क्रम के अंत में स्क्रीन अपने आप लॉक हो जाएगी।",
+  "deviceAdminBotaoAtivar": "सक्रिय करें",
 
   "familiaAlarmeRemovido": "🗑️ अलार्म सफलतापूर्वक हटा दिया गया।",
   "familiaAlarmePausadoAte": "⏸️ अलार्म आज मध्यरात्रि तक रोक दिया गया।",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "इस फ़िल्टर के लिए कोई घटना नहीं मिली।",
+  "historicoLimparBotao": "इतिहास साफ़ करें",
+  "historicoLimparConfirmarTitulo": "इतिहास साफ़ करें?",
+  "historicoLimparConfirmarConteudo": "यह क्रिया इस श्रेणी के संदेशों को स्थायी रूप से हटा देती है। इसे पूर्ववत नहीं किया जा सकता।",
 
   "contatosMaximoAtingido": "⚠️ आप पहले ही अधिकतम {max} संपर्क पंजीकृत कर चुके हैं।",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

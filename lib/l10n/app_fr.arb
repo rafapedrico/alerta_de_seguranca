@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "Se déconnecter",
 
   "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (0,10 $ USD)",
+  "whatsappSimultaneoTitulo": "Envoyer aussi par WhatsApp",
+  "whatsappSimultaneoDescricao": "Envoie l'alerte immédiatement par WhatsApp en même temps que le Push, sans attendre la confirmation de livraison, en déduisant le montant du Portefeuille pour chaque contact activé.",
 
   "alertaRecebidoTitulo": "Alerte de sécurité reçue",
   "alertaRecebidoDe": "{nome} pourrait être en danger",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "Voir la position sur la carte",
+  "alertaRecebidoBaixarFoto": "Télécharger la photo",
+  "alertaRecebidoCompartilhar": "Partager",
+  "alertaRecebidoFotoSalva": "Photo enregistrée dans la galerie.",
+  "alertaRecebidoPermissaoNegada": "Autorisation refusée pour enregistrer la photo.",
+  "alertaRecebidoFalhaSalvar": "Impossible d'enregistrer la photo.",
+  "alertaRecebidoFalhaCompartilhar": "Impossible de partager la photo.",
+  "alertaRecebidoFotoIndisponivel": "Impossible de charger la photo.",
+  "alertaRecebidoTentarNovo": "Réessayer",
 
   "carteiraTitulo": "Portefeuille de crédits",
   "carteiraMenuItem": "Portefeuille de crédits",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "Toucher : désarmer",
   "segurancaToqueIniciar": "Toucher pour démarrer",
   "segurancaBotaoPanico": "Bouton de panique",
+  "deviceAdminTitulo": "Verrouillage automatique de l'écran",
+  "deviceAdminDescricaoInativo": "Permet à l'application de verrouiller l'écran automatiquement à la fin du SOS d'urgence. Nécessite une autorisation Android spéciale, accordée une seule fois.",
+  "deviceAdminDescricaoAtivo": "Activé — l'écran sera verrouillé automatiquement à la fin de la séquence de SOS.",
+  "deviceAdminBotaoAtivar": "Activer",
 
   "familiaAlarmeRemovido": "🗑️ Alarme supprimée avec succès.",
   "familiaAlarmePausadoAte": "⏸️ Alarme suspendue jusqu'à minuit aujourd'hui.",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "Aucun événement trouvé pour ce filtre.",
+  "historicoLimparBotao": "Effacer l'historique",
+  "historicoLimparConfirmarTitulo": "Effacer l'historique ?",
+  "historicoLimparConfirmarConteudo": "Cette action supprime définitivement les messages de cette catégorie. Elle est irréversible.",
 
   "contatosMaximoAtingido": "⚠️ Vous avez déjà enregistré le maximum de {max} contacts.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

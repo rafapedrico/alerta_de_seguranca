@@ -418,9 +418,21 @@ class EmergencyAlertService {
     }
   }
 
-  /// Fluxo de disparo de SOS ESPECÍFICO do gatilho físico (segurar
-  /// Volume+ por 3 segundos), otimizado para GANHAR TEMPO em uma
-  /// emergência real, com uma estratégia de DUPLA localização:
+  /// Canal SMS OFICIAL do P1 da sequência unificada de SOS (ver
+  /// [SosDisparoService.executarP1LocalizacaoImediata]) — enviado SEMPRE,
+  /// em paralelo aos canais de nuvem (Push/WhatsApp) quando há sessão
+  /// autenticada, e como ÚNICO canal quando não há (cold-start via
+  /// lockscreen, ver política "Opção A" de `FirebaseAuthService`). Este
+  /// método NUNCA é chamado diretamente por `main.dart`/
+  /// `seguranca_tab.dart`, só por [SosDisparoService].
+  ///
+  /// IMPORTANTE: a checagem/incremento do limite mensal de alertas do
+  /// Plano Gratuito é feita UMA ÚNICA VEZ pelo chamador
+  /// ([SosDisparoService]), nunca aqui — evita contar o mesmo SOS duas
+  /// vezes (uma para o canal SMS, outra para o canal de nuvem).
+  ///
+  /// Otimizado para GANHAR TEMPO em uma emergência real, com uma
+  /// estratégia de DUPLA localização:
   ///
   /// ETAPA 1 (imediata, sem qualquer espera pelo GPS): monta e envia o
   /// SMS + alerta web IMEDIATAMENTE usando apenas a última localização
@@ -438,18 +450,7 @@ class EmergencyAlertService {
   /// SQLite ('contexto_timer_ativo'), com fallback para uma mensagem
   /// padrão caso não exista nada salvo.
   Future<void> dispararSosComDuplaLocalizacao() async {
-    debugPrint('🚨 [SOS FÍSICO] Gatilho de Volume+ detectado! Disparando com dupla localização.');
-
-    // Regra de negócio (Plano Gratuito): mesmo limite mensal de 5
-    // alertas se aplica ao gatilho físico de SOS. Verificado antes de
-    // qualquer etapa do disparo.
-    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
-    if (!podeDisparar) {
-      debugPrint(
-          '🚫 [SOS FÍSICO] Limite mensal de alertas do Plano Gratuito atingido — disparo cancelado.');
-      return;
-    }
-    await PlanoLimiteService().incrementarAlertaUsado();
+    debugPrint('🚨 [SOS] Canal SMS oficial acionado — disparando com dupla localização.');
 
     String anotacoesUsuario = '';
 
@@ -552,8 +553,11 @@ class EmergencyAlertService {
           '(o SMS/alerta imediato da etapa 1 já foi enviado normalmente): $e');
     }
   }
-/// Envia o 2º SMS contendo as credenciais de acesso para a família
-  /// recuperar a foto e a localização registradas.
+/// FALLBACK de contingência (SMS de texto, SEM a foto em si) usado por
+  /// [SosDisparoService.dispararFotoCapturada] exclusivamente quando não
+  /// há sessão do Firebase Auth disponível — mesma regra de
+  /// [dispararSosComDuplaLocalizacao]. Com sessão, a foto é enviada de
+  /// verdade via Firebase Storage + Push/WhatsApp.
   Future<void> enviarSmsResgateFoto({
     required String login,
     required String senha,
@@ -588,6 +592,46 @@ class EmergencyAlertService {
       await _db.inserirEventoHistorico(
         titulo: 'Evidência fotográfica registrada',
         descricao: 'SMS com dados de resgate enviado para os contatos de emergência.',
+        categoria: 'critico',
+      );
+    } catch (_) {}
+  }
+
+  /// Canal SMS OFICIAL do P2 da sequência unificada de SOS (ver
+  /// [SosDisparoService.dispararFotoCapturada]) — enviado SEMPRE, em
+  /// paralelo aos canais de nuvem (Push/WhatsApp), com o link real da
+  /// foto ([fotoUrl], já enviada ao Firebase Storage) e a localização
+  /// atual, exatamente como pedido pelo produto: "texto com a
+  /// localização + link da foto do Storage". Diferente de
+  /// [enviarSmsResgateFoto] (mensagem antiga com credenciais fictícias,
+  /// mantida só como fallback para quando NENHUM link real está
+  /// disponível — sem sessão ou falha no upload).
+  Future<void> enviarSmsComLinkDaFoto(String fotoUrl) async {
+    List<Map<String, dynamic>> contatos = [];
+    try {
+      contatos = await _db.getContatosEmergencia();
+    } catch (e) {
+      debugPrint('⚠️ [SMS Foto] Falha ao carregar contatos: $e');
+    }
+
+    final Position? posicao = await _obterPosicaoDeCacheImediata();
+    final String localizacaoFormatada = posicao != null
+        ? _formatarPosicao(posicao)
+        : 'Localização indisponível no momento do envio.';
+
+    final String mensagem =
+        '📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\n'
+        'Foto: $fotoUrl\n'
+        'Localização: $localizacaoFormatada';
+
+    debugPrint('📋 [SMS Foto] Enviando localização + link da foto para contatos...');
+    await _enviarSms(contatos, mensagem);
+
+    try {
+      await _db.inserirEventoHistorico(
+        titulo: 'Foto do SOS enviada por SMS',
+        descricao: 'SMS com o link da foto e a localização enviado para os '
+            'contatos de emergência. Foto: $fotoUrl',
         categoria: 'critico',
       );
     } catch (_) {}

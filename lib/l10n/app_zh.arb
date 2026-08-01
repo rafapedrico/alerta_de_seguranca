@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "退出",
 
   "contatoWhatsappSwitchLabel": "通过WhatsApp通知（$0.10 USD）",
+  "whatsappSimultaneoTitulo": "同时通过WhatsApp发送",
+  "whatsappSimultaneoDescricao": "在不等待送达确认的情况下，立即通过WhatsApp与推送通知同时发送警报，并为每个已启用的联系人从钱包中扣除相应金额。",
 
   "alertaRecebidoTitulo": "收到安全警报",
   "alertaRecebidoDe": "{nome}可能处于危险中",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "在地图上查看位置",
+  "alertaRecebidoBaixarFoto": "下载照片",
+  "alertaRecebidoCompartilhar": "分享",
+  "alertaRecebidoFotoSalva": "照片已保存到相册。",
+  "alertaRecebidoPermissaoNegada": "保存照片的权限被拒绝。",
+  "alertaRecebidoFalhaSalvar": "无法保存照片。",
+  "alertaRecebidoFalhaCompartilhar": "无法分享照片。",
+  "alertaRecebidoFotoIndisponivel": "无法加载照片。",
+  "alertaRecebidoTentarNovo": "重试",
 
   "carteiraTitulo": "信用钱包",
   "carteiraMenuItem": "信用钱包",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "点击：解除",
   "segurancaToqueIniciar": "点击开始",
   "segurancaBotaoPanico": "紧急按钮",
+  "deviceAdminTitulo": "自动锁屏",
+  "deviceAdminDescricaoInativo": "允许应用在紧急SOS结束时自动锁定屏幕。需要一次性授予的特殊Android权限。",
+  "deviceAdminDescricaoAtivo": "已启用 — 屏幕将在SOS流程结束时自动锁定。",
+  "deviceAdminBotaoAtivar": "启用",
 
   "familiaAlarmeRemovido": "🗑️ 闹钟已成功删除。",
   "familiaAlarmePausadoAte": "⏸️ 闹钟已暂停至今天午夜。",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "未找到符合此筛选条件的事件。",
+  "historicoLimparBotao": "清除历史记录",
+  "historicoLimparConfirmarTitulo": "清除历史记录？",
+  "historicoLimparConfirmarConteudo": "此操作将永久删除此类别中的消息，且无法撤销。",
 
   "contatosMaximoAtingido": "⚠️ 您已登记最多{max}位联系人。",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

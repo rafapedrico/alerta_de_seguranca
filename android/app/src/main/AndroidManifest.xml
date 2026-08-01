@@ -198,6 +198,29 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Solicitacao de localizacao recebida (acordar tela)"/>
         </service>
+
+        <!-- Device Admin — única forma de bloquear a tela sob demanda
+             (DevicePolicyManager.lockNow(), ver DeviceAdminPlugin/
+             GuardiaoDeviceAdminReceiver), usada na P4 da sequência
+             unificada de SOS (ver SosDisparoService/CameraCapturaScreen).
+             android:exported="true" + android:permission=BIND_DEVICE_ADMIN
+             são exigidos pelo próprio Android para qualquer receiver de
+             Device Admin, independente do restante do app ser privado. A
+             ativação NUNCA é automática — exige o usuário aceitar o
+             diálogo nativo disparado por
+             DeviceAdminPlugin.solicitarAtivacao(), com antecedência, via
+             tela de consentimento em Configurações/Segurança. -->
+        <receiver
+            android:name=".GuardiaoDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_receiver"/>
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED"/>
+            </intent-filter>
+        </receiver>
     </application>
 
     <queries>

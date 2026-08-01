@@ -156,8 +156,14 @@ exports.processarTransbordoAlertas = onSchedule(
           const uidsConfirmados = await buscarUidsConfirmados(doc.ref);
           const contatos = dados.contatos || [];
 
+          // Pula contatos que já receberam o WhatsApp de forma IMEDIATA
+          // (chave global "Enviar também via WhatsApp" ligada, ver
+          // `enviarWhatsappSimultaneoParaContatos` em
+          // `alertaHibridoService.js`) — evita cobrança/envio em
+          // duplicidade 60s depois.
           const contatosPendentes = contatos.filter((contato) =>
-            !contato.uidDestino || !uidsConfirmados.has(contato.uidDestino),
+            !contato.whatsappJaEnviado &&
+            (!contato.uidDestino || !uidsConfirmados.has(contato.uidDestino)),
           );
 
           for (const contato of contatosPendentes) {

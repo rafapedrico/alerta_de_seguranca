@@ -10,7 +10,11 @@ service cloud.firestore {
     match /usuarios/{usuarioId} {
       // Documento por usuário: perfil (nome/email/telefone/fcmToken),
       // localização atual, contatos de emergência sincronizados (ver
-      // FirebaseSyncService) e saldo da Carteira em USD.
+      // FirebaseSyncService), saldo da Carteira em USD e a chave global
+      // `enviarWhatsappSimultaneo` ("Enviar também via WhatsApp", ver
+      // ConfiguracoesTab/functions/alertaHibridoService.js) — este campo
+      // booleano É gravável pelo próprio dono na regra `update` abaixo
+      // (só `saldoUsd` é travado).
       allow read: if request.auth != null && request.auth.uid == usuarioId;
 
       // Criação do perfil (cadastro, ver

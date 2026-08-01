@@ -10,6 +10,8 @@ import '../../services/alarme_sonoro_service.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/firebase_sync_service.dart';
+import '../../utils/telefone_utils.dart';
 import '../carteira_screen.dart';
 import '../login_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -223,13 +225,6 @@ Future<void> _selecionarSom(int? numero) async {
     return valor == 1 || valor == true;
   }
 
-  /// Remove tudo que não for dígito do número de telefone (espaços,
-  /// traços, parênteses, "+" etc.), garantindo que o número fique
-  /// pronto para uso em links do WhatsApp (com DDI/DDD numéricos).
-  String _limparNumeroTelefone(String numero) {
-    return numero.replaceAll(RegExp(r'[^0-9]'), '');
-  }
-
   /// Solicita permissão de acesso aos contatos e, caso concedida, abre o
   /// seletor nativo de contatos para o usuário escolher um familiar.
   /// Após a seleção, o número é limpo e salvo na tabela isolada
@@ -293,10 +288,18 @@ Future<void> _selecionarSom(int? numero) async {
     final nome = contatoCompleto.displayName.trim().isNotEmpty
         ? contatoCompleto.displayName.trim()
         : semNomeFallback;
+    // Normaliza para E.164 internacional (ver TelefoneUtils) — CORREÇÃO
+    // DE BUG REAL: números importados da agenda costumam já vir com o
+    // DDI embutido (ex: "5515981343706", sem o "+"); a limpeza antiga só
+    // removia caracteres de formatação e deixava esse número "cru" no
+    // banco, que o backend então prefixava com "+55" de novo (DDI
+    // duplicado, ex: "+555515981343706") — WhatsApp nunca chegava de
+    // verdade. `TelefoneUtils.normalizarE164` detecta e remove esse DDI
+    // duplicado corretamente, para qualquer país.
     final telefoneOriginal = contatoCompleto.phones.first.number;
-    final telefoneLimpo = _limparNumeroTelefone(telefoneOriginal);
+    final telefoneNormalizado = TelefoneUtils.normalizarE164(telefoneOriginal);
 
-    if (telefoneLimpo.isEmpty) {
+    if (telefoneNormalizado == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -311,7 +314,7 @@ Future<void> _selecionarSom(int? numero) async {
     // 4) Salva na tabela isolada 'contatos_emergencia'.
     await _db.inserirContatoEmergencia({
       'nome': nome,
-      'telefone': telefoneLimpo,
+      'telefone': telefoneNormalizado,
     });
 
     // Registra no histórico ('familia') a adição do novo contato de
@@ -354,6 +357,21 @@ Future<void> _selecionarSom(int? numero) async {
     await _db.atualizarWhatsappHabilitado(id, habilitado);
     await _carregarContatosEmergencia();
     ContatosEmergenciaService.notificarAlteracao();
+  }
+
+  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp": distinta
+  /// do switch por contato "Notificar via WhatsApp" acima. Quando ativa,
+  /// e desde que haja saldo suficiente na Carteira, o alerta passa a ser
+  /// enviado de forma SIMULTÂNEA (App + WhatsApp) para os contatos com
+  /// "Notificar via WhatsApp" ligado, sem aguardar os 60s normais de
+  /// transbordo (ver functions/alertaHibridoService.js). Persistida no
+  /// SQLite local e sincronizada com o Firestore, de onde a Cloud
+  /// Function a lê no momento do disparo.
+  Future<void> _alternarEnviarWhatsappSimultaneo(bool ativo) async {
+    await _ensureUserConfig();
+    await _db.atualizarEnviarWhatsappSimultaneo(ativo);
+    await FirebaseSyncService().atualizarEnviarWhatsappSimultaneo(ativo);
+    await _loadConfig();
   }
 
   Future<void> _excluirContato(int id, String nome) async {
@@ -408,17 +426,19 @@ Future<void> _selecionarSom(int? numero) async {
 
   String get _tipoPlano => _userConfig?['tipo_plano'] as String? ?? 'free';
   String? get _planoDeFundoUrl => _userConfig?['plano_de_fundo_url'] as String?;
+  bool get _enviarWhatsappSimultaneo =>
+      (_userConfig?['enviar_whatsapp_simultaneo'] as int?) == 1;
 
   Future<void> _ensureUserConfig() async {
     if (_userConfig == null) {
       final id = await _db.insertUserConfig({
         'pin_real': null,
         'tempo_padrao_timer': 15,
-        'forcando_whatsapp': 0,
+        'enviar_whatsapp_simultaneo': 0,
         'tipo_plano': 'free',
         'plano_de_fundo_url': null,
       });
-      _userConfig = {'id': id, 'tipo_plano': 'free', 'forcando_whatsapp': 0, 'tempo_padrao_timer': 15};
+      _userConfig = {'id': id, 'tipo_plano': 'free', 'enviar_whatsapp_simultaneo': 0, 'tempo_padrao_timer': 15};
     }
   }
 
@@ -974,6 +994,40 @@ Future<void> _selecionarSom(int? numero) async {
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Chave GLOBAL "Enviar também via WhatsApp" — distinta do switch
+        // por contato "Notificar via WhatsApp" (abaixo, em cada card):
+        // liga o modo de envio SIMULTÂNEO (App + WhatsApp), sem aguardar
+        // os 60s normais de transbordo, desde que haja saldo na Carteira.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Card(
+            elevation: 0,
+            color: const Color(0xFFE8F5E9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.green.shade200),
+            ),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.bolt, color: Color(0xFF4C7040)),
+              title: Text(
+                AppLocalizations.of(context)!.whatsappSimultaneoTitulo,
+                softWrap: true,
+                overflow: TextOverflow.clip,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              subtitle: Text(
+                AppLocalizations.of(context)!.whatsappSimultaneoDescricao,
+                softWrap: true,
+                overflow: TextOverflow.clip,
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              value: _enviarWhatsappSimultaneo,
+              onChanged: _alternarEnviarWhatsappSimultaneo,
+            ),
           ),
         ),
         const SizedBox(height: 12),

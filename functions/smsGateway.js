@@ -29,6 +29,7 @@
  */
 
 const {defineSecret} = require("firebase-functions/params");
+const {parsePhoneNumberFromString} = require("libphonenumber-js");
 const logger = require("firebase-functions/logger");
 
 const twilioAccountSid = defineSecret("TWILIO_ACCOUNT_SID");
@@ -48,21 +49,53 @@ const TWILIO_SECRETS = [twilioAccountSid, twilioAuthToken, twilioFromNumber];
 const CONTENT_SID_ALERTA = "HXccd14dd3758f94be24ab3ea1c162362b";
 
 /**
- * Normaliza um telefone para o formato E.164 exigido pelo Twilio (ex:
- * "+5515981548638"). Números já cadastrados no app SEM o código do país
- * (padrão brasileiro, ex: "15981548638") recebem o prefixo "+55"
- * automaticamente — mesmo público-alvo do restante do projeto (textos,
- * comentários e contexto 100% em português/Brasil).
+ * Região usada como fallback SOMENTE quando [telefone] não contém
+ * nenhum indício de DDI e o chamador não informou uma região mais
+ * específica — o Guardião X é um produto GLOBAL, então isto não é uma
+ * regra fixa de negócio (não existe nenhum `if (pais === 'BR')` daqui
+ * pra baixo), é só o valor inicial do produto antes de existir
+ * preferência de região por usuário/conta.
+ */
+const REGIAO_FALLBACK_PADRAO = "BR";
+
+/**
+ * Normaliza um telefone para o formato E.164 (`+<DDI><número>`) exigido
+ * pelo Twilio, usando um parser internacional de verdade
+ * (`libphonenumber-js`, mesma base do libphonenumber do Google) em vez
+ * de concatenação ingênua de string — funciona para qualquer país,
+ * detecta e remove DDI duplicado e prefixos de acesso nacional (ex: o
+ * "0" local) automaticamente, e remove toda formatação (espaços,
+ * traços, parênteses).
+ *
+ * CORREÇÃO DE BUG REAL: a implementação antiga só prefixava "+55" quando
+ * o texto não começava com "+", sem checar se o DDI já estava embutido
+ * nos dígitos — um contato salvo como "5515981343706" (DDI já incluso,
+ * sem o "+", comum em números importados da agenda do celular) virava
+ * "+555515981343706" (DDI duplicado, E.164 inválido). A Twilio aceitava
+ * o envio mesmo assim ("status: queued"), debitando a Carteira do
+ * usuário por uma mensagem que nunca chegava a lugar nenhum de verdade.
+ *
+ * Retorna `null` (em vez de um número corrompido) quando não é possível
+ * validar o telefone em nenhuma interpretação razoável — mais seguro do
+ * que gastar saldo/crédito Twilio tentando enviar para um número que não
+ * existe.
  *
  * @param {string} telefone
+ * @param {string} [regiaoPadrao] Região ISO-3166 alpha-2 (ex: "US", "PT")
+ *     usada como referência apenas quando o número não contém DDI.
  * @return {string|null}
  */
-function normalizarTelefoneE164(telefone) {
+function normalizarTelefoneE164(telefone, regiaoPadrao = REGIAO_FALLBACK_PADRAO) {
   if (!telefone) return null;
-  const limpo = telefone.replace(/[^\d+]/g, "");
-  if (!limpo) return null;
-  if (limpo.startsWith("+")) return limpo;
-  return `+55${limpo}`;
+  const bruto = String(telefone).trim();
+  if (!bruto) return null;
+
+  try {
+    const numero = parsePhoneNumberFromString(bruto, regiaoPadrao);
+    return numero && numero.isValid() ? numero.number : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /**

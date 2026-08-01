@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../utils/telefone_utils.dart';
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
 ///
@@ -49,18 +50,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
     super.dispose();
   }
 
-  /// Normaliza o celular digitado para o formato E.164 exigido tanto pelo
-  /// Firestore (campo `telefone`, usado para vincular contas via FCM)
-  /// quanto pelo Twilio no backend — mesmo critério de
-  /// `normalizarTelefoneE164` em `functions/smsGateway.js`: números sem
-  /// "+" recebem o prefixo do Brasil ("+55"), mesmo público-alvo do
-  /// restante do app.
-  String _normalizarTelefoneE164(String celular) {
-    final limpo = celular.replaceAll(RegExp(r'[^\d+]'), '');
-    if (limpo.startsWith('+')) return limpo;
-    return '+55$limpo';
-  }
-
   /// Cria a conta real no Firebase Auth, grava o perfil inicial no
   /// Firestore e envia o e-mail de verificação. Sempre encerra a sessão
   /// recém-criada antes de retornar à LoginScreen — em NENHUMA hipótese
@@ -80,10 +69,16 @@ class _CadastroScreenState extends State<CadastroScreen> {
 
       final uid = credencial.user?.uid;
       if (uid != null) {
+        // Se chegou até aqui, o validador do campo (ver
+        // `_buildCampoCelular`) já garantiu que o número é válido em
+        // alguma interpretação internacional razoável — o fallback ao
+        // texto bruto é só uma rede de segurança, nunca deve ser
+        // efetivamente usado na prática.
         await FirebaseSyncService().criarPerfilInicial(
           nome: _nomeController.text.trim(),
           email: _emailController.text.trim(),
-          telefone: _normalizarTelefoneE164(_celularController.text.trim()),
+          telefone: TelefoneUtils.normalizarE164(_celularController.text.trim()) ??
+              _celularController.text.trim(),
         );
         await FirebaseAuthService().enviarEmailVerificacao();
       }
@@ -261,8 +256,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
         if (valor == null || valor.trim().isEmpty) {
           return AppLocalizations.of(context)!.campoCelularObrigatorio;
         }
-        final digitos = valor.replaceAll(RegExp(r'\D'), '');
-        if (digitos.length < 10) {
+        if (TelefoneUtils.normalizarE164(valor) == null) {
           return AppLocalizations.of(context)!.campoCelularInvalido;
         }
         return null;

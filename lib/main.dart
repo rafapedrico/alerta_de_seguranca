@@ -9,17 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_navigator.dart';
 import 'firebase_options.dart';
 import 'screens/alarme_disparado_screen.dart';
-import 'screens/camera_captura_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/alarme_service.dart';
 import 'services/api_service.dart';
 import 'services/background_location_heartbeat_service.dart';
 import 'services/captura_dissuasao_service.dart';
-import 'services/contatos_emergencia_service.dart';
 import 'services/database_helper.dart';
 import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
+import 'services/fcm_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
@@ -27,6 +26,7 @@ import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/plano_limite_service.dart';
 import 'services/rotina_alarme_service.dart';
+import 'services/sos_disparo_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/wallet_service.dart';
 import 'services/wallpaper_service.dart';
@@ -66,11 +66,14 @@ void main() async {
     // qualquer serviço abaixo que dependa de `FirebaseAuthService().uidAtual`.
     await FirebaseAuthService().logout();
 
-    // Sincroniza os contatos de emergência já cadastrados (mesmo que
-    // tenham sido criados antes desta funcionalidade existir) para que a
-    // nuvem já saiba a quem notificar, sem depender de o usuário editar
-    // algo primeiro. Fire-and-forget: nunca atrasa o cold start.
-    ContatosEmergenciaService.sincronizarAgora();
+    // Registra o handler de background do FCM e pede a permissão de
+    // notificação — CORREÇÃO: isso não depende de sessão autenticada
+    // (diferente da sincronização do token, que precisa de `uid` e roda
+    // em `FcmService().inicializar()` após cada login, ver
+    // `login_screen.dart`), então deve armar aqui, incondicionalmente a
+    // cada cold start, e não ficar refém do usuário completar o login
+    // primeiro. Fire-and-forget: nunca atrasa o cold start.
+    FcmService().registrarInfraestrutura();
 
     // Camada A MAIS de resiliência na nuvem (monitoramento agendado, ver
     // `BackgroundLocationHeartbeatService`): inicia o ciclo de heartbeat
@@ -101,9 +104,7 @@ void main() async {
   await PlanoLimiteService().inicializar();
 
   VolumeSosService().aoDispararSos.listen((_) {
-    _dispararFluxoCompletoDeSos(
-      origem: 'EventChannel (app em primeiro/segundo plano)',
-    );
+    _dispararFluxoCompletoDeSos(origem: 'sos_fisico');
   });
 
   const EventChannel('com.example.security_check_app/rotina_alarme_events')
@@ -139,9 +140,8 @@ void main() async {
   if (coldStartViaSosFisico) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint(
-          '🚨 [main] SOS Físico via Lockscreen: iniciando envio de SOS e abrindo câmera.');
-      EmergencyAlertService().dispararSosComDuplaLocalizacao();
-      navigateToCameraCaptura();
+          '🚨 [main] SOS Físico via Lockscreen: disparando sequência unificada P1->P2.');
+      _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
     });
   }
 
@@ -154,21 +154,19 @@ void main() async {
   }
 }
 
-/// Redireciona a navegação para a CameraCapturaScreen no cold start do SOS Físico
-void navigateToCameraCaptura() {
-  try {
-    final state = appNavigatorKey.currentState;
-    if (state != null) {
-      state.push(
-        MaterialPageRoute(
-          builder: (context) => const CameraCapturaScreen(),
-          fullscreenDialog: true,
-        ),
-      );
-    }
-  } catch (e) {
-    debugPrint('⚠️ Falha ao navegar para CameraCapturaScreen: $e');
-  }
+/// Executa P1 (localização imediata, deduplicada entre engines — ver
+/// [SosDisparoService]) e, só depois de concluído, avança para P2
+/// (abre a câmera) — ordem estrita exigida pela sequência unificada de
+/// SOS. Compartilhado pelos DOIS pontos de entrada do botão físico
+/// (cold-start via lockscreen acima e o EventChannel de
+/// [_dispararFluxoCompletoDeSos] abaixo).
+Future<void> _dispararSequenciaUnificadaDeSos({required String origem}) async {
+  await SosDisparoService().executarP1LocalizacaoImediata(origem: origem);
+  // CapturaDissuasaoService encapsula a checagem de limite mensal de
+  // fotos do Plano Gratuito e o retry-loop de NavigatorState — reusado
+  // aqui (em vez de `navigateToCameraCaptura` direto) para preservar
+  // essa regra também no botão físico, igual já acontecia no SOS manual.
+  await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: origem);
 }
 
 /// Redireciona a navegação para a AlarmeDisparadoScreen
@@ -200,9 +198,7 @@ Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
 
 void _dispararFluxoCompletoDeSos({required String origem}) {
   debugPrint('🆘 [main] Disparando fluxo completo de SOS — origem: $origem');
-  EmergencyAlertService().dispararSosComDuplaLocalizacao().then((_) {
-    CapturaDissuasaoService().abrirCapturaSePermitido();
-  }).catchError((e) {
+  _dispararSequenciaUnificadaDeSos(origem: origem).catchError((e) {
     debugPrint('⚠️ [main] Falha ao processar SOS ($origem): $e');
   });
 }

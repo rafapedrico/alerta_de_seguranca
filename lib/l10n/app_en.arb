@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "Sign out",
 
   "contatoWhatsappSwitchLabel": "Notify via WhatsApp ($0.10 USD)",
+  "whatsappSimultaneoTitulo": "Also send via WhatsApp",
+  "whatsappSimultaneoDescricao": "Sends the alert immediately via WhatsApp together with the Push, without waiting for delivery confirmation, deducting the amount from the Wallet for each enabled contact.",
 
   "alertaRecebidoTitulo": "Security alert received",
   "alertaRecebidoDe": "{nome} may be in danger",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "View location on map",
+  "alertaRecebidoBaixarFoto": "Download Photo",
+  "alertaRecebidoCompartilhar": "Share",
+  "alertaRecebidoFotoSalva": "Photo saved to gallery.",
+  "alertaRecebidoPermissaoNegada": "Permission denied to save the photo.",
+  "alertaRecebidoFalhaSalvar": "Couldn't save the photo.",
+  "alertaRecebidoFalhaCompartilhar": "Couldn't share the photo.",
+  "alertaRecebidoFotoIndisponivel": "Couldn't load the photo.",
+  "alertaRecebidoTentarNovo": "Try again",
 
   "carteiraTitulo": "Credit Wallet",
   "carteiraMenuItem": "Credit Wallet",
@@ -122,6 +132,10 @@
   "segurancaToqueDesarmar": "Tap: disarm",
   "segurancaToqueIniciar": "Tap to start",
   "segurancaBotaoPanico": "Panic Button",
+  "deviceAdminTitulo": "Automatic screen lock",
+  "deviceAdminDescricaoInativo": "Lets the app automatically lock the screen at the end of the emergency SOS. Requires a special Android permission, granted once.",
+  "deviceAdminDescricaoAtivo": "Enabled — the screen will be locked automatically at the end of the SOS sequence.",
+  "deviceAdminBotaoAtivar": "Enable",
 
   "familiaAlarmeRemovido": "🗑️ Alarm removed successfully.",
   "familiaAlarmePausadoAte": "⏸️ Alarm paused until midnight today.",
@@ -235,6 +249,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "No events found for this filter.",
+  "historicoLimparBotao": "Clear History",
+  "historicoLimparConfirmarTitulo": "Clear history?",
+  "historicoLimparConfirmarConteudo": "This action permanently removes the messages in this category. It cannot be undone.",
 
   "contatosMaximoAtingido": "⚠️ You have already registered the maximum of {max} contacts.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

@@ -180,6 +180,36 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
     });
   }
 
+  /// Exibe a confirmação e, se aceita, apaga TODOS os registros sensíveis
+  /// (categoria 'critico') de uma vez — opção "Limpar Histórico" pedida
+  /// também para esta tela protegida.
+  void _confirmarLimparHistorico() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.historicoLimparConfirmarTitulo),
+        content: Text(l10n.historicoLimparConfirmarConteudo, softWrap: true),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancelar),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _db.limparHistoricoPorCategoria('critico');
+              if (!mounted) return;
+              setState(() => _eventosSensiveis = []);
+            },
+            child: Text(l10n.historicoLimparBotao),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatarTempoRestante(int ms) {
     final duracao = Duration(milliseconds: ms);
     final horas = duracao.inHours;
@@ -210,6 +240,14 @@ class _AuditoriaSensivelScreenState extends State<AuditoriaSensivelScreen> {
         title: Text(AppLocalizations.of(context)!.auditoriaTitulo),
         backgroundColor: const Color(0xFF4C7040),
         foregroundColor: Colors.white,
+        actions: [
+          if (_liberado && _eventosSensiveis.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: AppLocalizations.of(context)!.historicoLimparBotao,
+              onPressed: _confirmarLimparHistorico,
+            ),
+        ],
       ),
       body: _carregando
           ? const Center(child: CircularProgressIndicator())

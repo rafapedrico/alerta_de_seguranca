@@ -14,7 +14,11 @@ class CapturaDissuasaoService {
       CapturaDissuasaoService._internal();
   factory CapturaDissuasaoService() => _instance;
 
-  Future<void> abrirCapturaSePermitido() async {
+  /// [origemUnificada], quando informado, identifica a sequência
+  /// unificada de SOS (ver [SosDisparoService]/[CameraCapturaScreen]) —
+  /// repassado direto para a tela, sem alterar a checagem de limite do
+  /// plano nem o retry-loop de navegação abaixo.
+  Future<void> abrirCapturaSePermitido({String? origemUnificada}) async {
     try {
       // 1. Verifica se o plano permite tirar fotos
       final bool permitido = await PlanoLimiteService().podeTirarFoto();
@@ -61,7 +65,7 @@ class CapturaDissuasaoService {
       debugPrint('📷 [CapturaDissuasaoService] Navegando para CameraCapturaScreen...');
       navigatorState.push(
         MaterialPageRoute(
-          builder: (_) => const CameraCapturaScreen(),
+          builder: (_) => CameraCapturaScreen(origemUnificada: origemUnificada),
           fullscreenDialog: true,
         ),
       );

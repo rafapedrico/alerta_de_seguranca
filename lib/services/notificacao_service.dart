@@ -7,10 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
-import '../main.dart';
 import '../screens/alarme_disparado_screen.dart';
 import '../screens/alerta_recebido_screen.dart';
 import '../screens/home_screen.dart';
@@ -385,8 +385,27 @@ class NotificacaoService {
     String? nomeRemetente,
     double? latitude,
     double? longitude,
+    String? fotoUrl,
   }) async {
     await inicializar();
+
+    // P2 da sequência unificada de SOS (ver SosDisparoService no
+    // remetente): quando o alerta inclui uma foto, baixa os bytes ANTES
+    // de montar a notificação e usa BigPictureStyle para exibi-la
+    // embutida — best-effort: uma falha no download (sem rede, link
+    // expirado, timeout) NUNCA deve impedir a notificação de
+    // texto/localização de aparecer, só cai para o estilo padrão.
+    Uint8List? fotoBytes;
+    if (fotoUrl != null && fotoUrl.isNotEmpty) {
+      try {
+        final resposta = await http.get(Uri.parse(fotoUrl)).timeout(const Duration(seconds: 15));
+        if (resposta.statusCode == 200) {
+          fotoBytes = resposta.bodyBytes;
+        }
+      } catch (e) {
+        debugPrint('⚠️ [NotificacaoService] Falha ao baixar foto do SOS para exibição: $e');
+      }
+    }
 
     final androidDetails = AndroidNotificationDetails(
       canalAlertaRecebidoId,
@@ -399,6 +418,15 @@ class NotificacaoService {
       autoCancel: false,
       playSound: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      styleInformation: fotoBytes != null
+          ? BigPictureStyleInformation(
+              ByteArrayAndroidBitmap(fotoBytes),
+              contentTitle: nomeRemetente != null && nomeRemetente.isNotEmpty
+                  ? '🚨 Alerta de $nomeRemetente'
+                  : '🚨 Alerta de segurança',
+              summaryText: mensagem,
+            )
+          : null,
     );
 
     final details = NotificationDetails(android: androidDetails);
@@ -410,6 +438,7 @@ class NotificacaoService {
       if (nomeRemetente != null) 'nomeRemetente': nomeRemetente,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      if (fotoUrl != null && fotoUrl.isNotEmpty) 'fotoUrl': fotoUrl,
     });
 
     await _plugin.show(
@@ -699,6 +728,8 @@ class NotificacaoService {
             nomeRemetente: dados['nomeRemetente'] as String?,
             latitude: (dados['latitude'] as num?)?.toDouble(),
             longitude: (dados['longitude'] as num?)?.toDouble(),
+            fotoUrl: dados['fotoUrl'] as String?,
+            idEntrega: dados['idEntrega'] as String?,
           ),
         ),
       );

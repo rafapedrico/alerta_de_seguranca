@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "Esci",
 
   "contatoWhatsappSwitchLabel": "Notifica via WhatsApp ($0.10 USD)",
+  "whatsappSimultaneoTitulo": "Invia anche via WhatsApp",
+  "whatsappSimultaneoDescricao": "Invia l'allerta immediatamente via WhatsApp insieme al Push, senza attendere la conferma di consegna, addebitando l'importo dal Portafoglio per ogni contatto abilitato.",
 
   "alertaRecebidoTitulo": "Avviso di sicurezza ricevuto",
   "alertaRecebidoDe": "{nome} potrebbe essere in pericolo",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "Vedi posizione sulla mappa",
+  "alertaRecebidoBaixarFoto": "Scarica Foto",
+  "alertaRecebidoCompartilhar": "Condividi",
+  "alertaRecebidoFotoSalva": "Foto salvata nella galleria.",
+  "alertaRecebidoPermissaoNegada": "Permesso negato per salvare la foto.",
+  "alertaRecebidoFalhaSalvar": "Impossibile salvare la foto.",
+  "alertaRecebidoFalhaCompartilhar": "Impossibile condividere la foto.",
+  "alertaRecebidoFotoIndisponivel": "Impossibile caricare la foto.",
+  "alertaRecebidoTentarNovo": "Riprova",
 
   "carteiraTitulo": "Portafoglio Crediti",
   "carteiraMenuItem": "Portafoglio Crediti",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "Tocca: disattiva",
   "segurancaToqueIniciar": "Tocca per iniziare",
   "segurancaBotaoPanico": "Pulsante di panico",
+  "deviceAdminTitulo": "Blocco automatico dello schermo",
+  "deviceAdminDescricaoInativo": "Consente all'app di bloccare automaticamente lo schermo al termine del SOS di emergenza. Richiede un permesso speciale di Android, concesso una sola volta.",
+  "deviceAdminDescricaoAtivo": "Attivato — lo schermo verrà bloccato automaticamente al termine della sequenza di SOS.",
+  "deviceAdminBotaoAtivar": "Attiva",
 
   "familiaAlarmeRemovido": "🗑️ Allarme rimosso con successo.",
   "familiaAlarmePausadoAte": "⏸️ Allarme in pausa fino a mezzanotte di oggi.",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "Nessun evento trovato per questo filtro.",
+  "historicoLimparBotao": "Cancella Cronologia",
+  "historicoLimparConfirmarTitulo": "Cancellare la cronologia?",
+  "historicoLimparConfirmarConteudo": "Questa azione rimuove definitivamente i messaggi di questa categoria. Non può essere annullata.",
 
   "contatosMaximoAtingido": "⚠️ Hai già registrato il massimo di {max} contatti.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

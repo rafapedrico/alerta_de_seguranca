@@ -69,6 +69,11 @@ dependencies:
   # SurfaceProducer.Callback incompatível com a versão do Flutter/Gradle
   # local usada neste projeto.
   camera: 0.10.5+9
+  phone_numbers_parser: ^9.0.25
+  firebase_storage: ^11.7.7
+  gal: 2.1.3
+  share_plus: ^10.0.0
+  path_provider: ^2.1.5
 
 
 

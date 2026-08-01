@@ -248,6 +248,95 @@ class FirebaseSyncService {
     }
   }
 
+  /// Grava a chave GLOBAL "Enviar também via WhatsApp" (ver
+  /// ConfiguracoesTab) em `usuarios/{uid}.enviarWhatsappSimultaneo` —
+  /// lida pela Cloud Function no momento do disparo
+  /// ([dispararAlertaHibrido] em `functions/alertaHibridoService.js`)
+  /// para decidir se o WhatsApp de contingência deve ser enviado
+  /// IMEDIATAMENTE, em paralelo ao Push FCM, em vez de aguardar os 60s
+  /// normais de transbordo (`functions/transbordoWhatsappMonitor.js`).
+  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario.set(
+        {'enviarWhatsappSimultaneo': ativo},
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [FirebaseSyncService] enviarWhatsappSimultaneo atualizado para $ativo.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao atualizar enviarWhatsappSimultaneo: $e');
+    }
+  }
+
+  /// Dispara o P1 da sequência unificada de SOS (botão físico de Volume+
+  /// ou botão de SOS manual da aba Segurança — ver [SosDisparoService])
+  /// para a nuvem: diferente de [dispararAlertaTentativaDesarmeIncorreto]
+  /// (que não carrega coordenadas, a Cloud Function usa a última
+  /// localização já sincronizada), [latitude]/[longitude] são a posição
+  /// capturada NA HORA do disparo, garantindo que a mensagem de
+  /// localização seja a mais precisa possível mesmo que a sincronização
+  /// periódica esteja desatualizada. Requer sessão autenticada — retorna
+  /// `false` sem lançar exceção se não houver `uid` disponível (ver
+  /// [SosDisparoService], que usa o SMS nativo como fallback nesse caso).
+  ///
+  /// [origem] é só para log/telemetria (ex: distingue "sos_fisico_volume"
+  /// de "sos_manual" mesmo os dois usando o mesmo `tipo` de alerta) — não
+  /// afeta a lógica de disparo no backend.
+  Future<bool> dispararAlertaSosFisico({
+    double? latitude,
+    double? longitude,
+    required String origem,
+  }) async {
+    if (!_firebaseDisponivel) return false;
+    try {
+      await _documentoUsuario.collection('alertas').add({
+        'tipo': 'sos_fisico',
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        'origem': origem,
+        'criadoEm': FieldValue.serverTimestamp(),
+        'processado': false,
+      }).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [FirebaseSyncService] Alerta de SOS ($origem) enviado à nuvem.');
+      return true;
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao enviar alerta de SOS à nuvem: $e');
+      return false;
+    }
+  }
+
+  /// Dispara o P2 da sequência unificada de SOS — a foto já foi enviada
+  /// ao Firebase Storage por [SosDisparoService] antes desta chamada,
+  /// [fotoUrl] é o link (com token de acesso) que a Cloud Function
+  /// repassa aos contatos de emergência via Push e WhatsApp. Requer
+  /// sessão autenticada, mesma regra de [dispararAlertaSosFisico].
+  Future<bool> dispararAlertaSosFoto({
+    required String fotoUrl,
+    required String origem,
+  }) async {
+    if (!_firebaseDisponivel) return false;
+    try {
+      await _documentoUsuario.collection('alertas').add({
+        'tipo': 'sos_fisico_foto',
+        'fotoUrl': fotoUrl,
+        'origem': origem,
+        'criadoEm': FieldValue.serverTimestamp(),
+        'processado': false,
+      }).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [FirebaseSyncService] Alerta de foto do SOS ($origem) enviado à nuvem.');
+      return true;
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao enviar alerta de foto do SOS à nuvem: $e');
+      return false;
+    }
+  }
+
   /// Disparo IMEDIATO e prioritário para a nuvem ao detectar uma falha de
   /// desarme antecipado (PIN incorreto e/ou tempo esgotado, conforme
   /// [motivo]). DEVE ser a PRIMEIRA ação executada (e aguardada) nos

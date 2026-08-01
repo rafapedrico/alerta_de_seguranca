@@ -42,6 +42,7 @@ const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
 const {dispararAlertaHibrido} = require("./alertaHibridoService");
+const {TWILIO_SECRETS} = require("./smsGateway");
 
 const db = getFirestore();
 
@@ -115,6 +116,13 @@ exports.monitorarAlarmesAgendados = onSchedule(
     {
       schedule: "every 2 minutes",
       timeZone: "America/Sao_Paulo",
+      // Necessário porque, com a chave global "Enviar também via
+      // WhatsApp" ligada, o WhatsApp pode ser enviado de forma SÍNCRONA
+      // dentro de `dispararAlertaHibrido` (ver
+      // `enviarWhatsappSimultaneoParaContatos` em
+      // `alertaHibridoService.js`), exigindo os segredos do Twilio já
+      // injetados nesta execução.
+      secrets: TWILIO_SECRETS,
     },
     async () => {
       const agoraEpochMs = Date.now();
@@ -173,11 +181,20 @@ exports.monitorarAlarmesAgendados = onSchedule(
               (contexto ? `\nContexto: ${contexto}` : "") +
               `\nLocalização: ${localizacaoTexto}`;
 
+          // Busca a chave global "Enviar também via WhatsApp" (ver
+          // ConfiguracoesTab) diretamente em `usuarios/{uid}` — este
+          // documento de alarme não a espelha, evitando duas fontes de
+          // verdade para a mesma preferência do usuário.
+          const usuarioSnap = await db.collection("usuarios").doc(dados.usuarioId).get();
+          const enviarWhatsappSimultaneo =
+              usuarioSnap.exists && usuarioSnap.data().enviarWhatsappSimultaneo === true;
+
           await dispararAlertaHibrido({
             usuarioId: dados.usuarioId,
             contatos: dados.contatosEmergencia || [],
             mensagem,
             origem: "alarme_rotina",
+            enviarWhatsappSimultaneo,
           });
         } catch (e) {
           // Nunca deixa a falha de UM alarme interromper o processamento

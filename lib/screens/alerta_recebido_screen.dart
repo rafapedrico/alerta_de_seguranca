@@ -1,6 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../services/alertas_recebidos_service.dart';
+import '../services/firebase_auth_service.dart';
+import 'home_screen.dart';
+import 'login_screen.dart';
 
 /// Tela exibida quando ESTE aparelho recebe, via Push FCM, o alerta de
 /// emergência de OUTRO usuário que o cadastrou como contato de emergência
@@ -8,15 +18,17 @@ import 'package:url_launcher/url_launcher.dart';
 ///
 /// Distinta da [AlarmeDisparadoScreen] — aquela é para o PRÓPRIO alarme
 /// do usuário (com fluxo de PIN para desarmar); esta é somente
-/// informativa, mostrando quem disparou o alerta e a mensagem/localização
+/// informativa, mostrando quem disparou o alerta e a foto/localização
 /// recebida.
-class AlertaRecebidoScreen extends StatelessWidget {
+class AlertaRecebidoScreen extends StatefulWidget {
   const AlertaRecebidoScreen({
     super.key,
     required this.mensagem,
     this.nomeRemetente,
     this.latitude,
     this.longitude,
+    this.fotoUrl,
+    this.idEntrega,
   });
 
   final String mensagem;
@@ -24,83 +36,291 @@ class AlertaRecebidoScreen extends StatelessWidget {
   final double? latitude;
   final double? longitude;
 
+  /// Link (Firebase Storage) da foto do SOS, quando o alerta for do tipo
+  /// `sos_fisico_foto` (ver `functions/alertaHibridoService.js`). Quando
+  /// presente, a tela CARREGA E EXIBE a imagem diretamente — nunca
+  /// mostra a URL crua em texto.
+  final String? fotoUrl;
+
+  /// Identifica o documento `entregas_alerta/{idEntrega}` — usado para
+  /// marcar este alerta como visualizado localmente (ver
+  /// [AlertasRecebidosService], indicador de "não visualizado" no
+  /// HomeScreen/aba Histórico).
+  final String? idEntrega;
+
+  @override
+  State<AlertaRecebidoScreen> createState() => _AlertaRecebidoScreenState();
+}
+
+class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
+  Uint8List? _fotoBytes;
+  bool _carregandoFoto = false;
+  bool _erroFoto = false;
+  bool _baixando = false;
+  bool _compartilhando = false;
+
+  bool get _temFoto => widget.fotoUrl != null && widget.fotoUrl!.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    final idEntrega = widget.idEntrega;
+    if (idEntrega != null && idEntrega.isNotEmpty) {
+      AlertasRecebidosService.marcarVisualizadoPorIdEntrega(idEntrega);
+    }
+    if (_temFoto) _carregarFoto();
+  }
+
+  Future<void> _carregarFoto() async {
+    setState(() {
+      _carregandoFoto = true;
+      _erroFoto = false;
+    });
+    try {
+      final resposta = await http.get(Uri.parse(widget.fotoUrl!)).timeout(const Duration(seconds: 20));
+      if (resposta.statusCode != 200) throw Exception('HTTP ${resposta.statusCode}');
+      if (mounted) setState(() => _fotoBytes = resposta.bodyBytes);
+    } catch (e) {
+      debugPrint('⚠️ [AlertaRecebidoScreen] Falha ao carregar foto: $e');
+      if (mounted) setState(() => _erroFoto = true);
+    } finally {
+      if (mounted) setState(() => _carregandoFoto = false);
+    }
+  }
+
+  Future<void> _baixarFoto() async {
+    final bytes = _fotoBytes;
+    if (bytes == null || _baixando) return;
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _baixando = true);
+    try {
+      final permitido = await Gal.requestAccess();
+      if (!permitido) {
+        _mostrarSnack(l10n.alertaRecebidoPermissaoNegada);
+        return;
+      }
+      await Gal.putImageBytes(bytes);
+      _mostrarSnack(l10n.alertaRecebidoFotoSalva);
+    } catch (e) {
+      debugPrint('⚠️ [AlertaRecebidoScreen] Falha ao salvar foto: $e');
+      _mostrarSnack(l10n.alertaRecebidoFalhaSalvar);
+    } finally {
+      if (mounted) setState(() => _baixando = false);
+    }
+  }
+
+  Future<void> _compartilharFoto() async {
+    final bytes = _fotoBytes;
+    if (bytes == null || _compartilhando) return;
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _compartilhando = true);
+    try {
+      final arquivo = XFile.fromData(bytes, name: 'foto_sos.jpg', mimeType: 'image/jpeg');
+      await Share.shareXFiles([arquivo], text: widget.mensagem);
+    } catch (e) {
+      debugPrint('⚠️ [AlertaRecebidoScreen] Falha ao compartilhar foto: $e');
+      _mostrarSnack(l10n.alertaRecebidoFalhaCompartilhar);
+    } finally {
+      if (mounted) setState(() => _compartilhando = false);
+    }
+  }
+
+  void _mostrarSnack(String texto) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  }
+
   Future<void> _abrirMapa() async {
-    if (latitude == null || longitude == null) return;
-    final uri = Uri.parse('https://maps.google.com/?q=$latitude,$longitude');
+    if (widget.latitude == null || widget.longitude == null) return;
+    final uri = Uri.parse('https://maps.google.com/?q=${widget.latitude},${widget.longitude}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
+  /// Fecha esta tela e SEMPRE volta para o fluxo normal do app — NUNCA
+  /// fecha/minimiza o app. Se ainda houver alguma rota abaixo (caso
+  /// comum: aberta por cima da Home/Login já visível), um pop simples já
+  /// resolve; caso contrário (ex: cold start via toque na notificação
+  /// com o app totalmente fechado, onde esta pode acabar sendo a única
+  /// rota), força explicitamente a navegação para a Home (se
+  /// autenticado) ou a Login — nunca deixa o Android tratar a ausência
+  /// de rotas como "sair do app".
+  void _fecharTela() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    final autenticado = FirebaseAuthService().uidAtual != null;
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => autenticado ? const HomeScreen() : const LoginScreen(),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      backgroundColor: const Color(0xFF14212E),
-      appBar: AppBar(
-        backgroundColor: Colors.red.shade700,
-        title: Text(l10n.alertaRecebidoTitulo),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 12),
-              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 72),
-              const SizedBox(height: 16),
-              if (nomeRemetente != null && nomeRemetente!.isNotEmpty)
-                Text(
-                  l10n.alertaRecebidoDe(nomeRemetente!),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) _fecharTela();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF14212E),
+        appBar: AppBar(
+          backgroundColor: Colors.red.shade700,
+          title: Text(l10n.alertaRecebidoTitulo),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 12),
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 72),
+                const SizedBox(height: 16),
+                if (widget.nomeRemetente != null && widget.nomeRemetente!.isNotEmpty)
+                  Text(
+                    l10n.alertaRecebidoDe(widget.nomeRemetente!),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E313F),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  mensagem,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ),
-              if (latitude != null && longitude != null) ...[
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _abrirMapa,
-                  icon: const Icon(Icons.map),
-                  label: Text(l10n.alertaRecebidoVerNoMapa),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C7040),
-                    foregroundColor: Colors.white,
+                const SizedBox(height: 16),
+                if (_temFoto) _buildFoto(l10n) else _buildMensagemTexto(),
+                if (widget.latitude != null && widget.longitude != null) ...[
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: _abrirMapa,
+                    icon: const Icon(Icons.map),
+                    label: Text(l10n.alertaRecebidoVerNoMapa),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4C7040),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                OutlinedButton(
+                  onPressed: _fecharTela,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white38),
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    l10n.fechar,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white38),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text(
-                  l10n.fechar,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMensagemTexto() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E313F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(widget.mensagem, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+    );
+  }
+
+  Widget _buildFoto(AppLocalizations l10n) {
+    if (_carregandoFoto) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    if (_erroFoto || _fotoBytes == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E313F),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 40),
+            const SizedBox(height: 8),
+            Text(
+              l10n.alertaRecebidoFotoIndisponivel,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 8),
+            TextButton(onPressed: _carregarFoto, child: Text(l10n.alertaRecebidoTentarNovo)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(_fotoBytes!, fit: BoxFit.cover, width: double.infinity),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _baixando ? null : _baixarFoto,
+                icon: _baixando
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.download),
+                label: Text(l10n.alertaRecebidoBaixarFoto),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white38),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _compartilhando ? null : _compartilharFoto,
+                icon: _compartilhando
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.share),
+                label: Text(l10n.alertaRecebidoCompartilhar),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4C7040),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

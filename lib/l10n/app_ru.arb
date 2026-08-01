@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "Выйти",
 
   "contatoWhatsappSwitchLabel": "Уведомлять через WhatsApp ($0.10 USD)",
+  "whatsappSimultaneoTitulo": "Также отправлять через WhatsApp",
+  "whatsappSimultaneoDescricao": "Отправляет оповещение немедленно через WhatsApp вместе с push-уведомлением, не дожидаясь подтверждения доставки, списывая сумму с Кошелька за каждый включённый контакт.",
 
   "alertaRecebidoTitulo": "Получено оповещение безопасности",
   "alertaRecebidoDe": "{nome} может быть в опасности",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "Посмотреть местоположение на карте",
+  "alertaRecebidoBaixarFoto": "Скачать фото",
+  "alertaRecebidoCompartilhar": "Поделиться",
+  "alertaRecebidoFotoSalva": "Фото сохранено в галерею.",
+  "alertaRecebidoPermissaoNegada": "Отказано в разрешении на сохранение фото.",
+  "alertaRecebidoFalhaSalvar": "Не удалось сохранить фото.",
+  "alertaRecebidoFalhaCompartilhar": "Не удалось поделиться фото.",
+  "alertaRecebidoFotoIndisponivel": "Не удалось загрузить фото.",
+  "alertaRecebidoTentarNovo": "Повторить",
 
   "carteiraTitulo": "Кошелёк кредитов",
   "carteiraMenuItem": "Кошелёк кредитов",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "Нажмите: отменить",
   "segurancaToqueIniciar": "Нажмите, чтобы начать",
   "segurancaBotaoPanico": "Кнопка паники",
+  "deviceAdminTitulo": "Автоматическая блокировка экрана",
+  "deviceAdminDescricaoInativo": "Позволяет приложению автоматически блокировать экран в конце экстренного SOS. Требуется специальное разрешение Android, предоставляемое один раз.",
+  "deviceAdminDescricaoAtivo": "Включено — экран будет заблокирован автоматически в конце последовательности SOS.",
+  "deviceAdminBotaoAtivar": "Включить",
 
   "familiaAlarmeRemovido": "🗑️ Будильник успешно удалён.",
   "familiaAlarmePausadoAte": "⏸️ Будильник приостановлен до полуночи сегодня.",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "Для этого фильтра события не найдены.",
+  "historicoLimparBotao": "Очистить историю",
+  "historicoLimparConfirmarTitulo": "Очистить историю?",
+  "historicoLimparConfirmarConteudo": "Это действие безвозвратно удалит сообщения этой категории. Отменить его нельзя.",
 
   "contatosMaximoAtingido": "⚠️ Вы уже зарегистрировали максимум {max} контактов.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

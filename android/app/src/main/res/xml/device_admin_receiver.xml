@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declara as políticas de Device Admin realmente usadas pelo
+     Guardião X — SOMENTE force-lock (bloquear a tela sob demanda), a
+     única capacidade exigida por DevicePolicyManager.lockNow() (ver
+     GuardiaoDeviceAdminReceiver/DeviceAdminPlugin). Nenhuma outra
+     política (apagar dados, exigir senha forte, desabilitar câmera,
+     etc.) é declarada de propósito — mantém o diálogo de consentimento
+     do Android o mais restrito e transparente possível para o usuário. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+    </uses-policies>
+</device-admin>

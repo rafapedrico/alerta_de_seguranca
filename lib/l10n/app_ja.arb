@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "ログアウト",
 
   "contatoWhatsappSwitchLabel": "WhatsAppで通知する（$0.10 USD）",
+  "whatsappSimultaneoTitulo": "WhatsAppでも送信する",
+  "whatsappSimultaneoDescricao": "配信確認を待たずに、プッシュ通知と同時にWhatsAppでも即座にアラートを送信し、有効な連絡先ごとにウォレットから金額を差し引きます。",
 
   "alertaRecebidoTitulo": "安全警報を受信しました",
   "alertaRecebidoDe": "{nome}さんが危険な状態かもしれません",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "地図で位置を確認",
+  "alertaRecebidoBaixarFoto": "写真をダウンロード",
+  "alertaRecebidoCompartilhar": "共有",
+  "alertaRecebidoFotoSalva": "写真をギャラリーに保存しました。",
+  "alertaRecebidoPermissaoNegada": "写真を保存する権限が拒否されました。",
+  "alertaRecebidoFalhaSalvar": "写真を保存できませんでした。",
+  "alertaRecebidoFalhaCompartilhar": "写真を共有できませんでした。",
+  "alertaRecebidoFotoIndisponivel": "写真を読み込めませんでした。",
+  "alertaRecebidoTentarNovo": "再試行",
 
   "carteiraTitulo": "クレジットウォレット",
   "carteiraMenuItem": "クレジットウォレット",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "タップ：解除",
   "segurancaToqueIniciar": "タップして開始",
   "segurancaBotaoPanico": "パニックボタン",
+  "deviceAdminTitulo": "画面の自動ロック",
+  "deviceAdminDescricaoInativo": "緊急SOSの最後にアプリが自動的に画面をロックできるようにします。特別なAndroidの権限が必要で、一度だけ付与されます。",
+  "deviceAdminDescricaoAtivo": "有効 — SOSシーケンスの最後に画面が自動的にロックされます。",
+  "deviceAdminBotaoAtivar": "有効にする",
 
   "familiaAlarmeRemovido": "🗑️ アラームを正常に削除しました。",
   "familiaAlarmePausadoAte": "⏸️ アラームは本日の深夜0時まで一時停止しました。",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "このフィルターに該当するイベントが見つかりません。",
+  "historicoLimparBotao": "履歴を消去",
+  "historicoLimparConfirmarTitulo": "履歴を消去しますか？",
+  "historicoLimparConfirmarConteudo": "この操作はこのカテゴリのメッセージを完全に削除します。元に戻すことはできません。",
 
   "contatosMaximoAtingido": "⚠️ すでに最大{max}件の連絡先を登録済みです。",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

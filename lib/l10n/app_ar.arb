@@ -33,6 +33,8 @@
   "sairDaContaConfirmar": "تسجيل الخروج",
 
   "contatoWhatsappSwitchLabel": "الإشعار عبر واتساب (0.10 دولار أمريكي)",
+  "whatsappSimultaneoTitulo": "إرسال أيضًا عبر واتساب",
+  "whatsappSimultaneoDescricao": "يرسل التنبيه فورًا عبر واتساب إلى جانب الإشعار الفوري، دون انتظار تأكيد التسليم، ويخصم المبلغ من المحفظة لكل جهة اتصال مُفعّلة.",
 
   "alertaRecebidoTitulo": "تم استلام تنبيه أمني",
   "alertaRecebidoDe": "قد يكون {nome} في خطر",
@@ -42,6 +44,14 @@
     }
   },
   "alertaRecebidoVerNoMapa": "عرض الموقع على الخريطة",
+  "alertaRecebidoBaixarFoto": "تنزيل الصورة",
+  "alertaRecebidoCompartilhar": "مشاركة",
+  "alertaRecebidoFotoSalva": "تم حفظ الصورة في المعرض.",
+  "alertaRecebidoPermissaoNegada": "تم رفض إذن حفظ الصورة.",
+  "alertaRecebidoFalhaSalvar": "تعذر حفظ الصورة.",
+  "alertaRecebidoFalhaCompartilhar": "تعذرت مشاركة الصورة.",
+  "alertaRecebidoFotoIndisponivel": "تعذر تحميل الصورة.",
+  "alertaRecebidoTentarNovo": "إعادة المحاولة",
 
   "carteiraTitulo": "محفظة الأرصدة",
   "carteiraMenuItem": "محفظة الأرصدة",
@@ -118,6 +128,10 @@
   "segurancaToqueDesarmar": "اضغط: إلغاء التفعيل",
   "segurancaToqueIniciar": "اضغط للبدء",
   "segurancaBotaoPanico": "زر الطوارئ",
+  "deviceAdminTitulo": "قفل الشاشة التلقائي",
+  "deviceAdminDescricaoInativo": "يتيح للتطبيق قفل الشاشة تلقائيًا في نهاية نداء الاستغاثة الطارئ. يتطلب إذنًا خاصًا من Android يُمنح مرة واحدة فقط.",
+  "deviceAdminDescricaoAtivo": "مفعّل — سيتم قفل الشاشة تلقائيًا في نهاية تسلسل نداء الاستغاثة.",
+  "deviceAdminBotaoAtivar": "تفعيل",
 
   "familiaAlarmeRemovido": "🗑️ تم حذف المنبه بنجاح.",
   "familiaAlarmePausadoAte": "⏸️ تم إيقاف المنبه مؤقتًا حتى منتصف الليل اليوم.",
@@ -219,6 +233,9 @@
     "placeholders": { "dias": { "type": "int" } }
   },
   "historicoNenhumEvento": "لم يتم العثور على أي حدث لهذا الفلتر.",
+  "historicoLimparBotao": "مسح السجل",
+  "historicoLimparConfirmarTitulo": "مسح السجل؟",
+  "historicoLimparConfirmarConteudo": "يؤدي هذا الإجراء إلى إزالة رسائل هذه الفئة نهائيًا. لا يمكن التراجع عنه.",
 
   "contatosMaximoAtingido": "⚠️ لقد سجلت بالفعل الحد الأقصى وهو {max} من جهات الاتصال.",
   "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },

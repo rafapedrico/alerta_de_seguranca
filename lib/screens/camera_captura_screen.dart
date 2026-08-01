@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/device_admin_service.dart';
 import '../services/emergency_alert_service.dart';
 import '../services/plano_limite_service.dart';
+import '../services/sos_disparo_service.dart';
 
 enum _EstadoCaptura {
   inicializandoCamera,
@@ -15,7 +17,17 @@ enum _EstadoCaptura {
 }
 
 class CameraCapturaScreen extends StatefulWidget {
-  const CameraCapturaScreen({super.key});
+  const CameraCapturaScreen({super.key, this.origemUnificada});
+
+  /// Quando informado, esta captura faz parte da sequência UNIFICADA de
+  /// SOS (P1->P4, ver [SosDisparoService]) — a foto (P2) é enviada pelo
+  /// pipeline híbrido novo (Firebase Storage + Push/WhatsApp) e o gesto
+  /// de deslizar (P4) tenta o bloqueio nativo de tela via
+  /// [DeviceAdminService] antes de cair no fallback histórico. Quando
+  /// `null` (fluxo de timeout do cronômetro de check-in, fora do escopo
+  /// desta unificação), mantém o comportamento histórico inalterado: SMS
+  /// de texto + `SystemNavigator.pop()` no swipe.
+  final String? origemUnificada;
 
   @override
   State<CameraCapturaScreen> createState() => _CameraCapturaScreenState();
@@ -164,20 +176,40 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
   }
 
   Future<void> _processarEnvioEEnviarSmsResgate(XFile? foto) async {
-    try {
-      await PlanoLimiteService().incrementarFotoUsada();
-    } catch (e) {
-      debugPrint('⚠️ [CameraCapturaScreen] Erro no contador de fotos: $e');
-    }
+    final String? origemUnificada = widget.origemUnificada;
 
-    try {
-      await EmergencyAlertService().enviarSmsResgateFoto(
-        login: 'familia_resgate',
-        senha:
-            'SOS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      );
-    } catch (e) {
-      debugPrint('⚠️ Falha ao enviar SMS de resgate: $e');
+    if (origemUnificada != null) {
+      // P2 da sequência unificada de SOS: envia a foto de verdade pelo
+      // pipeline híbrido (Firebase Storage + Push/WhatsApp), com
+      // fallback automático para SMS de texto se não houver sessão
+      // autenticada (ver SosDisparoService).
+      if (foto != null) {
+        await SosDisparoService().dispararFotoCapturada(foto, origem: origemUnificada);
+      } else {
+        try {
+          await PlanoLimiteService().incrementarFotoUsada();
+        } catch (e) {
+          debugPrint('⚠️ [CameraCapturaScreen] Erro no contador de fotos: $e');
+        }
+      }
+    } else {
+      // Fluxo HISTÓRICO (timeout do cronômetro de check-in, fora do
+      // escopo da unificação de SOS) — inalterado.
+      try {
+        await PlanoLimiteService().incrementarFotoUsada();
+      } catch (e) {
+        debugPrint('⚠️ [CameraCapturaScreen] Erro no contador de fotos: $e');
+      }
+
+      try {
+        await EmergencyAlertService().enviarSmsResgateFoto(
+          login: 'familia_resgate',
+          senha:
+              'SOS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        );
+      } catch (e) {
+        debugPrint('⚠️ Falha ao enviar SMS de resgate: $e');
+      }
     }
 
     await Future.delayed(_duracaoSimulacaoEnvio);
@@ -317,12 +349,33 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
     );
   }
 
+  /// P4 da sequência unificada: tenta o bloqueio NATIVO de tela
+  /// (`DevicePolicyManager.lockNow()`, ver [DeviceAdminService]) — só
+  /// funciona se o usuário já concedeu a permissão de Administrador do
+  /// Dispositivo com antecedência (ver tela de consentimento em
+  /// Configurações/Segurança). Sem essa permissão (ou fora do fluxo
+  /// unificado, [widget.origemUnificada] nulo), cai no comportamento
+  /// histórico: apenas fecha/minimiza o app.
+  Future<void> _acionarSaidaDeSeguranca() async {
+    debugPrint('🛑 Gesto de segurança (Swipe Up) acionado.');
+
+    if (widget.origemUnificada != null) {
+      final bool bloqueou = await DeviceAdminService().bloquearTelaAgora();
+      if (bloqueou) {
+        debugPrint('🔒 [CameraCapturaScreen] Tela bloqueada nativamente (Device Admin).');
+      } else {
+        debugPrint('⚠️ [CameraCapturaScreen] Bloqueio nativo indisponível (Device Admin não ativo) — usando fallback.');
+      }
+    }
+
+    SystemNavigator.pop();
+  }
+
   Widget _buildTelaDissuasao() {
     return GestureDetector(
       onVerticalDragEnd: (details) {
         if (details.velocity.pixelsPerSecond.dy < -200) {
-          debugPrint('🛑 App desligado via gesto de segurança (Swipe Up).');
-          SystemNavigator.pop();
+          _acionarSaidaDeSeguranca();
         }
       },
       child: Container(
