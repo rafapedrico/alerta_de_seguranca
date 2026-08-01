@@ -42,6 +42,13 @@ const STATUS_NEGADO = "negado";
 const STATUS_BLOQUEADO = "bloqueado";
 const STATUS_EXPIRADO = "expirado";
 
+// Sentinela interna (NÃO é um valor do campo `status`) usada só para o
+// retorno da transação em exports.solicitarMonitoramento identificar o
+// caso "solicitante bloqueado" (campo booleano `bloqueado`, ver
+// exports.definirBloqueioSolicitante) e abortar com HttpsError antes de
+// disparar o Push — nunca é escrita no Firestore.
+const STATUS_BLOQUEADO_SOLICITACAO = "__bloqueado_solicitacao__";
+
 /**
  * @param {string} uidAlvo
  * @param {string} uidSolicitante
@@ -139,6 +146,15 @@ exports.solicitarMonitoramento = onCall(async (request) => {
     const snapAtual = await tx.get(permissaoRef);
     const dadosAtuais = snapAtual.exists ? snapAtual.data() : null;
 
+    // Bloqueado (ver exports.definirBloqueioSolicitante): o ALVO marcou
+    // este solicitante como bloqueado explicitamente — nem cria/reabre um
+    // ciclo pendente, nem dispara Push. Eixo independente de `status`
+    // (mesmo um vínculo já `aprovado` anteriormente pode ter sido
+    // bloqueado depois).
+    if (dadosAtuais && dadosAtuais.bloqueado === true) {
+      return STATUS_BLOQUEADO_SOLICITACAO;
+    }
+
     // Já aprovado: nada a fazer, devolve o status atual sem reabrir o
     // ciclo nem reenviar Push.
     if (dadosAtuais && dadosAtuais.status === STATUS_APROVADO) {
@@ -171,6 +187,16 @@ exports.solicitarMonitoramento = onCall(async (request) => {
     }, {merge: true});
     return STATUS_PENDENTE;
   });
+
+  if (statusResultante === STATUS_BLOQUEADO_SOLICITACAO) {
+    logger.warn(
+        `[solicitarMonitoramento] BLOQUEADO: ${uidSolicitante} tentou solicitar ` +
+        `a localização de ${uidAlvo}, que o bloqueou explicitamente — Push não enviado.`,
+    );
+    throw new HttpsError(
+        "permission-denied", "Este contato não está disponível no momento.",
+    );
+  }
 
   if (statusResultante === STATUS_PENDENTE) {
     await enviarFcmMonitoramento(uidAlvo, "solicitacao_monitoramento", {
@@ -348,6 +374,106 @@ exports.definirPermissaoCompartilhamento = onCall(async (request) => {
     sucesso: true,
     uidContato: uidSolicitante,
     status: novoStatus,
+    permissaoId,
+  };
+});
+
+/**
+ * Callable `onCall` chamada pelo app (ver
+ * `lib/services/monitoramento_service.dart`, `definirBloqueioSolicitante`)
+ * para bloquear/desbloquear que um contato específico envie NOVAS
+ * solicitações de localização para mim — pelo slider deslizante de cada
+ * card na aba Monitoramento, ou pelo botão rápido "Bloquear" no modal de
+ * decisão de uma solicitação recebida.
+ *
+ * Persistido como campo booleano DEDICADO (`bloqueado`) no mesmo documento
+ * de permissão do Bloco B (`uidAlvo` = eu, `uidSolicitante` = o contato) —
+ * eixo INDEPENDENTE do `status` de compartilhamento (`STATUS_*`): bloquear
+ * não revoga, por si só, um compartilhamento `aprovado` já ativo; só
+ * impede que uma NOVA solicitação pendente seja aberta/notificada (ver
+ * `exports.solicitarMonitoramento`, que verifica este campo antes de
+ * disparar o Push).
+ *
+ * Resolve o uid do contato pelo telefone SERVER-SIDE, no mesmo padrão de
+ * `definirPermissaoCompartilhamento` — o cliente nunca consulta `usuarios`
+ * por telefone diretamente.
+ *
+ * data: {telefoneContato: string, bloquear: boolean}
+ * return: {sucesso: true, uidContato: string, bloqueado: boolean, permissaoId: string}
+ */
+exports.definirBloqueioSolicitante = onCall(async (request) => {
+  const uidAlvo = request.auth && request.auth.uid;
+  if (!uidAlvo) {
+    throw new HttpsError("unauthenticated", "É necessário estar autenticado.");
+  }
+
+  const {telefoneContato, bloquear} = request.data || {};
+  const telefoneNormalizado = normalizarTelefoneE164(telefoneContato);
+  if (!telefoneNormalizado) {
+    throw new HttpsError("invalid-argument", "Telefone inválido.");
+  }
+  if (typeof bloquear !== "boolean") {
+    throw new HttpsError("invalid-argument", "Parâmetro 'bloquear' inválido.");
+  }
+
+  const alvoSnap = await db.collection("usuarios").doc(uidAlvo).get();
+  const alvo = alvoSnap.exists ? alvoSnap.data() : {};
+
+  const contatoQuery = await db.collection("usuarios")
+      .where("telefone", "==", telefoneNormalizado)
+      .limit(1)
+      .get();
+  if (contatoQuery.empty) {
+    throw new HttpsError(
+        "not-found", "Este número ainda não possui conta no Guardião X.",
+    );
+  }
+
+  const contatoDoc = contatoQuery.docs[0];
+  const uidSolicitante = contatoDoc.id;
+  const contato = contatoDoc.data();
+
+  if (uidSolicitante === uidAlvo) {
+    throw new HttpsError(
+        "invalid-argument",
+        "Não é possível bloquear o próprio número.",
+    );
+  }
+
+  const permissaoId = montarIdPermissao(uidAlvo, uidSolicitante);
+  const permissaoRef = db.collection(COLECAO_PERMISSOES).doc(permissaoId);
+
+  await db.runTransaction(async (tx) => {
+    const snapAtual = await tx.get(permissaoRef);
+    const dadosAtuais = snapAtual.exists ? snapAtual.data() : null;
+    const agora = Timestamp.now();
+
+    tx.set(permissaoRef, {
+      uidAlvo,
+      uidSolicitante,
+      telefoneAlvo: alvo.telefone || telefoneNormalizado,
+      telefoneSolicitante: contato.telefone || telefoneNormalizado,
+      nomeAlvo: alvo.nome || "",
+      nomeSolicitante: contato.nome || "",
+      // Preservado se já existir — bloquear é um eixo independente de
+      // status (ver docstring acima); só define um padrão razoável
+      // ("negado") para o caso de o documento ainda não existir.
+      status: dadosAtuais ? dadosAtuais.status : STATUS_NEGADO,
+      bloqueado: bloquear,
+      criadoEm: dadosAtuais ? dadosAtuais.criadoEm || agora : agora,
+      atualizadoEm: agora,
+    }, {merge: true});
+  });
+
+  logger.info(
+      `[definirBloqueioSolicitante] ${uidAlvo} ${bloquear ? "bloqueou" : "desbloqueou"} ` +
+      `solicitações de ${uidSolicitante} (${telefoneNormalizado}) — permissaoId=${permissaoId}.`,
+  );
+
+  return {
+    sucesso: true,
+    uidContato: uidSolicitante,
+    bloqueado: bloquear,
     permissaoId,
   };
 });

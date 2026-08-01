@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../app_navigator.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
 import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/locale_service.dart';
+import '../services/notificacao_service.dart';
+import '../widgets/monitoramento_decisao_dialog.dart';
 import 'cadastro_screen.dart';
 
 /// Tela de Login do "SOS Security Personal".
@@ -179,13 +182,47 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Navega para o fluxo principal SEMPRE (login concluído normalmente —
+  /// nenhuma exceção à barreira de autenticação, ver política de segurança
+  /// em `main.dart`). A ÚNICA diferença quando o app foi aberto por uma
+  /// notificação de solicitação de localização (ver
+  /// [NotificacaoService.consumirPayloadSolicitacaoPendente]): em vez de o
+  /// usuário precisar navegar manualmente até a aba Monitoramento depois de
+  /// logar, o modal de decisão já abre direto por cima da Home.
   void _navegarParaFluxoPrincipal() {
+    final payloadPendente = NotificacaoService.consumirPayloadSolicitacaoPendente();
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) =>
             const TelaInicialComPossivelDialogoPin(aguardandoConfirmacaoPin: false),
       ),
     );
+
+    if (payloadPendente != null) {
+      _abrirModalDecisaoAposLogin(payloadPendente);
+    }
+  }
+
+  void _abrirModalDecisaoAposLogin(Map<String, dynamic> dados) {
+    final idPermissao = dados['idPermissao'] as String?;
+    final uidSolicitante = dados['uidSolicitante'] as String?;
+    if (idPermissao == null || uidSolicitante == null) return;
+
+    // A Home recém-empurrada acima ainda não terminou de montar neste ponto
+    // — aguarda o próximo frame antes de usar o contexto do Navigator para
+    // abrir o modal por cima dela.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final contextoNavegador = appNavigatorKey.currentContext;
+      if (contextoNavegador == null) return;
+      exibirDialogoDecisaoMonitoramento(
+        context: contextoNavegador,
+        idPermissao: idPermissao,
+        uidSolicitante: uidSolicitante,
+        nomeSolicitante: (dados['nomeSolicitante'] as String?) ?? '',
+        telefoneSolicitante: (dados['telefoneSolicitante'] as String?) ?? '',
+      );
+    });
   }
 
   void _abrirEsqueciMinhaSenha() {

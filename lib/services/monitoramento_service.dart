@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
+import 'firebase_sync_service.dart';
+import 'location_service.dart';
 
 /// Serviço central da aba Monitoramento: gerencia a lista LOCAL de
 /// contatos (SQLite, tabela `monitoramento_contatos`, TOTALMENTE
@@ -113,6 +115,9 @@ class MonitoramentoService {
   /// - `'ja_aprovado'`: já havia permissão aprovada — nada a fazer.
   /// - `'numero_nao_encontrado'`: telefone não corresponde a nenhuma conta.
   /// - `'proprio_numero'`: o telefone informado é o do próprio usuário.
+  /// - `'bloqueado_pelo_alvo'`: o contato me bloqueou (ver
+  ///   [definirBloqueioPorTelefone]) — a Cloud Function nem chega a criar
+  ///   um ciclo pendente nem a enviar Push.
   /// - `'erro'`: falha de rede/servidor.
   Future<String> solicitarLocalizacao(int idContatoLocal) async {
     if (!_firebaseDisponivel) return 'erro';
@@ -146,6 +151,7 @@ class MonitoramentoService {
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'not-found') return 'numero_nao_encontrado';
       if (e.code == 'invalid-argument') return 'proprio_numero';
+      if (e.code == 'permission-denied') return 'bloqueado_pelo_alvo';
       debugPrint(
           '⚠️ [MonitoramentoService] Falha ao solicitar localização: ${e.code} ${e.message}');
       return 'erro';
@@ -198,6 +204,18 @@ class MonitoramentoService {
         'respondidoEm': FieldValue.serverTimestamp(),
       });
 
+      // Solução A: ao aprovar, não esperamos o próximo tick do heartbeat de
+      // localização (que só roda enquanto o cronômetro de Segurança ou um
+      // alarme de rotina estiverem ativos, ver [LocationService]) — capturamos
+      // e enviamos a posição atual imediatamente, para que quem acabou de
+      // ganhar acesso já encontre uma coordenada válida em
+      // `usuarios/{meuUid}/monitoramento/atual` assim que abrir o mapa.
+      // Fire-and-forget: o GPS pode levar alguns segundos e não deve atrasar
+      // a resposta da solicitação nem quebrar o fluxo se falhar.
+      if (aprovar) {
+        unawaited(_enviarLocalizacaoImediataAoAceitar());
+      }
+
       final contatoLocal = await DatabaseHelper()
           .buscarContatoMonitoramentoPorUid(uidSolicitante);
 
@@ -218,6 +236,27 @@ class MonitoramentoService {
     } catch (e) {
       debugPrint(
           '⚠️ [MonitoramentoService] Falha ao responder solicitação $permissaoId: $e');
+    }
+  }
+
+  /// Captura a posição atual do aparelho e a envia ao Firestore
+  /// (`usuarios/{meuUid}/monitoramento/atual`), reaproveitando o mesmo
+  /// [LocationService] e [FirebaseSyncService] usados pelo heartbeat
+  /// periódico da Segurança/Família — ver [responderSolicitacao]. Falhas
+  /// (GPS desligado, permissão negada, sem posição em memória) são apenas
+  /// logadas: o próximo heartbeat periódico (se algum monitoramento externo
+  /// estiver ativo) ou uma nova solicitação tentam novamente depois.
+  Future<void> _enviarLocalizacaoImediataAoAceitar() async {
+    try {
+      final posicao = await LocationService().capturarLocalizacaoAtual();
+      if (posicao == null) return;
+      await FirebaseSyncService().atualizarLocalizacaoAtual(
+        latitude: posicao.latitude,
+        longitude: posicao.longitude,
+      );
+    } catch (e) {
+      debugPrint(
+          '⚠️ [MonitoramentoService] Falha ao enviar localização imediata após aceite: $e');
     }
   }
 
@@ -268,6 +307,16 @@ class MonitoramentoService {
       }
       _notificarAlteracao();
 
+      // Solução A também se aplica aqui: este é o OUTRO caminho (além de
+      // [responderSolicitacao]) pelo qual eu (dono da localização) concedo
+      // acesso a alguém — via switch de pré-autorização, sem que o contato
+      // precise ter solicitado antes. Mesmo gatilho de captura+envio
+      // imediato de GPS, para não deixar quem acabou de ganhar acesso pelo
+      // switch preso em "aguardando primeira localização" à toa.
+      if (status == statusAprovado) {
+        unawaited(_enviarLocalizacaoImediataAoAceitar());
+      }
+
       return 'sucesso';
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'not-found') return 'numero_nao_encontrado';
@@ -280,6 +329,98 @@ class MonitoramentoService {
           '⚠️ [MonitoramentoService] Falha ao definir permissão de compartilhamento: $e');
       return 'erro';
     }
+  }
+
+  // ==========================================================
+  // BLOQUEIO DE SOLICITANTES — eixo independente do `status` acima
+  // ==========================================================
+
+  /// Bloqueia/desbloqueia — via telefone direto, sem exigir um contato já
+  /// resolvido na lista local — que um solicitante específico envie NOVAS
+  /// solicitações de localização para mim. Usada por
+  /// [definirBloqueioSolicitante] abaixo (fluxo do slider dedicado de cada
+  /// card da lista, ver `monitoramento_tab.dart`).
+  ///
+  /// [idContatoLocal], quando informado, cacheia localmente o `uid`
+  /// resolvido pela Cloud Function — INDISPENSÁVEL para a reatividade do
+  /// slider: sem ele, um contato cujo uid nunca foi resolvido antes fica
+  /// sem `permissaoId` no lado Dart, e o card não consegue montar o
+  /// `StreamBuilder` que escuta o campo `bloqueado` em tempo real.
+  ///
+  /// Persistido como campo booleano DEDICADO (`bloqueado`) no documento de
+  /// permissão — eixo INDEPENDENTE do `status` de compartilhamento: não
+  /// revoga, por si só, um compartilhamento já aprovado, só impede um novo
+  /// ciclo `pendente` (ver `functions/monitoramentoService.js`,
+  /// `solicitarMonitoramento`, que verifica este campo antes do Push).
+  ///
+  /// Retorna:
+  /// - `'sucesso'`: bloqueio/desbloqueio definido.
+  /// - `'numero_nao_encontrado'`: telefone não corresponde a nenhuma conta.
+  /// - `'proprio_numero'`: o telefone informado é o do próprio usuário.
+  /// - `'erro'`: falha de rede/servidor.
+  Future<String> definirBloqueioPorTelefone({
+    required String telefone,
+    required bool bloquear,
+    int? idContatoLocal,
+  }) async {
+    if (!_firebaseDisponivel) return 'erro';
+
+    try {
+      final resultado = await FirebaseFunctions.instance
+          .httpsCallable('definirBloqueioSolicitante')
+          .call<Map<String, dynamic>>({
+        'telefoneContato': telefone,
+        'bloquear': bloquear,
+      });
+
+      // CRÍTICO para a reatividade do slider: sem cachear o uid resolvido
+      // aqui, um contato que NUNCA teve o uid resolvido antes (nunca usou
+      // "Solicitar Localização" nem o switch de compartilhamento) continua
+      // com `uid_contato` nulo no SQLite local mesmo depois do bloqueio —
+      // e é esse uid que `MonitoramentoTab._construirCardVerLocalizacao`
+      // usa para montar o `permissaoId` e abrir o StreamBuilder que reflete
+      // o campo `bloqueado` em tempo real. Sem ele, o card nunca escuta o
+      // documento certo: a escrita no Firestore funciona, mas a UI local
+      // parece "não reagir" (volta a mostrar Liberado no próximo rebuild).
+      if (idContatoLocal != null) {
+        final uidContato = resultado.data['uidContato'] as String?;
+        if (uidContato != null) {
+          await DatabaseHelper()
+              .atualizarUidContatoMonitoramento(idContatoLocal, uidContato);
+        }
+      }
+
+      _notificarAlteracao();
+      return 'sucesso';
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'not-found') return 'numero_nao_encontrado';
+      if (e.code == 'invalid-argument') return 'proprio_numero';
+      debugPrint(
+          '⚠️ [MonitoramentoService] Falha ao definir bloqueio de solicitante: ${e.code} ${e.message}');
+      return 'erro';
+    } catch (e) {
+      debugPrint(
+          '⚠️ [MonitoramentoService] Falha ao definir bloqueio de solicitante: $e');
+      return 'erro';
+    }
+  }
+
+  /// Mesma operação de [definirBloqueioPorTelefone], mas a partir do
+  /// contato local [idContatoLocal] — usada pelo slider deslizante de cada
+  /// card da lista "Localização de familiares" (ver `monitoramento_tab.dart`).
+  Future<String> definirBloqueioSolicitante({
+    required int idContatoLocal,
+    required bool bloquear,
+  }) async {
+    final contato =
+        await DatabaseHelper().buscarContatoMonitoramentoPorId(idContatoLocal);
+    if (contato == null) return 'erro';
+
+    return definirBloqueioPorTelefone(
+      telefone: contato['telefone'] as String,
+      bloquear: bloquear,
+      idContatoLocal: idContatoLocal,
+    );
   }
 
   // ==========================================================

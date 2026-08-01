@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,7 +14,9 @@ import '../main.dart';
 import '../screens/alarme_disparado_screen.dart';
 import '../screens/alerta_recebido_screen.dart';
 import '../screens/home_screen.dart';
+import '../widgets/monitoramento_decisao_dialog.dart';
 import 'database_helper.dart';
+import 'firebase_auth_service.dart';
 import 'rotina_alarme_service.dart';
 
 /// Wrapper central do plugin `flutter_local_notifications`, responsável
@@ -48,22 +52,143 @@ class NotificacaoService {
   static const String canalAlertaRecebidoDescricao =
       'Alertas de segurança de contatos que cadastraram este aparelho como emergência.';
 
-  /// Canal Android dedicado aos pushes da aba Monitoramento (solicitação
-  /// recebida, aprovada, recusada, bloqueada ou expirada — ver
-  /// [FcmService] e `functions/monitoramentoService.js`). Deliberadamente
-  /// SEPARADO dos canais acima: são notificações NORMAIS (sem tela cheia,
-  /// sem som/vibração persistentes) — a aba Monitoramento é exclusivamente
-  /// de visualização/gerenciamento e nunca deve se comportar como um
-  /// alarme/sirene.
+  /// Canal Android dedicado às RESPOSTAS de push da aba Monitoramento
+  /// (aprovada, recusada, bloqueada ou expirada — ver [FcmService] e
+  /// `functions/monitoramentoService.js`). Notificações NORMAIS (sem tela
+  /// cheia, sem som/vibração persistentes) — são só informativas, sobre uma
+  /// solicitação que o PRÓPRIO usuário enviou. Deliberadamente SEPARADO de
+  /// [canalSolicitacaoMonitoramentoId] abaixo, que é o único que precisa de
+  /// urgência máxima (é o único que exige uma DECISÃO do usuário).
   static const String canalMonitoramentoId = 'monitoramento';
   static const String canalMonitoramentoNome = 'Monitoramento de Localização';
   static const String canalMonitoramentoDescricao =
-      'Solicitações e respostas de compartilhamento de localização entre familiares na aba Monitoramento.';
+      'Respostas a solicitações de compartilhamento de localização enviadas pela aba Monitoramento.';
+
+  /// Canal Android dedicado à SOLICITAÇÃO de localização recebida (tipo
+  /// `'solicitacao_monitoramento'`, ver [FcmService]) — o único evento da
+  /// aba Monitoramento que exige uma decisão explícita do usuário
+  /// (Aceitar/Recusar). Importância MÁXIMA + `fullScreenIntent` (mesmo
+  /// padrão de [canalAlertaRecebidoId]/[exibirNotificacaoAlertaRecebido]):
+  /// com o aparelho bloqueado, "acorda" a tela e abre por cima da
+  /// lockscreen, estilo chamada recebida — em vez de só aparecer
+  /// silenciosamente na bandeja como as respostas informativas acima.
+  static const String canalSolicitacaoMonitoramentoId = 'solicitacao_monitoramento';
+  static const String canalSolicitacaoMonitoramentoNome =
+      'Solicitação de Localização Recebida';
+  static const String canalSolicitacaoMonitoramentoDescricao =
+      'Alerta prioritário quando um familiar solicita ver sua localização em tempo real — exige Aceitar ou Recusar.';
 
   /// Id da ação rápida "Cheguei bem" exibida na notificação.
   static const String acaoConfirmarId = 'confirmar_checkin_rotina';
 
   static bool _inicializado = false;
+
+  /// Payload de uma notificação de SOLICITAÇÃO ('solicitacao_monitoramento')
+  /// recebida antes de existir uma sessão autenticada — capturado tanto no
+  /// cold start (ver [inicializar]/[_capturarPayloadSolicitacaoPendente])
+  /// quanto por um toque com o app já rodando mas ainda sem login (ver
+  /// [_processarRespostaPayloadJson]). NUNCA usado para pular a barreira de
+  /// login: é só guardado aqui até a [LoginScreen] concluir um login com
+  /// sucesso e consumi-lo via [consumirPayloadSolicitacaoPendente], abrindo
+  /// o modal de decisão direto em vez da Home normal.
+  static Map<String, dynamic>? payloadSolicitacaoPendente;
+
+  static void _capturarPayloadSolicitacaoPendente(String? payload) {
+    if (payload == null || !payload.startsWith('{')) return;
+    try {
+      final dados = jsonDecode(payload) as Map<String, dynamic>;
+      if (dados['tipo'] == 'monitoramento_push' &&
+          dados['subTipo'] == 'solicitacao_monitoramento') {
+        payloadSolicitacaoPendente = dados;
+      }
+    } catch (e) {
+      debugPrint(
+          '⚠️ [NotificacaoService] Falha ao decodificar payload de lançamento: $e');
+    }
+  }
+
+  /// Lê e limpa o payload pendente — chamado pela `LoginScreen` logo após
+  /// um login bem-sucedido. Devolve `null` se não havia nenhuma solicitação
+  /// pendente (fluxo normal, sem notificação envolvida).
+  static Map<String, dynamic>? consumirPayloadSolicitacaoPendente() {
+    final dados = payloadSolicitacaoPendente;
+    payloadSolicitacaoPendente = null;
+    return dados;
+  }
+
+  /// Canal nativo dedicado ao fluxo de "acordar a tela" para solicitações
+  /// de monitoramento (ver `SolicitacaoMonitoramentoWakeService`/
+  /// `SolicitacaoMonitoramentoFcmReceiver`, no lado Kotlin, e
+  /// `MainActivity.configureFlutterEngine`/`onNewIntent`, que registram
+  /// este canal). `'obterPayloadPendente'` é chamado UMA VEZ por
+  /// [inicializar] (mesmo padrão de `getNotificationAppLaunchDetails`)
+  /// para resgatar os extras de um COLD START; `'solicitacaoRecebida'` é
+  /// invocado NATIVO->DART quando o Intent chega com o engine já rodando
+  /// (app em primeiro/segundo plano, via `onNewIntent`).
+  static const MethodChannel _canalSolicitacaoNativa =
+      MethodChannel('com.example.security_check_app/solicitacao_monitoramento');
+
+  /// Ids de permissão com o modal de decisão atualmente aberto — evita
+  /// empilhar dois diálogos para a MESMA solicitação quando mais de um
+  /// caminho (Intent nativo aqui, FCM em primeiro plano em [FcmService],
+  /// toque na notificação) processa o mesmo evento quase ao mesmo tempo.
+  static final Set<String> _idsComDialogoAbertoViaNativo = {};
+
+  /// Ponto único de decisão para um payload de solicitação recebido pelo
+  /// caminho nativo (`SolicitacaoMonitoramentoWakeService`): se já houver
+  /// sessão autenticada e um `BuildContext` disponível, abre o modal de
+  /// decisão DIRETO por cima da tela atual; caso contrário — cold start
+  /// ainda na barreira de login — só guarda em [payloadSolicitacaoPendente]
+  /// para a `LoginScreen` consumir depois. NUNCA pula a autenticação.
+  static Future<void> _tratarPayloadSolicitacaoNativo(
+    Map<String, dynamic> dados,
+  ) async {
+    final idPermissao = dados['idPermissao'] as String?;
+    final uidSolicitante = dados['uidSolicitante'] as String?;
+    if (idPermissao == null || uidSolicitante == null) return;
+
+    final autenticado =
+        Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
+    final context = appNavigatorKey.currentContext;
+
+    if (autenticado && context != null) {
+      if (_idsComDialogoAbertoViaNativo.contains(idPermissao)) return;
+      _idsComDialogoAbertoViaNativo.add(idPermissao);
+      try {
+        await exibirDialogoDecisaoMonitoramento(
+          context: context,
+          idPermissao: idPermissao,
+          uidSolicitante: uidSolicitante,
+          nomeSolicitante: (dados['nomeSolicitante'] as String?) ?? '',
+          telefoneSolicitante: (dados['telefoneSolicitante'] as String?) ?? '',
+        );
+      } finally {
+        _idsComDialogoAbertoViaNativo.remove(idPermissao);
+      }
+      return;
+    }
+
+    payloadSolicitacaoPendente = {
+      'tipo': 'monitoramento_push',
+      'subTipo': 'solicitacao_monitoramento',
+      'idPermissao': idPermissao,
+      'uidSolicitante': uidSolicitante,
+      'nomeSolicitante': (dados['nomeSolicitante'] as String?) ?? '',
+      'telefoneSolicitante': (dados['telefoneSolicitante'] as String?) ?? '',
+    };
+  }
+
+  static Future<dynamic> _aoReceberChamadaNativa(MethodCall call) async {
+    if (call.method != 'solicitacaoRecebida') return null;
+    try {
+      final dados = Map<String, dynamic>.from(call.arguments as Map);
+      await _tratarPayloadSolicitacaoNativo(dados);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [NotificacaoService] Falha ao processar solicitação nativa recebida: $e');
+    }
+    return null;
+  }
 
   /// Deve ser chamado uma única vez, bem no início do app (main.dart),
   /// ANTES de runApp(). Também é chamado defensivamente pelo callback
@@ -81,6 +206,45 @@ class NotificacaoService {
       onDidReceiveNotificationResponse: _aoReceberRespostaEmPrimeiroPlano,
       onDidReceiveBackgroundNotificationResponse: _aoReceberRespostaEmSegundoPlano,
     );
+
+    // Cold start via toque numa notificação (app estava totalmente
+    // fechado): `onDidReceiveNotificationResponse` acima só dispara para
+    // toques que acontecem DEPOIS do app já estar rodando — a notificação
+    // que efetivamente abriu o processo agora precisa ser resgatada aqui,
+    // explicitamente, ANTES de qualquer tela ser construída. Sem isto, o
+    // payload se perdia silenciosamente sempre que o app era relançado do
+    // zero por uma notificação (é exatamente esse o cold start em que a
+    // barreira de login — ver política de segurança em `main.dart` — SEMPRE
+    // aparece primeiro; o payload capturado aqui é só guardado para a
+    // LoginScreen consumir DEPOIS de um login bem-sucedido, nunca usado
+    // para pular a autenticação).
+    try {
+      final detalhesLancamento = await _plugin.getNotificationAppLaunchDetails();
+      final respostaDeLancamento = detalhesLancamento?.notificationResponse;
+      if (detalhesLancamento?.didNotificationLaunchApp == true &&
+          respostaDeLancamento != null) {
+        _capturarPayloadSolicitacaoPendente(respostaDeLancamento.payload);
+      }
+    } catch (e) {
+      debugPrint(
+          '⚠️ [NotificacaoService] Falha ao ler notificação de lançamento: $e');
+    }
+
+    // Mesma ideia acima, mas para o caminho 100% nativo (ver
+    // SolicitacaoMonitoramentoWakeService): resgata os extras deixados no
+    // Intent que abriu o app num cold start disparado por esse Service, e
+    // passa a escutar chamadas futuras (app já rodando, via onNewIntent).
+    _canalSolicitacaoNativa.setMethodCallHandler(_aoReceberChamadaNativa);
+    try {
+      final payloadPendente = await _canalSolicitacaoNativa
+          .invokeMapMethod<String, dynamic>('obterPayloadPendente');
+      if (payloadPendente != null) {
+        await _tratarPayloadSolicitacaoNativo(payloadPendente);
+      }
+    } catch (e) {
+      debugPrint(
+          '⚠️ [NotificacaoService] Falha ao ler payload nativo pendente: $e');
+    }
 
     const canal = AndroidNotificationChannel(
       canalId,
@@ -100,11 +264,32 @@ class NotificacaoService {
       description: canalMonitoramentoDescricao,
       importance: Importance.high,
     );
+    const canalSolicitacaoMonitoramento = AndroidNotificationChannel(
+      canalSolicitacaoMonitoramentoId,
+      canalSolicitacaoMonitoramentoNome,
+      description: canalSolicitacaoMonitoramentoDescricao,
+      importance: Importance.max,
+    );
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await implementacaoAndroid?.createNotificationChannel(canal);
     await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
     await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
+    await implementacaoAndroid?.createNotificationChannel(canalSolicitacaoMonitoramento);
+
+    // A partir do Android 14/15+, `USE_FULL_SCREEN_INTENT` deixou de ser
+    // concedida automaticamente para apps sem função de chamada/alarme — sem
+    // esta solicitação explícita, o `fullScreenIntent: true` das notificações
+    // acima é silenciosamente rebaixado para um heads-up normal, que NÃO
+    // acorda a tela com o aparelho bloqueado (é exatamente esse sintoma que
+    // motivou este ajuste). Em versões do Android onde a permissão não se
+    // aplica (< 14), a chamada é um no-op seguro do lado nativo.
+    try {
+      await implementacaoAndroid?.requestFullScreenIntentPermission();
+    } catch (e) {
+      debugPrint(
+          '⚠️ [NotificacaoService] Falha ao solicitar permissão de full-screen intent: $e');
+    }
 
     _inicializado = true;
   }
@@ -240,21 +425,31 @@ class NotificacaoService {
     );
   }
 
-  /// Exibe uma notificação NORMAL (sem `fullScreenIntent`, sem som/
-  /// vibração persistentes, `ongoing: false`) para os eventos de push da
-  /// aba Monitoramento — solicitação de localização recebida, aprovada,
-  /// recusada, bloqueada ou expirada (ver [FcmService._tratarPushMonitoramento]
-  /// e `functions/monitoramentoService.js`/`monitoramentoExpiracaoMonitor.js`).
-  /// Garante que o usuário seja avisado mesmo com o app fechado/em
-  /// segundo plano, SEM se comportar como um alarme/sirene — a aba
-  /// Monitoramento é exclusivamente de visualização/gerenciamento.
+  /// Exibe a notificação para os eventos de push da aba Monitoramento —
+  /// solicitação de localização recebida, aprovada, recusada, bloqueada ou
+  /// expirada (ver [FcmService._tratarPushMonitoramento] e
+  /// `functions/monitoramentoService.js`/`monitoramentoExpiracaoMonitor.js`).
   ///
-  /// Ao tocar na notificação, abre a HomeScreen diretamente na aba
-  /// Monitoramento (índice 2, ver [_processarRespostaPayloadJson]).
+  /// SÓ o tipo `'solicitacao_monitoramento'` — o único que exige uma decisão
+  /// do usuário — usa [canalSolicitacaoMonitoramentoId] com
+  /// `fullScreenIntent` (mesmo padrão de
+  /// [exibirNotificacaoAlertaRecebido]): com o aparelho bloqueado, "acorda"
+  /// a tela e abre por cima da lockscreen, estilo chamada recebida. As
+  /// respostas informativas (aprovado/negado/bloqueado/expirado) continuam
+  /// em [canalMonitoramentoId], uma notificação normal — a aba Monitoramento
+  /// nunca deve se comportar como alarme/sirene fora do caso que realmente
+  /// precisa de uma resposta.
+  ///
+  /// Ao tocar na notificação, a barreira de login (ver política de
+  /// segurança em `main.dart`) continua obrigatória; o modal de decisão só
+  /// abre DEPOIS de autenticado (ver [_processarRespostaPayloadJson] e
+  /// `LoginScreen._navegarParaFluxoPrincipal`).
   static Future<void> exibirNotificacaoMonitoramento({
     required String tipo,
     required String idPermissao,
     String? nomeContraparte,
+    String? uidSolicitante,
+    String? telefoneSolicitante,
   }) async {
     await inicializar();
 
@@ -291,19 +486,42 @@ class NotificacaoService {
         return;
     }
 
-    const androidDetails = AndroidNotificationDetails(
-      canalMonitoramentoId,
-      canalMonitoramentoNome,
-      channelDescription: canalMonitoramentoDescricao,
-      importance: Importance.high,
-      priority: Priority.high,
-      autoCancel: true,
-    );
+    final bool ehSolicitacao = tipo == 'solicitacao_monitoramento';
 
-    const details = NotificationDetails(android: androidDetails);
+    final androidDetails = ehSolicitacao
+        ? AndroidNotificationDetails(
+            canalSolicitacaoMonitoramentoId,
+            canalSolicitacaoMonitoramentoNome,
+            channelDescription: canalSolicitacaoMonitoramentoDescricao,
+            importance: Importance.max,
+            priority: Priority.high,
+            fullScreenIntent: true,
+            autoCancel: true,
+            playSound: true,
+            visibility: NotificationVisibility.public,
+            vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
+          )
+        : const AndroidNotificationDetails(
+            canalMonitoramentoId,
+            canalMonitoramentoNome,
+            channelDescription: canalMonitoramentoDescricao,
+            importance: Importance.high,
+            priority: Priority.high,
+            autoCancel: true,
+          );
+
+    final details = NotificationDetails(android: androidDetails);
     final payload = jsonEncode({
       'tipo': 'monitoramento_push',
+      'subTipo': tipo,
       'idPermissao': idPermissao,
+      // Só preenchidos para 'solicitacao_monitoramento' (ver
+      // FcmService._tratarPushMonitoramento) — usados pelo deep link em
+      // [_processarRespostaPayloadJson] para abrir o modal de decisão
+      // direto, sem precisar de uma nova consulta ao Firestore.
+      if (uidSolicitante != null) 'uidSolicitante': uidSolicitante,
+      if (tipo == 'solicitacao_monitoramento') 'nomeSolicitante': nomeContraparte ?? '',
+      if (telefoneSolicitante != null) 'telefoneSolicitante': telefoneSolicitante,
     });
 
     await _plugin.show(
@@ -424,6 +642,48 @@ class NotificacaoService {
       final dados = jsonDecode(payload) as Map<String, dynamic>;
 
       if (dados['tipo'] == 'monitoramento_push') {
+        final subTipo = dados['subTipo'] as String?;
+        final idPermissao = dados['idPermissao'] as String?;
+        final uidSolicitante = dados['uidSolicitante'] as String?;
+        final ehSolicitacao = subTipo == 'solicitacao_monitoramento' &&
+            idPermissao != null &&
+            uidSolicitante != null;
+
+        // Redirecionamento direto (deep link): só para uma SOLICITAÇÃO
+        // recebida (não uma resposta a uma solicitação já enviada) e só
+        // quando o usuário já está autenticado NESTA sessão do app — fora
+        // disso (app recém-aberto por um isolate headless sem Firebase
+        // inicializado, ou sessão sem login) cai no fallback abaixo, que
+        // apenas abre a aba Monitoramento normalmente. Sem essa checagem,
+        // tentar ler `FirebaseAuth.instance` num isolate onde o Firebase
+        // nunca foi inicializado lançaria uma exceção.
+        final autenticado =
+            Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
+
+        if (ehSolicitacao && autenticado) {
+          final context = appNavigatorKey.currentContext;
+          if (context != null) {
+            exibirDialogoDecisaoMonitoramento(
+              context: context,
+              idPermissao: idPermissao,
+              uidSolicitante: uidSolicitante,
+              nomeSolicitante: (dados['nomeSolicitante'] as String?) ?? '',
+              telefoneSolicitante: (dados['telefoneSolicitante'] as String?) ?? '',
+            );
+            return;
+          }
+        }
+
+        if (ehSolicitacao && !autenticado) {
+          // Sem sessão ativa agora (barreira de login obrigatória à
+          // frente, ver política de segurança em `main.dart`) — NUNCA
+          // pula o login. Só guarda o payload para a LoginScreen abrir o
+          // modal de decisão direto assim que o login terminar com
+          // sucesso, em vez de deixar a solicitação se perder.
+          payloadSolicitacaoPendente = dados;
+          return;
+        }
+
         appNavigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(abaInicial: 2),

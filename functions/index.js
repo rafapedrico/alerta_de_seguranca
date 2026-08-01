@@ -163,6 +163,12 @@ exports.aoAtualizarPermissaoMonitoramento =
 // esperar uma solicitação prévia do contato).
 exports.definirPermissaoCompartilhamento =
   monitoramentoService.definirPermissaoCompartilhamento;
+// - Callable acionada pelo slider de bloquear/desbloquear de cada card
+// (ou pelo botão rápido "Bloquear" no modal de decisão) — impede que o
+// contato envie NOVAS solicitações, eixo independente do status de
+// compartilhamento acima.
+exports.definirBloqueioSolicitante =
+  monitoramentoService.definirBloqueioSolicitante;
 // - Job agendado (regra das 24h) que expira solicitações pendentes sem
 // resposta (ver monitoramentoExpiracaoMonitor.js).
 exports.monitorarExpiracaoMonitoramento =

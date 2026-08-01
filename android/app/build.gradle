@@ -44,12 +44,29 @@ android {
     }
 }
 
+// Mesmo helper usado internamente pelo plugin firebase_core (ver
+// firebase_core/android/build.gradle) para resolver a versão do Firebase
+// BOM configurada pelo tooling do FlutterFire — replicado aqui em vez de
+// fixar uma versão manualmente, para a dependência abaixo (necessária ao
+// SolicitacaoMonitoramentoFcmReceiver, que usa RemoteMessage diretamente)
+// nunca ficar dessincronizada da versão que o resto do app já usa.
+def getRootProjectExtOrDefaultProperty(name) {
+    if (!rootProject.ext.has("FlutterFire")) return project.properties[name]
+    if (!rootProject.ext.get("FlutterFire")[name]) return project.properties[name]
+    return rootProject.ext.get("FlutterFire").get(name)
+}
+
 dependencies {
     // Necessária para NotificationCompat.Builder usado pelo VolumeSosService
     // (Foreground Service persistente do gatilho físico de SOS).
     implementation "androidx.core:core-ktx:1.13.1"
     // Required for PreferenceManager
     implementation "androidx.preference:preference-ktx:1.2.1"
+
+    // Necessária para RemoteMessage em SolicitacaoMonitoramentoFcmReceiver
+    // (interceptação nativa do broadcast do FCM, ver essa classe).
+    implementation platform("com.google.firebase:firebase-bom:${getRootProjectExtOrDefaultProperty("FirebaseSDKVersion")}")
+    implementation "com.google.firebase:firebase-messaging"
 }
 
 flutter {

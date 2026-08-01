@@ -2,7 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_navigator.dart';
 import '../firebase_options.dart';
+import '../widgets/monitoramento_decisao_dialog.dart';
+import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'notificacao_service.dart';
 
@@ -84,7 +87,7 @@ class FcmService {
   /// Handler de PRIMEIRO PLANO (app aberto e em uso).
   Future<void> _processarMensagem(RemoteMessage mensagem) async {
     debugPrint('📩 [FCM Recebido - Foreground] ${mensagem.data}');
-    await _tratarDadosDoAlerta(mensagem.data);
+    await _tratarDadosDoAlerta(mensagem.data, emPrimeiroPlano: true);
   }
 
   /// Handler de SEGUNDO PLANO/TERMINADO — chamado pelo Android num
@@ -109,7 +112,15 @@ class FcmService {
   /// alerta de emergência de terceiro ([_tratarAlertaEmergencia]) ou push
   /// da aba Monitoramento ([_tratarPushMonitoramento]). Qualquer outro
   /// `tipo` (ou ausente) é ignorado silenciosamente.
-  Future<void> _tratarDadosDoAlerta(Map<String, dynamic> data) async {
+  ///
+  /// [emPrimeiroPlano] só é `true` quando chamado por [_processarMensagem]
+  /// (app aberto e em uso, ver `FirebaseMessaging.onMessage`) — usado por
+  /// [_tratarPushMonitoramento] para decidir entre abrir o modal de decisão
+  /// direto ou apenas exibir a notificação normal.
+  Future<void> _tratarDadosDoAlerta(
+    Map<String, dynamic> data, {
+    bool emPrimeiroPlano = false,
+  }) async {
     final tipo = data['tipo'] as String?;
 
     if (tipo == _tipoAlertaEmergencia) {
@@ -118,7 +129,7 @@ class FcmService {
     }
 
     if (tipo != null && _tiposPushMonitoramento.contains(tipo)) {
-      await _tratarPushMonitoramento(data, tipo);
+      await _tratarPushMonitoramento(data, tipo, emPrimeiroPlano: emPrimeiroPlano);
       return;
     }
   }
@@ -180,8 +191,9 @@ class FcmService {
   /// de `nomeAlvo`, quem respondeu/deixou expirar).
   Future<void> _tratarPushMonitoramento(
     Map<String, dynamic> data,
-    String tipo,
-  ) async {
+    String tipo, {
+    required bool emPrimeiroPlano,
+  }) async {
     final idPermissao = data['idPermissao'] as String?;
     if (idPermissao == null) return;
 
@@ -189,15 +201,92 @@ class FcmService {
         ? data['nomeSolicitante'] as String?
         : data['nomeAlvo'] as String?;
 
+    // Só relevante para 'solicitacao_monitoramento': permite que o toque na
+    // notificação abra DIRETO no modal de decisão (ver
+    // `NotificacaoService.exibirNotificacaoMonitoramento`/deep link),
+    // sem precisar de uma nova consulta ao Firestore para descobrir quem
+    // está solicitando.
+    final uidSolicitante = tipo == 'solicitacao_monitoramento'
+        ? data['uidSolicitante'] as String?
+        : null;
+    final telefoneSolicitante = tipo == 'solicitacao_monitoramento'
+        ? data['telefoneSolicitante'] as String?
+        : null;
+
+    // Com o app já ABERTO em primeiro plano, uma SOLICITAÇÃO recebida (não
+    // uma resposta a uma solicitação já enviada) NÃO deve passar por um
+    // banner/notificação discreta — abre o modal de decisão DIRETO no
+    // centro da tela, sem exigir que o usuário toque em nada primeiro. Se
+    // não houver um `BuildContext` válido no momento (ex: app em transição
+    // de tela), cai no fallback abaixo e mostra a notificação normalmente.
+    if (emPrimeiroPlano &&
+        tipo == 'solicitacao_monitoramento' &&
+        uidSolicitante != null) {
+      final abriuDireto = await _tentarAbrirDecisaoDireto(
+        idPermissao: idPermissao,
+        uidSolicitante: uidSolicitante,
+        nomeSolicitante: nomeContraparte ?? '',
+        telefoneSolicitante: telefoneSolicitante ?? '',
+      );
+      if (abriuDireto) return;
+    }
+
     try {
       await NotificacaoService.exibirNotificacaoMonitoramento(
         tipo: tipo,
         idPermissao: idPermissao,
         nomeContraparte: nomeContraparte,
+        uidSolicitante: uidSolicitante,
+        telefoneSolicitante: telefoneSolicitante,
       );
     } catch (e) {
       debugPrint(
           '⚠️ [FcmService] Falha ao exibir notificação de monitoramento ($tipo): $e');
     }
+  }
+
+  /// Ids de permissão com o modal de decisão ([exibirDialogoDecisaoMonitoramento])
+  /// atualmente aberto — evita empilhar dois diálogos para a MESMA
+  /// solicitação caso o FCM reentregue a mesma mensagem (retry do SO)
+  /// enquanto o primeiro ainda está na tela.
+  static final Set<String> _idsComDialogoAberto = {};
+
+  /// Tenta abrir o modal de decisão direto sobre a tela atual (sem navegar
+  /// para nenhuma aba/tela intermediária). Só funciona com o app
+  /// efetivamente rodando em primeiro plano E o usuário já autenticado
+  /// nesta sessão — fora disso (sem `BuildContext` disponível, ou sessão
+  /// sem login) retorna `false` para o chamador cair no fallback de
+  /// notificação normal.
+  Future<bool> _tentarAbrirDecisaoDireto({
+    required String idPermissao,
+    required String uidSolicitante,
+    required String nomeSolicitante,
+    required String telefoneSolicitante,
+  }) async {
+    if (Firebase.apps.isEmpty || FirebaseAuthService().uidAtual == null) {
+      return false;
+    }
+    final context = appNavigatorKey.currentContext;
+    if (context == null) return false;
+
+    if (_idsComDialogoAberto.contains(idPermissao)) {
+      // Já em exibição (reentrega do FCM) — não empilha um segundo modal,
+      // mas ainda assim reporta como "tratado" para não cair no fallback.
+      return true;
+    }
+
+    _idsComDialogoAberto.add(idPermissao);
+    try {
+      await exibirDialogoDecisaoMonitoramento(
+        context: context,
+        idPermissao: idPermissao,
+        uidSolicitante: uidSolicitante,
+        nomeSolicitante: nomeSolicitante,
+        telefoneSolicitante: telefoneSolicitante,
+      );
+    } finally {
+      _idsComDialogoAberto.remove(idPermissao);
+    }
+    return true;
   }
 }

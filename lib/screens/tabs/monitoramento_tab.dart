@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/monitoramento_service.dart';
 import '../../services/wallpaper_service.dart';
+import '../../widgets/monitoramento_decisao_dialog.dart';
 
 const Color _corDestaque = Color(0xFF4C7040);
 
@@ -96,47 +97,10 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context)!;
     final dados = doc.data();
-    final nome = (dados['nomeSolicitante'] as String?)?.trim();
-    final telefone = (dados['telefoneSolicitante'] as String?) ?? '';
-    final nomeExibido = (nome != null && nome.isNotEmpty) ? nome : telefone;
-
-    await showDialog<void>(
+    await exibirDialogoDecisaoMonitoramento(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.monitoramentoSolicitacaoRecebidaTitulo),
-        content: Text(l10n.monitoramentoSolicitacaoRecebidaConteudo(nomeExibido)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _responderSolicitacao(doc, aprovar: false);
-            },
-            child: Text(l10n.monitoramentoBloquearRecusar),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _corDestaque),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _responderSolicitacao(doc, aprovar: true);
-            },
-            child: Text(l10n.monitoramentoPermitir),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _responderSolicitacao(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc, {
-    required bool aprovar,
-  }) async {
-    final dados = doc.data();
-    await _servico.responderSolicitacao(
-      permissaoId: doc.id,
-      aprovar: aprovar,
+      idPermissao: doc.id,
       uidSolicitante: dados['uidSolicitante'] as String? ?? '',
       nomeSolicitante: dados['nomeSolicitante'] as String? ?? '',
       telefoneSolicitante: dados['telefoneSolicitante'] as String? ?? '',
@@ -379,6 +343,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       'ja_aprovado' => l10n.monitoramentoJaAprovado,
       'numero_nao_encontrado' => l10n.monitoramentoNumeroNaoEncontrado,
       'proprio_numero' => l10n.monitoramentoProprioNumero,
+      'bloqueado_pelo_alvo' => l10n.monitoramentoContatoIndisponivel,
       _ => l10n.monitoramentoErroSolicitar,
     };
 
@@ -494,6 +459,103 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
 
   Widget _construirCardVerLocalizacao(Map<String, dynamic> contato) {
     final l10n = AppLocalizations.of(context)!;
+    final uid = contato['uid_contato'] as String?;
+    final permissaoId = uid != null ? _servico.idPermissaoParaCompartilhar(uid) : null;
+
+    // Sem doc de permissão ainda resolvido (contato nunca interagiu nesta
+    // direção): não há nada bloqueado por definição — mas o controle já
+    // fica disponível para bloquear preventivamente, já que
+    // `definirBloqueioPorTelefone` resolve o telefone server-side, sem
+    // depender de um `uid_contato` local previamente resolvido.
+    if (permissaoId == null) {
+      return _construirConteudoCardVerLocalizacao(
+        contato: contato,
+        bloqueado: false,
+        l10n: l10n,
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _servico.statusPermissaoStream(permissaoId),
+      builder: (context, snapshot) {
+        final bloqueado = snapshot.data?.data()?['bloqueado'] as bool? ?? false;
+        return _construirConteudoCardVerLocalizacao(
+          contato: contato,
+          bloqueado: bloqueado,
+          l10n: l10n,
+        );
+      },
+    );
+  }
+
+  /// Confirma (só para BLOQUEAR — desbloquear é sempre imediato, é uma
+  /// ação reversível e não-destrutiva) e então persiste o bloqueio via
+  /// [_alternarBloqueioSolicitante].
+  Future<void> _alternarBloqueioComConfirmacao(
+    Map<String, dynamic> contato,
+    bool bloquear,
+  ) async {
+    if (bloquear) {
+      final l10n = AppLocalizations.of(context)!;
+      final nome = contato['nome'] as String? ?? '';
+      final confirmou = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.monitoramentoBloquearContatoTitulo),
+              content: Text(l10n.monitoramentoBloquearContatoConteudo(nome)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancelar),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.monitoramentoBloquear),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmou) return;
+    }
+    await _alternarBloqueioSolicitante(contato, bloquear);
+  }
+
+  Future<void> _alternarBloqueioSolicitante(
+    Map<String, dynamic> contato,
+    bool bloquear,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final id = contato['id'] as int;
+    final resultado = await _servico.definirBloqueioSolicitante(
+      idContatoLocal: id,
+      bloquear: bloquear,
+    );
+    if (!mounted) return;
+
+    final mensagem = switch (resultado) {
+      'sucesso' => bloquear
+          ? l10n.monitoramentoContatoBloqueadoSucesso
+          : l10n.monitoramentoContatoDesbloqueadoSucesso,
+      'numero_nao_encontrado' => l10n.monitoramentoNumeroNaoEncontrado,
+      'proprio_numero' => l10n.monitoramentoProprioNumero,
+      _ => l10n.monitoramentoErroSolicitar,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: resultado == 'sucesso' ? null : Colors.redAccent,
+      ),
+    );
+  }
+
+  Widget _construirConteudoCardVerLocalizacao({
+    required Map<String, dynamic> contato,
+    required bool bloqueado,
+    required AppLocalizations l10n,
+  }) {
     final id = contato['id'] as int;
     final nome = contato['nome'] as String? ?? '';
     final telefone = contato['telefone'] as String? ?? '';
@@ -550,9 +612,59 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
             _construirBlocoVerLocalizacao(contato, id, l10n),
             const Divider(height: 20),
             _construirSwitchCompartilhar(contato, l10n),
+            const SizedBox(height: 10),
+            _construirControleBloqueio(contato, bloqueado, l10n),
           ],
         ),
       ),
+    );
+  }
+
+  /// Bloco ISOLADO e dedicado ao bloqueio de solicitações — texto
+  /// explicativo, e logo abaixo um controle de arraste fluido (`Switch`,
+  /// que no Material já aceita tanto toque quanto arrastar o próprio
+  /// polegar para os dois lados) com hit-area PRÓPRIA, restrita a este
+  /// bloco — ao contrário de um `Dismissible` cobrindo o card inteiro
+  /// (tentativa anterior), nunca interfere com o resto do card (nome,
+  /// telefone, botões de editar/excluir, o outro switch). Arrastar/tocar
+  /// para a DIREITA bloqueia (cinza, `bloqueado: true`); para a ESQUERDA
+  /// desbloqueia (verde, `bloqueado: false`) — mesmo mapeamento visual
+  /// padrão de um `Switch` (ligado = polegar à direita).
+  Widget _construirControleBloqueio(
+    Map<String, dynamic> contato,
+    bool bloqueado,
+    AppLocalizations l10n,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.monitoramentoPermitirOuBloquearSolicitacoes,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              _linhaStatus(
+                icone: bloqueado ? Icons.block : Icons.check_circle,
+                cor: bloqueado ? Colors.grey.shade700 : Colors.green.shade700,
+                texto: bloqueado
+                    ? l10n.monitoramentoIndicadorBloqueado
+                    : l10n.monitoramentoIndicadorLiberado,
+              ),
+            ],
+          ),
+        ),
+        Switch(
+          value: bloqueado,
+          activeColor: Colors.grey.shade600,
+          activeTrackColor: Colors.grey.shade300,
+          inactiveThumbColor: Colors.green.shade600,
+          inactiveTrackColor: Colors.green.shade100,
+          onChanged: (valor) => _alternarBloqueioComConfirmacao(contato, valor),
+        ),
+      ],
     );
   }
 
@@ -623,7 +735,17 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     return FutureBuilder<Map<String, dynamic>?>(
       future: _servico.buscarUltimaLocalizacao(uid),
       builder: (context, snapshot) {
+        final aindaCarregando = snapshot.connectionState == ConnectionState.waiting;
         final dados = snapshot.data;
+        // `dados == null` após a busca terminar significa que a permissão já
+        // foi aprovada, mas o alvo ainda não teve nenhuma coordenada
+        // capturada/enviada (ver Solução A em
+        // `MonitoramentoService._enviarLocalizacaoImediataAoAceitar`, que é
+        // fire-and-forget e pode levar alguns segundos) — em vez de deixar o
+        // botão "Ver no mapa" silenciosamente desabilitado, avisamos
+        // explicitamente que a primeira localização ainda está a caminho.
+        final semLocalizacaoAinda = !aindaCarregando && dados == null;
+
         final atualizadoEm = dados?['atualizadoEm'];
         String? subtitulo;
         if (atualizadoEm is Timestamp) {
@@ -637,11 +759,14 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _linhaStatus(
-                    icone: Icons.check_circle,
-                    cor: Colors.green.shade700,
-                    texto: l10n.monitoramentoStatusAprovado,
-                  ),
+                  if (semLocalizacaoAinda)
+                    _linhaStatusAguardandoLocalizacao(l10n)
+                  else
+                    _linhaStatus(
+                      icone: Icons.check_circle,
+                      cor: Colors.green.shade700,
+                      texto: l10n.monitoramentoStatusAprovado,
+                    ),
                   if (subtitulo != null)
                     Padding(
                       padding: const EdgeInsets.only(left: 22, top: 2),
@@ -654,7 +779,9 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
               ),
             ),
             TextButton.icon(
-              onPressed: dados == null ? null : () => _abrirMapa(uid),
+              onPressed: semLocalizacaoAinda
+                  ? () => _avisarLocalizacaoAindaNaoDisponivel(l10n)
+                  : (dados == null ? null : () => _abrirMapa(uid)),
               icon: const Icon(Icons.map_outlined, size: 18),
               label: Text(l10n.monitoramentoVerNoMapa),
               style: TextButton.styleFrom(foregroundColor: _corDestaque),
@@ -662,6 +789,41 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
           ],
         );
       },
+    );
+  }
+
+  Widget _linhaStatusAguardandoLocalizacao(AppLocalizations l10n) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            l10n.monitoramentoAguardandoPrimeiraLocalizacao,
+            softWrap: true,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.amber.shade800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _avisarLocalizacaoAindaNaoDisponivel(AppLocalizations l10n) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.monitoramentoLocalizacaoSendoAtualizada),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
