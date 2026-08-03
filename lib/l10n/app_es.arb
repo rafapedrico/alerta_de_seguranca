@@ -335,5 +335,14 @@
   "pinDigiteParaDesarmar": "Ingresa tu PIN para desarmar el check-in.",
   "pinDigiteParaContinuar": "Ingresa tu PIN para continuar.",
   "pinTempoTolerancia": "Tiempo de tolerancia: {segundos}s",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } }
+  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
+
+  "homeTooltipInicio": "Volver al Inicio",
+  "historicoFiltroAlertasEnviados": "Alertas enviadas",
+  "dashboardSecaoPlanosTitulo": "Elige tu plan",
+  "dashboardPlanoFreeTitulo": "Free",
+  "dashboardPlanoFreeDescricao": "Check-in de seguridad, SOS manual y alertas esenciales",
+  "dashboardPlanoPremiumDescricao": "Alertas en la nube, WhatsApp y funciones ilimitadas",
+  "dashboardFaqTitulo": "Preguntas Frecuentes",
+  "dashboardCentralAtendimentoTitulo": "Centro de Atención al Cliente"
 }

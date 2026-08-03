@@ -6,7 +6,7 @@ import 'tabs/familia_tab.dart';
 import 'tabs/monitoramento_tab.dart';
 import 'tabs/historico_tab.dart';
 import 'tabs/configuracoes_tab.dart';
-import 'auditoria_sensivel_screen.dart';
+import 'tabs/inicio_dashboard.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -25,6 +25,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late int _indiceAbaAtual = widget.abaInicial;
+
+  // Nova Tela de Início (Dashboard): estado inicial da própria HomeScreen
+  // em vez de uma rota/aba separada — reaproveita o mesmo Scaffold/AppBar/
+  // BottomNavigationBar das 4 abas. Começa `true` apenas no fluxo normal de
+  // login (abaInicial == 0); deep-links explícitos (ex.: notificação de
+  // Monitoramento, abaInicial == 2) pulam direto para a aba, sem passar
+  // pelo Dashboard.
+  late bool _mostrandoInicio = widget.abaInicial == 0;
 
   // GlobalKey usada para acionar, a partir do AppBar global (botão "+"),
   // o modal de "Adicionar Alarme" definido dentro da FamiliaTab.
@@ -63,7 +71,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _aoSelecionarAba(int indice) {
     setState(() {
       _indiceAbaAtual = indice;
+      _mostrandoInicio = false;
     });
+  }
+
+  /// Volta a HomeScreen para o modo "Início" (Dashboard) — acionado pelo
+  /// ícone de casa exibido no topo de Família/Monitoramento/Histórico/
+  /// Configurações.
+  void _voltarParaInicio() {
+    setState(() => _mostrandoInicio = true);
   }
 
   void _abrirConfiguracoes(BuildContext context) {
@@ -72,21 +88,18 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.home_outlined),
+              tooltip: AppLocalizations.of(context)!.homeTooltipInicio,
+              onPressed: () {
+                Navigator.of(context).pop();
+                _voltarParaInicio();
+              },
+            ),
             title: Text(AppLocalizations.of(context)!.appTituloConfiguracoes),
           ),
           body: const ConfiguracoesTab(),
         ),
-      ),
-    );
-  }
-
-  /// Abre a tela de Auditoria de Eventos Sensíveis, protegida pela trava
-  /// de segurança temporal de 3 horas (ver AuditoriaSensivelScreen).
-  void _abrirAuditoriaSensivel(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AuditoriaSensivelScreen(),
       ),
     );
   }
@@ -96,31 +109,36 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final titulos = _titulos(context);
+    // Ícone de casa: some no Dashboard (já é o "início") e na aba Segurança
+    // (índice 0); aparece em Família/Monitoramento/Histórico, permitindo
+    // voltar diretamente ao Dashboard.
+    final bool mostrarIconeCasa = !_mostrandoInicio && _indiceAbaAtual != 0;
     return Scaffold(
       appBar: AppBar(
-        title: Text(titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
+        leading: mostrarIconeCasa
+            ? IconButton(
+                icon: const Icon(Icons.home_outlined),
+                tooltip: l10n.homeTooltipInicio,
+                onPressed: _voltarParaInicio,
+              )
+            : null,
+        title: Text(
+          _mostrandoInicio ? 'Guardião-X' : titulos[_indiceAbaAtual],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
-          if (_indiceAbaAtual == 1)
+          if (!_mostrandoInicio && _indiceAbaAtual == 1)
             IconButton(
               icon: const Icon(Icons.add_alarm),
               tooltip: l10n.tooltipAdicionarAlarme,
               onPressed: () => _familiaTabKey.currentState?.abrirModalAdicionarAlarme(),
             ),
-          if (_indiceAbaAtual == 2)
+          if (!_mostrandoInicio && _indiceAbaAtual == 2)
             IconButton(
               icon: const Icon(Icons.person_add_alt_1),
               tooltip: l10n.monitoramentoAdicionarContato,
               onPressed: () => _monitoramentoTabKey.currentState?.abrirModalAdicionarContato(),
             ),
-          // Ícone do escudo: leva à seção protegida onde ficam os alertas
-          // ENVIADOS pelo próprio usuário (categoria 'critico' —
-          // AuditoriaSensivelScreen, com liberação por tempo de 2h).
-          // Sempre visível no cabeçalho, independente da aba atual.
-          IconButton(
-            icon: const Icon(Icons.shield_outlined),
-            tooltip: l10n.tooltipAuditoriaSensivel,
-            onPressed: () => _abrirAuditoriaSensivel(context),
-          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => _abrirConfiguracoes(context),
@@ -129,10 +147,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
 
-      body: IndexedStack(
-        index: _indiceAbaAtual,
-        children: _telas,
-      ),
+      body: _mostrandoInicio
+          ? InicioDashboard(aoAbrirConfiguracoes: () => _abrirConfiguracoes(context))
+          : IndexedStack(
+              index: _indiceAbaAtual,
+              children: _telas,
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceAbaAtual,
         onTap: _aoSelecionarAba,

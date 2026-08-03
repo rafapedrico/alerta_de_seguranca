@@ -3,6 +3,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../app_navigator.dart';
 import '../../services/database_helper.dart';
+import '../../services/device_admin_service.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
@@ -35,10 +36,20 @@ class ConfiguracoesTab extends StatefulWidget {
   State<ConfiguracoesTab> createState() => _ConfiguracoesTabState();
 }
 
-class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
+class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBindingObserver {
   final DatabaseHelper _db = DatabaseHelper();
   final AlarmeSonoroService _alarmeSonoroService = AlarmeSonoroService();
   final LocalizationService _localizationService = LocalizationService();
+
+  // Bloqueio automático de tela (Administrador do Dispositivo — P4 da
+  // sequência unificada de SOS, ver SosDisparoService/DeviceAdminService):
+  // migrado da aba Segurança para cá. Regra de silêncio: só exibe algo
+  // quando a permissão AINDA NÃO está ativa (pedindo ativação); uma vez
+  // concedida, fica 100% silencioso — só volta a aparecer se a permissão
+  // for revogada manualmente nas configurações do Android (detectado ao
+  // voltar ao app em foreground, ver didChangeAppLifecycleState).
+  bool _deviceAdminAtivo = false;
+  bool _carregandoDeviceAdmin = true;
 
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
@@ -67,14 +78,38 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadConfig();
     _carregarContatosEmergencia();
     _carregarConfiguracaoAlarmeSonoro();
     _carregarConfiguracaoIdioma();
+    _carregarStatusDeviceAdmin();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reflete na UI a decisão do usuário no diálogo NATIVO de Device Admin
+    // (ou uma revogação manual feita nas configurações do Android) assim
+    // que o app volta ao primeiro plano — não há callback direto para
+    // esse resultado, então basta reconsultar o status.
+    if (state == AppLifecycleState.resumed) {
+      _carregarStatusDeviceAdmin();
+    }
+  }
+
+  Future<void> _carregarStatusDeviceAdmin() async {
+    final ativo = await DeviceAdminService().estaAtivo();
+    if (mounted) {
+      setState(() {
+        _deviceAdminAtivo = ativo;
+        _carregandoDeviceAdmin = false;
+      });
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Garante que nenhum som de teste continue tocando após sair da
     // tela de Configurações.
     _alarmeSonoroService.pararTeste();
@@ -981,6 +1016,8 @@ Future<void> _selecionarSom(int? numero) async {
           onTap: _showPinRealDialog,
         ),
 
+        _buildCartaoDeviceAdmin(),
+
         const Divider(),
 
         // =========================================
@@ -1668,6 +1705,54 @@ Future<void> _selecionarSom(int? numero) async {
           ),
         );
       },
+    );
+  }
+
+  /// Cartão de consentimento para a permissão de Administrador do
+  /// Dispositivo (bloqueio automático de tela — P4 da sequência unificada
+  /// de SOS, ver DeviceAdminService). Regra de silêncio: só é renderizado
+  /// enquanto a permissão NÃO está ativa; uma vez concedida, não exibe
+  /// nenhum aviso/card — só reaparece se a permissão for revogada.
+  Widget _buildCartaoDeviceAdmin() {
+    if (_carregandoDeviceAdmin || _deviceAdminAtivo) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.lock_open, color: Colors.black45),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.deviceAdminTitulo,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppLocalizations.of(context)!.deviceAdminDescricaoInativo,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => DeviceAdminService().solicitarAtivacao(),
+              child: Text(AppLocalizations.of(context)!.deviceAdminBotaoAtivar),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -72,22 +74,25 @@ class _HistoricoTabState extends State<HistoricoTab> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   static const String _categoriaRecebido = 'alerta_recebido';
+  static const String _categoriaEnviados = 'enviados';
 
   // Filtro rápido selecionado no topo (chave interna neutra, independente
   // do idioma — o rótulo exibido é traduzido separadamente em
   // [_rotuloFiltro]). 'todos' por padrão.
   String _filtroSelecionado = 'todos';
 
-  // EXATAMENTE três filtros (pedido de UX): "Todos" (mensagens diversas
-  // de agendamentos — eventos locais das abas Segurança/Família não têm
-  // mais filtro próprio, mas continuam aparecendo aqui), "Alerta de
-  // segurança recebido" (localização/foto de terceiros) e "Sistema"
-  // (alterações feitas em Configurações). A categoria 'critico' nunca
-  // aparece aqui em nenhum filtro — exclusiva da AuditoriaSensivelScreen.
+  // EXATAMENTE quatro filtros (pedido de UX): "Todos" (agendamentos e
+  // mensagens diversas), "Alerta de segurança recebido" (localização/foto
+  // de terceiros), "Sistema" (alterações feitas em Configurações) e
+  // "Alertas enviados" — a antiga AuditoriaSensivelScreen (alarmes de
+  // emergência e disparos de SMS de socorro do PRÓPRIO usuário, categoria
+  // 'critico'), agora integrada aqui como um filtro em vez de tela
+  // separada, mas preservando a mesma trava de carência de 2h.
   final List<String> _filtros = const [
     'todos',
     _categoriaRecebido,
     'sistema',
+    _categoriaEnviados,
   ];
 
   /// Rótulo traduzido exibido no chip do filtro [chave].
@@ -98,6 +103,8 @@ class _HistoricoTabState extends State<HistoricoTab> {
         return l10n.historicoFiltroSistema;
       case _categoriaRecebido:
         return l10n.alertaRecebidoTitulo;
+      case _categoriaEnviados:
+        return l10n.historicoFiltroAlertasEnviados;
       case 'todos':
       default:
         return l10n.historicoFiltroTodos;
@@ -107,10 +114,148 @@ class _HistoricoTabState extends State<HistoricoTab> {
   bool _carregando = true;
   List<_ItemHistorico> _itens = [];
 
+  // ==========================================================
+  // "ALERTAS ENVIADOS" (ex-AuditoriaSensivelScreen, migrado para cá)
+  // ==========================================================
+  // Registros mais críticos do histórico (categoria 'critico' —
+  // EXCLUSIVAMENTE alarmes de emergência e disparos de SMS de socorro
+  // para os contatos cadastrados) só podem ser visualizados após o
+  // usuário solicitar explicitamente a liberação e aguardar um período de
+  // carência de 2 horas — mesma proteção de privacidade de antes, apenas
+  // reapresentada como filtro em vez de tela própria. Nunca aparecem
+  // misturados aos demais filtros: a separação é garantida na origem, por
+  // [DatabaseHelper.getHistorico] (exclui a categoria 'critico') e
+  // [DatabaseHelper.getEventosSensiveis] (busca exclusivamente 'critico').
+  final DatabaseHelper _dbAuditoria = DatabaseHelper();
+  bool _carregandoAuditoria = true;
+  bool _liberadoAuditoria = false;
+  bool _temSolicitacaoPendenteAuditoria = false;
+  int _msRestantesAuditoria = 0;
+  List<Map<String, dynamic>> _eventosSensiveis = [];
+  Timer? _tickerAuditoria;
+
   @override
   void initState() {
     super.initState();
     _carregarHistorico();
+    _atualizarStatusAuditoria();
+  }
+
+  @override
+  void dispose() {
+    _tickerAuditoria?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _atualizarStatusAuditoria() async {
+    final status = await _dbAuditoria.getStatusAuditoria();
+    if (!mounted) return;
+
+    final liberado = status['liberado'] as bool;
+
+    setState(() {
+      _liberadoAuditoria = liberado;
+      _temSolicitacaoPendenteAuditoria = status['temSolicitacaoPendente'] as bool;
+      _msRestantesAuditoria = status['msRestantes'] as int;
+      _carregandoAuditoria = false;
+    });
+
+    _tickerAuditoria?.cancel();
+    if (liberado) {
+      final eventos = await _dbAuditoria.getEventosSensiveis();
+      if (!mounted) return;
+      setState(() => _eventosSensiveis = eventos);
+    } else if (_temSolicitacaoPendenteAuditoria) {
+      _tickerAuditoria =
+          Timer.periodic(const Duration(seconds: 1), (_) => _atualizarStatusAuditoria());
+    }
+  }
+
+  Future<void> _solicitarLiberacaoAuditoria() async {
+    await _dbAuditoria.solicitarLiberacaoAuditoria();
+    if (!mounted) return;
+    await _atualizarStatusAuditoria();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.auditoriaSolicitacaoAprovada),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _confirmarBloquearNovamenteAuditoria() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.lock_outline, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteTitulo,
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteConteudo,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(AppLocalizations.of(ctx)!.cancelar),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _bloquearNovamenteAuditoria();
+            },
+            icon: const Icon(Icons.lock, size: 18),
+            label: Text(AppLocalizations.of(ctx)!.auditoriaBloquearNovamenteBotao),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _bloquearNovamenteAuditoria() async {
+    await _dbAuditoria.bloquearAuditoriaNovamente();
+    if (!mounted) return;
+    await _atualizarStatusAuditoria();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.auditoriaBloqueadoNovamente),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Future<void> _excluirEventoSensivel(int id) async {
+    await _dbAuditoria.deletarEventoHistorico(id);
+    if (!mounted) return;
+    setState(() {
+      _eventosSensiveis.removeWhere((e) => e['id'] == id);
+    });
+  }
+
+  String _formatarTempoRestanteAuditoria(int ms) {
+    final duracao = Duration(milliseconds: ms);
+    final horas = duracao.inHours;
+    final minutos = duracao.inMinutes % 60;
+    final segundos = duracao.inSeconds % 60;
+    return '${horas.toString().padLeft(2, '0')}:'
+        '${minutos.toString().padLeft(2, '0')}:'
+        '${segundos.toString().padLeft(2, '0')}';
   }
 
   Future<void> _carregarHistorico() async {
@@ -267,6 +412,10 @@ class _HistoricoTabState extends State<HistoricoTab> {
       case 'sistema':
         await _dbHelper.limparHistoricoPorCategoria('sistema');
         break;
+      case _categoriaEnviados:
+        await _dbAuditoria.limparHistoricoPorCategoria('critico');
+        if (mounted) setState(() => _eventosSensiveis = []);
+        return;
       case 'todos':
       default:
         await _dbHelper.limparHistoricoGeral();
@@ -356,27 +505,55 @@ class _HistoricoTabState extends State<HistoricoTab> {
               children: [
                 const SizedBox(height: 8),
                 _construirFiltrosRapidos(),
-                if (!_carregando && _itensFiltrados.isNotEmpty) _construirBotaoLimpar(),
+                if (_mostrarBotaoLimpar) _construirBotaoLimpar(),
                 const SizedBox(height: 8),
-                Expanded(
-                  child: _carregando
-                      ? const Center(child: CircularProgressIndicator())
-                      : _itensFiltrados.isEmpty
-                          ? _construirEstadoVazio()
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                              itemCount: _itensFiltrados.length,
-                              itemBuilder: (context, index) {
-                                final item = _itensFiltrados[index];
-                                final isUltimo = index == _itensFiltrados.length - 1;
-                                return _construirCardTimeline(item, isUltimo);
-                              },
-                            ),
-                ),
+                Expanded(child: _construirCorpo()),
               ],
             ),
           ),
         );
+      },
+    );
+  }
+
+  /// Se o botão "Limpar Histórico" do topo deve aparecer para o filtro
+  /// atualmente selecionado. Para "Alertas enviados" a visibilidade
+  /// depende de [_eventosSensiveis] (que vive fora de [_itens] por
+  /// desenho — ver [DatabaseHelper.getHistorico]), não de
+  /// [_itensFiltrados].
+  bool get _mostrarBotaoLimpar {
+    if (_filtroSelecionado == _categoriaEnviados) {
+      return _liberadoAuditoria && _eventosSensiveis.isNotEmpty;
+    }
+    return !_carregando && _itensFiltrados.isNotEmpty;
+  }
+
+  /// Corpo principal abaixo dos filtros: para "Alertas enviados", exibe a
+  /// UI de carência/lista liberada (migrada da antiga
+  /// AuditoriaSensivelScreen); para os demais filtros, a timeline normal.
+  Widget _construirCorpo() {
+    if (_filtroSelecionado == _categoriaEnviados) {
+      if (_carregandoAuditoria) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return _liberadoAuditoria
+          ? _construirListaLiberadaAuditoria()
+          : _construirTelaDeCarenciaAuditoria();
+    }
+
+    if (_carregando) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_itensFiltrados.isEmpty) {
+      return _construirEstadoVazio();
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _itensFiltrados.length,
+      itemBuilder: (context, index) {
+        final item = _itensFiltrados[index];
+        final isUltimo = index == _itensFiltrados.length - 1;
+        return _construirCardTimeline(item, isUltimo);
       },
     );
   }
@@ -622,6 +799,208 @@ class _HistoricoTabState extends State<HistoricoTab> {
       onDismissed: (_) =>
           item.ehAlertaRecebido ? _excluirAlertaRecebido(item.id) : _excluirEvento(item.id),
       child: conteudoComToque,
+    );
+  }
+
+  // ==========================================================
+  // UI DE "ALERTAS ENVIADOS" (ex-AuditoriaSensivelScreen)
+  // ==========================================================
+
+  Widget _construirTelaDeCarenciaAuditoria() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _temSolicitacaoPendenteAuditoria ? Icons.hourglass_top : Icons.lock_clock,
+              size: 72,
+              color: const Color(0xFF4C7040),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _temSolicitacaoPendenteAuditoria
+                  ? AppLocalizations.of(context)!.auditoriaAguardandoLiberacao
+                  : AppLocalizations.of(context)!.auditoriaRegistrosProtegidos,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_temSolicitacaoPendenteAuditoria) ...[
+              Text(
+                AppLocalizations.of(context)!.auditoriaAvisoCarencia,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.auditoriaTempoRestante,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatarTempoRestanteAuditoria(_msRestantesAuditoria),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepOrange,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Text(
+                AppLocalizations.of(context)!.auditoriaAvisoSolicitacao,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _solicitarLiberacaoAuditoria,
+                  icon: const Icon(Icons.lock_open),
+                  label: Text(AppLocalizations.of(context)!.auditoriaSolicitarLiberacaoBotao),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4C7040),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _construirListaLiberadaAuditoria() {
+    if (_eventosSensiveis.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.verified_user, size: 56, color: Colors.green.shade400),
+              const SizedBox(height: 12),
+              Text(
+                AppLocalizations.of(context)!.auditoriaNenhumEvento,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black54, fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          color: Colors.green.shade50,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.verified_user, color: Colors.green.shade700, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context)!.auditoriaPrazoLiberado,
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: _confirmarBloquearNovamenteAuditoria,
+                icon: Icon(Icons.lock, color: Colors.green.shade800, size: 16),
+                label: Text(
+                  AppLocalizations.of(context)!.auditoriaBloquearNovamenteBotao,
+                  style: TextStyle(
+                    color: Colors.green.shade800,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _eventosSensiveis.length,
+            itemBuilder: (context, index) {
+              final evento = _eventosSensiveis[index];
+              final id = evento['id'] as int;
+              final titulo = evento['titulo'] as String? ?? '';
+              final descricao = evento['descricao'] as String? ?? '';
+              final timestamp = evento['timestamp'] as String? ?? '';
+
+              return Dismissible(
+                key: ValueKey('critico_$id'),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade400,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.delete_outline, color: Colors.white),
+                ),
+                onDismissed: (_) => _excluirEventoSensivel(id),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.shade50,
+                      child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
+                    ),
+                    title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(descricao),
+                    trailing: Text(
+                      _formatarDataHora(timestamp),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

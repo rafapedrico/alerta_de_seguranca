@@ -347,5 +347,14 @@
   "pinDigiteParaDesarmar": "Enter your PIN to disarm the check-in.",
   "pinDigiteParaContinuar": "Enter your PIN to continue.",
   "pinTempoTolerancia": "Tolerance time: {segundos}s",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } }
+  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
+
+  "homeTooltipInicio": "Back to Home",
+  "historicoFiltroAlertasEnviados": "Sent alerts",
+  "dashboardSecaoPlanosTitulo": "Choose your plan",
+  "dashboardPlanoFreeTitulo": "Free",
+  "dashboardPlanoFreeDescricao": "Security check-in, manual SOS and essential alerts",
+  "dashboardPlanoPremiumDescricao": "Cloud alerts, WhatsApp and unlimited features",
+  "dashboardFaqTitulo": "Frequently Asked Questions",
+  "dashboardCentralAtendimentoTitulo": "Customer Support Center"
 }
