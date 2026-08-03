@@ -109,12 +109,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final titulos = _titulos(context);
-    // Ícone de casa: some no Dashboard (já é o "início") e na aba Segurança
-    // (índice 0); aparece em Família/Monitoramento/Histórico, permitindo
-    // voltar diretamente ao Dashboard.
-    final bool mostrarIconeCasa = !_mostrandoInicio && _indiceAbaAtual != 0;
+    // Ícone de casa: some apenas no próprio Dashboard (já é o "início");
+    // aparece em Segurança/Família/Monitoramento/Histórico, permitindo
+    // voltar diretamente ao Dashboard de qualquer aba.
+    final bool mostrarIconeCasa = !_mostrandoInicio;
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: _mostrandoInicio ? Colors.black : null,
+        foregroundColor: _mostrandoInicio ? Colors.white : null,
+        elevation: _mostrandoInicio ? 0 : null,
         leading: mostrarIconeCasa
             ? IconButton(
                 icon: const Icon(Icons.home_outlined),
@@ -122,10 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _voltarParaInicio,
               )
             : null,
-        title: Text(
-          _mostrandoInicio ? 'Guardião-X' : titulos[_indiceAbaAtual],
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        // No Dashboard, a marca "Guardião-X" já aparece na própria imagem
+        // de destaque do corpo — o título do AppBar fica vazio para não
+        // duplicar o texto.
+        title: _mostrandoInicio
+            ? null
+            : Text(titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (!_mostrandoInicio && _indiceAbaAtual == 1)
             IconButton(
@@ -148,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
       body: _mostrandoInicio
-          ? InicioDashboard(aoAbrirConfiguracoes: () => _abrirConfiguracoes(context))
+          ? const InicioDashboard()
           : IndexedStack(
               index: _indiceAbaAtual,
               children: _telas,

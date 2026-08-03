@@ -357,5 +357,6 @@
   "dashboardPlanoFreeDescricao": "Check-in de segurança, SOS manual e alertas essenciais",
   "dashboardPlanoPremiumDescricao": "Alertas em nuvem, WhatsApp e recursos ilimitados",
   "dashboardFaqTitulo": "Perguntas Frequentes",
-  "dashboardCentralAtendimentoTitulo": "Central de Atendimento ao Cliente"
+  "dashboardCentralAtendimentoTitulo": "Central de Atendimento ao Cliente",
+  "dashboardAvisoWhatsappCredito": "As mensagens de contingência via WhatsApp dependem de saldo positivo e da ativação prévia em Configurações."
 }

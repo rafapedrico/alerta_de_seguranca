@@ -356,5 +356,6 @@
   "dashboardPlanoFreeDescricao": "Security check-in, manual SOS and essential alerts",
   "dashboardPlanoPremiumDescricao": "Cloud alerts, WhatsApp and unlimited features",
   "dashboardFaqTitulo": "Frequently Asked Questions",
-  "dashboardCentralAtendimentoTitulo": "Customer Support Center"
+  "dashboardCentralAtendimentoTitulo": "Customer Support Center",
+  "dashboardAvisoWhatsappCredito": "Contingency WhatsApp messages depend on a positive balance and prior activation in Settings."
 }
