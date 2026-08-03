@@ -83,6 +83,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -94,4 +95,17 @@ flutter:
     - assets/lang/
     - assets/images/
 
+# Ícone do aplicativo (App Launcher Icon) — gerado via
+# `dart run flutter_launcher_icons`, ver assets/images/app_icon.png (logo
+# "GX" do Guardião-X). Ativado só para Android (ícone padrão + ícone
+# adaptativo, com fundo sólido grafite combinando com o escudo do ícone)
+# — este repositório não possui projeto iOS (ver comentário sobre
+# in_app_purchase acima).
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#12131C"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
 
