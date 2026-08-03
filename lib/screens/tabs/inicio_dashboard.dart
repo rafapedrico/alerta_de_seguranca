@@ -3,7 +3,10 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/database_helper.dart';
 import '../../services/locale_service.dart';
+import '../faq_screen.dart';
+import '../termos_privacidade_screen.dart';
 
 /// Conteúdo da nova Tela de Início (Dashboard) exibida no lugar das 4 abas
 /// enquanto `HomeScreen._mostrandoInicio` for `true` — ver
@@ -81,23 +84,36 @@ class InicioDashboard extends StatelessWidget {
     return ValueListenableBuilder<String>(
       valueListenable: LocaleService.codigoIdiomaCompletoNotifier,
       builder: (context, codigoIdioma, _) {
-        return Image.asset(
-          LocaleService.caminhoImagemLoginPara(codigoIdioma),
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          errorBuilder: (context, error, stackTrace) => Image.asset(
-            LocaleService.imagemLoginPadrao,
+        // Gradiente transparente -> preto na base da imagem, fundindo-a
+        // suavemente com o fundo AMOLED do restante da tela, sem nenhuma
+        // moldura/container ao redor (a imagem continua width:
+        // double.infinity, sem Container/borda).
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Colors.transparent],
+            stops: [0.6, 1.0],
+          ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height)),
+          child: Image.asset(
+            LocaleService.caminhoImagemLoginPara(codigoIdioma),
             width: double.infinity,
             fit: BoxFit.fitWidth,
-            errorBuilder: (context, error, stackTrace) => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: Text(
-                  'Guardião-X',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+            errorBuilder: (context, error, stackTrace) => Image.asset(
+              LocaleService.imagemLoginPadrao,
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
+              errorBuilder: (context, error, stackTrace) => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(
+                  child: Text(
+                    'Guardião-X',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -225,7 +241,56 @@ class InicioDashboard extends StatelessWidget {
           _abrirPlayStore();
         },
         botaoSecundarioTexto: l10n.agoraNao,
+        onCancelarPremium: () => _confirmarCancelamentoPremium(context),
       ),
+    );
+  }
+
+  /// Confirma e efetiva a reversão do plano do usuário para o Free
+  /// (`user_config.tipo_plano = 'free'`), acionado pelo botão "Cancelar
+  /// Plano Premium" dentro do modal informativo do Premium. Reaproveita
+  /// [DatabaseHelper.updateUserConfig] — o mesmo campo lido por
+  /// [PlanoLimiteService] para decidir se o usuário tem plano pago.
+  Future<void> _confirmarCancelamentoPremium(BuildContext context) async {
+    final bool? confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancelar Plano Premium?'),
+        content: const Text(
+          'Você voltará imediatamente para o Plano Free, com os limites '
+          'mensais do plano gratuito.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Voltar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cancelar Premium'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmou != true || !context.mounted) return;
+
+    try {
+      final db = DatabaseHelper();
+      final config = await db.getUserConfig();
+      final id = config?['id'] as int?;
+      if (id != null) {
+        await db.updateUserConfig({'id': id, 'tipo_plano': 'free'});
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InicioDashboard] Falha ao cancelar Plano Premium: $e');
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // fecha o modal do Premium
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Plano Premium cancelado. Você está no Plano Free.')),
     );
   }
 
@@ -236,21 +301,26 @@ class InicioDashboard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.dashboardFaqTitulo,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
+          // Item 4: só um botão/link elegante para a nova FaqScreen
+          // dedicada — o accordion inline foi removido daqui.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FaqScreen()),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.help_outline, color: Color(0xFF9CCC65)),
+              label: Text(
+                l10n.dashboardFaqTitulo,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Theme(
-            data: ThemeData.dark().copyWith(
-              dividerColor: Colors.white24,
-              colorScheme: const ColorScheme.dark(primary: Color(0xFF9CCC65)),
-            ),
-            child: Column(children: _faqItems.map(_buildFaqTile).toList()),
           ),
 
           const SizedBox(height: 24),
@@ -313,102 +383,72 @@ class InicioDashboard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () => _abrirUrl(_whatsappUrl),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                elevation: 0,
+              ),
+              icon: const Icon(FontAwesomeIcons.whatsapp, size: 22),
+              label: const Text(
+                _whatsappNumero,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Links jurídicos: abrem a TermosPrivacidadeScreen já na aba
+          // correspondente.
           Center(
             child: InkWell(
-              onTap: () => _abrirUrl(_whatsappUrl),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(FontAwesomeIcons.whatsapp, color: Color(0xFF25D366), size: 26),
-                  SizedBox(width: 10),
-                  Text(
-                    _whatsappNumero,
-                    style: TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                ],
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TermosPrivacidadeScreen(abaInicial: 0),
+                ),
+              ),
+              child: const Text(
+                'Termos de Uso e Contrato de Consentimento',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TermosPrivacidadeScreen(abaInicial: 1),
+                ),
+              ),
+              child: const Text(
+                'Política de Privacidade',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ),
 
           // Padding inferior para o conteúdo não terminar colado na
           // BottomNavigationBar.
-          const SizedBox(height: 40),
+          const SizedBox(height: 56),
         ],
       ),
     );
   }
-
-  Widget _buildFaqTile(_FaqItem item) {
-    return ExpansionTile(
-      title: Text(
-        item.pergunta,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-      ),
-      iconColor: const Color(0xFF9CCC65),
-      collapsedIconColor: Colors.white70,
-      childrenPadding: const EdgeInsets.only(bottom: 12),
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            item.resposta,
-            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-          ),
-        ),
-      ],
-    );
-  }
-
-  static final List<_FaqItem> _faqItems = [
-    const _FaqItem(
-      pergunta: 'Como funciona o check-in de segurança?',
-      resposta:
-          'Você define um tempo na aba Segurança e, se não confirmar que está bem com '
-          'seu PIN antes do cronômetro zerar, o app entende que algo pode estar errado '
-          'e dispara um alerta de emergência automaticamente para seus contatos.',
-    ),
-    const _FaqItem(
-      pergunta: 'O que o botão de SOS faz?',
-      resposta:
-          'Dispara imediatamente um alerta de emergência com sua localização para os '
-          'contatos cadastrados, sem precisar esperar o cronômetro de check-in.',
-    ),
-    const _FaqItem(
-      pergunta: 'Como funciona o Monitoramento entre familiares?',
-      resposta:
-          'Permite compartilhar localização em tempo real com contatos de confiança, '
-          'sempre com consentimento explícito nos dois sentidos — ninguém vê sua '
-          'localização sem que você autorize.',
-    ),
-    const _FaqItem(
-      pergunta: 'O que são os "Alertas Enviados" no Histórico?',
-      resposta:
-          'É o registro dos alertas de emergência disparados pela sua própria conta. '
-          'Por segurança, essa lista só pode ser visualizada após uma solicitação e um '
-          'período de carência, evitando que alguém acesse esse histórico rapidamente '
-          'no seu aparelho.',
-    ),
-    const _FaqItem(
-      pergunta: 'Como funciona o alerta por WhatsApp?',
-      resposta:
-          'Além da notificação dentro do app, o Guardião X pode enviar uma mensagem de '
-          'contingência via WhatsApp para os contatos que você habilitar, garantindo '
-          'que o alerta chegue mesmo se o app deles estiver fechado.',
-    ),
-    const _FaqItem(
-      pergunta: 'O que o Plano Premium oferece?',
-      resposta:
-          'Alertas em nuvem em tempo real, mais mensagens de contingência via WhatsApp, '
-          'grupos de alerta ilimitados, chats criptografados e backup automático na nuvem.',
-    ),
-  ];
-}
-
-class _FaqItem {
-  const _FaqItem({required this.pergunta, required this.resposta});
-  final String pergunta;
-  final String resposta;
 }
 
 /// Card de plano com visual moderno: fundo translúcido escuro para o
@@ -442,22 +482,22 @@ class _CartaoPlano extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: destaque
-              ? LinearGradient(
-                  colors: [corPrincipal.withOpacity(0.85), const Color(0xFF4C1F91)],
+              ? const LinearGradient(
+                  colors: [Color(0xFF2A43C2), Color(0xFF4A00E0)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: destaque ? null : Colors.white.withOpacity(0.06),
+          color: destaque ? null : const Color(0xFF1A1B26),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: destaque ? corPrincipal.withOpacity(0.9) : Colors.white24,
+            color: destaque ? const Color(0xFF4A00E0) : Colors.white24,
             width: destaque ? 1.4 : 1,
           ),
           boxShadow: destaque
               ? [
                   BoxShadow(
-                    color: corPrincipal.withOpacity(0.55),
+                    color: const Color(0xFF2A43C2).withOpacity(0.55),
                     blurRadius: 20,
                     spreadRadius: 1,
                     offset: const Offset(0, 6),
@@ -475,18 +515,18 @@ class _CartaoPlano extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: const Color(0xFFFFD700),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star, color: Colors.white, size: 12),
+                      const Icon(Icons.star, color: Colors.black87, size: 12),
                       const SizedBox(width: 3),
                       Text(
-                        selo!,
+                        selo!.toUpperCase(),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black87,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -538,6 +578,7 @@ class _ModalDetalhePlano extends StatelessWidget {
     required this.botaoPrincipalTexto,
     required this.onBotaoPrincipal,
     this.botaoSecundarioTexto,
+    this.onCancelarPremium,
   });
 
   final IconData icone;
@@ -549,10 +590,14 @@ class _ModalDetalhePlano extends StatelessWidget {
   final VoidCallback onBotaoPrincipal;
   final String? botaoSecundarioTexto;
 
+  /// Quando informado (apenas no modal do Premium), exibe o botão
+  /// "Cancelar Plano Premium" — reverte o usuário para o Plano Free.
+  final VoidCallback? onCancelarPremium;
+
   static const String _notaRodape =
       '* O envio adicional para WhatsApp é um recurso opcional que pode ser '
-      'ativado na página "Configurações" e tem um custo de US\$ 0,10 (10 '
-      'centavos de dólar).';
+      'ativado na página "Configurações" e possui o custo de US\$ 0,10 por '
+      'mensagem.';
 
   @override
   Widget build(BuildContext context) {
@@ -605,6 +650,21 @@ class _ModalDetalhePlano extends StatelessWidget {
               _notaRodape,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
+            if (onCancelarPremium != null) ...[
+              const SizedBox(height: 14),
+              const Divider(),
+              const SizedBox(height: 4),
+              Center(
+                child: TextButton.icon(
+                  onPressed: onCancelarPremium,
+                  icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+                  label: const Text(
+                    'Cancelar Plano Premium',
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -162,8 +162,18 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _indiceAbaAtual,
         onTap: _aoSelecionarAba,
         type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF12131C),
+        elevation: 0,
         selectedFontSize: 15,
         unselectedFontSize: 13,
+        // Estado neutro do Dashboard: nenhuma aba deve parecer "ativa"
+        // enquanto _mostrandoInicio for true — em vez de usar um
+        // currentIndex fora do range (não suportado pelo widget e causa
+        // assert), equalizamos a cor de selecionado com a de não
+        // selecionado, fazendo os 4 itens parecerem visualmente iguais.
+        selectedItemColor:
+            _mostrandoInicio ? const Color(0xFF8E8E93) : Colors.white,
+        unselectedItemColor: const Color(0xFF8E8E93),
         items: [
           BottomNavigationBarItem(
             icon: const Icon(Icons.shield),

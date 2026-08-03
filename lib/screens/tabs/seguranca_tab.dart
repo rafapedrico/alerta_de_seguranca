@@ -278,7 +278,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// bloqueio, por si só, NUNCA cancela o alarme nativo.
   void _alternarTimer() {
     if (_isTimerAtivo) {
-      _ativarBloqueioDeSeguranca();
+      // Tentativa de desarme manual (toque no botão antes do cronômetro
+      // zerar): o alarme sonoro NÃO deve tocar aqui — apenas quando o
+      // cronômetro chegar naturalmente a 00:00 (ver
+      // [_ativarBloqueioDeSeguranca]).
+      _ativarBloqueioDeSeguranca(tocarAlarmeSonoro: false);
     } else {
       _iniciarTimer();
     }
@@ -417,7 +421,13 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// referência, continuando a rodar "invisível" em paralelo e
   /// disparando o SOS de forma prematura/inesperada (o efeito relatado:
   /// o botão fica laranja por ~1s e o alerta já dispara).
-  void _ativarBloqueioDeSeguranca() {
+  /// [tocarAlarmeSonoro] controla se o som de alarme deve tocar em loop
+  /// assim que a tela de bloqueio de PIN abrir. Regra de negócio: o som
+  /// só deve tocar quando o cronômetro chega naturalmente a 00:00 (chamado
+  /// do `Timer.periodic` do cronômetro principal, valor padrão `true`) —
+  /// NUNCA quando o próprio usuário toca no botão para tentar desarmar
+  /// antecipadamente (ver [_alternarTimer], que passa `false`).
+  void _ativarBloqueioDeSeguranca({bool tocarAlarmeSonoro = true}) {
     if (_bloqueioEmAndamento) {
       // Já existe um ciclo de tolerância em andamento: ignora esta nova
       // chamada por completo, em vez de criar um segundo Timer
@@ -437,13 +447,15 @@ class _SegurancaTabState extends State<SegurancaTab> {
     });
 
     // ALERTA SONORO CUSTOMIZÁVEL (Etapa 1 - Expansão Global): dispara o
-    // som escolhido pelo usuário em LOOP no exato momento em que o
-    // cronômetro principal chega a zero e a tela de bloqueio de PIN é
-    // exibida. Fire-and-forget para não atrasar a abertura do diálogo.
-    // Interrompido automaticamente após a duração configurada, ou
-    // imediatamente caso o PIN correto seja digitado antes (ver
-    // [_aoConfirmarPinCorreto]).
-    _alarmeSonoroService.dispararAlarme();
+    // som escolhido pelo usuário em LOOP, mas SOMENTE quando o cronômetro
+    // chegou naturalmente a 00:00 ([tocarAlarmeSonoro] == true) — nunca
+    // numa tentativa manual de desarme antecipado. Fire-and-forget para
+    // não atrasar a abertura do diálogo. Interrompido automaticamente
+    // após a duração configurada, ou imediatamente caso o PIN correto
+    // seja digitado antes (ver [_aoConfirmarPinCorreto]).
+    if (tocarAlarmeSonoro) {
+      _alarmeSonoroService.dispararAlarme();
+    }
 
 
 
@@ -456,7 +468,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
         pinEsperado: _pinRealConfirmado,
         segundosTolerancia: _segundosToleranciaBloqueio,
         aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
-        aoAtingirLimiteDeErros: _dispararSosDeCoacao,
+        // Regra de segurança: 3 tentativas de PIN erradas CONSECUTIVAS
+        // encerram o cronômetro imediatamente e disparam o alerta
+        // completo (localização + foto) de forma 100% silenciosa — ver
+        // [_encerrarEDispararEmergenciaPorPinIncorreto].
+        limiteErrosConsecutivos: 3,
+        aoAtingirLimiteDeErros: _encerrarEDispararEmergenciaPorPinIncorreto,
       );
     }
 
@@ -574,39 +591,47 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   /// Callback silencioso passado ao [PinDialogContent] (ver
   /// [_ativarBloqueioDeSeguranca]), acionado automaticamente quando o
-  /// usuário digita o PIN INCORRETO 2 vezes consecutivas. Dispara o
-  /// alerta de tentativa de desarme com senha incorreta (SMS nativo com
-  /// localização + alerta ao backend), de forma 100% SILENCIOSA: nenhum
-  /// SnackBar, nenhuma alteração visual no diálogo de PIN, nada que possa
-  /// denunciar o disparo a quem estiver observando a tela (ex: um
+  /// usuário digita o PIN INCORRETO 3 VEZES CONSECUTIVAS durante uma
+  /// tentativa de desarme. Regra de negócio: o cronômetro/tolerância é
+  /// encerrado IMEDIATAMENTE e o alerta de emergência COMPLETO
+  /// (localização + foto, mesmo pacote descrito na FAQ sobre o botão de
+  /// pânico) é disparado de forma 100% SILENCIOSA — nenhum SnackBar,
+  /// nenhum som, nenhuma alteração visual no diálogo de PIN, nada que
+  /// possa denunciar o disparo a quem estiver observando a tela (ex: um
   /// agressor coagindo o usuário a digitar o PIN).
   ///
-  /// ORDEM CRÍTICA: o alerta para a nuvem (Firebase) é disparado e
-  /// AGUARDADO PRIMEIRO, antes de qualquer outro processamento local —
-  /// garantindo que, mesmo que o aparelho seja destruído/desligado nos
-  /// segundos seguintes, a nuvem já tenha recebido o alerta. Só depois
-  /// disso o fluxo local (SMS nativo + backend FastAPI) é executado.
+  /// ORDEM CRÍTICA: o alerta prioritário para a nuvem (Firebase) é
+  /// disparado e AGUARDADO PRIMEIRO, antes de qualquer outro
+  /// processamento local — garantindo que, mesmo que o aparelho seja
+  /// destruído/desligado nos segundos seguintes, a nuvem já tenha
+  /// recebido o alerta. Só depois disso o disparo completo local
+  /// (localização + foto) é executado.
   ///
-  /// Protegido por try/catch para nunca propagar exceção de volta ao
-  /// diálogo de PIN, mantendo seu comportamento visual inalterado
-  /// independentemente do resultado deste disparo.
-  Future<void> _dispararSosDeCoacao() async {
-    debugPrint('🚨 [PIN DE COAÇÃO] 2 PINs incorretos consecutivos detectados. '
-        'Disparando alerta silencioso de tentativa de desarme incorreta.');
+  /// Protegido por try/catch em cada etapa para nunca propagar exceção de
+  /// volta ao diálogo de PIN, mantendo seu comportamento visual
+  /// inalterado independentemente do resultado deste disparo.
+  Future<void> _encerrarEDispararEmergenciaPorPinIncorreto() async {
+    debugPrint('🚨 [PIN INCORRETO 3x] 3 PINs incorretos consecutivos detectados. '
+        'Encerrando o cronômetro e disparando o alerta completo silenciosamente.');
+
+    // Encerra imediatamente o cronômetro regressivo de tolerância — não
+    // espera mais pelo esgotamento natural do tempo.
+    _cancelarTimerToleranciaBloqueio();
+    // Garante silêncio total: nenhum som deve tocar neste fluxo, mesmo se
+    // o alarme natural (cronômetro chegou a 00:00) já estivesse em loop.
+    await _alarmeSonoroService.pararAlarme();
 
     try {
       await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
     } catch (e) {
-      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar alerta prioritário na nuvem: $e');
+      debugPrint('⚠️ [PIN INCORRETO 3x] Falha ao disparar alerta prioritário na nuvem: $e');
     }
 
-    try {
-      await _emergencyAlertService.dispararAlertaTentativaDesarmeIncorreto(
-        posicaoEmMemoria: _locationService.ultimaPosicao,
-      );
-    } catch (e) {
-      debugPrint('⚠️ [PIN DE COAÇÃO] Falha ao disparar alerta silencioso: $e');
-    }
+    // Reaproveita o mesmo guard de disparo único por ciclo
+    // ([_disparoJaExecutadoNesteCiclo]) e o pacote completo de emergência
+    // (localização + foto) já usado quando a tolerância se esgota
+    // naturalmente — mantendo o comportamento 100% silencioso.
+    await _dispararUmaVezSeNecessario();
   }
 
   // ==========================================================
