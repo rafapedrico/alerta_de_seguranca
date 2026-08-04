@@ -160,7 +160,9 @@ class InicioDashboard extends StatelessWidget {
                     descricao: l10n.dashboardPlanoFreeDescricao,
                     corPrincipal: Colors.white24,
                     destaque: false,
-                    onTap: () => _abrirModalFree(context),
+                    // Item 4: o Card Free não abre nenhum modal ao ser
+                    // tocado.
+                    onTap: null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -192,48 +194,62 @@ class InicioDashboard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          // Item 5: aviso de garantia de cancelamento do Premium nos
+          // primeiros 15 dias.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.verified_outlined, size: 14, color: Colors.white38),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l10n.dashboardAvisoGarantiaCancelamento,
+                  style: const TextStyle(fontSize: 11, color: Colors.white38),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  void _abrirModalFree(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (ctx) => _ModalDetalhePlano(
-        icone: Icons.shield_outlined,
-        corPrincipal: Colors.white24,
-        titulo: l10n.dashboardPlanoFreeTitulo,
-        destaque: '7 envios de mensagens ou solicitações de localização por mês',
-        beneficios: const [
-          'Check-in de segurança com cronômetro e PIN',
-          'Botão de SOS manual com localização',
-          'Até 3 contatos de emergência',
-          'Monitoramento de localização entre familiares',
-          'Histórico completo de alertas',
-        ],
-        botaoPrincipalTexto: 'Permanecer no Plano Free',
-        onBotaoPrincipal: () => Navigator.of(ctx).pop(),
-      ),
-    );
+  /// Lê `user_config.tipo_plano` direto do banco — mesma fonte de verdade
+  /// usada por [PlanoLimiteService] — para saber se o usuário tem
+  /// atualmente o Plano Premium ativo. Qualquer falha de leitura resulta
+  /// em `false` (trata como Free), já que este método só controla a
+  /// exibição de um botão de UI, nunca uma regra de segurança.
+  Future<bool> _possuiPlanoPremiumAtivo() async {
+    try {
+      final config = await DatabaseHelper().getUserConfig();
+      final tipoPlano = (config?['tipo_plano'] as String?) ?? 'free';
+      return tipoPlano.trim().toLowerCase() != 'free';
+    } catch (e) {
+      debugPrint('⚠️ [InicioDashboard] Falha ao verificar tipo de plano: $e');
+      return false;
+    }
   }
 
-  void _abrirModalPremium(BuildContext context) {
+  Future<void> _abrirModalPremium(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
+    final bool premiumAtivo = await _possuiPlanoPremiumAtivo();
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => _ModalDetalhePlano(
         icone: Icons.workspace_premium,
         corPrincipal: _corDestaquePremium,
         titulo: l10n.planoPremiumTitulo,
-        destaque: 'Todas as funções do Guardião-X, ILIMITADAS',
+        destaque: l10n.premiumModalDestaque,
         beneficios: [
-          l10n.beneficioAlertasNuvem,
-          l10n.beneficioMensagensWhatsapp,
-          l10n.beneficioGruposIlimitados,
-          l10n.beneficioChatsCriptografados,
-          l10n.beneficioBackupNuvem,
+          l10n.beneficioLocalizacaoTempoReal,
+          l10n.beneficioBotaoFisico,
+          l10n.beneficioModoSeguranca,
+          l10n.beneficioModoFamilia,
+          l10n.beneficioTresCamadas,
+          l10n.beneficioTempoEspera,
+          l10n.beneficioSuporteTecnico,
         ],
         botaoPrincipalTexto: 'Assinar Premium — ${l10n.precoMensal}${l10n.porMes}',
         onBotaoPrincipal: () {
@@ -241,7 +257,11 @@ class InicioDashboard extends StatelessWidget {
           _abrirPlayStore();
         },
         botaoSecundarioTexto: l10n.agoraNao,
-        onCancelarPremium: () => _confirmarCancelamentoPremium(context),
+        // O botão "Cancelar Plano Premium" só é exibido quando o plano
+        // Premium está de fato ativo — no Plano Free, não há nada para
+        // cancelar, então o botão fica oculto (item 1 do pedido).
+        onCancelarPremium:
+            premiumAtivo ? () => _confirmarCancelamentoPremium(context) : null,
       ),
     );
   }
@@ -361,8 +381,16 @@ class InicioDashboard extends StatelessWidget {
           const SizedBox(height: 4),
           const Center(
             child: Text(
-              'Rua Rio de Janeiro, número 243, Centro, '
-              'Belo Horizonte, MG, CEP 30160-040',
+              'Rua Rio de Janeiro, Nº 243, Sala 802, Centro, '
+              'Belo Horizonte - Brasil. CEP 30160-040',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Center(
+            child: Text(
+              'CNPJ 68.358.210/0001-90',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
@@ -461,7 +489,7 @@ class _CartaoPlano extends StatelessWidget {
     required this.descricao,
     required this.corPrincipal,
     required this.destaque,
-    required this.onTap,
+    this.onTap,
     this.selo,
   });
 
@@ -470,7 +498,10 @@ class _CartaoPlano extends StatelessWidget {
   final String descricao;
   final Color corPrincipal;
   final bool destaque;
-  final VoidCallback onTap;
+  // Item 4: nullable — o Card Free não deve abrir nenhum modal ao ser
+  // tocado, então recebe `null` aqui (o InkWell fica com o efeito de
+  // toque desativado).
+  final VoidCallback? onTap;
   final String? selo;
 
   @override
