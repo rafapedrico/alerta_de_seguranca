@@ -1,8 +1,6 @@
 {
   "@@locale": "zh",
-
   "appTituloConfiguracoes": "设置",
-
   "campoEmailLabel": "电子邮箱",
   "campoEmailObrigatorio": "请输入您的电子邮箱",
   "campoEmailInvalido": "电子邮箱无效",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "确认密码",
   "campoConfirmarSenhaObrigatoria": "请确认您的密码",
   "senhasNaoCoincidem": "两次输入的密码不一致",
-
   "botaoEntrar": "登录",
   "esqueciMinhaSenha": "忘记密码",
   "recuperacaoSenhaEmBreve": "密码找回功能即将上线。",
@@ -28,19 +25,18 @@
   "emailNaoVerificadoReenviar": "重新发送邮件",
   "emailVerificacaoReenviada": "验证邮件已重新发送。",
   "emailVerificacaoReenvioFalhou": "无法重新发送邮件，请稍后重试。",
-
   "sairDaContaTitulo": "退出登录",
   "sairDaContaConfirmar": "退出",
-
   "contatoWhatsappSwitchLabel": "通过WhatsApp通知（$0.10 USD）",
   "whatsappSimultaneoTitulo": "同时通过WhatsApp发送",
   "whatsappSimultaneoDescricao": "在不等待送达确认的情况下，立即通过WhatsApp与推送通知同时发送警报，并为每个已启用的联系人从钱包中扣除相应金额。",
-
   "alertaRecebidoTitulo": "收到安全警报",
   "alertaRecebidoDe": "{nome}可能处于危险中",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "在地图上查看位置",
@@ -52,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "无法分享照片。",
   "alertaRecebidoFotoIndisponivel": "无法加载照片。",
   "alertaRecebidoTentarNovo": "重试",
-
   "carteiraTitulo": "信用钱包",
   "carteiraMenuItem": "信用钱包",
   "carteiraSaldoAtual": "当前余额",
   "carteiraAteNEnvios": "最多可发送{n}次",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "应用内提醒完全免费。WhatsApp应急发送每条收费$0.10美元。",
@@ -77,7 +74,6 @@
   "loginFacebook": "脸书",
   "naoTemConta": "还没有账户？",
   "cadastreSe": "注册",
-
   "cadastroSubtitulo": "创建您的账户以开始使用",
   "campoNomeLabel": "全名",
   "campoNomeObrigatorio": "请输入您的姓名",
@@ -87,29 +83,29 @@
   "botaoCriarConta": "创建账户",
   "jaTemConta": "已有账户？",
   "facaLogin": "登录",
-
   "configuracoesIdiomaTitulo": "语言",
   "configuracoesIdiomaDescricao": "选择应用语言。已准备好支持11种全球语言。",
   "configuracoesIdiomaLabel": "应用语言",
   "idiomaAlteradoSnackbar": "🌐 语言已更改为{idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "安全",
   "tabFamilia": "家庭",
   "tabMonitoramento": "监控",
   "tabHistorico": "历史记录",
   "tooltipAdicionarAlarme": "添加闹钟",
   "tooltipAuditoriaSensivel": "敏感事件审计",
-
   "cancelar": "取消",
   "confirmar": "确认",
   "salvar": "保存",
   "excluir": "删除",
   "fechar": "关闭",
   "voltar": "返回",
-
   "segurancaSelecioneTempo": "请选择一个大于零的时间！",
   "segurancaCheckinDesarmado": "✅ 签到已成功解除！",
   "segurancaConfirmarSosTitulo": "确认SOS？",
@@ -132,7 +128,6 @@
   "deviceAdminDescricaoInativo": "允许应用在紧急SOS结束时自动锁定屏幕。需要一次性授予的特殊Android权限。",
   "deviceAdminDescricaoAtivo": "已启用 — 屏幕将在SOS流程结束时自动锁定。",
   "deviceAdminBotaoAtivar": "启用",
-
   "familiaAlarmeRemovido": "🗑️ 闹钟已成功删除。",
   "familiaAlarmePausadoAte": "⏸️ 闹钟已暂停至今天午夜。",
   "familiaAdicionarAlarme": "添加闹钟",
@@ -148,7 +143,11 @@
   "familiaToleranciaLabel": "确认\"我已安全到达\"的容许时间",
   "familiaMinutosAbrev": "{minutos} 分钟",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "保存闹钟",
   "familiaAlarmesRotinaTitulo": "常规闹钟",
@@ -158,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "永久删除此闹钟？",
   "familiaExcluirAlarmeConteudo": "是否永久删除闹钟“{etiqueta}”（{horario}）？",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "今日暂停此闹钟？",
   "familiaPausarAlarmeConteudo": "是否将闹钟“{etiqueta}”（{horario}）暂停至午夜？它将于明天自动恢复启用。",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "暂停",
   "familiaPausadoAte0000": "已暂停至午夜",
   "familiaRetorna": "恢复时间：{horario}（{dia}）",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ 点击重新启用闹钟",
   "familiaContatosEmergenciaTitulo": "紧急联系人",
@@ -179,9 +199,15 @@
   "familiaSemNome": "无姓名",
   "familiaReativadoComSucesso": "{etiqueta}（{horario}）已成功重新启用。",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "允许发送我的位置",
   "monitoramentoSecaoVerLocalizacao": "家人的位置",
   "monitoramentoAdicionarContato": "添加联系人",
@@ -193,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "删除联系人",
   "monitoramentoExcluirContatoTitulo": "删除联系人?",
   "monitoramentoExcluirContatoConteudo": "要将“{nome}”从您的监控列表中移除吗?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "尚未添加任何监控联系人。\n点击\"+\"添加第一个联系人。",
   "monitoramentoSolicitarLocalizacao": "请求位置",
   "monitoramentoVerNoMapa": "在地图上查看",
   "monitoramentoAtualizadoHaMinutos": "{minutos}分钟前更新",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "未请求",
   "monitoramentoStatusAguardandoAprovacao": "等待批准",
   "monitoramentoStatusAprovado": "已批准",
@@ -212,41 +250,74 @@
   "monitoramentoErroSolicitar": "无法发送请求，请重试。",
   "monitoramentoSolicitacaoRecebidaTitulo": "位置请求",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome}正在请求您的位置。允许还是屏蔽?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "允许",
   "monitoramentoBloquearRecusar": "屏蔽/拒绝",
-
   "historicoFiltroTodos": "全部",
   "historicoFiltroSistema": "系统",
   "historicoAgoraMesmo": "刚刚",
   "historicoHaMinutos": "{minutos} 分钟前",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "{horas} 小时前",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "昨天",
   "historicoHaDias": "{dias} 天前",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "未找到符合此筛选条件的事件。",
   "historicoLimparBotao": "清除历史记录",
   "historicoLimparConfirmarTitulo": "清除历史记录？",
   "historicoLimparConfirmarConteudo": "此操作将永久删除此类别中的消息，且无法撤销。",
-
   "contatosMaximoAtingido": "⚠️ 您已登记最多{max}位联系人。",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ 通讯录访问权限被拒绝。",
   "contatoSemTelefone": "⚠️ 该联系人未登记电话号码。",
   "telefoneInvalido": "⚠️ 电话号码无效。",
   "contatoAdicionado": "✅ {nome} 已添加到紧急联系人！",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ 请求已收到。{nome} 将在24小时后被移除。",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "真实PIN码",
   "pinRealDescricao": "设置一个4位数PIN码，用于正常访问应用。",
   "pinRealHint": "输入4个数字",
@@ -258,14 +329,18 @@
   "pinNaoDefinido": "⚠️ 未设置",
   "pinDefinidoComSucesso": "🔒 PIN码设置成功！",
   "pinNovaSenhaEmVigor24h": "🔒 请求已收到。新密码将在24小时后生效。",
-
   "alterarPlanoFundo": "更改背景",
   "planoFundoAlterado": "🎨 背景已更改！",
   "planoFundoPadrao": "经典浅色（默认）",
   "tamanhoLetrasTitulo": "字体大小",
   "tamanhoLetrasAlterado": "🔤 字体大小：{rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "高级套餐",
   "premiumModalDestaque": "Guardião-X的全部功能，无限制",
   "beneficioLocalizacaoTempoReal": "实时共享位置。",
@@ -278,19 +353,23 @@
   "agoraNao": "暂不需要",
   "assinarPreco": "订阅 每月9.90雷亚尔",
   "planoPremiumAtivado": "🎉 高级套餐已激活！",
-
   "visualDoChatTitulo": "聊天外观",
   "alertaSonoroTitulo": "声音警报",
   "planoTitulo": "套餐",
   "contatosDescricao": "最多可登记{max}位在紧急情况下会收到警报的家庭成员。",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "删除联系人",
   "adicionarContatoAgenda": "+ 从通讯录添加联系人",
   "alertaSonoroDescricao": "选择签到倒计时结束时触发的警报声音和持续时间。",
   "somAlarmeLabel": "闹钟声音",
   "tooltipTestarSom": "测试/试听声音",
   "somTesteVazio": "🔇 测试音频文件为空。请替换assets/sounds文件夹中的占位文件。",
-
   "planoFamiliarAtivo": "家庭套餐已激活",
   "recursosPremiumDisponiveis": "所有高级功能均可使用",
   "premiumBadge": "高级版",
@@ -299,20 +378,17 @@
   "precoMensal": "11.99雷亚尔",
   "porMes": "/月",
   "verMais": "查看更多",
-
   "alarmeRotinaAtivoDescricao": "常规闹钟已启用。\n请确认安全以暂停闹钟。",
   "alarmeRotinaFaseFinalDescricao": "最后机会！闹钟再次响起。\n请在2分钟内输入PIN码，否则将发送紧急警报。",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ 紧急警报已发送！\n您的位置和消息已发送到云端和已登记的联系人。",
   "desligarAlarmeBotao": "关闭闹钟",
   "fecharConfirmacaoBotao": "关闭",
   "fecharConfirmacaoDica": "向上滑动或点击关闭以继续",
-
   "cameraToqueOuVolume": "📸 点击按钮或按音量键拍照",
   "enviando": "发送中...",
   "atencaoMaiuscula": "注意",
   "mensagemEnviadaAviso": "注意，已向家人发送包含照片和位置的消息。此操作无法撤销。",
   "deslizeParaFechar": "向上滑动关闭",
-
   "auditoriaSolicitacaoAprovada": "请求已批准。出于安全和隐私保护的原因，记录将在2小时后解锁。",
   "auditoriaBloquearNovamenteTitulo": "再次锁定？",
   "auditoriaBloquearNovamenteConteudo": "确认后，敏感记录的访问将立即被锁定。要再次查看，需要重新申请解锁并再等待2小时的安全等待期。",
@@ -327,15 +403,19 @@
   "auditoriaSolicitarLiberacaoBotao": "申请解锁敏感历史记录",
   "auditoriaNenhumEvento": "查看已解锁。尚无敏感事件记录。",
   "auditoriaPrazoLiberado": "安全等待期已完成。本次会话的记录已解锁。",
-
   "pinAlarmeDesligado": "闹钟已关闭",
   "pinSenhaIncorreta": "密码错误",
   "pinConfirmeSeuPin": "确认您的PIN码",
   "pinDigiteParaDesarmar": "输入您的PIN码以解除签到。",
   "pinDigiteParaContinuar": "输入您的PIN码以继续。",
   "pinTempoTolerancia": "容许时间：{segundos}秒",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "返回首页",
   "historicoFiltroAlertasEnviados": "已发送的警报",
   "dashboardSecaoPlanosTitulo": "选择您的套餐",
@@ -346,7 +426,6 @@
   "dashboardCentralAtendimentoTitulo": "客户服务中心",
   "dashboardAvisoWhatsappCredito": "WhatsApp消息是一项可选功能，取决于账户余额为正且已在设置中预先启用。",
   "dashboardAvisoGarantiaCancelamento": "如在前15天内取消高级套餐，可无手续退还已付金额的50%。",
-
   "faqAppBarTitulo": "常见问题 (FAQ)",
   "faqTooltipInicio": "首页",
   "faqBuscaHint": "搜索问题与答案...",
@@ -375,12 +454,10 @@
   "faqResposta11": "WhatsApp聊天已被设定为自动回复用户的大多数疑问和请求。通过「与人工客服交谈」菜单提出的请求将遵循RMF Global公司制定的政策规定，其中高级套餐用户将在最长48小时内享有此项服务的优先权。",
   "faqPergunta12": "紧急警报消息是否只会发送给安装了Guardião-X应用的已登记号码？",
   "faqResposta12": "不是。我们建议双方手机都安装该应用，但即使接收方手机未安装Guardião-X，紧急警报仍会通过短信或WhatsApp发送。",
-
   "termosAppBarTitulo": "条款与隐私",
   "termosTabContrato": "同意协议",
   "termosTabPrivacidade": "隐私政策",
   "termosAvisoRodape": "本文件概述了Guardião-X应用的同意协议和隐私政策。如有疑问，请通过应用内提供的客服渠道与我们联系。",
-
   "termosContratoTitulo1": "1. 服务目的与限制",
   "termosContratoCorpo1": "本同意协议规范Guardião-X应用的使用，该应用由RMF Global LTDA（“RMF Global”）开发和运营，旨在通过安全签到、自动警报、家庭成员与信任联系人之间的位置共享，以及照片证据采集，帮助用户应对个人紧急情况。Guardião-X是一款个人安全辅助工具，不能替代官方紧急服务机构（警察、消防、急救，或您所在国家/地区相应的紧急电话）或任何其他公共紧急服务。在面临直接危险的情况下，用户应始终优先联系官方紧急号码。",
   "termosContratoTitulo2": "2. 位置信息使用同意（GPS及后台位置）",
@@ -399,7 +476,6 @@
   "termosContratoCorpo8": "客户服务主要通过自动化WhatsApp聊天进行，该聊天已被设定为自动回复用户的大多数疑问和请求。人工客服请求将遵循RMF Global制定的政策规定，高级套餐用户可在最长48（四十八）小时内优先获得此项人工服务。",
   "termosContratoTitulo9": "9. 自由、明确的同意及撤回",
   "termosContratoCorpo9": "通过使用Guardião-X应用并启用其安全功能，用户声明其在紧急情况下自由、知情且明确地同意收集和使用GPS、个人数据及媒体（照片），如本协议所述。用户可随时通过卸载应用，或通过应用内提供的客服渠道申请删除其账户及相关数据来撤回此同意，但须遵守第5条所述的安全等待期。",
-
   "termosPrivacidadeTitulo1": "1. 收集的数据及目的",
   "termosPrivacidadeCorpo1": "为实现Guardião-X的安全功能，我们收集：（a）实时及后台地理位置（GPS/Background Location），严格用于发送和保存预防性及紧急警报；（b）触发一键报警按钮或“拍摄与威慑”功能时自动采集的照片及其他媒体；（c）用户的注册数据及其提供的紧急联系人信息（姓名和电话）；以及（d）警报功能运行所需的设备技术数据（联网状态、应用版本）。",
   "termosPrivacidadeTitulo2": "2. 数据使用目的",
@@ -413,5 +489,142 @@
   "termosPrivacidadeTitulo6": "6. 用户权利（数据保护）",
   "termosPrivacidadeCorpo6": "根据适用的数据保护法规（例如巴西LGPD——第13.709/2018号法律），用户可随时通过应用内提供的客服渠道，申请查阅其个人数据、更正错误的注册信息、删除其账户及已存储的个人数据，以及撤回授予监控联系人的授权。",
   "termosPrivacidadeTitulo7": "7. 联系方式",
-  "termosPrivacidadeCorpo7": "有关本隐私政策的疑问，可通过应用首页提供的客服渠道（WhatsApp及机构地址）联系RMF Global LTDA（CNPJ 68.358.210/0001-90）。"
+  "termosPrivacidadeCorpo7": "有关本隐私政策的疑问，可通过应用首页提供的客服渠道（WhatsApp及机构地址）联系RMF Global LTDA（CNPJ 68.358.210/0001-90）。",
+  "footerTermosLink": "使用条款与同意协议",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA（RMF环球有限公司）",
+  "footerEmpresaEndereco": "巴西米纳斯吉拉斯州贝洛奥里藏特市中心区（Centro）里约热内卢街243号802室，邮编30160-040",
+  "footerEmpresaCnpj": "公司注册号（CNPJ）68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "要取消高级套餐吗？",
+  "premiumCancelarConfirmConteudo": "您将立即回到免费套餐，并受免费套餐每月限额的限制。",
+  "premiumCancelarConfirmBotao": "取消高级套餐",
+  "premiumCanceladoSnackbar": "高级套餐已取消。您现在处于免费套餐。",
+  "premiumAssinarBotaoComPreco": "订阅高级版 — {preco}",
+  "premiumModalNotaRodape": "* 额外的WhatsApp发送为可选功能，可在“设置”页面启用，每条消息费用为0.10美元。",
+  "premiumCancelarBotaoModal": "取消高级套餐",
+  "familiaEtiquetaPadrao": "常规闹钟",
+  "familiaDiasNuncaLabel": "从不",
+  "familiaDiasTodosLabel": "每天",
+  "familiaDiasSegASexLabel": "周一至周五",
+  "familiaDiaAbrevSeg": "周一",
+  "familiaDiaAbrevTer": "周二",
+  "familiaDiaAbrevQua": "周三",
+  "familiaDiaAbrevQui": "周四",
+  "familiaDiaAbrevSex": "周五",
+  "familiaDiaAbrevSab": "周六",
+  "familiaDiaAbrevDom": "周日",
+  "familiaDiaInicialSeg": "一",
+  "familiaDiaInicialTer": "二",
+  "familiaDiaInicialQua": "三",
+  "familiaDiaInicialQui": "四",
+  "familiaDiaInicialSex": "五",
+  "familiaDiaInicialSab": "六",
+  "familiaDiaInicialDom": "日",
+  "familiaAcaoPausar": "暂停",
+  "familiaAcaoExcluir": "删除",
+  "familiaAcaoEditar": "编辑",
+  "familiaPinMotivoTexto": "在“家庭”标签页尝试{acao}常规闹钟时，PIN连续2次输入错误。",
+  "historicoAlarmeAtivadoTitulo": "常规闹钟已启用",
+  "historicoAlarmeDesativadoTitulo": "常规闹钟已停用",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta}（{horario}）已启用。",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta}（{horario}）已停用。",
+  "historicoAlarmeRemovidoTitulo": "常规闹钟已删除",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta}（{horario}）已删除。",
+  "historicoAlarmePausadoTitulo": "常规闹钟已暂停",
+  "historicoAlarmePausadoDescricao": "{etiqueta}（{horario}）已暂停至午夜0点。",
+  "historicoAlarmeReativadoTitulo": "常规闹钟已重新启用",
+  "historicoAlarmeReativadoDescricao": "{etiqueta}（{horario}）已由用户重新启用。",
+  "historicoAlarmeCriadoTitulo": "常规闹钟已创建",
+  "historicoAlarmeEditadoTitulo": "常规闹钟已编辑",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta}，{horario}（{dias}）。",
+  "historicoContatoAdicionadoTitulo": "已添加紧急联系人",
+  "historicoContatoAdicionadoDescricao": "{nome}已登记为紧急联系人。",
+  "historicoContatoExclusaoSolicitadaTitulo": "已请求删除联系人",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome}将在24小时内被彻底移除。",
+  "historicoPinDefinidoTitulo": "访问PIN已设置",
+  "historicoPinDefinidoDescricao": "访问PIN已登记并立即生效（首次设置，无安全等待期）。",
+  "historicoPinAlteracaoSolicitadaTitulo": "已请求更改PIN",
+  "historicoPinAlteracaoSolicitadaDescricao": "新的访问密码待生效，将在24小时后生效。",
+  "historicoPlanoFundoAlteradoTitulo": "背景已更改",
+  "historicoPlanoFundoAlteradoDescricao": "已选择新背景：{nome}。",
+  "historicoCronometroAtivadoTitulo": "计时器已启动",
+  "historicoCronometroAtivadoDescricao": "安全签到已开始，时长为{horas}小时{minutos}分钟。",
+  "historicoCheckinDesarmadoTitulo": "签到已成功解除",
+  "historicoCheckinDesarmadoDescricao": "用户已使用正确的PIN停止/解除安全计时器。",
+  "historicoCheckinRotinaConfirmadoTitulo": "常规签到已确认",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}：用户已成功确认“我很安全”。",
+  "historicoCheckinRotinaUltimaChanceTitulo": "常规签到 — 最后机会",
+  "historicoCheckinRotinaUltimaChanceDescricao": "容忍时间已到期且未确认。闹钟再次响起，距离触发紧急警报还有最后2分钟。",
+  "historicoAlertaEmergenciaRotinaTitulo": "紧急警报已触发（常规）",
+  "historicoAlertaEmergenciaTitulo": "紧急警报已触发",
+  "historicoAlertaEmergenciaDescricao": "紧急短信已发送给已登记联系人。位置：{localizacao}",
+  "historicoTentativaDesarmeTitulo": "使用错误PIN尝试解除",
+  "historicoTentativaDesarmeDescricao": "{motivo}警报已发送给紧急联系人。位置：{localizacao}",
+  "historicoSosCacheTitulo": "通过物理按钮触发的SOS（缓存位置）",
+  "historicoSosCacheDescricao": "已发送包含最后已知缓存位置的即时紧急短信。位置：{localizacao}",
+  "historicoSosAtualizadoTitulo": "通过物理按钮触发的SOS — 位置已更新",
+  "historicoSosAtualizadoDescricao": "已发送包含实时位置的第二条紧急短信。位置：{localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "照片证据已记录",
+  "historicoEvidenciaFotograficaDescricao": "包含救援数据的短信已发送给紧急联系人。",
+  "historicoFotoSosSmsTitulo": "SOS照片已通过短信发送",
+  "historicoFotoSosSmsDescricao": "包含照片链接和位置的短信已发送给紧急联系人。照片：{fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "位置不可用（设备上的GPS服务已关闭）。",
+  "smsLocalizacaoIndisponivelPermissao": "位置不可用（位置权限被拒绝）。",
+  "smsLocalizacaoIndisponivelFalha": "无法获取设备当前位置。",
+  "smsContextoNaoInformado": "用户未提供任何背景说明。",
+  "smsAlertaEmergenciaCorpo": "紧急警报！我未完成安全签到。\n位置：{localizacao}\n背景：{contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "在尝试提前解除安全系统时，PIN连续2次输入错误。",
+  "smsTentativaDesarmeCorpo": "⚠️ 安全警报：使用错误密码尝试解除！\n{motivo}\n位置：{localizacao}",
+  "smsSosContextoPadrao": "通过物理紧急按钮（音量+）触发SOS。",
+  "smsSosImediatoCorpo": "🚨 紧急SOS（物理按钮）！\n位置（最后已知）：{localizacao}\n背景：{contexto}\n（随后将发送包含实时位置的更新。）",
+  "smsLocalizacaoCacheIndisponivel": "缓存位置不可用 — 正在等待实时更新。",
+  "smsSosAtualizadoCorpo": "🚨 紧急SOS（实时更新）！\n更新后的位置：{localizacao}\n背景：{contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "发送时位置不可用。",
+  "smsFotoCorpo": "📷 SOS期间记录的照片证据！\n照片：{fotoUrl}\n位置：{localizacao}",
+  "smsResgateCorpo": "🚨 已记录照片证据！\n照片和位置已发送至云端。\n访问：{link}\n登录名：{login}\n密码：{senha}\n此操作不可撤销。",
+  "temaAzulProfundo": "深蓝",
+  "temaCinzaPlatina": "铂金灰",
+  "temaLuzDoAmanhecer": "晨曦之光",
+  "temaVerdeBotanico": "植物绿",
+  "temaRosaClaro": "浅粉色",
+  "temaLuzClassica": "经典亮色",
+  "fontTamanhoPequeno": "小",
+  "fontTamanhoPadrao": "默认",
+  "fontTamanhoGrande": "大",
+  "somNome1": "经典哔声",
+  "somNome2": "战术警笛",
+  "somNome3": "紧急警报",
+  "somNome4": "尖锐警报",
+  "somNome5": "都市铃声",
+  "somNome6": "警示钟声",
+  "somNome7": "安全喇叭",
+  "somNome8": "工业警报",
+  "somNome9": "警笛",
+  "somNome10": "静音提示",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}：即使容忍时间已经到期，常规签到仍未在最后2分钟期限内得到确认。",
+  "notifCanalCheckinNome": "常规签到",
+  "notifCanalCheckinDescricao": "已登记常规闹钟的安全签到提醒。",
+  "notifCanalAlertaRecebidoNome": "收到的紧急警报",
+  "notifCanalAlertaRecebidoDescricao": "将此设备登记为紧急联系人的联系人发出的安全警报。",
+  "notifCanalMonitoramentoNome": "位置监控",
+  "notifCanalMonitoramentoDescricao": "“监控”标签页发送的位置共享请求的回复。",
+  "notifCanalSolicitacaoMonitoramentoNome": "收到的位置请求",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "当家庭成员请求查看您的实时位置时的优先警报 — 需要接受或拒绝。",
+  "notifCheckinCorpo": "点击以取消闹钟。",
+  "notifAlarmeSegurancaTitulo": "安全闹钟",
+  "notifAlarmeSegurancaCorpo": "确认您的安全或暂停闹钟！",
+  "notifPausarAlarmeAcao": "⏸️ 暂停闹钟",
+  "notifAlertaDeNome": "🚨 来自{nome}的警报",
+  "notifAlertaSegurancaGenerico": "🚨 安全警报",
+  "notifMonitSolicitacaoTitulo": "📍 位置请求",
+  "notifMonitSolicitacaoCorpo": "{nome}正在请求您的位置。",
+  "notifMonitAprovadoTitulo": "📍 位置已开放",
+  "notifMonitAprovadoCorpo": "{nome}已允许您查看其位置。",
+  "notifMonitNegadoTitulo": "📍 请求已拒绝",
+  "notifMonitNegadoCorpo": "{nome}拒绝了您的位置请求。",
+  "notifMonitBloqueadoTitulo": "📍 共享已被阻止",
+  "notifMonitBloqueadoCorpo": "{nome}已阻止与您共享位置。",
+  "notifMonitExpiradoTitulo": "📍 请求已过期",
+  "notifMonitExpiradoCorpo": "您向{nome}发出的位置请求已过期且无响应。",
+  "notifMonitContatoGenerico": "一位联系人",
+  "notifCheckinCanceladoCorpo": "闹钟已取消。"
 }

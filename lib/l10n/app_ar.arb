@@ -1,8 +1,6 @@
 {
   "@@locale": "ar",
-
   "appTituloConfiguracoes": "الإعدادات",
-
   "campoEmailLabel": "البريد الإلكتروني",
   "campoEmailObrigatorio": "أدخل بريدك الإلكتروني",
   "campoEmailInvalido": "بريد إلكتروني غير صالح",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "تأكيد كلمة المرور",
   "campoConfirmarSenhaObrigatoria": "أكّد كلمة المرور",
   "senhasNaoCoincidem": "كلمتا المرور غير متطابقتين",
-
   "botaoEntrar": "تسجيل الدخول",
   "esqueciMinhaSenha": "نسيت كلمة المرور",
   "recuperacaoSenhaEmBreve": "استعادة كلمة المرور ستكون متاحة قريبًا.",
@@ -28,19 +25,18 @@
   "emailNaoVerificadoReenviar": "إعادة إرسال البريد الإلكتروني",
   "emailVerificacaoReenviada": "تمت إعادة إرسال بريد التحقق.",
   "emailVerificacaoReenvioFalhou": "تعذرت إعادة إرسال البريد الإلكتروني. حاول مرة أخرى لاحقًا.",
-
   "sairDaContaTitulo": "تسجيل الخروج",
   "sairDaContaConfirmar": "تسجيل الخروج",
-
   "contatoWhatsappSwitchLabel": "الإشعار عبر واتساب (0.10 دولار أمريكي)",
   "whatsappSimultaneoTitulo": "إرسال أيضًا عبر واتساب",
   "whatsappSimultaneoDescricao": "يرسل التنبيه فورًا عبر واتساب إلى جانب الإشعار الفوري، دون انتظار تأكيد التسليم، ويخصم المبلغ من المحفظة لكل جهة اتصال مُفعّلة.",
-
   "alertaRecebidoTitulo": "تم استلام تنبيه أمني",
   "alertaRecebidoDe": "قد يكون {nome} في خطر",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "عرض الموقع على الخريطة",
@@ -52,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "تعذرت مشاركة الصورة.",
   "alertaRecebidoFotoIndisponivel": "تعذر تحميل الصورة.",
   "alertaRecebidoTentarNovo": "إعادة المحاولة",
-
   "carteiraTitulo": "محفظة الأرصدة",
   "carteiraMenuItem": "محفظة الأرصدة",
   "carteiraSaldoAtual": "الرصيد الحالي",
   "carteiraAteNEnvios": "حتى {n} إرسال",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "التنبيهات عبر التطبيق مجانية بنسبة 100٪. رسائل واتساب الاحتياطية تكلف 0.10 دولار أمريكي لكل رسالة.",
@@ -77,7 +74,6 @@
   "loginFacebook": "فيسبوك",
   "naoTemConta": "ليس لديك حساب؟",
   "cadastreSe": "إنشاء حساب",
-
   "cadastroSubtitulo": "أنشئ حسابك للبدء",
   "campoNomeLabel": "الاسم الكامل",
   "campoNomeObrigatorio": "أدخل اسمك",
@@ -87,29 +83,29 @@
   "botaoCriarConta": "إنشاء حساب",
   "jaTemConta": "لديك حساب بالفعل؟",
   "facaLogin": "تسجيل الدخول",
-
   "configuracoesIdiomaTitulo": "اللغة",
   "configuracoesIdiomaDescricao": "اختر لغة التطبيق. الدعم جاهز لـ 11 لغة عالمية.",
   "configuracoesIdiomaLabel": "لغة التطبيق",
   "idiomaAlteradoSnackbar": "🌐 تم تغيير اللغة إلى {idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "الأمان",
   "tabFamilia": "العائلة",
   "tabMonitoramento": "المراقبة",
   "tabHistorico": "السجل",
   "tooltipAdicionarAlarme": "إضافة منبه",
   "tooltipAuditoriaSensivel": "مراجعة الأحداث الحساسة",
-
   "cancelar": "إلغاء",
   "confirmar": "تأكيد",
   "salvar": "حفظ",
   "excluir": "حذف",
   "fechar": "إغلاق",
   "voltar": "رجوع",
-
   "segurancaSelecioneTempo": "الرجاء اختيار وقت أكبر من صفر!",
   "segurancaCheckinDesarmado": "✅ تم إلغاء تفعيل تسجيل الوصول بنجاح!",
   "segurancaConfirmarSosTitulo": "تأكيد نداء الاستغاثة؟",
@@ -132,7 +128,6 @@
   "deviceAdminDescricaoInativo": "يتيح للتطبيق قفل الشاشة تلقائيًا في نهاية نداء الاستغاثة الطارئ. يتطلب إذنًا خاصًا من Android يُمنح مرة واحدة فقط.",
   "deviceAdminDescricaoAtivo": "مفعّل — سيتم قفل الشاشة تلقائيًا في نهاية تسلسل نداء الاستغاثة.",
   "deviceAdminBotaoAtivar": "تفعيل",
-
   "familiaAlarmeRemovido": "🗑️ تم حذف المنبه بنجاح.",
   "familiaAlarmePausadoAte": "⏸️ تم إيقاف المنبه مؤقتًا حتى منتصف الليل اليوم.",
   "familiaAdicionarAlarme": "إضافة منبه",
@@ -148,7 +143,11 @@
   "familiaToleranciaLabel": "مهلة تأكيد \"وصلت بأمان\"",
   "familiaMinutosAbrev": "{minutos} دقيقة",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "حفظ المنبه",
   "familiaAlarmesRotinaTitulo": "المنبهات الروتينية",
@@ -158,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "حذف المنبه نهائيًا؟",
   "familiaExcluirAlarmeConteudo": "هل تريد حذف المنبه \"{etiqueta}\" ({horario}) نهائيًا؟",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "إيقاف المنبه مؤقتًا لليوم؟",
   "familiaPausarAlarmeConteudo": "هل تريد إيقاف المنبه \"{etiqueta}\" ({horario}) مؤقتًا حتى منتصف الليل؟ سيعود إلى التفعيل تلقائيًا غدًا.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "إيقاف مؤقت",
   "familiaPausadoAte0000": "متوقف مؤقتًا حتى منتصف الليل",
   "familiaRetorna": "يعود: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ اضغط لإعادة تفعيل المنبه",
   "familiaContatosEmergenciaTitulo": "جهات اتصال الطوارئ",
@@ -179,9 +199,15 @@
   "familiaSemNome": "بدون اسم",
   "familiaReativadoComSucesso": "تم إعادة تفعيل {etiqueta} ({horario}) بنجاح.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "السماح بإرسال موقعي",
   "monitoramentoSecaoVerLocalizacao": "موقع أفراد العائلة",
   "monitoramentoAdicionarContato": "إضافة جهة اتصال",
@@ -193,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "حذف جهة الاتصال",
   "monitoramentoExcluirContatoTitulo": "حذف جهة الاتصال؟",
   "monitoramentoExcluirContatoConteudo": "هل تريد إزالة \"{nome}\" من قائمة المراقبة الخاصة بك؟",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "لم تتم إضافة أي جهات اتصال للمراقبة بعد.\nاضغط على \"+\" لإضافة الأولى.",
   "monitoramentoSolicitarLocalizacao": "طلب الموقع",
   "monitoramentoVerNoMapa": "عرض على الخريطة",
   "monitoramentoAtualizadoHaMinutos": "تم التحديث قبل {minutos} دقيقة",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "لم يُطلب",
   "monitoramentoStatusAguardandoAprovacao": "بانتظار الموافقة",
   "monitoramentoStatusAprovado": "تمت الموافقة",
@@ -212,41 +250,74 @@
   "monitoramentoErroSolicitar": "تعذر إرسال الطلب. حاول مرة أخرى.",
   "monitoramentoSolicitacaoRecebidaTitulo": "طلب الموقع",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} يطلب موقعك. السماح أم الحظر؟",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "سماح",
   "monitoramentoBloquearRecusar": "حظر/رفض",
-
   "historicoFiltroTodos": "الكل",
   "historicoFiltroSistema": "النظام",
   "historicoAgoraMesmo": "الآن",
   "historicoHaMinutos": "منذ {minutos} دقيقة",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "منذ {horas} ساعة",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "أمس",
   "historicoHaDias": "منذ {dias} يوم",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "لم يتم العثور على أي حدث لهذا الفلتر.",
   "historicoLimparBotao": "مسح السجل",
   "historicoLimparConfirmarTitulo": "مسح السجل؟",
   "historicoLimparConfirmarConteudo": "يؤدي هذا الإجراء إلى إزالة رسائل هذه الفئة نهائيًا. لا يمكن التراجع عنه.",
-
   "contatosMaximoAtingido": "⚠️ لقد سجلت بالفعل الحد الأقصى وهو {max} من جهات الاتصال.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ تم رفض إذن الوصول إلى جهات الاتصال.",
   "contatoSemTelefone": "⚠️ لا يحتوي جهة الاتصال هذه على رقم هاتف مسجل.",
   "telefoneInvalido": "⚠️ رقم هاتف غير صالح.",
   "contatoAdicionado": "✅ تمت إضافة {nome} إلى جهات اتصال الطوارئ!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ تم استلام الطلب. سيتم حذف {nome} خلال 24 ساعة.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "رمز PIN الحقيقي",
   "pinRealDescricao": "حدد رمز PIN مكونًا من 4 أرقام للوصول العادي إلى التطبيق.",
   "pinRealHint": "أدخل 4 أرقام",
@@ -258,14 +329,18 @@
   "pinNaoDefinido": "⚠️ غير محدد",
   "pinDefinidoComSucesso": "🔒 تم تحديد رمز PIN بنجاح!",
   "pinNovaSenhaEmVigor24h": "🔒 تم استلام الطلب. ستدخل كلمة المرور الجديدة حيز التنفيذ خلال 24 ساعة.",
-
   "alterarPlanoFundo": "تغيير الخلفية",
   "planoFundoAlterado": "🎨 تم تغيير الخلفية!",
   "planoFundoPadrao": "الإضاءة الكلاسيكية (افتراضي)",
   "tamanhoLetrasTitulo": "حجم الخط",
   "tamanhoLetrasAlterado": "🔤 حجم الخط: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "الخطة المميزة",
   "premiumModalDestaque": "جميع وظائف Guardião-X، بلا حدود",
   "beneficioLocalizacaoTempoReal": "مشاركة الموقع في الوقت الفعلي.",
@@ -278,19 +353,23 @@
   "agoraNao": "ليس الآن",
   "assinarPreco": "اشترك 9.90 ريال/شهريًا",
   "planoPremiumAtivado": "🎉 تم تفعيل الخطة المميزة!",
-
   "visualDoChatTitulo": "مظهر المحادثة",
   "alertaSonoroTitulo": "التنبيه الصوتي",
   "planoTitulo": "الخطة",
   "contatosDescricao": "سجّل حتى {max} من أفراد العائلة الذين سيتلقون تنبيه الطوارئ.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "حذف جهة الاتصال",
   "adicionarContatoAgenda": "+ إضافة جهة اتصال من دفتر العناوين",
   "alertaSonoroDescricao": "اختر الصوت ومدة المنبه الذي يُشغَّل عند انتهاء العد التنازلي لتسجيل الوصول.",
   "somAlarmeLabel": "صوت المنبه",
   "tooltipTestarSom": "اختبار/استماع الصوت",
   "somTesteVazio": "🔇 ملف الصوت التجريبي فارغ. استبدل العنصر النائب في مجلد assets/sounds.",
-
   "planoFamiliarAtivo": "الخطة العائلية نشطة",
   "recursosPremiumDisponiveis": "جميع الميزات المميزة متاحة",
   "premiumBadge": "مميز",
@@ -299,20 +378,17 @@
   "precoMensal": "11.99 ريال",
   "porMes": "/شهريًا",
   "verMais": "عرض المزيد",
-
   "alarmeRotinaAtivoDescricao": "المنبه الروتيني نشط.\nأكّد سلامتك لإيقافه مؤقتًا.",
   "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال دقيقتين وإلا سيتم إرسال تنبيه طوارئ.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ تم إرسال تنبيه الطوارئ!\nتم إرسال موقعك والرسالة إلى السحابة وإلى جهات الاتصال المسجلة.",
   "desligarAlarmeBotao": "إيقاف المنبه",
   "fecharConfirmacaoBotao": "إغلاق",
   "fecharConfirmacaoDica": "اسحب لأعلى أو اضغط على إغلاق للمتابعة",
-
   "cameraToqueOuVolume": "📸 اضغط على الزر أو اضغط على زر مستوى الصوت لالتقاط الصورة",
   "enviando": "جارٍ الإرسال...",
   "atencaoMaiuscula": "تنبيه",
   "mensagemEnviadaAviso": "تنبيه، تم إرسال رسالة إلى العائلة تحتوي على الصورة والموقع. لا يمكن التراجع عن هذا الإجراء.",
   "deslizeParaFechar": "اسحب لأعلى للإغلاق",
-
   "auditoriaSolicitacaoAprovada": "تمت الموافقة على الطلب. لأسباب أمنية وحماية الخصوصية، سيتم إطلاق السجلات خلال ساعتين.",
   "auditoriaBloquearNovamenteTitulo": "قفل مرة أخرى؟",
   "auditoriaBloquearNovamenteConteudo": "عند التأكيد، سيتم قفل الوصول إلى السجلات الحساسة فورًا. لعرضها مرة أخرى، ستحتاج إلى تقديم طلب جديد والانتظار ساعتين إضافيتين من فترة الأمان.",
@@ -327,15 +403,19 @@
   "auditoriaSolicitarLiberacaoBotao": "طلب إطلاق السجل الحساس",
   "auditoriaNenhumEvento": "تم إطلاق العرض. لا توجد أحداث حساسة مسجلة بعد.",
   "auditoriaPrazoLiberado": "اكتملت فترة الأمان. تم إطلاق السجلات لهذه الجلسة.",
-
   "pinAlarmeDesligado": "تم إيقاف المنبه",
   "pinSenhaIncorreta": "كلمة مرور غير صحيحة",
   "pinConfirmeSeuPin": "أكّد رمز PIN الخاص بك",
   "pinDigiteParaDesarmar": "أدخل رمز PIN لإلغاء تفعيل تسجيل الوصول.",
   "pinDigiteParaContinuar": "أدخل رمز PIN للمتابعة.",
   "pinTempoTolerancia": "وقت السماح: {segundos} ثانية",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "العودة إلى الصفحة الرئيسية",
   "historicoFiltroAlertasEnviados": "التنبيهات المرسلة",
   "dashboardSecaoPlanosTitulo": "اختر خطتك",
@@ -346,7 +426,6 @@
   "dashboardCentralAtendimentoTitulo": "مركز خدمة العملاء",
   "dashboardAvisoWhatsappCredito": "رسائل واتساب ميزة اختيارية وتعتمد على وجود رصيد موجب والتفعيل المسبق في الإعدادات.",
   "dashboardAvisoGarantiaCancelamento": "في حال إلغاء الخطة المميزة خلال أول 15 يومًا، تحصل على استرداد 50% من المبلغ المدفوع دون أي تعقيدات.",
-
   "faqAppBarTitulo": "الأسئلة الشائعة (FAQ)",
   "faqTooltipInicio": "الرئيسية",
   "faqBuscaHint": "ابحث في الأسئلة والأجوبة...",
@@ -375,12 +454,10 @@
   "faqResposta11": "تمت برمجة الدردشة عبر واتساب للرد تلقائيًا على معظم استفسارات وطلبات المستخدم. أما الطلبات المقدَّمة عبر قائمة \"التحدث إلى موظف خدمة فعلي\" فتخضع لقواعد السياسة التي وضعتها شركة RMF Global، حيث يحصل مستخدمو الخطة المميزة على أولوية حصرية لهذه الخدمة خلال مدة أقصاها 48 ساعة.",
   "faqPergunta12": "هل تُرسل رسائل تنبيه الطوارئ فقط إلى الأرقام المسجّلة التي لديها تطبيق Guardião-X مُثبّتًا؟",
   "faqResposta12": "لا. نوصي بأن يكون التطبيق مُثبّتًا على كلا الهاتفين، لكن حتى لو لم يكن هاتف الوجهة يحتوي على Guardião-X، يُرسل تنبيه الطوارئ عبر الرسائل القصيرة أو واتساب.",
-
   "termosAppBarTitulo": "الشروط والخصوصية",
   "termosTabContrato": "عقد الموافقة",
   "termosTabPrivacidade": "سياسة الخصوصية",
   "termosAvisoRodape": "يلخّص هذا المستند عقد الموافقة وسياسة الخصوصية الخاصين بتطبيق Guardião-X. في حال وجود أي استفسار، تواصل معنا عبر قنوات الدعم الموضحة داخل التطبيق.",
-
   "termosContratoTitulo1": "1. الغرض وحدود الخدمة",
   "termosContratoCorpo1": "ينظّم عقد الموافقة هذا استخدام تطبيق Guardião-X، الذي طورته وتديره شركة RMF Global LTDA (\"RMF Global\")، والمخصص لمساعدة المستخدم في حالات الطوارئ الشخصية من خلال تسجيل الدخول الأمني، والتنبيهات التلقائية، ومشاركة الموقع بين أفراد العائلة وجهات الاتصال الموثوقة، والتقاط أدلة فوتوغرافية. يُعد Guardião-X أداة مساعدة ودعم للسلامة الشخصية ولا يحل محل جهات الطوارئ الرسمية (الشرطة، الدفاع المدني، الإسعاف، أو أرقام الطوارئ المكافئة في بلدك) أو أي خدمة طوارئ عامة أخرى. في حالة وجود خطر مباشر، يجب على المستخدم دائمًا الاتصال أولاً بأرقام الطوارئ الرسمية.",
   "termosContratoTitulo2": "2. الموافقة على استخدام الموقع (GPS والموقع في الخلفية)",
@@ -399,7 +476,6 @@
   "termosContratoCorpo8": "تتم خدمة رعاية العملاء بشكل أساسي عبر الدردشة الآلية على واتساب، المبرمجة للرد تلقائيًا على معظم استفسارات وطلبات المستخدم. تخضع طلبات الدعم من موظف بشري لقواعد السياسة التي وضعتها RMF Global، حيث يحصل مستخدمو الخطة المميزة على وصول حصري لهذا الدعم البشري خلال مدة أقصاها 48 (ثمانية وأربعين) ساعة.",
   "termosContratoTitulo9": "9. الموافقة الحرة وغير الملتبسة وإلغاؤها",
   "termosContratoCorpo9": "باستخدام تطبيق Guardião-X وتفعيل وظائفه الأمنية، يقر المستخدم بموافقته بحرية وعلم ودون لبس على جمع واستخدام بيانات GPS وبياناته الشخصية والوسائط (الصور) في حالات الطوارئ، وفقًا لما هو موضح في هذا العقد. يجوز للمستخدم إلغاء هذه الموافقة في أي وقت عن طريق إلغاء تثبيت التطبيق أو طلب حذف حسابه والبيانات المرتبطة به عبر قنوات الدعم الموضحة في التطبيق، مع مراعاة فترات انتظار الأمان الموضحة في القسم 5.",
-
   "termosPrivacidadeTitulo1": "1. البيانات التي يتم جمعها والغرض منها",
   "termosPrivacidadeCorpo1": "لتمكين ميزات الأمان في Guardião-X، نجمع: (أ) الموقع الجغرافي (GPS) في الوقت الفعلي وفي الخلفية (Background Location)، حصريًا لإرسال وحفظ التنبيهات الوقائية وتنبيهات الذعر؛ (ب) الصور والوسائط الأخرى التي يتم التقاطها تلقائيًا عند تفعيل زر الذعر أو ميزة الالتقاط والردع؛ (ج) بيانات تسجيل المستخدم وجهات اتصال الطوارئ المُدخلة (الاسم والهاتف)؛ و(د) البيانات التقنية للجهاز اللازمة لعمل التنبيهات (حالة الاتصال، إصدار التطبيق).",
   "termosPrivacidadeTitulo2": "2. الغرض من استخدام البيانات",
@@ -413,5 +489,142 @@
   "termosPrivacidadeTitulo6": "6. حقوق المستخدم (حماية البيانات)",
   "termosPrivacidadeCorpo6": "وفقًا لقانون حماية البيانات المعمول به (مثل قانون LGPD البرازيلي رقم 13.709/2018)، يجوز للمستخدم في أي وقت طلب الوصول إلى بياناته الشخصية، وتصحيح بيانات التسجيل غير الصحيحة، وحذف حسابه والبيانات الشخصية المخزّنة، وإلغاء الأذونات الممنوحة لجهات اتصال المراقبة، عبر قنوات الدعم الموضحة في التطبيق.",
   "termosPrivacidadeTitulo7": "7. التواصل",
-  "termosPrivacidadeCorpo7": "يمكن توجيه أي استفسارات حول سياسة الخصوصية هذه إلى شركة RMF Global LTDA (رقم السجل الضريبي CNPJ 68.358.210/0001-90)، عبر قنوات الدعم الموضحة في الشاشة الرئيسية للتطبيق (واتساب والعنوان المؤسسي)."
+  "termosPrivacidadeCorpo7": "يمكن توجيه أي استفسارات حول سياسة الخصوصية هذه إلى شركة RMF Global LTDA (رقم السجل الضريبي CNPJ 68.358.210/0001-90)، عبر قنوات الدعم الموضحة في الشاشة الرئيسية للتطبيق (واتساب والعنوان المؤسسي).",
+  "footerTermosLink": "شروط الاستخدام واتفاقية الموافقة",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA (آر إم إف غلوبال ذ.م.م)",
+  "footerEmpresaEndereco": "شارع ريو دي جانيرو، رقم 243، الغرفة 802، حي سنترو، بيلو هوريزونتي - ولاية ميناس جيرايس، البرازيل، الرمز البريدي 30160-040",
+  "footerEmpresaCnpj": "رقم تسجيل الشركة (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "هل تريد إلغاء الخطة المميزة؟",
+  "premiumCancelarConfirmConteudo": "ستعود فورًا إلى الخطة المجانية، مع الحدود الشهرية للخطة المجانية.",
+  "premiumCancelarConfirmBotao": "إلغاء المميزة",
+  "premiumCanceladoSnackbar": "تم إلغاء الخطة المميزة. أنت الآن على الخطة المجانية.",
+  "premiumAssinarBotaoComPreco": "اشترك في المميزة — {preco}",
+  "premiumModalNotaRodape": "* الإرسال الإضافي عبر واتساب ميزة اختيارية يمكن تفعيلها في صفحة \"الإعدادات\" وتكلف 0.10 دولار أمريكي لكل رسالة.",
+  "premiumCancelarBotaoModal": "إلغاء الخطة المميزة",
+  "familiaEtiquetaPadrao": "منبه روتيني",
+  "familiaDiasNuncaLabel": "أبدًا",
+  "familiaDiasTodosLabel": "كل يوم",
+  "familiaDiasSegASexLabel": "الإثنين إلى الجمعة",
+  "familiaDiaAbrevSeg": "إثن",
+  "familiaDiaAbrevTer": "ثلا",
+  "familiaDiaAbrevQua": "أرب",
+  "familiaDiaAbrevQui": "خمي",
+  "familiaDiaAbrevSex": "جمع",
+  "familiaDiaAbrevSab": "سبت",
+  "familiaDiaAbrevDom": "أحد",
+  "familiaDiaInicialSeg": "ن",
+  "familiaDiaInicialTer": "ث",
+  "familiaDiaInicialQua": "ر",
+  "familiaDiaInicialQui": "خ",
+  "familiaDiaInicialSex": "ج",
+  "familiaDiaInicialSab": "س",
+  "familiaDiaInicialDom": "ح",
+  "familiaAcaoPausar": "إيقاف مؤقت",
+  "familiaAcaoExcluir": "حذف",
+  "familiaAcaoEditar": "تعديل",
+  "familiaPinMotivoTexto": "تم إدخال رمز PIN بشكل غير صحيح مرتين متتاليتين أثناء محاولة {acao} منبه روتيني في تبويب العائلة.",
+  "historicoAlarmeAtivadoTitulo": "تم تفعيل المنبه الروتيني",
+  "historicoAlarmeDesativadoTitulo": "تم إيقاف المنبه الروتيني",
+  "historicoAlarmeAtivadoDescricao": "تم تفعيل {etiqueta} ({horario}).",
+  "historicoAlarmeDesativadoDescricao": "تم إيقاف {etiqueta} ({horario}).",
+  "historicoAlarmeRemovidoTitulo": "تم حذف المنبه الروتيني",
+  "historicoAlarmeRemovidoDescricao": "تم حذف {etiqueta} ({horario}).",
+  "historicoAlarmePausadoTitulo": "تم إيقاف المنبه الروتيني مؤقتًا",
+  "historicoAlarmePausadoDescricao": "تم إيقاف {etiqueta} ({horario}) مؤقتًا حتى الساعة 00:00.",
+  "historicoAlarmeReativadoTitulo": "تمت إعادة تفعيل المنبه الروتيني",
+  "historicoAlarmeReativadoDescricao": "أعاد المستخدم تفعيل {etiqueta} ({horario}).",
+  "historicoAlarmeCriadoTitulo": "تم إنشاء المنبه الروتيني",
+  "historicoAlarmeEditadoTitulo": "تم تعديل المنبه الروتيني",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} في {horario} ({dias}).",
+  "historicoContatoAdicionadoTitulo": "تمت إضافة جهة اتصال للطوارئ",
+  "historicoContatoAdicionadoDescricao": "تم تسجيل {nome} كجهة اتصال للطوارئ.",
+  "historicoContatoExclusaoSolicitadaTitulo": "تم طلب حذف جهة الاتصال",
+  "historicoContatoExclusaoSolicitadaDescricao": "سيتم حذف {nome} نهائيًا خلال 24 ساعة.",
+  "historicoPinDefinidoTitulo": "تم تعيين رمز PIN للوصول",
+  "historicoPinDefinidoDescricao": "تم تسجيل رمز PIN للوصول وتفعيله فورًا (أول تسجيل، دون فترة أمان انتظار).",
+  "historicoPinAlteracaoSolicitadaTitulo": "تم طلب تغيير رمز PIN",
+  "historicoPinAlteracaoSolicitadaDescricao": "كلمة مرور الوصول الجديدة معلّقة، وستصبح سارية خلال 24 ساعة.",
+  "historicoPlanoFundoAlteradoTitulo": "تم تغيير الخلفية",
+  "historicoPlanoFundoAlteradoDescricao": "تم تحديد خلفية جديدة: {nome}.",
+  "historicoCronometroAtivadoTitulo": "تم تفعيل المؤقت",
+  "historicoCronometroAtivadoDescricao": "بدأ تسجيل الوصول الأمني بمدة {horas} ساعة و{minutos} دقيقة.",
+  "historicoCheckinDesarmadoTitulo": "تم إلغاء تفعيل تسجيل الوصول بنجاح",
+  "historicoCheckinDesarmadoDescricao": "أوقف المستخدم/ألغى تفعيل مؤقت الأمان باستخدام رمز PIN الصحيح.",
+  "historicoCheckinRotinaConfirmadoTitulo": "تم تأكيد تسجيل الوصول الروتيني",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: أكد المستخدم بنجاح \"وصلت بأمان\".",
+  "historicoCheckinRotinaUltimaChanceTitulo": "تسجيل الوصول الروتيني — الفرصة الأخيرة",
+  "historicoCheckinRotinaUltimaChanceDescricao": "انتهت مهلة التسامح دون تأكيد. المنبه يرن مرة أخرى، مع مهلة أخيرة مدتها دقيقتان قبل إطلاق تنبيه الطوارئ.",
+  "historicoAlertaEmergenciaRotinaTitulo": "تم إطلاق تنبيه الطوارئ (روتيني)",
+  "historicoAlertaEmergenciaTitulo": "تم إطلاق تنبيه الطوارئ",
+  "historicoAlertaEmergenciaDescricao": "تم إرسال رسالة نصية للطوارئ إلى جهات الاتصال المسجلة. الموقع: {localizacao}",
+  "historicoTentativaDesarmeTitulo": "محاولة إلغاء تفعيل برمز PIN غير صحيح",
+  "historicoTentativaDesarmeDescricao": "{motivo} تم إرسال التنبيه إلى جهات اتصال الطوارئ. الموقع: {localizacao}",
+  "historicoSosCacheTitulo": "تم إطلاق نداء الاستغاثة عبر الزر الفعلي (موقع مخزّن مؤقتًا)",
+  "historicoSosCacheDescricao": "تم إرسال رسالة نصية فورية للطوارئ تتضمن آخر موقع معروف مخزّن مؤقتًا. الموقع: {localizacao}",
+  "historicoSosAtualizadoTitulo": "نداء الاستغاثة عبر الزر الفعلي — تم تحديث الموقع",
+  "historicoSosAtualizadoDescricao": "تم إرسال رسالة نصية ثانية للطوارئ تتضمن الموقع الفوري. الموقع: {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "تم تسجيل دليل مصور",
+  "historicoEvidenciaFotograficaDescricao": "تم إرسال رسالة نصية تتضمن بيانات الإنقاذ إلى جهات اتصال الطوارئ.",
+  "historicoFotoSosSmsTitulo": "تم إرسال صورة الاستغاثة عبر رسالة نصية",
+  "historicoFotoSosSmsDescricao": "تم إرسال رسالة نصية تتضمن رابط الصورة والموقع إلى جهات اتصال الطوارئ. الصورة: {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "الموقع غير متاح (خدمة GPS معطّلة على الجهاز).",
+  "smsLocalizacaoIndisponivelPermissao": "الموقع غير متاح (تم رفض إذن الموقع).",
+  "smsLocalizacaoIndisponivelFalha": "تعذّر الحصول على الموقع الحالي للجهاز.",
+  "smsContextoNaoInformado": "لم يقدّم المستخدم أي ملاحظة سياقية.",
+  "smsAlertaEmergenciaCorpo": "تنبيه طوارئ! لم أقم بتسجيل الوصول الأمني الخاص بي.\nالموقع: {localizacao}\nالسياق: {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "تم إدخال رمز PIN بشكل غير صحيح مرتين متتاليتين أثناء محاولة إلغاء تفعيل نظام الأمان مسبقًا.",
+  "smsTentativaDesarmeCorpo": "⚠️ تنبيه أمني: محاولة إلغاء تفعيل بكلمة مرور غير صحيحة!\n{motivo}\nالموقع: {localizacao}",
+  "smsSosContextoPadrao": "تم إطلاق نداء الاستغاثة عبر زر الطوارئ الفعلي (رفع الصوت).",
+  "smsSosImediatoCorpo": "🚨 نداء استغاثة طارئ (زر فعلي)!\nالموقع (آخر موقع معروف): {localizacao}\nالسياق: {contexto}\n(سيتم إرسال تحديث بالموقع الفوري لاحقًا.)",
+  "smsLocalizacaoCacheIndisponivel": "الموقع المخزّن مؤقتًا غير متاح — بانتظار تحديث فوري.",
+  "smsSosAtualizadoCorpo": "🚨 نداء استغاثة طارئ (تحديث فوري)!\nالموقع المحدث: {localizacao}\nالسياق: {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "الموقع غير متاح وقت الإرسال.",
+  "smsFotoCorpo": "📷 تم تسجيل دليل مصور أثناء الاستغاثة!\nالصورة: {fotoUrl}\nالموقع: {localizacao}",
+  "smsResgateCorpo": "🚨 تم تسجيل دليل مصور!\nتم إرسال الصور والموقع إلى السحابة.\nالوصول: {link}\nاسم الدخول: {login}\nكلمة المرور: {senha}\nهذه العملية لا رجعة فيها.",
+  "temaAzulProfundo": "أزرق عميق",
+  "temaCinzaPlatina": "رمادي بلاتيني",
+  "temaLuzDoAmanhecer": "ضوء الفجر",
+  "temaVerdeBotanico": "أخضر نباتي",
+  "temaRosaClaro": "وردي فاتح",
+  "temaLuzClassica": "الضوء الكلاسيكي",
+  "fontTamanhoPequeno": "صغير",
+  "fontTamanhoPadrao": "افتراضي",
+  "fontTamanhoGrande": "كبير",
+  "somNome1": "صفارة كلاسيكية",
+  "somNome2": "صفارة تكتيكية",
+  "somNome3": "إنذار طوارئ",
+  "somNome4": "تنبيه صاخب",
+  "somNome5": "نغمة حضرية",
+  "somNome6": "جرس التنبيه",
+  "somNome7": "بوق الأمان",
+  "somNome8": "إنذار صناعي",
+  "somNome9": "صفارة الشرطة",
+  "somNome10": "نغمة صامتة",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: لم يتم تأكيد تسجيل الوصول الروتيني خلال المهلة الأخيرة البالغة دقيقتين، حتى بعد انتهاء وقت التسامح بالفعل.",
+  "notifCanalCheckinNome": "تسجيل الوصول الروتيني",
+  "notifCanalCheckinDescricao": "تذكيرات تسجيل الوصول الأمني لمنبهات الروتين المسجلة.",
+  "notifCanalAlertaRecebidoNome": "تنبيه طوارئ مستلم",
+  "notifCanalAlertaRecebidoDescricao": "تنبيهات أمان من جهات اتصال سجّلت هذا الجهاز كجهة اتصال للطوارئ.",
+  "notifCanalMonitoramentoNome": "مراقبة الموقع",
+  "notifCanalMonitoramentoDescricao": "ردود على طلبات مشاركة الموقع المرسلة من تبويب المراقبة.",
+  "notifCanalSolicitacaoMonitoramentoNome": "طلب موقع مستلم",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "تنبيه ذو أولوية عندما يطلب أحد أفراد العائلة رؤية موقعك الفوري — يتطلب قبول أو رفض.",
+  "notifCheckinCorpo": "اضغط لإلغاء المنبه.",
+  "notifAlarmeSegurancaTitulo": "منبه الأمان",
+  "notifAlarmeSegurancaCorpo": "أكد سلامتك أو أوقف المنبه مؤقتًا!",
+  "notifPausarAlarmeAcao": "⏸️ إيقاف المنبه مؤقتًا",
+  "notifAlertaDeNome": "🚨 تنبيه من {nome}",
+  "notifAlertaSegurancaGenerico": "🚨 تنبيه أمني",
+  "notifMonitSolicitacaoTitulo": "📍 طلب الموقع",
+  "notifMonitSolicitacaoCorpo": "{nome} يطلب موقعك.",
+  "notifMonitAprovadoTitulo": "📍 تم إتاحة الموقع",
+  "notifMonitAprovadoCorpo": "سمح لك {nome} برؤية موقعه.",
+  "notifMonitNegadoTitulo": "📍 تم رفض الطلب",
+  "notifMonitNegadoCorpo": "رفض {nome} طلب موقعك.",
+  "notifMonitBloqueadoTitulo": "📍 تم حظر المشاركة",
+  "notifMonitBloqueadoCorpo": "حظر {nome} مشاركة الموقع معك.",
+  "notifMonitExpiradoTitulo": "📍 انتهت صلاحية الطلب",
+  "notifMonitExpiradoCorpo": "انتهت صلاحية طلب الموقع الذي أرسلته إلى {nome} دون رد.",
+  "notifMonitContatoGenerico": "أحد جهات الاتصال",
+  "notifCheckinCanceladoCorpo": "تم إلغاء المنبه."
 }

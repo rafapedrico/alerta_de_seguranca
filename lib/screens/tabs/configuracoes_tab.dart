@@ -19,14 +19,15 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 
 
 
-// Planos de fundo reais disponíveis em assets/, com nomes elegantes.
+// Planos de fundo reais disponíveis em assets/ — nomes traduzidos via
+// AppLocalizations, ver [_PresetWallpaper.rotulo].
 const List<_PresetWallpaper> _presetWallpapers = [
-  _PresetWallpaper('Azul Profundo', 'blue'),
-  _PresetWallpaper('Escuro Absoluto', 'dark'),
-  _PresetWallpaper('Cinza Urbano', 'gray'),
-  _PresetWallpaper('Verde Botânico', 'green'),
-  _PresetWallpaper('Lavanda Suave', 'lavender'),
-  _PresetWallpaper('Luz Clássica', 'light'),
+  _PresetWallpaper('blue'),
+  _PresetWallpaper('dark'),
+  _PresetWallpaper('gray'),
+  _PresetWallpaper('green'),
+  _PresetWallpaper('lavender'),
+  _PresetWallpaper('light'),
 ];
 
 class ConfiguracoesTab extends StatefulWidget {
@@ -354,11 +355,14 @@ Future<void> _selecionarSom(int? numero) async {
 
     // Registra no histórico ('familia') a adição do novo contato de
     // emergência, tornando a ação 100% transparente e auditável.
-    await _db.inserirEventoHistorico(
-      titulo: 'Contato de emergência adicionado',
-      descricao: '$nome foi cadastrado como contato de emergência.',
-      categoria: 'familia',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoContatoAdicionadoTitulo,
+        descricao: l10n.historicoContatoAdicionadoDescricao(nome),
+        categoria: 'familia',
+      );
+    }
 
     await _carregarContatosEmergencia();
 
@@ -415,11 +419,14 @@ Future<void> _selecionarSom(int? numero) async {
     // Registra no histórico ('familia') a solicitação de exclusão do
     // contato, deixando claro que a remoção definitiva ainda está sujeita
     // à trava de segurança de 24h.
-    await _db.inserirEventoHistorico(
-      titulo: 'Exclusão de contato solicitada',
-      descricao: '$nome terá a remoção efetivada em até 24 horas.',
-      categoria: 'familia',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoContatoExclusaoSolicitadaTitulo,
+        descricao: l10n.historicoContatoExclusaoSolicitadaDescricao(nome),
+        categoria: 'familia',
+      );
+    }
 
     await _carregarContatosEmergencia();
 
@@ -566,22 +573,24 @@ Future<void> _selecionarSom(int? numero) async {
     final bool efetivadoInstantaneamente =
         await _db.salvarOuAgendarPinReal(id, pin);
 
-    if (efetivadoInstantaneamente) {
-      // Registra no histórico ('sistema') o cadastro inicial do PIN.
-      await _db.inserirEventoHistorico(
-        titulo: 'PIN de acesso definido',
-        descricao: 'PIN de acesso cadastrado e ativado imediatamente '
-            '(primeiro cadastro, sem carência de segurança).',
-        categoria: 'sistema',
-      );
-    } else {
-      // Registra no histórico ('sistema') a solicitação de troca do PIN,
-      // deixando claro que a nova senha só entra em vigor após 24h.
-      await _db.inserirEventoHistorico(
-        titulo: 'Alteração de PIN solicitada',
-        descricao: 'Nova senha de acesso pendente, entrará em vigor em 24 horas.',
-        categoria: 'sistema',
-      );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      if (efetivadoInstantaneamente) {
+        // Registra no histórico ('sistema') o cadastro inicial do PIN.
+        await _db.inserirEventoHistorico(
+          titulo: l10n.historicoPinDefinidoTitulo,
+          descricao: l10n.historicoPinDefinidoDescricao,
+          categoria: 'sistema',
+        );
+      } else {
+        // Registra no histórico ('sistema') a solicitação de troca do PIN,
+        // deixando claro que a nova senha só entra em vigor após 24h.
+        await _db.inserirEventoHistorico(
+          titulo: l10n.historicoPinAlteracaoSolicitadaTitulo,
+          descricao: l10n.historicoPinAlteracaoSolicitadaDescricao,
+          categoria: 'sistema',
+        );
+      }
     }
 
     await _loadConfig();
@@ -619,6 +628,7 @@ Future<void> _selecionarSom(int? numero) async {
             itemCount: _presetWallpapers.length,
             itemBuilder: (ctx, index) {
               final wp = _presetWallpapers[index];
+              final l10nCtx = AppLocalizations.of(ctx)!;
               final isSelected = _planoDeFundoUrl == wp.key;
               return GestureDetector(
                 onTap: () {
@@ -682,7 +692,7 @@ Future<void> _selecionarSom(int? numero) async {
                           right: 4,
                           bottom: 4,
                           child: Text(
-                            wp.label,
+                            wp.rotulo(l10nCtx),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
@@ -718,11 +728,17 @@ Future<void> _selecionarSom(int? numero) async {
     await _db.updateUserConfig({'id': id, 'plano_de_fundo_url': key});
 
     // Registra no histórico ('sistema') a alteração do plano de fundo.
-    await _db.inserirEventoHistorico(
-      titulo: 'Plano de fundo alterado',
-      descricao: 'Novo plano de fundo selecionado: $key.',
-      categoria: 'sistema',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      final nomeTema = _presetWallpapers
+          .firstWhere((w) => w.key == key, orElse: () => const _PresetWallpaper('light'))
+          .rotulo(l10n);
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoPlanoFundoAlteradoTitulo,
+        descricao: l10n.historicoPlanoFundoAlteradoDescricao(nomeTema),
+        categoria: 'sistema',
+      );
+    }
 
     // Espelha a escolha em SharedPreferences para acesso rápido/síncrono
     // nas demais telas (ex: Segurança, Família).
@@ -771,21 +787,21 @@ Future<void> _selecionarSom(int? numero) async {
                   const Divider(height: 1),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Pequeno',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoPequeno,
                     fator: FontScaleService.pequeno,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 14,
                   ),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Padrão',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoPadrao,
                     fator: FontScaleService.padrao,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 16,
                   ),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Grande',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoGrande,
                     fator: FontScaleService.grande,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 18,
@@ -835,9 +851,10 @@ Future<void> _selecionarSom(int? numero) async {
     await FontScaleService.salvar(fator);
     if (mounted) {
       setState(() {});
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.tamanhoLetrasAlterado(FontScaleService.rotuloPara(fator))),
+          content: Text(l10n.tamanhoLetrasAlterado(FontScaleService.rotuloPara(fator, l10n))),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1148,9 +1165,9 @@ Future<void> _selecionarSom(int? numero) async {
                 ? _presetWallpapers
                         .firstWhere(
                           (w) => w.key == _planoDeFundoUrl,
-                          orElse: () => const _PresetWallpaper('Luz Clássica', 'light'),
+                          orElse: () => const _PresetWallpaper('light'),
                         )
-                        .label
+                        .rotulo(AppLocalizations.of(context)!)
                 : AppLocalizations.of(context)!.planoFundoPadrao,
             softWrap: true,
             overflow: TextOverflow.clip,
@@ -1185,7 +1202,8 @@ Future<void> _selecionarSom(int? numero) async {
             overflow: TextOverflow.clip,
           ),
           subtitle: Text(
-            FontScaleService.rotuloPara(FontScaleService.fontScaleNotifier.value),
+            FontScaleService.rotuloPara(
+                FontScaleService.fontScaleNotifier.value, AppLocalizations.of(context)!),
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
@@ -1254,7 +1272,7 @@ Future<void> _selecionarSom(int? numero) async {
                           (som) => DropdownMenuItem<int>(
                             value: som.numero,
                             child: Text(
-                              som.nomeExibicao,
+                              som.nomeLocalizado(AppLocalizations.of(context)!),
                               softWrap: true,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1344,9 +1362,11 @@ Future<void> _selecionarSom(int? numero) async {
                   .map(
                     (idioma) => DropdownMenuItem<String>(
                       value: idioma.codigo,
+                      // Exibe só o nome nativo do idioma (sem o descritor em
+                      // português, que nunca era traduzido) — autoexplicativo
+                      // para qualquer falante daquele idioma.
                       child: Text(
-                        '${idioma.bandeiraEmoji}  ${idioma.nomeEmPortugues} '
-                        '(${idioma.nomeNativo})',
+                        '${idioma.bandeiraEmoji}  ${idioma.nomeNativo}',
                         softWrap: true,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1471,8 +1491,28 @@ Future<void> _selecionarSom(int? numero) async {
 }
 
 class _PresetWallpaper {
-  final String label;
   final String key;
 
-  const _PresetWallpaper(this.label, this.key);
+  const _PresetWallpaper(this.key);
+
+  /// Nome do tema traduzido no idioma ativo do app — nunca hardcoded.
+  /// Renomeações pedidas: "Escuro Absoluto" -> "Cinza Platina",
+  /// "Cinza Urbano" -> "Luz do Amanhecer", "Lavanda Suave" -> "Rosa Claro".
+  String rotulo(AppLocalizations l10n) {
+    switch (key) {
+      case 'blue':
+        return l10n.temaAzulProfundo;
+      case 'dark':
+        return l10n.temaCinzaPlatina;
+      case 'gray':
+        return l10n.temaLuzDoAmanhecer;
+      case 'green':
+        return l10n.temaVerdeBotanico;
+      case 'lavender':
+        return l10n.temaRosaClaro;
+      case 'light':
+      default:
+        return l10n.temaLuzClassica;
+    }
+  }
 }

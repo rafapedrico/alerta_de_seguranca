@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
 import 'api_service.dart';
+import 'l10n_headless_service.dart';
 import 'plano_limite_service.dart';
 
 
@@ -47,6 +48,8 @@ class EmergencyAlertService {
   /// do [LocationService]), o callback headless não tem acesso a esse
   /// estado em memória — por isso consulta o GPS diretamente aqui.
   Future<String> _obterLocalizacaoFormatada({Position? posicaoEmMemoria}) async {
+    final l10n = await L10nHeadlessService.obter();
+
     if (posicaoEmMemoria != null) {
       return _formatarPosicao(posicaoEmMemoria);
     }
@@ -60,7 +63,7 @@ class EmergencyAlertService {
       final bool servicoAtivo = await Geolocator.isLocationServiceEnabled();
       if (!servicoAtivo) {
         if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
-        return 'Localização indisponível (serviço de GPS desativado no aparelho).';
+        return l10n.smsLocalizacaoIndisponivelGps;
       }
 
       LocationPermission permissao = await Geolocator.checkPermission();
@@ -70,7 +73,7 @@ class EmergencyAlertService {
       if (permissao == LocationPermission.denied ||
           permissao == LocationPermission.deniedForever) {
         if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
-        return 'Localização indisponível (permissão de localização negada).';
+        return l10n.smsLocalizacaoIndisponivelPermissao;
       }
 
       try {
@@ -81,11 +84,11 @@ class EmergencyAlertService {
         return _formatarPosicao(posicaoAtual);
       } catch (_) {
         if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
-        return 'Não foi possível obter a localização atual do aparelho.';
+        return l10n.smsLocalizacaoIndisponivelFalha;
       }
     } catch (_) {
       if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
-      return 'Não foi possível obter a localização atual do aparelho.';
+      return l10n.smsLocalizacaoIndisponivelFalha;
     }
   }
 
@@ -171,6 +174,8 @@ class EmergencyAlertService {
     }
     await PlanoLimiteService().incrementarAlertaUsado();
 
+    final l10n = await L10nHeadlessService.obter();
+
     String anotacoesUsuario = (contexto ?? '').trim();
 
     if (anotacoesUsuario.isEmpty) {
@@ -181,7 +186,7 @@ class EmergencyAlertService {
       } catch (_) {}
     }
     if (anotacoesUsuario.isEmpty) {
-      anotacoesUsuario = 'Nenhuma anotação de contexto informada pelo usuário.';
+      anotacoesUsuario = l10n.smsContextoNaoInformado;
     }
 
     List<Map<String, dynamic>> contatosEmergencia = [];
@@ -195,18 +200,15 @@ class EmergencyAlertService {
         await _obterLocalizacaoFormatada(posicaoEmMemoria: posicaoEmMemoria);
 
     final mensagemAlerta =
-        'ALERTA DE EMERGÊNCIA! Não realizei meu check-in de segurança.\n'
-        'Localização: $localizacaoFormatada\n'
-        'Contexto: $anotacoesUsuario';
+        l10n.smsAlertaEmergenciaCorpo(localizacaoFormatada, anotacoesUsuario);
 
     debugPrint('🚨 DISPARANDO ALERTA MÁXIMO DE EMERGÊNCIA!');
     debugPrint('📋 Mensagem enviada via SMS: $mensagemAlerta');
 
     try {
       await _db.inserirEventoHistorico(
-        titulo: 'Alerta de emergência disparado',
-        descricao: 'SMS de emergência enviado para os contatos cadastrados. '
-            'Localização: $localizacaoFormatada',
+        titulo: l10n.historicoAlertaEmergenciaTitulo,
+        descricao: l10n.historicoAlertaEmergenciaDescricao(localizacaoFormatada),
         categoria: 'critico',
       );
     } catch (e) {
@@ -278,9 +280,8 @@ class EmergencyAlertService {
     String? motivo,
     String? eventoId,
   }) async {
-    final String motivoTexto = motivo ??
-        'O PIN foi digitado incorretamente 2 vezes seguidas ao tentar '
-            'desarmar antecipadamente o sistema de segurança.';
+    final l10n = await L10nHeadlessService.obter();
+    final String motivoTexto = motivo ?? l10n.smsTentativaDesarmeMotivoPadrao;
 
     debugPrint('🚨 [TENTATIVA DE DESARME INCORRETA] $motivoTexto');
 
@@ -331,18 +332,15 @@ class EmergencyAlertService {
         await _obterLocalizacaoFormatada(posicaoEmMemoria: posicaoEmMemoria);
 
     final mensagemAlerta =
-        '⚠️ ALERTA DE SEGURANÇA: TENTATIVA DE DESARME COM SENHA INCORRETA!\n'
-        '$motivoTexto\n'
-        'Localização: $localizacaoFormatada';
+        l10n.smsTentativaDesarmeCorpo(motivoTexto, localizacaoFormatada);
 
     debugPrint('📋 [TENTATIVA DE DESARME INCORRETA] Mensagem enviada via '
         'SMS: $mensagemAlerta');
 
     try {
       await _db.inserirEventoHistorico(
-        titulo: 'Tentativa de desarme com PIN incorreto',
-        descricao: '$motivoTexto Alerta enviado aos contatos de emergência. '
-            'Localização: $localizacaoFormatada',
+        titulo: l10n.historicoTentativaDesarmeTitulo,
+        descricao: l10n.historicoTentativaDesarmeDescricao(motivoTexto, localizacaoFormatada),
         categoria: 'critico',
       );
     } catch (e) {
@@ -452,6 +450,8 @@ class EmergencyAlertService {
   Future<void> dispararSosComDuplaLocalizacao() async {
     debugPrint('🚨 [SOS] Canal SMS oficial acionado — disparando com dupla localização.');
 
+    final l10n = await L10nHeadlessService.obter();
+
     String anotacoesUsuario = '';
 
     try {
@@ -460,7 +460,7 @@ class EmergencyAlertService {
           (config?['contexto_timer_ativo'] as String?)?.trim() ?? '';
     } catch (_) {}
     if (anotacoesUsuario.isEmpty) {
-      anotacoesUsuario = 'SOS disparado via botão físico de emergência (Volume+).';
+      anotacoesUsuario = l10n.smsSosContextoPadrao;
     }
 
     List<Map<String, dynamic>> contatosEmergencia = [];
@@ -474,21 +474,17 @@ class EmergencyAlertService {
     final Position? posicaoCache = await _obterPosicaoDeCacheImediata();
     final String localizacaoCacheFormatada = posicaoCache != null
         ? _formatarPosicao(posicaoCache)
-        : 'Localização em cache indisponível — aguardando atualização em tempo real.';
+        : l10n.smsLocalizacaoCacheIndisponivel;
 
     final mensagemImediata =
-        '🚨 SOS DE EMERGÊNCIA (botão físico)!\n'
-        'Localização (última conhecida): $localizacaoCacheFormatada\n'
-        'Contexto: $anotacoesUsuario\n'
-        '(Uma atualização com a localização em tempo real será enviada em seguida.)';
+        l10n.smsSosImediatoCorpo(localizacaoCacheFormatada, anotacoesUsuario);
 
     debugPrint('📋 [SOS FÍSICO] Etapa 1 (cache imediato): $mensagemImediata');
 
     try {
       await _db.inserirEventoHistorico(
-        titulo: 'SOS via botão físico disparado (localização em cache)',
-        descricao: 'SMS de emergência imediato enviado com a última localização '
-            'conhecida em cache. Localização: $localizacaoCacheFormatada',
+        titulo: l10n.historicoSosCacheTitulo,
+        descricao: l10n.historicoSosCacheDescricao(localizacaoCacheFormatada),
         categoria: 'critico',
       );
     } catch (e) {
@@ -521,17 +517,14 @@ class EmergencyAlertService {
 
       final localizacaoAtualizadaFormatada = _formatarPosicao(posicaoAtualizada);
       final mensagemAtualizada =
-          '🚨 SOS DE EMERGÊNCIA (atualização em tempo real)!\n'
-          'Localização atualizada: $localizacaoAtualizadaFormatada\n'
-          'Contexto: $anotacoesUsuario';
+          l10n.smsSosAtualizadoCorpo(localizacaoAtualizadaFormatada, anotacoesUsuario);
 
       debugPrint('📋 [SOS FÍSICO] Etapa 2 (tempo real): $mensagemAtualizada');
 
       try {
         await _db.inserirEventoHistorico(
-          titulo: 'SOS via botão físico — localização atualizada',
-          descricao: 'Segundo SMS de emergência enviado com a localização em '
-              'tempo real. Localização: $localizacaoAtualizadaFormatada',
+          titulo: l10n.historicoSosAtualizadoTitulo,
+          descricao: l10n.historicoSosAtualizadoDescricao(localizacaoAtualizadaFormatada),
           categoria: 'critico',
         );
       } catch (e) {
@@ -575,23 +568,18 @@ class EmergencyAlertService {
       return;
     }
 
+    final l10n = await L10nHeadlessService.obter();
     final String link = urlNovem ?? 'https://seu-painel-nuvem.com/login';
 
-    final String mensagemResgate =
-        '🚨 EVIDÊNCIA FOTOGRÁFICA REGISTRADA!\n'
-        'Fotos e localização enviadas para a nuvem.\n'
-        'Acesso: $link\n'
-        'Login: $login\n'
-        'Senha: $senha\n'
-        'Operação irreversível.';
+    final String mensagemResgate = l10n.smsResgateCorpo(link, login, senha);
 
     debugPrint('📋 [SMS RESGATE] Enviando credenciais de resgate para contatos...');
     await _enviarSms(contatos, mensagemResgate);
 
     try {
       await _db.inserirEventoHistorico(
-        titulo: 'Evidência fotográfica registrada',
-        descricao: 'SMS com dados de resgate enviado para os contatos de emergência.',
+        titulo: l10n.historicoEvidenciaFotograficaTitulo,
+        descricao: l10n.historicoEvidenciaFotograficaDescricao,
         categoria: 'critico',
       );
     } catch (_) {}
@@ -614,24 +602,21 @@ class EmergencyAlertService {
       debugPrint('⚠️ [SMS Foto] Falha ao carregar contatos: $e');
     }
 
+    final l10n = await L10nHeadlessService.obter();
     final Position? posicao = await _obterPosicaoDeCacheImediata();
     final String localizacaoFormatada = posicao != null
         ? _formatarPosicao(posicao)
-        : 'Localização indisponível no momento do envio.';
+        : l10n.smsLocalizacaoIndisponivelMomentoEnvio;
 
-    final String mensagem =
-        '📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\n'
-        'Foto: $fotoUrl\n'
-        'Localização: $localizacaoFormatada';
+    final String mensagem = l10n.smsFotoCorpo(fotoUrl, localizacaoFormatada);
 
     debugPrint('📋 [SMS Foto] Enviando localização + link da foto para contatos...');
     await _enviarSms(contatos, mensagem);
 
     try {
       await _db.inserirEventoHistorico(
-        titulo: 'Foto do SOS enviada por SMS',
-        descricao: 'SMS com o link da foto e a localização enviado para os '
-            'contatos de emergência. Foto: $fotoUrl',
+        titulo: l10n.historicoFotoSosSmsTitulo,
+        descricao: l10n.historicoFotoSosSmsDescricao(fotoUrl),
         categoria: 'critico',
       );
     } catch (_) {}

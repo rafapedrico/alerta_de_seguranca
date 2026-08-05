@@ -93,20 +93,19 @@ class _TermosPrivacidadeScreenState extends State<TermosPrivacidadeScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       children: [
-        const Text(
-          'RMF Global LTDA',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        Text(
+          l10n.footerEmpresaRazaoSocial,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Rua Rio de Janeiro, Nº 243, Sala 802, Centro, '
-          'Belo Horizonte - Brasil. CEP 30160-040',
-          style: TextStyle(color: Colors.white54, fontSize: 12),
+        Text(
+          l10n.footerEmpresaEndereco,
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'CNPJ 68.358.210/0001-90',
-          style: TextStyle(color: Colors.white54, fontSize: 12),
+        Text(
+          l10n.footerEmpresaCnpj,
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
         const SizedBox(height: 20),
         for (final secao in secoes) ...[

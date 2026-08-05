@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Representa um som disponível para o Alerta Sonoro Customizável,
@@ -15,6 +16,36 @@ class SomAlarme {
     required this.nomeExibicao,
     required this.assetPath,
   });
+
+  /// Nome do som traduzido no idioma ativo do app — usado na UI de
+  /// Configurações (dropdown de seleção) no lugar de [nomeExibicao], que
+  /// permanece só em português para uso em logs internos (`debugPrint`).
+  String nomeLocalizado(AppLocalizations l10n) {
+    switch (numero) {
+      case 1:
+        return l10n.somNome1;
+      case 2:
+        return l10n.somNome2;
+      case 3:
+        return l10n.somNome3;
+      case 4:
+        return l10n.somNome4;
+      case 5:
+        return l10n.somNome5;
+      case 6:
+        return l10n.somNome6;
+      case 7:
+        return l10n.somNome7;
+      case 8:
+        return l10n.somNome8;
+      case 9:
+        return l10n.somNome9;
+      case 10:
+        return l10n.somNome10;
+      default:
+        return nomeExibicao;
+    }
+  }
 }
 
 /// Serviço central responsável por:

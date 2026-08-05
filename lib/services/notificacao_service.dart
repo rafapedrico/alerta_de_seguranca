@@ -17,6 +17,7 @@ import '../screens/home_screen.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
+import 'l10n_headless_service.dart';
 import 'rotina_alarme_service.dart';
 
 /// Wrapper central do plugin `flutter_local_notifications`, responsável
@@ -38,8 +39,13 @@ class NotificacaoService {
   /// Id do canal Android usado exclusivamente para as notificações de
   /// check-in de rotina.
   static const String canalId = 'checkin_rotina';
-  static const String canalNome = 'Check-in de Rotina';
-  static const String canalDescricao =
+  // Nomes/descrições de canal traduzidos via [AppLocalizations] — não
+  // podem mais ser `const`, pois dependem do idioma ativo do usuário
+  // (carregados uma vez em [inicializar] via [_carregarNomesCanaisLocalizados]).
+  // Mantêm um valor padrão em português apenas como fallback antes da
+  // primeira inicialização.
+  static String canalNome = 'Check-in de Rotina';
+  static String canalDescricao =
       'Lembretes de check-in de segurança dos alarmes de rotina cadastrados.';
 
   /// Canal Android dedicado ao Push App-para-App recebido via FCM (ver
@@ -48,8 +54,8 @@ class NotificacaoService {
   /// check-in de rotina para que o usuário possa configurar volume/som
   /// de forma independente para cada tipo de alerta.
   static const String canalAlertaRecebidoId = 'alerta_emergencia_recebido';
-  static const String canalAlertaRecebidoNome = 'Alerta de Emergência Recebido';
-  static const String canalAlertaRecebidoDescricao =
+  static String canalAlertaRecebidoNome = 'Alerta de Emergência Recebido';
+  static String canalAlertaRecebidoDescricao =
       'Alertas de segurança de contatos que cadastraram este aparelho como emergência.';
 
   /// Canal Android dedicado às RESPOSTAS de push da aba Monitoramento
@@ -60,8 +66,8 @@ class NotificacaoService {
   /// [canalSolicitacaoMonitoramentoId] abaixo, que é o único que precisa de
   /// urgência máxima (é o único que exige uma DECISÃO do usuário).
   static const String canalMonitoramentoId = 'monitoramento';
-  static const String canalMonitoramentoNome = 'Monitoramento de Localização';
-  static const String canalMonitoramentoDescricao =
+  static String canalMonitoramentoNome = 'Monitoramento de Localização';
+  static String canalMonitoramentoDescricao =
       'Respostas a solicitações de compartilhamento de localização enviadas pela aba Monitoramento.';
 
   /// Canal Android dedicado à SOLICITAÇÃO de localização recebida (tipo
@@ -73,10 +79,31 @@ class NotificacaoService {
   /// lockscreen, estilo chamada recebida — em vez de só aparecer
   /// silenciosamente na bandeja como as respostas informativas acima.
   static const String canalSolicitacaoMonitoramentoId = 'solicitacao_monitoramento';
-  static const String canalSolicitacaoMonitoramentoNome =
+  static String canalSolicitacaoMonitoramentoNome =
       'Solicitação de Localização Recebida';
-  static const String canalSolicitacaoMonitoramentoDescricao =
+  static String canalSolicitacaoMonitoramentoDescricao =
       'Alerta prioritário quando um familiar solicita ver sua localização em tempo real — exige Aceitar ou Recusar.';
+
+  /// Carrega os nomes/descrições dos 4 canais Android no idioma
+  /// atualmente selecionado pelo usuário (ver [L10nHeadlessService]),
+  /// chamado uma única vez no início de [inicializar] — antes da criação
+  /// efetiva dos canais logo abaixo.
+  static Future<void> _carregarNomesCanaisLocalizados() async {
+    try {
+      final l10n = await L10nHeadlessService.obter();
+      canalNome = l10n.notifCanalCheckinNome;
+      canalDescricao = l10n.notifCanalCheckinDescricao;
+      canalAlertaRecebidoNome = l10n.notifCanalAlertaRecebidoNome;
+      canalAlertaRecebidoDescricao = l10n.notifCanalAlertaRecebidoDescricao;
+      canalMonitoramentoNome = l10n.notifCanalMonitoramentoNome;
+      canalMonitoramentoDescricao = l10n.notifCanalMonitoramentoDescricao;
+      canalSolicitacaoMonitoramentoNome = l10n.notifCanalSolicitacaoMonitoramentoNome;
+      canalSolicitacaoMonitoramentoDescricao =
+          l10n.notifCanalSolicitacaoMonitoramentoDescricao;
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao localizar nomes de canais: $e');
+    }
+  }
 
   /// Id da ação rápida "Cheguei bem" exibida na notificação.
   static const String acaoConfirmarId = 'confirmar_checkin_rotina';
@@ -246,25 +273,29 @@ class NotificacaoService {
           '⚠️ [NotificacaoService] Falha ao ler payload nativo pendente: $e');
     }
 
-    const canal = AndroidNotificationChannel(
+    // Carrega os nomes/descrições dos canais no idioma ativo do usuário
+    // ANTES de criá-los de fato (ver [_carregarNomesCanaisLocalizados]).
+    await _carregarNomesCanaisLocalizados();
+
+    final canal = AndroidNotificationChannel(
       canalId,
       canalNome,
       description: canalDescricao,
       importance: Importance.max,
     );
-    const canalAlertaRecebido = AndroidNotificationChannel(
+    final canalAlertaRecebido = AndroidNotificationChannel(
       canalAlertaRecebidoId,
       canalAlertaRecebidoNome,
       description: canalAlertaRecebidoDescricao,
       importance: Importance.max,
     );
-    const canalMonitoramento = AndroidNotificationChannel(
+    final canalMonitoramento = AndroidNotificationChannel(
       canalMonitoramentoId,
       canalMonitoramentoNome,
       description: canalMonitoramentoDescricao,
       importance: Importance.high,
     );
-    const canalSolicitacaoMonitoramento = AndroidNotificationChannel(
+    final canalSolicitacaoMonitoramento = AndroidNotificationChannel(
       canalSolicitacaoMonitoramentoId,
       canalSolicitacaoMonitoramentoNome,
       description: canalSolicitacaoMonitoramentoDescricao,
@@ -317,11 +348,12 @@ class NotificacaoService {
     );
 
     final details = NotificationDetails(android: androidDetails);
+    final l10n = await L10nHeadlessService.obter();
 
     await _plugin.show(
       idAlarme,
-      'Alarme de rotina',
-      'Toque para cancelar o alarme.',
+      l10n.familiaEtiquetaPadrao,
+      l10n.notifCheckinCorpo,
       details,
       payload: idAlarme.toString(),
     );
@@ -334,6 +366,7 @@ class NotificacaoService {
     required String etiqueta,
   }) async {
     await inicializar();
+    final l10n = await L10nHeadlessService.obter();
 
     final androidDetails = AndroidNotificationDetails(
       canalId,
@@ -346,10 +379,10 @@ class NotificacaoService {
       autoCancel: false,
       playSound: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
-      actions: const [
+      actions: [
         AndroidNotificationAction(
           'pausar_alarme',
-          '⏸️ Pausar Alarme',
+          l10n.notifPausarAlarmeAcao,
           showsUserInterface: false,
           cancelNotification: true,
         ),
@@ -360,8 +393,8 @@ class NotificacaoService {
 
     await _plugin.show(
       idAlarme + 10000, // ID diferente para não conflitar com a notificação normal
-      etiqueta.isNotEmpty ? etiqueta : 'Alarme de Segurança',
-      'Confirme sua segurança ou pause o alarme!',
+      etiqueta.isNotEmpty ? etiqueta : l10n.notifAlarmeSegurancaTitulo,
+      l10n.notifAlarmeSegurancaCorpo,
       details,
       payload: 'alarme_${idAlarme.toString()}',
     );
@@ -388,6 +421,10 @@ class NotificacaoService {
     String? fotoUrl,
   }) async {
     await inicializar();
+    final l10n = await L10nHeadlessService.obter();
+    final String tituloAlerta = nomeRemetente != null && nomeRemetente.isNotEmpty
+        ? l10n.notifAlertaDeNome(nomeRemetente)
+        : l10n.notifAlertaSegurancaGenerico;
 
     // P2 da sequência unificada de SOS (ver SosDisparoService no
     // remetente): quando o alerta inclui uma foto, baixa os bytes ANTES
@@ -421,9 +458,7 @@ class NotificacaoService {
       styleInformation: fotoBytes != null
           ? BigPictureStyleInformation(
               ByteArrayAndroidBitmap(fotoBytes),
-              contentTitle: nomeRemetente != null && nomeRemetente.isNotEmpty
-                  ? '🚨 Alerta de $nomeRemetente'
-                  : '🚨 Alerta de segurança',
+              contentTitle: tituloAlerta,
               summaryText: mensagem,
             )
           : null,
@@ -445,9 +480,7 @@ class NotificacaoService {
       // Id estável derivado do idEntrega — evita colidir com os ids de
       // notificação de check-in de rotina (idAlarme/idAlarme+10000).
       30000 + (idEntrega.hashCode.abs() % 60000),
-      nomeRemetente != null && nomeRemetente.isNotEmpty
-          ? '🚨 Alerta de $nomeRemetente'
-          : '🚨 Alerta de segurança',
+      tituloAlerta,
       mensagem,
       details,
       payload: payload,
@@ -481,33 +514,34 @@ class NotificacaoService {
     String? telefoneSolicitante,
   }) async {
     await inicializar();
+    final l10n = await L10nHeadlessService.obter();
 
     final nome = (nomeContraparte != null && nomeContraparte.trim().isNotEmpty)
         ? nomeContraparte.trim()
-        : 'um contato';
+        : l10n.notifMonitContatoGenerico;
 
     final String titulo;
     final String corpo;
     switch (tipo) {
       case 'solicitacao_monitoramento':
-        titulo = '📍 Solicitação de localização';
-        corpo = '$nome está solicitando a sua localização.';
+        titulo = l10n.notifMonitSolicitacaoTitulo;
+        corpo = l10n.notifMonitSolicitacaoCorpo(nome);
         break;
       case 'monitoramento_aprovado':
-        titulo = '📍 Localização liberada';
-        corpo = '$nome permitiu que você veja a localização dele(a).';
+        titulo = l10n.notifMonitAprovadoTitulo;
+        corpo = l10n.notifMonitAprovadoCorpo(nome);
         break;
       case 'monitoramento_negado':
-        titulo = '📍 Solicitação recusada';
-        corpo = '$nome recusou a sua solicitação de localização.';
+        titulo = l10n.notifMonitNegadoTitulo;
+        corpo = l10n.notifMonitNegadoCorpo(nome);
         break;
       case 'monitoramento_bloqueado':
-        titulo = '📍 Compartilhamento bloqueado';
-        corpo = '$nome bloqueou o compartilhamento da localização com você.';
+        titulo = l10n.notifMonitBloqueadoTitulo;
+        corpo = l10n.notifMonitBloqueadoCorpo(nome);
         break;
       case 'monitoramento_expirado':
-        titulo = '📍 Solicitação expirada';
-        corpo = 'Sua solicitação de localização para $nome expirou sem resposta.';
+        titulo = l10n.notifMonitExpiradoTitulo;
+        corpo = l10n.notifMonitExpiradoCorpo(nome);
         break;
       default:
         // Tipo de push de monitoramento ainda não mapeado — ignora em vez
@@ -530,7 +564,7 @@ class NotificacaoService {
             visibility: NotificationVisibility.public,
             vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
           )
-        : const AndroidNotificationDetails(
+        : AndroidNotificationDetails(
             canalMonitoramentoId,
             canalMonitoramentoNome,
             channelDescription: canalMonitoramentoDescricao,
@@ -624,13 +658,14 @@ class NotificacaoService {
       });
 
       // 2. Tenta fazer a limpeza silenciosa das rotinas locais
-      RotinaAlarmeService.pausarAlarme(idAlarme).then((_) {
+      RotinaAlarmeService.pausarAlarme(idAlarme).then((_) async {
         // 3. Atualiza e remove o destaque da notificação
+        final l10n = await L10nHeadlessService.obter();
         _plugin.show(
           idAlarme,
-          'Alarme de rotina',
-          'Alarme cancelado.',
-          const NotificationDetails(
+          l10n.familiaEtiquetaPadrao,
+          l10n.notifCheckinCanceladoCorpo,
+          NotificationDetails(
             android: AndroidNotificationDetails(
               canalId,
               canalNome,

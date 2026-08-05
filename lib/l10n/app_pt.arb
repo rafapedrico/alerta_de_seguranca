@@ -1,8 +1,6 @@
 {
   "@@locale": "pt",
-
   "appTituloConfiguracoes": "Configurações",
-
   "campoEmailLabel": "E-mail",
   "campoEmailObrigatorio": "Informe seu e-mail",
   "campoEmailInvalido": "E-mail inválido",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "Confirmar senha",
   "campoConfirmarSenhaObrigatoria": "Confirme sua senha",
   "senhasNaoCoincidem": "As senhas não coincidem",
-
   "botaoEntrar": "Entrar",
   "esqueciMinhaSenha": "Esqueci minha senha",
   "recuperacaoSenhaEmBreve": "Recuperação de senha em breve.",
@@ -22,26 +19,24 @@
   "erroCadastroEmailEmUso": "Este e-mail já está cadastrado",
   "erroCadastroSenhaFraca": "A senha é muito fraca",
   "erroCadastroGenerico": "Não foi possível criar a conta. Tente novamente",
-
   "cadastroEmailVerificacaoEnviado": "Um e-mail de confirmação foi enviado. Por favor, verifique sua caixa de entrada antes de realizar o login.",
   "emailNaoVerificadoTitulo": "E-mail não verificado",
   "emailNaoVerificadoMensagem": "Você precisa confirmar seu e-mail antes de entrar. Verifique sua caixa de entrada (e a pasta de spam).",
   "emailNaoVerificadoReenviar": "Reenviar e-mail",
   "emailVerificacaoReenviada": "E-mail de verificação reenviado.",
   "emailVerificacaoReenvioFalhou": "Não foi possível reenviar o e-mail. Tente novamente mais tarde.",
-
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
-
   "contatoWhatsappSwitchLabel": "Notificar via WhatsApp ($0.10 USD)",
   "whatsappSimultaneoTitulo": "Enviar também via WhatsApp",
   "whatsappSimultaneoDescricao": "Envia o alerta imediatamente por WhatsApp junto com o Push, sem esperar a confirmação de entrega, descontando o valor da Carteira para cada contato habilitado.",
-
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
   "alertaRecebidoDe": "{nome} pode estar em perigo",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "Ver localização no mapa",
@@ -53,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "Não foi possível compartilhar a foto.",
   "alertaRecebidoFotoIndisponivel": "Não foi possível carregar a foto.",
   "alertaRecebidoTentarNovo": "Tentar novamente",
-
   "carteiraTitulo": "Carteira de Créditos",
   "carteiraMenuItem": "Carteira de Créditos",
   "carteiraSaldoAtual": "Saldo atual",
   "carteiraAteNEnvios": "até {n} envios",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "Alertas via App são 100% gratuitos. Envios de contingência via WhatsApp custam $0.10 USD cada.",
@@ -78,7 +74,6 @@
   "loginFacebook": "Facebook",
   "naoTemConta": "Não tem uma conta?",
   "cadastreSe": "Cadastre-se",
-
   "cadastroSubtitulo": "Crie sua conta para começar",
   "campoNomeLabel": "Nome completo",
   "campoNomeObrigatorio": "Informe seu nome",
@@ -88,7 +83,6 @@
   "botaoCriarConta": "Criar Conta",
   "jaTemConta": "Já tem uma conta?",
   "facaLogin": "Faça login",
-
   "configuracoesIdiomaTitulo": "Idioma",
   "configuracoesIdiomaDescricao": "Escolha o idioma do aplicativo. Suporte preparado para 11 idiomas globais.",
   "configuracoesIdiomaLabel": "Idioma do aplicativo",
@@ -100,21 +94,18 @@
       }
     }
   },
-
   "tabSeguranca": "Segurança",
   "tabFamilia": "Família",
   "tabMonitoramento": "Monitoramento",
   "tabHistorico": "Histórico",
   "tooltipAdicionarAlarme": "Adicionar Alarme",
   "tooltipAuditoriaSensivel": "Auditoria de Eventos Sensíveis",
-
   "cancelar": "Cancelar",
   "confirmar": "Confirmar",
   "salvar": "Salvar",
   "excluir": "Excluir",
   "fechar": "Fechar",
   "voltar": "Voltar",
-
   "segurancaSelecioneTempo": "Por favor, selecione um tempo maior que zero!",
   "segurancaCheckinDesarmado": "✅ Check-in desarmado com sucesso!",
   "segurancaConfirmarSosTitulo": "Confirmar SOS?",
@@ -137,7 +128,6 @@
   "deviceAdminDescricaoInativo": "Permite que o app bloqueie a tela automaticamente ao final do SOS de emergência. Requer uma permissão especial do Android, concedida uma única vez.",
   "deviceAdminDescricaoAtivo": "Ativado — a tela será bloqueada automaticamente ao final da sequência de SOS.",
   "deviceAdminBotaoAtivar": "Ativar",
-
   "familiaAlarmeRemovido": "🗑️ Alarme removido com sucesso.",
   "familiaAlarmePausadoAte": "⏸️ Alarme pausado até as 00:00 de hoje.",
   "familiaAdicionarAlarme": "Adicionar Alarme",
@@ -153,7 +143,11 @@
   "familiaToleranciaLabel": "Tolerância para confirmar \"Cheguei bem\"",
   "familiaMinutosAbrev": "{minutos} min",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "Salvar Alarme",
   "familiaAlarmesRotinaTitulo": "Alarmes de Rotina",
@@ -163,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "Excluir alarme permanentemente?",
   "familiaExcluirAlarmeConteudo": "Deseja excluir o alarme \"{etiqueta}\" ({horario}) permanentemente?",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "Pausar alarme por hoje?",
   "familiaPausarAlarmeConteudo": "Deseja pausar o alarme \"{etiqueta}\" ({horario}) até as 00:00? Ele retornará à ativa amanhã automaticamente.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "Pausar",
   "familiaPausadoAte0000": "Pausado até 00:00",
   "familiaRetorna": "Retorna: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ Toque para reativar o alarme",
   "familiaContatosEmergenciaTitulo": "Contatos de Emergência",
@@ -184,9 +199,15 @@
   "familiaSemNome": "Sem nome",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) reativado com sucesso.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "Permitir enviar minha localização",
   "monitoramentoSecaoVerLocalizacao": "Localização de familiares",
   "monitoramentoAdicionarContato": "Adicionar Contato",
@@ -198,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "Excluir contato",
   "monitoramentoExcluirContatoTitulo": "Excluir contato?",
   "monitoramentoExcluirContatoConteudo": "Deseja remover \"{nome}\" da sua lista de monitoramento?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "Nenhum contato de monitoramento cadastrado ainda.\nToque no \"+\" para adicionar o primeiro.",
   "monitoramentoSolicitarLocalizacao": "Solicitar Localização",
   "monitoramentoVerNoMapa": "Ver no mapa",
   "monitoramentoAtualizadoHaMinutos": "Atualizado há {minutos} min",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "Não solicitado",
   "monitoramentoStatusAguardandoAprovacao": "Aguardando Aprovação",
   "monitoramentoStatusAprovado": "Aprovado",
@@ -219,51 +252,90 @@
   "monitoramentoErroSolicitar": "Não foi possível enviar a solicitação. Tente novamente.",
   "monitoramentoSolicitacaoRecebidaTitulo": "Solicitação de localização",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} está solicitando a sua localização. Permitir ou Bloquear?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "Permitir",
   "monitoramentoBloquearRecusar": "Bloquear/Recusar",
   "monitoramentoBloquear": "Bloquear",
   "monitoramentoBloquearContatoTitulo": "Bloquear contato?",
   "monitoramentoBloquearContatoConteudo": "\"{nome}\" não vai mais conseguir enviar solicitações de localização para você.",
-  "@monitoramentoBloquearContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoBloquearContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoContatoBloqueadoSucesso": "Contato bloqueado. Ele não poderá mais solicitar sua localização.",
   "monitoramentoContatoDesbloqueadoSucesso": "Contato desbloqueado.",
   "monitoramentoPermitirOuBloquearSolicitacoes": "Permitir ou Bloquear solicitações de localização",
   "monitoramentoIndicadorBloqueado": "Bloqueado",
   "monitoramentoIndicadorLiberado": "Liberado",
   "monitoramentoContatoIndisponivel": "Este contato não está disponível no momento.",
-
   "historicoFiltroTodos": "Todos",
   "historicoFiltroSistema": "Sistema",
   "historicoAgoraMesmo": "Agora mesmo",
   "historicoHaMinutos": "Há {minutos} min",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "Há {horas}h",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "Ontem",
   "historicoHaDias": "Há {dias} dias",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "Nenhum evento encontrado para este filtro.",
   "historicoLimparBotao": "Limpar Histórico",
   "historicoLimparConfirmarTitulo": "Limpar histórico?",
   "historicoLimparConfirmarConteudo": "Esta ação remove permanentemente as mensagens desta categoria. Não pode ser desfeita.",
-
   "contatosMaximoAtingido": "⚠️ Você já cadastrou o máximo de {max} contatos.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ Permissão de acesso aos contatos foi negada.",
   "contatoSemTelefone": "⚠️ Este contato não possui telefone cadastrado.",
   "telefoneInvalido": "⚠️ Número de telefone inválido.",
   "contatoAdicionado": "✅ {nome} adicionado aos contatos de emergência!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ Solicitação recebida. {nome} será removido em 24 horas.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "PIN Real",
   "pinRealDescricao": "Defina um PIN de 4 dígitos para acesso normal ao app.",
   "pinRealHint": "Digite 4 números",
@@ -275,14 +347,18 @@
   "pinNaoDefinido": "⚠️ Não definido",
   "pinDefinidoComSucesso": "🔒 PIN definido com sucesso!",
   "pinNovaSenhaEmVigor24h": "🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.",
-
   "alterarPlanoFundo": "Alterar Plano de Fundo",
   "planoFundoAlterado": "🎨 Plano de fundo alterado!",
   "planoFundoPadrao": "Luz Clássica (padrão)",
   "tamanhoLetrasTitulo": "Tamanho das Letras",
   "tamanhoLetrasAlterado": "🔤 Tamanho das letras: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "Plano Premium",
   "premiumModalDestaque": "Todas as funções do Guardião-X ilimitado",
   "beneficioLocalizacaoTempoReal": "Localização compartilhada em tempo real.",
@@ -295,19 +371,23 @@
   "agoraNao": "Agora não",
   "assinarPreco": "Assinar R$ 9,90/mês",
   "planoPremiumAtivado": "🎉 Plano Premium ativado!",
-
   "visualDoChatTitulo": "Visual do Chat",
   "alertaSonoroTitulo": "Alerta Sonoro",
   "planoTitulo": "Plano",
   "contatosDescricao": "Cadastre até {max} familiares que receberão o alerta em caso de emergência.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "Excluir contato",
   "adicionarContatoAgenda": "+ Adicionar Contato da Agenda",
   "alertaSonoroDescricao": "Escolha o som e a duração do alarme disparado ao término do cronômetro de check-in.",
   "somAlarmeLabel": "Som do alarme",
   "tooltipTestarSom": "Testar/ouvir som",
   "somTesteVazio": "🔇 Arquivo de som de teste vazio. Substitua o placeholder na pasta assets/sounds.",
-
   "planoFamiliarAtivo": "Plano Familiar Ativo",
   "recursosPremiumDisponiveis": "Todos os recursos premium disponíveis",
   "premiumBadge": "Premium",
@@ -316,20 +396,17 @@
   "precoMensal": "R$ 11,99",
   "porMes": "/mês",
   "verMais": "Ver mais",
-
   "alarmeRotinaAtivoDescricao": "Alarme de rotina ativo.\nConfirme sua segurança para pausar.",
   "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 2 minutos ou um alerta de emergência será enviado.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Alerta de emergência enviado!\nSua localização e a mensagem foram enviadas para a nuvem e para os contatos cadastrados.",
   "desligarAlarmeBotao": "DESLIGAR ALARME",
   "fecharConfirmacaoBotao": "FECHAR",
   "fecharConfirmacaoDica": "Deslize para cima ou toque em Fechar para continuar",
-
   "cameraToqueOuVolume": "📸 Toque no botão ou aperte VOLUME para tirar a foto",
   "enviando": "Enviando...",
   "atencaoMaiuscula": "ATENÇÃO",
   "mensagemEnviadaAviso": "ATENÇÃO, UMA MENSAGEM FOI ENVIADA AOS FAMILIARES COM A FOTO E LOCALIZAÇÃO. ESTA OPERAÇÃO NÃO PODE SER DESFEITA.",
   "deslizeParaFechar": "Deslize para cima para fechar",
-
   "auditoriaSolicitacaoAprovada": "Solicitação aprovada. Por motivos de segurança e proteção de privacidade, os registros estarão liberados em 2 horas.",
   "auditoriaBloquearNovamenteTitulo": "Bloquear Novamente?",
   "auditoriaBloquearNovamenteConteudo": "Ao confirmar, o acesso aos registros sensíveis será bloqueado imediatamente. Para visualizá-los novamente, será necessário solicitar uma nova liberação e aguardar mais 2 horas de carência de segurança.",
@@ -344,15 +421,19 @@
   "auditoriaSolicitarLiberacaoBotao": "Solicitar Liberação do Histórico Sensível",
   "auditoriaNenhumEvento": "Visualização liberada. Nenhum evento sensível registrado ainda.",
   "auditoriaPrazoLiberado": "Prazo de segurança cumprido. Registros liberados para esta sessão.",
-
   "pinAlarmeDesligado": "Alarme desligado",
   "pinSenhaIncorreta": "senha incorreta",
   "pinConfirmeSeuPin": "CONFIRME SEU PIN",
   "pinDigiteParaDesarmar": "Digite seu PIN para desarmar o check-in.",
   "pinDigiteParaContinuar": "Digite seu PIN para continuar.",
   "pinTempoTolerancia": "Tempo de tolerância: {segundos}s",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "Voltar ao Início",
   "historicoFiltroAlertasEnviados": "Alertas enviados",
   "dashboardSecaoPlanosTitulo": "Escolha seu plano",
@@ -363,7 +444,6 @@
   "dashboardCentralAtendimentoTitulo": "Central de Atendimento ao Cliente",
   "dashboardAvisoWhatsappCredito": "As mensagens via WhatsApp é um recurso opcional e dependem de saldo positivo e da ativação prévia em configurações.",
   "dashboardAvisoGarantiaCancelamento": "Em caso de cancelamento do plano Premium nos primeiros 15 dias, receba 50% do valor pago sem burocracia.",
-
   "faqAppBarTitulo": "Perguntas Frequentes (FAQ)",
   "faqTooltipInicio": "Início",
   "faqBuscaHint": "Buscar em perguntas e respostas...",
@@ -392,12 +472,10 @@
   "faqResposta11": "O chat do WhatsApp foi programado para responder de maneira automática a maioria das dúvidas e solicitações do usuário. As solicitações feitas no menu \"Falar com o atendente físico\" seguirão as normas dos regulamentos da política estabelecida pela empresa RMF Global, onde os usuários do Plano Premium terão exclusividade a este atendimento num prazo de até 48 horas.",
   "faqPergunta12": "As mensagens de alerta de emergência só serão enviadas para os números cadastrados que tiverem o aplicativo Guardião-X instalado no celular?",
   "faqResposta12": "Não. Recomendamos que ambos os celulares tenham o aplicativo instalado, mas mesmo se o celular de destino não tiver o Guardião-X, o alerta de emergência é enviado por meio de SMS ou pelo WhatsApp.",
-
   "termosAppBarTitulo": "Termos e Privacidade",
   "termosTabContrato": "Contrato de Consentimento",
   "termosTabPrivacidade": "Política de Privacidade",
   "termosAvisoRodape": "Este documento resume o Contrato de Consentimento e a Política de Privacidade do aplicativo Guardião-X. Em caso de dúvidas, entre em contato pelos canais de atendimento indicados no aplicativo.",
-
   "termosContratoTitulo1": "1. Objeto e Limites do Serviço",
   "termosContratoCorpo1": "O presente Contrato de Consentimento regula o uso do aplicativo Guardião-X, desenvolvido e operado pela RMF Global LTDA (\"RMF Global\"), destinado a auxiliar o usuário em situações de emergência pessoal por meio de check-in de segurança, alertas automáticos, compartilhamento de localização entre familiares e contatos de confiança, e captura de evidências fotográficas. O Guardião-X é uma ferramenta de auxílio e apoio à segurança pessoal e NÃO substitui os órgãos oficiais de emergência (Polícia Militar - 190, Corpo de Bombeiros - 193, SAMU - 192) nem qualquer outro serviço de emergência público. Em situação de risco imediato, o usuário deve sempre acionar primeiro os números de emergência oficiais.",
   "termosContratoTitulo2": "2. Consentimento para uso de localização (GPS e Localização em Segundo Plano)",
@@ -416,7 +494,6 @@
   "termosContratoCorpo8": "O atendimento ao consumidor é feito primariamente pelo chat automatizado do WhatsApp, programado para responder de maneira automática a maioria das dúvidas e solicitações do usuário. Solicitações de atendimento humano seguem as normas da política estabelecida pela RMF Global, sendo que os usuários do Plano Premium têm exclusividade nesse atendimento humano em um prazo de até 48 (quarenta e oito) horas.",
   "termosContratoTitulo9": "9. Consentimento livre, inequívoco e revogação",
   "termosContratoCorpo9": "Ao utilizar o aplicativo Guardião-X e ativar suas funções de segurança, o usuário declara consentir de forma livre, informada e inequívoca com a coleta e o uso do GPS, de seus dados pessoais e de mídias (fotos) em situações de emergência, conforme descrito neste Contrato. O usuário pode revogar este consentimento a qualquer momento desinstalando o aplicativo ou solicitando a exclusão de sua conta e dos dados associados pelos canais de atendimento indicados no aplicativo, respeitados os prazos de carência de segurança descritos na Seção 5.",
-
   "termosPrivacidadeTitulo1": "1. Dados coletados e finalidade",
   "termosPrivacidadeCorpo1": "Para viabilizar as funções de segurança do Guardião-X, coletamos: (a) localização geográfica (GPS) em tempo real e em segundo plano (Background Location), estritamente para o envio e o salvamento de alertas preventivos e de pânico; (b) fotografias e outras mídias capturadas automaticamente ao acionar o botão de pânico ou a função de Captura e Dissuasão; (c) dados de cadastro do usuário e dos contatos de emergência informados (nome e telefone); e (d) dados técnicos do aparelho necessários ao funcionamento dos alertas (status de conectividade, versão do app).",
   "termosPrivacidadeTitulo2": "2. Finalidade do uso dos dados",
@@ -430,5 +507,407 @@
   "termosPrivacidadeTitulo6": "6. Direitos do usuário (LGPD)",
   "termosPrivacidadeCorpo6": "Nos termos da Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018), o usuário pode, a qualquer momento, solicitar o acesso aos seus dados pessoais, a correção de dados cadastrais incorretos, a exclusão da sua conta e dos dados pessoais armazenados, e a revogação de autorizações concedidas a contatos de monitoramento, pelos canais de atendimento indicados no aplicativo.",
   "termosPrivacidadeTitulo7": "7. Contato",
-  "termosPrivacidadeCorpo7": "Dúvidas sobre esta Política de Privacidade podem ser encaminhadas à RMF Global LTDA (CNPJ 68.358.210/0001-90), pelos canais de atendimento informados na Tela de Início do aplicativo (WhatsApp e endereço institucional)."
+  "termosPrivacidadeCorpo7": "Dúvidas sobre esta Política de Privacidade podem ser encaminhadas à RMF Global LTDA (CNPJ 68.358.210/0001-90), pelos canais de atendimento informados na Tela de Início do aplicativo (WhatsApp e endereço institucional).",
+  "footerTermosLink": "Termos de Uso e Contrato de Consentimento",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA",
+  "footerEmpresaEndereco": "Rua Rio de Janeiro, Nº 243, Sala 802, Centro, Belo Horizonte - MG, CEP 30160-040",
+  "footerEmpresaCnpj": "CNPJ 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "Cancelar Plano Premium?",
+  "premiumCancelarConfirmConteudo": "Você voltará imediatamente para o Plano Free, com os limites mensais do plano gratuito.",
+  "premiumCancelarConfirmBotao": "Cancelar Premium",
+  "premiumCanceladoSnackbar": "Plano Premium cancelado. Você está no Plano Free.",
+  "premiumAssinarBotaoComPreco": "Assinar Premium — {preco}",
+  "@premiumAssinarBotaoComPreco": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumModalNotaRodape": "* O envio adicional para WhatsApp é um recurso opcional que pode ser ativado na página \"Configurações\" e possui o custo de US$ 0,10 por mensagem.",
+  "premiumCancelarBotaoModal": "Cancelar Plano Premium",
+  "familiaEtiquetaPadrao": "Alarme de rotina",
+  "familiaDiasNuncaLabel": "Nunca",
+  "familiaDiasTodosLabel": "Todos os dias",
+  "familiaDiasSegASexLabel": "Seg a Sex",
+  "familiaDiaAbrevSeg": "Seg",
+  "familiaDiaAbrevTer": "Ter",
+  "familiaDiaAbrevQua": "Qua",
+  "familiaDiaAbrevQui": "Qui",
+  "familiaDiaAbrevSex": "Sex",
+  "familiaDiaAbrevSab": "Sáb",
+  "familiaDiaAbrevDom": "Dom",
+  "familiaDiaInicialSeg": "S",
+  "familiaDiaInicialTer": "T",
+  "familiaDiaInicialQua": "Q",
+  "familiaDiaInicialQui": "Q",
+  "familiaDiaInicialSex": "S",
+  "familiaDiaInicialSab": "S",
+  "familiaDiaInicialDom": "D",
+  "familiaAcaoPausar": "pausar",
+  "familiaAcaoExcluir": "excluir",
+  "familiaAcaoEditar": "editar",
+  "familiaPinMotivoTexto": "PIN digitado incorretamente 2 vezes seguidas ao tentar {acao} um alarme de rotina na aba Família.",
+  "@familiaPinMotivoTexto": {
+    "placeholders": {
+      "acao": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmeAtivadoTitulo": "Alarme de rotina ativado",
+  "historicoAlarmeDesativadoTitulo": "Alarme de rotina desativado",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta} ({horario}) foi ativado.",
+  "@historicoAlarmeAtivadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmeDesativadoDescricao": "{etiqueta} ({horario}) foi desativado.",
+  "@historicoAlarmeDesativadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmeRemovidoTitulo": "Alarme de rotina removido",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta} ({horario}) foi removido.",
+  "@historicoAlarmeRemovidoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmePausadoTitulo": "Alarme de rotina pausado",
+  "historicoAlarmePausadoDescricao": "{etiqueta} ({horario}) foi pausado até as 00:00.",
+  "@historicoAlarmePausadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmeReativadoTitulo": "Alarme de rotina reativado",
+  "historicoAlarmeReativadoDescricao": "{etiqueta} ({horario}) foi reativado pelo usuário.",
+  "@historicoAlarmeReativadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoAlarmeCriadoTitulo": "Alarme de rotina criado",
+  "historicoAlarmeEditadoTitulo": "Alarme de rotina editado",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} às {horario} ({dias}).",
+  "@historicoAlarmeCriadoEditadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      },
+      "dias": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoContatoAdicionadoTitulo": "Contato de emergência adicionado",
+  "historicoContatoAdicionadoDescricao": "{nome} foi cadastrado como contato de emergência.",
+  "@historicoContatoAdicionadoDescricao": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoContatoExclusaoSolicitadaTitulo": "Exclusão de contato solicitada",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} terá a remoção efetivada em até 24 horas.",
+  "@historicoContatoExclusaoSolicitadaDescricao": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoPinDefinidoTitulo": "PIN de acesso definido",
+  "historicoPinDefinidoDescricao": "PIN de acesso cadastrado e ativado imediatamente (primeiro cadastro, sem carência de segurança).",
+  "historicoPinAlteracaoSolicitadaTitulo": "Alteração de PIN solicitada",
+  "historicoPinAlteracaoSolicitadaDescricao": "Nova senha de acesso pendente, entrará em vigor em 24 horas.",
+  "historicoPlanoFundoAlteradoTitulo": "Plano de fundo alterado",
+  "historicoPlanoFundoAlteradoDescricao": "Novo plano de fundo selecionado: {nome}.",
+  "@historicoPlanoFundoAlteradoDescricao": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCronometroAtivadoTitulo": "Cronômetro ativado",
+  "historicoCronometroAtivadoDescricao": "Check-in de segurança iniciado com duração de {horas}h{minutos}min.",
+  "@historicoCronometroAtivadoDescricao": {
+    "placeholders": {
+      "horas": {
+        "type": "String"
+      },
+      "minutos": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinDesarmadoTitulo": "Check-in desarmado com sucesso",
+  "historicoCheckinDesarmadoDescricao": "O cronômetro de segurança foi interrompido/desarmado pelo usuário com o PIN correto.",
+  "historicoCheckinRotinaConfirmadoTitulo": "Check-in de rotina confirmado",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: o usuário confirmou \"Cheguei bem\" com sucesso.",
+  "@historicoCheckinRotinaConfirmadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaUltimaChanceTitulo": "Check-in de rotina — última chance",
+  "historicoCheckinRotinaUltimaChanceDescricao": "O tempo de tolerância expirou sem confirmação. O alarme está tocando novamente com um prazo final de 2 minutos antes do alerta de emergência ser disparado.",
+  "historicoAlertaEmergenciaRotinaTitulo": "Alerta de emergência disparado (rotina)",
+  "historicoAlertaEmergenciaTitulo": "Alerta de emergência disparado",
+  "historicoAlertaEmergenciaDescricao": "SMS de emergência enviado para os contatos cadastrados. Localização: {localizacao}",
+  "@historicoAlertaEmergenciaDescricao": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoTentativaDesarmeTitulo": "Tentativa de desarme com PIN incorreto",
+  "historicoTentativaDesarmeDescricao": "{motivo} Alerta enviado aos contatos de emergência. Localização: {localizacao}",
+  "@historicoTentativaDesarmeDescricao": {
+    "placeholders": {
+      "motivo": {
+        "type": "String"
+      },
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoSosCacheTitulo": "SOS via botão físico disparado (localização em cache)",
+  "historicoSosCacheDescricao": "SMS de emergência imediato enviado com a última localização conhecida em cache. Localização: {localizacao}",
+  "@historicoSosCacheDescricao": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoSosAtualizadoTitulo": "SOS via botão físico — localização atualizada",
+  "historicoSosAtualizadoDescricao": "Segundo SMS de emergência enviado com a localização em tempo real. Localização: {localizacao}",
+  "@historicoSosAtualizadoDescricao": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoEvidenciaFotograficaTitulo": "Evidência fotográfica registrada",
+  "historicoEvidenciaFotograficaDescricao": "SMS com dados de resgate enviado para os contatos de emergência.",
+  "historicoFotoSosSmsTitulo": "Foto do SOS enviada por SMS",
+  "historicoFotoSosSmsDescricao": "SMS com o link da foto e a localização enviado para os contatos de emergência. Foto: {fotoUrl}",
+  "@historicoFotoSosSmsDescricao": {
+    "placeholders": {
+      "fotoUrl": {
+        "type": "String"
+      }
+    }
+  },
+  "smsLocalizacaoIndisponivelGps": "Localização indisponível (serviço de GPS desativado no aparelho).",
+  "smsLocalizacaoIndisponivelPermissao": "Localização indisponível (permissão de localização negada).",
+  "smsLocalizacaoIndisponivelFalha": "Não foi possível obter a localização atual do aparelho.",
+  "smsContextoNaoInformado": "Nenhuma anotação de contexto informada pelo usuário.",
+  "smsAlertaEmergenciaCorpo": "ALERTA DE EMERGÊNCIA! Não realizei meu check-in de segurança.\nLocalização: {localizacao}\nContexto: {contexto}",
+  "@smsAlertaEmergenciaCorpo": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      },
+      "contexto": {
+        "type": "String"
+      }
+    }
+  },
+  "smsTentativaDesarmeMotivoPadrao": "O PIN foi digitado incorretamente 2 vezes seguidas ao tentar desarmar antecipadamente o sistema de segurança.",
+  "smsTentativaDesarmeCorpo": "⚠️ ALERTA DE SEGURANÇA: TENTATIVA DE DESARME COM SENHA INCORRETA!\n{motivo}\nLocalização: {localizacao}",
+  "@smsTentativaDesarmeCorpo": {
+    "placeholders": {
+      "motivo": {
+        "type": "String"
+      },
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "smsSosContextoPadrao": "SOS disparado via botão físico de emergência (Volume+).",
+  "smsSosImediatoCorpo": "🚨 SOS DE EMERGÊNCIA (botão físico)!\nLocalização (última conhecida): {localizacao}\nContexto: {contexto}\n(Uma atualização com a localização em tempo real será enviada em seguida.)",
+  "@smsSosImediatoCorpo": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      },
+      "contexto": {
+        "type": "String"
+      }
+    }
+  },
+  "smsLocalizacaoCacheIndisponivel": "Localização em cache indisponível — aguardando atualização em tempo real.",
+  "smsSosAtualizadoCorpo": "🚨 SOS DE EMERGÊNCIA (atualização em tempo real)!\nLocalização atualizada: {localizacao}\nContexto: {contexto}",
+  "@smsSosAtualizadoCorpo": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      },
+      "contexto": {
+        "type": "String"
+      }
+    }
+  },
+  "smsLocalizacaoIndisponivelMomentoEnvio": "Localização indisponível no momento do envio.",
+  "smsFotoCorpo": "📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\nFoto: {fotoUrl}\nLocalização: {localizacao}",
+  "@smsFotoCorpo": {
+    "placeholders": {
+      "fotoUrl": {
+        "type": "String"
+      },
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "smsResgateCorpo": "🚨 EVIDÊNCIA FOTOGRÁFICA REGISTRADA!\nFotos e localização enviadas para a nuvem.\nAcesso: {link}\nLogin: {login}\nSenha: {senha}\nOperação irreversível.",
+  "@smsResgateCorpo": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      },
+      "login": {
+        "type": "String"
+      },
+      "senha": {
+        "type": "String"
+      }
+    }
+  },
+  "temaAzulProfundo": "Azul Profundo",
+  "temaCinzaPlatina": "Cinza Platina",
+  "temaLuzDoAmanhecer": "Luz do Amanhecer",
+  "temaVerdeBotanico": "Verde Botânico",
+  "temaRosaClaro": "Rosa Claro",
+  "temaLuzClassica": "Luz Clássica",
+  "fontTamanhoPequeno": "Pequeno",
+  "fontTamanhoPadrao": "Padrão",
+  "fontTamanhoGrande": "Grande",
+  "somNome1": "Bipe Clássico",
+  "somNome2": "Sirene Tática",
+  "somNome3": "Alarme de Emergência",
+  "somNome4": "Alerta Estridente",
+  "somNome5": "Toque Urbano",
+  "somNome6": "Sino de Alerta",
+  "somNome7": "Buzina de Segurança",
+  "somNome8": "Alarme Industrial",
+  "somNome9": "Sirene Policial",
+  "somNome10": "Toque Silencioso",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o check-in de rotina não foi confirmado dentro do prazo final de 2 minutos, mesmo após o tempo de tolerância já ter expirado.",
+  "@historicoCheckinRotinaFalhaMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCanalCheckinNome": "Check-in de Rotina",
+  "notifCanalCheckinDescricao": "Lembretes de check-in de segurança dos alarmes de rotina cadastrados.",
+  "notifCanalAlertaRecebidoNome": "Alerta de Emergência Recebido",
+  "notifCanalAlertaRecebidoDescricao": "Alertas de segurança de contatos que cadastraram este aparelho como emergência.",
+  "notifCanalMonitoramentoNome": "Monitoramento de Localização",
+  "notifCanalMonitoramentoDescricao": "Respostas a solicitações de compartilhamento de localização enviadas pela aba Monitoramento.",
+  "notifCanalSolicitacaoMonitoramentoNome": "Solicitação de Localização Recebida",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "Alerta prioritário quando um familiar solicita ver sua localização em tempo real — exige Aceitar ou Recusar.",
+  "notifCheckinCorpo": "Toque para cancelar o alarme.",
+  "notifAlarmeSegurancaTitulo": "Alarme de Segurança",
+  "notifAlarmeSegurancaCorpo": "Confirme sua segurança ou pause o alarme!",
+  "notifPausarAlarmeAcao": "⏸️ Pausar Alarme",
+  "notifAlertaDeNome": "🚨 Alerta de {nome}",
+  "@notifAlertaDeNome": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifAlertaSegurancaGenerico": "🚨 Alerta de segurança",
+  "notifMonitSolicitacaoTitulo": "📍 Solicitação de localização",
+  "notifMonitSolicitacaoCorpo": "{nome} está solicitando a sua localização.",
+  "@notifMonitSolicitacaoCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMonitAprovadoTitulo": "📍 Localização liberada",
+  "notifMonitAprovadoCorpo": "{nome} permitiu que você veja a localização dele(a).",
+  "@notifMonitAprovadoCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMonitNegadoTitulo": "📍 Solicitação recusada",
+  "notifMonitNegadoCorpo": "{nome} recusou a sua solicitação de localização.",
+  "@notifMonitNegadoCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMonitBloqueadoTitulo": "📍 Compartilhamento bloqueado",
+  "notifMonitBloqueadoCorpo": "{nome} bloqueou o compartilhamento da localização com você.",
+  "@notifMonitBloqueadoCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMonitExpiradoTitulo": "📍 Solicitação expirada",
+  "notifMonitExpiradoCorpo": "Sua solicitação de localização para {nome} expirou sem resposta.",
+  "@notifMonitExpiradoCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMonitContatoGenerico": "um contato",
+  "notifCheckinCanceladoCorpo": "Alarme cancelado."
 }

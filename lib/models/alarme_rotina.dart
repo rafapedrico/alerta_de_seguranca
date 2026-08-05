@@ -1,3 +1,5 @@
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 /// Modelo de dados de um Alarme de Rotina, usado pela aba Família no
 /// gerenciador de múltiplos alarmes (estilo despertador do iPhone).
 class AlarmeRotina {
@@ -113,26 +115,29 @@ class AlarmeRotina {
   String get horarioFormatado =>
       '${hora.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')}';
 
-  /// Retorna uma descrição resumida dos dias da semana selecionados.
-  String get diasResumidos {
-    if (diasSemana.isEmpty) return 'Nunca';
-    if (diasSemana.length == 7) return 'Todos os dias';
+  /// Retorna uma descrição resumida dos dias da semana selecionados, no
+  /// idioma ativo do app — chaves dinâmicas de [AppLocalizations], nunca
+  /// hardcoded, para que o rótulo/frequência do card de alarme (aba
+  /// Família) apareça corretamente traduzido nos 11 idiomas suportados.
+  String diasResumidos(AppLocalizations l10n) {
+    if (diasSemana.isEmpty) return l10n.familiaDiasNuncaLabel;
+    if (diasSemana.length == 7) return l10n.familiaDiasTodosLabel;
 
-    const nomesDias = {
-      1: 'Seg',
-      2: 'Ter',
-      3: 'Qua',
-      4: 'Qui',
-      5: 'Sex',
-      6: 'Sáb',
-      7: 'Dom',
+    final nomesDias = {
+      1: l10n.familiaDiaAbrevSeg,
+      2: l10n.familiaDiaAbrevTer,
+      3: l10n.familiaDiaAbrevQua,
+      4: l10n.familiaDiaAbrevQui,
+      5: l10n.familiaDiaAbrevSex,
+      6: l10n.familiaDiaAbrevSab,
+      7: l10n.familiaDiaAbrevDom,
     };
 
     final diasOrdenados = diasSemana.toList()..sort();
 
     if (diasOrdenados.length == 5 &&
         diasOrdenados.every((d) => d >= 1 && d <= 5)) {
-      return 'Seg a Sex';
+      return l10n.familiaDiasSegASexLabel;
     }
 
     return diasOrdenados.map((d) => nomesDias[d] ?? '').join(', ');

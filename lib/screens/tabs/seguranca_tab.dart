@@ -322,13 +322,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
     // Registra no histórico ('seguranca') a ativação do cronômetro de
     // check-in, tornando a ação 100% transparente e auditável.
-    _db.inserirEventoHistorico(
-      titulo: 'Cronômetro ativado',
-      descricao: 'Check-in de segurança iniciado com duração de '
-          '${_horaSelecionada.toString().padLeft(2, '0')}h'
-          '${_minutoSelecionada.toString().padLeft(2, '0')}min.',
-      categoria: 'seguranca',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      _db.inserirEventoHistorico(
+        titulo: l10n.historicoCronometroAtivadoTitulo,
+        descricao: l10n.historicoCronometroAtivadoDescricao(
+          _horaSelecionada.toString().padLeft(2, '0'),
+          _minutoSelecionada.toString().padLeft(2, '0'),
+        ),
+        categoria: 'seguranca',
+      );
+    }
 
     // Regra de negócio 2 e 3 (Captura Proativa + Loop de Atualização):
     // no exato momento em que o cronômetro é iniciado, dispara IMEDIATAMENTE
@@ -528,14 +532,14 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
       _pararTimer();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         _db.inserirEventoHistorico(
-          titulo: 'Check-in desarmado com sucesso',
-          descricao: 'O cronômetro de segurança foi interrompido/desarmado '
-              'pelo usuário com o PIN correto.',
+          titulo: l10n.historicoCheckinDesarmadoTitulo,
+          descricao: l10n.historicoCheckinDesarmadoDescricao,
           categoria: 'seguranca',
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.segurancaCheckinDesarmado), backgroundColor: Colors.green),
+          SnackBar(content: Text(l10n.segurancaCheckinDesarmado), backgroundColor: Colors.green),
         );
       }
     } catch (e) {

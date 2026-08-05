@@ -251,7 +251,8 @@ class InicioDashboard extends StatelessWidget {
           l10n.beneficioTempoEspera,
           l10n.beneficioSuporteTecnico,
         ],
-        botaoPrincipalTexto: 'Assinar Premium — ${l10n.precoMensal}${l10n.porMes}',
+        botaoPrincipalTexto:
+            l10n.premiumAssinarBotaoComPreco('${l10n.precoMensal}${l10n.porMes}'),
         onBotaoPrincipal: () {
           Navigator.of(ctx).pop();
           _abrirPlayStore();
@@ -272,23 +273,21 @@ class InicioDashboard extends StatelessWidget {
   /// [DatabaseHelper.updateUserConfig] — o mesmo campo lido por
   /// [PlanoLimiteService] para decidir se o usuário tem plano pago.
   Future<void> _confirmarCancelamentoPremium(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final bool? confirmou = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancelar Plano Premium?'),
-        content: const Text(
-          'Você voltará imediatamente para o Plano Free, com os limites '
-          'mensais do plano gratuito.',
-        ),
+        title: Text(l10n.premiumCancelarConfirmTitulo),
+        content: Text(l10n.premiumCancelarConfirmConteudo),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Voltar'),
+            child: Text(l10n.voltar),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Cancelar Premium'),
+            child: Text(l10n.premiumCancelarConfirmBotao),
           ),
         ],
       ),
@@ -310,7 +309,7 @@ class InicioDashboard extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.of(context).pop(); // fecha o modal do Premium
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plano Premium cancelado. Você está no Plano Free.')),
+      SnackBar(content: Text(l10n.premiumCanceladoSnackbar)),
     );
   }
 
@@ -367,11 +366,11 @@ class InicioDashboard extends StatelessWidget {
 
           // A partir daqui (dados corporativos e central de atendimento)
           // todo o conteúdo fica centralizado, conforme pedido de UX.
-          const Center(
+          Center(
             child: Text(
-              'RMF Global LTDA',
+              l10n.footerEmpresaRazaoSocial,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -379,20 +378,22 @@ class InicioDashboard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          const Center(
+          Center(
             child: Text(
-              'Rua Rio de Janeiro, Nº 243, Sala 802, Centro, '
-              'Belo Horizonte - Brasil. CEP 30160-040',
+              // Endereço completo em uma única linha (inclui o CEP), sem
+              // quebra manual — o Text já faz o wrap automático se a tela
+              // for estreita demais.
+              l10n.footerEmpresaEndereco,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ),
           const SizedBox(height: 4),
-          const Center(
+          Center(
             child: Text(
-              'CNPJ 68.358.210/0001-90',
+              l10n.footerEmpresaCnpj,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ),
 
@@ -433,7 +434,11 @@ class InicioDashboard extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Links jurídicos: abrem a TermosPrivacidadeScreen já na aba
-          // correspondente.
+          // correspondente. `width: double.infinity` + `textAlign.center`
+          // garante a centralização mesmo quando o texto (mais longo em
+          // alguns idiomas) quebra em duas linhas — só o Center() do
+          // InkWell não bastava: sem textAlign, a 2ª linha ficava alinhada
+          // à esquerda da caixa de texto em vez de centralizada.
           Center(
             child: InkWell(
               onTap: () => Navigator.of(context).push(
@@ -441,12 +446,16 @@ class InicioDashboard extends StatelessWidget {
                   builder: (_) => const TermosPrivacidadeScreen(abaInicial: 0),
                 ),
               ),
-              child: const Text(
-                'Termos de Uso e Contrato de Consentimento',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  l10n.footerTermosLink,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
@@ -459,12 +468,16 @@ class InicioDashboard extends StatelessWidget {
                   builder: (_) => const TermosPrivacidadeScreen(abaInicial: 1),
                 ),
               ),
-              child: const Text(
-                'Política de Privacidade',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  l10n.termosTabPrivacidade,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
@@ -625,13 +638,9 @@ class _ModalDetalhePlano extends StatelessWidget {
   /// "Cancelar Plano Premium" — reverte o usuário para o Plano Free.
   final VoidCallback? onCancelarPremium;
 
-  static const String _notaRodape =
-      '* O envio adicional para WhatsApp é um recurso opcional que pode ser '
-      'ativado na página "Configurações" e possui o custo de US\$ 0,10 por '
-      'mensagem.';
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
       title: Row(
         children: [
@@ -678,7 +687,7 @@ class _ModalDetalhePlano extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              _notaRodape,
+              l10n.premiumModalNotaRodape,
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
             if (onCancelarPremium != null) ...[
@@ -689,9 +698,9 @@ class _ModalDetalhePlano extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: onCancelarPremium,
                   icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
-                  label: const Text(
-                    'Cancelar Plano Premium',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                  label: Text(
+                    l10n.premiumCancelarBotaoModal,
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

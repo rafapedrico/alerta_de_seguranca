@@ -11,6 +11,7 @@ import 'alarme_agendado_cloud_service.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
+import 'l10n_headless_service.dart';
 import 'notificacao_service.dart';
 
 // Canal unificado para comunicação nativa
@@ -518,13 +519,14 @@ class RotinaAlarmeService {
       debugPrint('⚠️ Erro ao parar som nativo no check-in: $e');
     }
 
+    final l10n = await L10nHeadlessService.obter();
     final etiqueta = (dados?['etiqueta'] as String?)?.trim().isNotEmpty == true
         ? dados!['etiqueta'] as String
-        : 'Alarme de rotina';
+        : l10n.familiaEtiquetaPadrao;
 
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Check-in de rotina confirmado',
-      descricao: '$etiqueta: o usuário confirmou "Cheguei bem" com sucesso.',
+      titulo: l10n.historicoCheckinRotinaConfirmadoTitulo,
+      descricao: l10n.historicoCheckinRotinaConfirmadoDescricao(etiqueta),
     );
 
     // Reagenda automaticamente a rotina do alarme para o próximo dia/período
@@ -722,11 +724,10 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
   } catch (_) {}
 
   try {
+    final l10n = await L10nHeadlessService.obter();
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Check-in de rotina — última chance',
-      descricao: 'O tempo de tolerância expirou sem confirmação. O alarme '
-          'está tocando novamente com um prazo final de 2 minutos antes '
-          'do alerta de emergência ser disparado.',
+      titulo: l10n.historicoCheckinRotinaUltimaChanceTitulo,
+      descricao: l10n.historicoCheckinRotinaUltimaChanceDescricao,
     );
   } catch (_) {}
 
@@ -808,7 +809,8 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     await prefs.remove(chaveAlarmeFaseFinalDeadlineEpochMs);
   } catch (_) {}
 
-  String etiqueta = 'Alarme de rotina';
+  final l10n = await L10nHeadlessService.obter();
+  String etiqueta = l10n.familiaEtiquetaPadrao;
   String? eventoId;
   try {
     final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
@@ -830,13 +832,11 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     }
   } catch (_) {}
 
-  final motivo = '$etiqueta: o check-in de rotina não foi confirmado dentro '
-      'do prazo final de 2 minutos, mesmo após o tempo de tolerância já ter '
-      'expirado.';
+  final motivo = l10n.historicoCheckinRotinaFalhaMotivo(etiqueta);
 
   try {
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Alerta de emergência disparado (rotina)',
+      titulo: l10n.historicoAlertaEmergenciaRotinaTitulo,
       descricao: motivo,
     );
   } catch (_) {}

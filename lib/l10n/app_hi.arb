@@ -1,8 +1,6 @@
 {
   "@@locale": "hi",
-
   "appTituloConfiguracoes": "सेटिंग्स",
-
   "campoEmailLabel": "ईमेल",
   "campoEmailObrigatorio": "अपना ईमेल दर्ज करें",
   "campoEmailInvalido": "अमान्य ईमेल",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "पासवर्ड की पुष्टि करें",
   "campoConfirmarSenhaObrigatoria": "अपने पासवर्ड की पुष्टि करें",
   "senhasNaoCoincidem": "पासवर्ड मेल नहीं खाते",
-
   "botaoEntrar": "लॉगिन करें",
   "esqueciMinhaSenha": "पासवर्ड भूल गए",
   "recuperacaoSenhaEmBreve": "पासवर्ड रिकवरी जल्द ही उपलब्ध होगी।",
@@ -28,19 +25,18 @@
   "emailNaoVerificadoReenviar": "ईमेल पुनः भेजें",
   "emailVerificacaoReenviada": "सत्यापन ईमेल फिर से भेजा गया।",
   "emailVerificacaoReenvioFalhou": "ईमेल फिर से नहीं भेजा जा सका। कृपया बाद में पुनः प्रयास करें।",
-
   "sairDaContaTitulo": "साइन आउट करें",
   "sairDaContaConfirmar": "साइन आउट करें",
-
   "contatoWhatsappSwitchLabel": "WhatsApp के ज़रिए सूचित करें ($0.10 USD)",
   "whatsappSimultaneoTitulo": "WhatsApp के ज़रिए भी भेजें",
   "whatsappSimultaneoDescricao": "डिलीवरी की पुष्टि का इंतज़ार किए बिना, पुश नोटिफिकेशन के साथ ही तुरंत WhatsApp के ज़रिए भी अलर्ट भेजता है, और हर सक्षम संपर्क के लिए वॉलेट से राशि काट लेता है।",
-
   "alertaRecebidoTitulo": "सुरक्षा अलर्ट प्राप्त हुआ",
   "alertaRecebidoDe": "{nome} खतरे में हो सकते हैं",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "मानचित्र पर स्थान देखें",
@@ -52,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "फ़ोटो शेयर नहीं हो सकी।",
   "alertaRecebidoFotoIndisponivel": "फ़ोटो लोड नहीं हो सकी।",
   "alertaRecebidoTentarNovo": "फिर से कोशिश करें",
-
   "carteiraTitulo": "क्रेडिट वॉलेट",
   "carteiraMenuItem": "क्रेडिट वॉलेट",
   "carteiraSaldoAtual": "वर्तमान बैलेंस",
   "carteiraAteNEnvios": "{n} भेजने तक",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "ऐप के ज़रिए अलर्ट 100% मुफ़्त हैं। WhatsApp बैकअप संदेश प्रत्येक $0.10 USD में आते हैं।",
@@ -77,7 +74,6 @@
   "loginFacebook": "फेसबुक",
   "naoTemConta": "खाता नहीं है?",
   "cadastreSe": "साइन अप करें",
-
   "cadastroSubtitulo": "शुरू करने के लिए अपना खाता बनाएं",
   "campoNomeLabel": "पूरा नाम",
   "campoNomeObrigatorio": "अपना नाम दर्ज करें",
@@ -87,29 +83,29 @@
   "botaoCriarConta": "खाता बनाएं",
   "jaTemConta": "पहले से खाता है?",
   "facaLogin": "लॉगिन करें",
-
   "configuracoesIdiomaTitulo": "भाषा",
   "configuracoesIdiomaDescricao": "ऐप की भाषा चुनें। 11 वैश्विक भाषाओं के लिए समर्थन तैयार है।",
   "configuracoesIdiomaLabel": "ऐप की भाषा",
   "idiomaAlteradoSnackbar": "🌐 भाषा बदलकर {idioma} कर दी गई",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "सुरक्षा",
   "tabFamilia": "परिवार",
   "tabMonitoramento": "निगरानी",
   "tabHistorico": "इतिहास",
   "tooltipAdicionarAlarme": "अलार्म जोड़ें",
   "tooltipAuditoriaSensivel": "संवेदनशील घटनाओं की जांच",
-
   "cancelar": "रद्द करें",
   "confirmar": "पुष्टि करें",
   "salvar": "सहेजें",
   "excluir": "हटाएं",
   "fechar": "बंद करें",
   "voltar": "वापस",
-
   "segurancaSelecioneTempo": "कृपया शून्य से अधिक समय चुनें!",
   "segurancaCheckinDesarmado": "✅ चेक-इन सफलतापूर्वक निष्क्रिय किया गया!",
   "segurancaConfirmarSosTitulo": "SOS की पुष्टि करें?",
@@ -132,7 +128,6 @@
   "deviceAdminDescricaoInativo": "ऐप को इमरजेंसी SOS के अंत में स्क्रीन को अपने आप लॉक करने देता है। इसके लिए Android की एक विशेष अनुमति चाहिए, जो एक बार दी जाती है।",
   "deviceAdminDescricaoAtivo": "सक्रिय — SOS क्रम के अंत में स्क्रीन अपने आप लॉक हो जाएगी।",
   "deviceAdminBotaoAtivar": "सक्रिय करें",
-
   "familiaAlarmeRemovido": "🗑️ अलार्म सफलतापूर्वक हटा दिया गया।",
   "familiaAlarmePausadoAte": "⏸️ अलार्म आज मध्यरात्रि तक रोक दिया गया।",
   "familiaAdicionarAlarme": "अलार्म जोड़ें",
@@ -148,7 +143,11 @@
   "familiaToleranciaLabel": "\"मैं सुरक्षित पहुंच गया\" की पुष्टि के लिए सहनशीलता",
   "familiaMinutosAbrev": "{minutos} मिनट",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "अलार्म सहेजें",
   "familiaAlarmesRotinaTitulo": "नियमित अलार्म",
@@ -158,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "अलार्म स्थायी रूप से हटाएं?",
   "familiaExcluirAlarmeConteudo": "क्या आप अलार्म \"{etiqueta}\" ({horario}) को स्थायी रूप से हटाना चाहते हैं?",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "आज के लिए अलार्म रोकें?",
   "familiaPausarAlarmeConteudo": "क्या आप अलार्म \"{etiqueta}\" ({horario}) को मध्यरात्रि तक रोकना चाहते हैं? यह कल स्वतः सक्रिय हो जाएगा।",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "रोकें",
   "familiaPausadoAte0000": "मध्यरात्रि तक रोका गया",
   "familiaRetorna": "वापसी: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ अलार्म पुनः सक्रिय करने के लिए टैप करें",
   "familiaContatosEmergenciaTitulo": "आपातकालीन संपर्क",
@@ -179,9 +199,15 @@
   "familiaSemNome": "कोई नाम नहीं",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) सफलतापूर्वक पुनः सक्रिय किया गया।",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "मेरा स्थान भेजने की अनुमति दें",
   "monitoramentoSecaoVerLocalizacao": "परिवार के सदस्यों का स्थान",
   "monitoramentoAdicionarContato": "संपर्क जोड़ें",
@@ -193,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "संपर्क हटाएं",
   "monitoramentoExcluirContatoTitulo": "संपर्क हटाएं?",
   "monitoramentoExcluirContatoConteudo": "क्या आप \"{nome}\" को अपनी निगरानी सूची से हटाना चाहते हैं?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "अभी तक कोई निगरानी संपर्क नहीं जोड़ा गया है।\nपहला जोड़ने के लिए \"+\" पर टैप करें।",
   "monitoramentoSolicitarLocalizacao": "स्थान का अनुरोध करें",
   "monitoramentoVerNoMapa": "मानचित्र पर देखें",
   "monitoramentoAtualizadoHaMinutos": "{minutos} मिनट पहले अपडेट किया गया",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "अनुरोध नहीं किया गया",
   "monitoramentoStatusAguardandoAprovacao": "अनुमोदन की प्रतीक्षा में",
   "monitoramentoStatusAprovado": "स्वीकृत",
@@ -212,41 +250,74 @@
   "monitoramentoErroSolicitar": "अनुरोध नहीं भेजा जा सका। कृपया पुनः प्रयास करें।",
   "monitoramentoSolicitacaoRecebidaTitulo": "स्थान अनुरोध",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} आपके स्थान का अनुरोध कर रहे हैं। अनुमति दें या अवरुद्ध करें?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "अनुमति दें",
   "monitoramentoBloquearRecusar": "अवरुद्ध करें/अस्वीकार करें",
-
   "historicoFiltroTodos": "सभी",
   "historicoFiltroSistema": "सिस्टम",
   "historicoAgoraMesmo": "अभी अभी",
   "historicoHaMinutos": "{minutos} मिनट पहले",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "{horas} घंटे पहले",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "कल",
   "historicoHaDias": "{dias} दिन पहले",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "इस फ़िल्टर के लिए कोई घटना नहीं मिली।",
   "historicoLimparBotao": "इतिहास साफ़ करें",
   "historicoLimparConfirmarTitulo": "इतिहास साफ़ करें?",
   "historicoLimparConfirmarConteudo": "यह क्रिया इस श्रेणी के संदेशों को स्थायी रूप से हटा देती है। इसे पूर्ववत नहीं किया जा सकता।",
-
   "contatosMaximoAtingido": "⚠️ आप पहले ही अधिकतम {max} संपर्क पंजीकृत कर चुके हैं।",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ संपर्कों तक पहुंच की अनुमति अस्वीकार कर दी गई।",
   "contatoSemTelefone": "⚠️ इस संपर्क का कोई फ़ोन नंबर पंजीकृत नहीं है।",
   "telefoneInvalido": "⚠️ अमान्य फ़ोन नंबर।",
   "contatoAdicionado": "✅ {nome} को आपातकालीन संपर्कों में जोड़ा गया!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ अनुरोध प्राप्त हुआ। {nome} को 24 घंटे में हटा दिया जाएगा।",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "वास्तविक PIN",
   "pinRealDescricao": "ऐप तक सामान्य पहुंच के लिए 4 अंकों का PIN सेट करें।",
   "pinRealHint": "4 अंक दर्ज करें",
@@ -258,14 +329,18 @@
   "pinNaoDefinido": "⚠️ सेट नहीं किया गया",
   "pinDefinidoComSucesso": "🔒 PIN सफलतापूर्वक सेट किया गया!",
   "pinNovaSenhaEmVigor24h": "🔒 अनुरोध प्राप्त हुआ। नया पासवर्ड 24 घंटे में प्रभावी होगा।",
-
   "alterarPlanoFundo": "पृष्ठभूमि बदलें",
   "planoFundoAlterado": "🎨 पृष्ठभूमि बदल दी गई!",
   "planoFundoPadrao": "क्लासिक लाइट (डिफ़ॉल्ट)",
   "tamanhoLetrasTitulo": "अक्षरों का आकार",
   "tamanhoLetrasAlterado": "🔤 अक्षरों का आकार: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "प्रीमियम योजना",
   "premiumModalDestaque": "Guardião-X की सभी सुविधाएँ, असीमित",
   "beneficioLocalizacaoTempoReal": "वास्तविक समय में साझा स्थान।",
@@ -278,19 +353,23 @@
   "agoraNao": "अभी नहीं",
   "assinarPreco": "सदस्यता लें ₹9.90/माह",
   "planoPremiumAtivado": "🎉 प्रीमियम योजना सक्रिय हो गई!",
-
   "visualDoChatTitulo": "चैट का रूप",
   "alertaSonoroTitulo": "ध्वनि चेतावनी",
   "planoTitulo": "योजना",
   "contatosDescricao": "आपातकाल में अलर्ट प्राप्त करने वाले {max} तक परिवार के सदस्यों को पंजीकृत करें।",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "संपर्क हटाएं",
   "adicionarContatoAgenda": "+ एड्रेस बुक से संपर्क जोड़ें",
   "alertaSonoroDescricao": "चेक-इन काउंटडाउन समाप्त होने पर बजने वाली अलार्म ध्वनि और अवधि चुनें।",
   "somAlarmeLabel": "अलार्म ध्वनि",
   "tooltipTestarSom": "ध्वनि परखें/सुनें",
   "somTesteVazio": "🔇 खाली परीक्षण ध्वनि फ़ाइल। assets/sounds फ़ोल्डर में प्लेसहोल्डर बदलें।",
-
   "planoFamiliarAtivo": "पारिवारिक योजना सक्रिय",
   "recursosPremiumDisponiveis": "सभी प्रीमियम सुविधाएं उपलब्ध",
   "premiumBadge": "प्रीमियम",
@@ -299,20 +378,17 @@
   "precoMensal": "₹11.99",
   "porMes": "/माह",
   "verMais": "और देखें",
-
   "alarmeRotinaAtivoDescricao": "नियमित अलार्म सक्रिय है।\nरोकने के लिए अपनी सुरक्षा की पुष्टि करें।",
   "alarmeRotinaFaseFinalDescricao": "आखिरी मौका! अलार्म फिर से बजा है।\n2 मिनट के भीतर अपना पिन दर्ज करें, नहीं तो एक आपातकालीन अलर्ट भेजा जाएगा।",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ आपातकालीन अलर्ट भेजा गया!\nआपका स्थान और संदेश क्लाउड और पंजीकृत संपर्कों को भेज दिए गए हैं।",
   "desligarAlarmeBotao": "अलार्म बंद करें",
   "fecharConfirmacaoBotao": "बंद करें",
   "fecharConfirmacaoDica": "जारी रखने के लिए ऊपर स्वाइप करें या बंद करें पर टैप करें",
-
   "cameraToqueOuVolume": "📸 फ़ोटो लेने के लिए बटन दबाएं या वॉल्यूम दबाएं",
   "enviando": "भेजा जा रहा है...",
   "atencaoMaiuscula": "ध्यान दें",
   "mensagemEnviadaAviso": "ध्यान दें, फ़ोटो और स्थान के साथ परिवार को एक संदेश भेजा गया है। इस कार्रवाई को पूर्ववत नहीं किया जा सकता।",
   "deslizeParaFechar": "बंद करने के लिए ऊपर स्वाइप करें",
-
   "auditoriaSolicitacaoAprovada": "अनुरोध स्वीकृत। सुरक्षा और गोपनीयता सुरक्षा कारणों से, रिकॉर्ड 2 घंटे में जारी किए जाएंगे।",
   "auditoriaBloquearNovamenteTitulo": "फिर से लॉक करें?",
   "auditoriaBloquearNovamenteConteudo": "पुष्टि करने पर, संवेदनशील रिकॉर्ड तक पहुंच तुरंत लॉक हो जाएगी। उन्हें फिर से देखने के लिए, आपको एक नया अनुरोध करना होगा और 2 घंटे की सुरक्षा प्रतीक्षा अवधि की प्रतीक्षा करनी होगी।",
@@ -327,15 +403,19 @@
   "auditoriaSolicitarLiberacaoBotao": "संवेदनशील इतिहास रिलीज़ का अनुरोध करें",
   "auditoriaNenhumEvento": "दृश्य जारी किया गया। अभी तक कोई संवेदनशील घटना दर्ज नहीं की गई है।",
   "auditoriaPrazoLiberado": "सुरक्षा अवधि पूरी हुई। इस सत्र के लिए रिकॉर्ड जारी किए गए।",
-
   "pinAlarmeDesligado": "अलार्म बंद किया गया",
   "pinSenhaIncorreta": "गलत पासवर्ड",
   "pinConfirmeSeuPin": "अपने PIN की पुष्टि करें",
   "pinDigiteParaDesarmar": "चेक-इन निष्क्रिय करने के लिए अपना PIN दर्ज करें।",
   "pinDigiteParaContinuar": "जारी रखने के लिए अपना PIN दर्ज करें।",
   "pinTempoTolerancia": "सहनशीलता समय: {segundos} सेकंड",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "होम पर वापस जाएं",
   "historicoFiltroAlertasEnviados": "भेजे गए अलर्ट",
   "dashboardSecaoPlanosTitulo": "अपनी योजना चुनें",
@@ -346,7 +426,6 @@
   "dashboardCentralAtendimentoTitulo": "ग्राहक सेवा केंद्र",
   "dashboardAvisoWhatsappCredito": "WhatsApp संदेश एक वैकल्पिक सुविधा है और यह सकारात्मक बैलेंस तथा सेटिंग्स में पूर्व सक्रियण पर निर्भर करता है।",
   "dashboardAvisoGarantiaCancelamento": "यदि आप प्रीमियम योजना को पहले 15 दिनों के भीतर रद्द करते हैं, तो बिना किसी झंझट के भुगतान की गई राशि का 50% प्राप्त करें।",
-
   "faqAppBarTitulo": "अक्सर पूछे जाने वाले प्रश्न (FAQ)",
   "faqTooltipInicio": "होम",
   "faqBuscaHint": "प्रश्नों और उत्तरों में खोजें...",
@@ -375,12 +454,10 @@
   "faqResposta11": "WhatsApp चैट को उपयोगकर्ता के अधिकांश प्रश्नों और अनुरोधों का स्वतः उत्तर देने के लिए प्रोग्राम किया गया है। \"किसी वास्तविक प्रतिनिधि से बात करें\" मेनू में किए गए अनुरोध RMF Global कंपनी द्वारा स्थापित नीति के नियमों का पालन करेंगे, जहां प्रीमियम योजना के उपयोगकर्ताओं को 48 घंटे तक की समय-सीमा में इस सेवा की विशेष प्राथमिकता मिलेगी।",
   "faqPergunta12": "क्या आपातकालीन अलर्ट संदेश केवल उन पंजीकृत नंबरों को भेजे जाएंगे जिनमें Guardião-X ऐप इंस्टॉल है?",
   "faqResposta12": "नहीं। हम अनुशंसा करते हैं कि दोनों फोन में ऐप इंस्टॉल हो, लेकिन भले ही प्राप्तकर्ता के फोन में Guardião-X न हो, आपातकालीन अलर्ट SMS या WhatsApp के माध्यम से भेजा जाता है।",
-
   "termosAppBarTitulo": "शर्तें और गोपनीयता",
   "termosTabContrato": "सहमति अनुबंध",
   "termosTabPrivacidade": "गोपनीयता नीति",
   "termosAvisoRodape": "यह दस्तावेज़ Guardião-X ऐप के सहमति अनुबंध और गोपनीयता नीति का सारांश प्रस्तुत करता है। किसी भी सवाल के लिए, ऐप में बताए गए सहायता चैनलों के माध्यम से हमसे संपर्क करें।",
-
   "termosContratoTitulo1": "1. उद्देश्य और सेवा की सीमाएं",
   "termosContratoCorpo1": "यह सहमति अनुबंध RMF Global LTDA (\"RMF Global\") द्वारा विकसित और संचालित Guardião-X ऐप के उपयोग को नियंत्रित करता है, जो सुरक्षा चेक-इन, स्वचालित अलर्ट, परिवार के सदस्यों और विश्वसनीय संपर्कों के बीच स्थान साझाकरण, और फोटोग्राफिक साक्ष्य प्राप्त करने के माध्यम से व्यक्तिगत आपातकालीन स्थितियों में उपयोगकर्ता की सहायता के लिए बनाया गया है। Guardião-X एक व्यक्तिगत सुरक्षा सहायता उपकरण है और यह आधिकारिक आपातकालीन सेवाओं (पुलिस, अग्निशमन, एम्बुलेंस, या आपके देश के समकक्ष आपातकालीन नंबरों) या किसी भी अन्य सार्वजनिक आपातकालीन सेवा का स्थान नहीं लेता है। तत्काल जोखिम की स्थिति में, उपयोगकर्ता को हमेशा पहले आधिकारिक आपातकालीन नंबरों से संपर्क करना चाहिए।",
   "termosContratoTitulo2": "2. स्थान के उपयोग के लिए सहमति (GPS और बैकग्राउंड लोकेशन)",
@@ -399,7 +476,6 @@
   "termosContratoCorpo8": "ग्राहक सहायता मुख्य रूप से स्वचालित WhatsApp चैट के माध्यम से प्रदान की जाती है, जिसे उपयोगकर्ता के अधिकांश प्रश्नों और अनुरोधों का स्वतः उत्तर देने के लिए प्रोग्राम किया गया है। वास्तविक सहायता के अनुरोध RMF Global द्वारा स्थापित नीति के नियमों का पालन करते हैं, जहां प्रीमियम योजना के उपयोगकर्ताओं को इस वास्तविक सहायता तक 48 (अड़तालीस) घंटे तक की समय-सीमा में विशेष पहुंच मिलती है।",
   "termosContratoTitulo9": "9. स्वतंत्र, स्पष्ट सहमति और निरसन",
   "termosContratoCorpo9": "Guardião-X ऐप का उपयोग करके और इसकी सुरक्षा सुविधाओं को सक्रिय करके, उपयोगकर्ता घोषणा करता है कि वह इस अनुबंध में वर्णित अनुसार आपातकालीन स्थितियों में GPS, अपने व्यक्तिगत डेटा, और मीडिया (फोटो) के संग्रह और उपयोग के लिए स्वतंत्र, सूचित और स्पष्ट रूप से सहमति देता है। उपयोगकर्ता ऐप को अनइंस्टॉल करके या ऐप में बताए गए सहायता चैनलों के माध्यम से अपने खाते और संबंधित डेटा को हटाने का अनुरोध करके किसी भी समय इस सहमति को रद्द कर सकता है, जो धारा 5 में वर्णित सुरक्षा प्रतीक्षा अवधियों के अधीन है।",
-
   "termosPrivacidadeTitulo1": "1. एकत्र किया गया डेटा और उद्देश्य",
   "termosPrivacidadeCorpo1": "Guardião-X की सुरक्षा सुविधाओं को सक्षम करने के लिए, हम एकत्र करते हैं: (a) वास्तविक-समय और बैकग्राउंड भौगोलिक स्थान (GPS/Background Location), जो सख्ती से निवारक और पैनिक अलर्ट भेजने और सहेजने के लिए है; (b) पैनिक बटन या कैप्चर और डिटरेंस सुविधा के सक्रिय होने पर स्वचालित रूप से कैप्चर की गई फोटो और अन्य मीडिया; (c) उपयोगकर्ता का पंजीकरण डेटा और उसके द्वारा प्रदान किए गए आपातकालीन संपर्कों का डेटा (नाम और फोन); और (d) अलर्ट के कार्य करने के लिए आवश्यक डिवाइस का तकनीकी डेटा (कनेक्टिविटी स्थिति, ऐप संस्करण)।",
   "termosPrivacidadeTitulo2": "2. डेटा उपयोग का उद्देश्य",
@@ -413,5 +489,142 @@
   "termosPrivacidadeTitulo6": "6. उपयोगकर्ता के अधिकार (डेटा सुरक्षा)",
   "termosPrivacidadeCorpo6": "लागू डेटा सुरक्षा कानून (जैसे ब्राज़ील का LGPD - कानून सं. 13.709/2018) के तहत, उपयोगकर्ता किसी भी समय अपने व्यक्तिगत डेटा तक पहुंच, गलत पंजीकरण डेटा के सुधार, अपने खाते और संग्रहीत व्यक्तिगत डेटा को हटाने, और निगरानी संपर्कों को दी गई अनुमतियों को रद्द करने का अनुरोध, ऐप में बताए गए सहायता चैनलों के माध्यम से कर सकता है।",
   "termosPrivacidadeTitulo7": "7. संपर्क",
-  "termosPrivacidadeCorpo7": "इस गोपनीयता नीति के बारे में प्रश्न ऐप की होम स्क्रीन पर बताए गए सहायता चैनलों (WhatsApp और संस्थागत पता) के माध्यम से RMF Global LTDA (CNPJ 68.358.210/0001-90) को भेजे जा सकते हैं।"
+  "termosPrivacidadeCorpo7": "इस गोपनीयता नीति के बारे में प्रश्न ऐप की होम स्क्रीन पर बताए गए सहायता चैनलों (WhatsApp और संस्थागत पता) के माध्यम से RMF Global LTDA (CNPJ 68.358.210/0001-90) को भेजे जा सकते हैं।",
+  "footerTermosLink": "उपयोग की शर्तें और सहमति अनुबंध",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA (आरएमएफ ग्लोबल एलटीडीए)",
+  "footerEmpresaEndereco": "रियो डी जनेरो स्ट्रीट, नंबर 243, कमरा 802, सेंट्रो, बेलो होरिज़ोंटे - मिनास जिरैस, ब्राज़ील, पिन कोड 30160-040",
+  "footerEmpresaCnpj": "कंपनी पंजीकरण संख्या (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "क्या प्रीमियम प्लान रद्द करें?",
+  "premiumCancelarConfirmConteudo": "आप तुरंत फ्री प्लान पर वापस चले जाएंगे, जिसमें फ्री प्लान की मासिक सीमाएं लागू होंगी।",
+  "premiumCancelarConfirmBotao": "प्रीमियम रद्द करें",
+  "premiumCanceladoSnackbar": "प्रीमियम प्लान रद्द कर दिया गया है। अब आप फ्री प्लान में हैं।",
+  "premiumAssinarBotaoComPreco": "प्रीमियम सब्सक्राइब करें — {preco}",
+  "premiumModalNotaRodape": "* अतिरिक्त व्हाट्सऐप भेजना एक वैकल्पिक सुविधा है जिसे \"सेटिंग्स\" पेज पर सक्रिय किया जा सकता है और इसकी लागत प्रति संदेश US$0.10 है।",
+  "premiumCancelarBotaoModal": "प्रीमियम प्लान रद्द करें",
+  "familiaEtiquetaPadrao": "नियमित अलार्म",
+  "familiaDiasNuncaLabel": "कभी नहीं",
+  "familiaDiasTodosLabel": "हर दिन",
+  "familiaDiasSegASexLabel": "सोम से शुक्र",
+  "familiaDiaAbrevSeg": "सोम",
+  "familiaDiaAbrevTer": "मंगल",
+  "familiaDiaAbrevQua": "बुध",
+  "familiaDiaAbrevQui": "गुरु",
+  "familiaDiaAbrevSex": "शुक्र",
+  "familiaDiaAbrevSab": "शनि",
+  "familiaDiaAbrevDom": "रवि",
+  "familiaDiaInicialSeg": "सो",
+  "familiaDiaInicialTer": "मं",
+  "familiaDiaInicialQua": "बु",
+  "familiaDiaInicialQui": "गु",
+  "familiaDiaInicialSex": "शु",
+  "familiaDiaInicialSab": "श",
+  "familiaDiaInicialDom": "र",
+  "familiaAcaoPausar": "रोकना",
+  "familiaAcaoExcluir": "हटाना",
+  "familiaAcaoEditar": "संपादित करना",
+  "familiaPinMotivoTexto": "फैमिली टैब में नियमित अलार्म को {acao} करने की कोशिश करते समय PIN लगातार 2 बार गलत दर्ज किया गया।",
+  "historicoAlarmeAtivadoTitulo": "नियमित अलार्म सक्रिय किया गया",
+  "historicoAlarmeDesativadoTitulo": "नियमित अलार्म निष्क्रिय किया गया",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta} ({horario}) सक्रिय किया गया।",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta} ({horario}) निष्क्रिय किया गया।",
+  "historicoAlarmeRemovidoTitulo": "नियमित अलार्म हटाया गया",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta} ({horario}) हटाया गया।",
+  "historicoAlarmePausadoTitulo": "नियमित अलार्म रोका गया",
+  "historicoAlarmePausadoDescricao": "{etiqueta} ({horario}) को 00:00 बजे तक रोक दिया गया।",
+  "historicoAlarmeReativadoTitulo": "नियमित अलार्म पुनः सक्रिय किया गया",
+  "historicoAlarmeReativadoDescricao": "{etiqueta} ({horario}) उपयोगकर्ता द्वारा पुनः सक्रिय किया गया।",
+  "historicoAlarmeCriadoTitulo": "नियमित अलार्म बनाया गया",
+  "historicoAlarmeEditadoTitulo": "नियमित अलार्म संपादित किया गया",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta}, {horario} बजे ({dias})।",
+  "historicoContatoAdicionadoTitulo": "आपातकालीन संपर्क जोड़ा गया",
+  "historicoContatoAdicionadoDescricao": "{nome} को आपातकालीन संपर्क के रूप में पंजीकृत किया गया।",
+  "historicoContatoExclusaoSolicitadaTitulo": "संपर्क हटाने का अनुरोध किया गया",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} को 24 घंटों के भीतर स्थायी रूप से हटा दिया जाएगा।",
+  "historicoPinDefinidoTitulo": "एक्सेस PIN सेट किया गया",
+  "historicoPinDefinidoDescricao": "एक्सेस PIN पंजीकृत होकर तुरंत सक्रिय हो गया (पहला पंजीकरण, कोई सुरक्षा प्रतीक्षा अवधि नहीं)।",
+  "historicoPinAlteracaoSolicitadaTitulo": "PIN परिवर्तन का अनुरोध किया गया",
+  "historicoPinAlteracaoSolicitadaDescricao": "नया एक्सेस पासवर्ड लंबित है, यह 24 घंटों में लागू होगा।",
+  "historicoPlanoFundoAlteradoTitulo": "पृष्ठभूमि बदली गई",
+  "historicoPlanoFundoAlteradoDescricao": "नई पृष्ठभूमि चुनी गई: {nome}।",
+  "historicoCronometroAtivadoTitulo": "टाइमर सक्रिय किया गया",
+  "historicoCronometroAtivadoDescricao": "सुरक्षा चेक-इन {horas} घंटे {minutos} मिनट की अवधि के साथ शुरू हुआ।",
+  "historicoCheckinDesarmadoTitulo": "चेक-इन सफलतापूर्वक निष्क्रिय किया गया",
+  "historicoCheckinDesarmadoDescricao": "उपयोगकर्ता ने सही PIN के साथ सुरक्षा टाइमर को रोका/निष्क्रिय किया।",
+  "historicoCheckinRotinaConfirmadoTitulo": "नियमित चेक-इन की पुष्टि हुई",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: उपयोगकर्ता ने सफलतापूर्वक \"मैं सुरक्षित पहुँच गया\" की पुष्टि की।",
+  "historicoCheckinRotinaUltimaChanceTitulo": "नियमित चेक-इन — अंतिम अवसर",
+  "historicoCheckinRotinaUltimaChanceDescricao": "बिना पुष्टि के सहनशीलता समय समाप्त हो गया। अलार्म फिर से बज रहा है, आपातकालीन अलर्ट भेजे जाने से पहले अंतिम 2 मिनट शेष हैं।",
+  "historicoAlertaEmergenciaRotinaTitulo": "आपातकालीन अलर्ट भेजा गया (नियमित)",
+  "historicoAlertaEmergenciaTitulo": "आपातकालीन अलर्ट भेजा गया",
+  "historicoAlertaEmergenciaDescricao": "पंजीकृत संपर्कों को आपातकालीन SMS भेजा गया। स्थान: {localizacao}",
+  "historicoTentativaDesarmeTitulo": "गलत PIN के साथ निष्क्रिय करने का प्रयास",
+  "historicoTentativaDesarmeDescricao": "{motivo} आपातकालीन संपर्कों को अलर्ट भेजा गया। स्थान: {localizacao}",
+  "historicoSosCacheTitulo": "फिजिकल बटन के माध्यम से SOS भेजा गया (कैश किया गया स्थान)",
+  "historicoSosCacheDescricao": "अंतिम ज्ञात कैश किए गए स्थान के साथ तत्काल आपातकालीन SMS भेजा गया। स्थान: {localizacao}",
+  "historicoSosAtualizadoTitulo": "फिजिकल बटन के माध्यम से SOS — स्थान अद्यतन किया गया",
+  "historicoSosAtualizadoDescricao": "वास्तविक समय के स्थान के साथ दूसरा आपातकालीन SMS भेजा गया। स्थान: {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "फोटोग्राफिक साक्ष्य दर्ज किया गया",
+  "historicoEvidenciaFotograficaDescricao": "बचाव डेटा वाला SMS आपातकालीन संपर्कों को भेजा गया।",
+  "historicoFotoSosSmsTitulo": "SOS फोटो SMS द्वारा भेजी गई",
+  "historicoFotoSosSmsDescricao": "फोटो लिंक और स्थान वाला SMS आपातकालीन संपर्कों को भेजा गया। फोटो: {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "स्थान उपलब्ध नहीं है (डिवाइस पर GPS सेवा बंद है)।",
+  "smsLocalizacaoIndisponivelPermissao": "स्थान उपलब्ध नहीं है (स्थान अनुमति अस्वीकृत)।",
+  "smsLocalizacaoIndisponivelFalha": "डिवाइस का वर्तमान स्थान प्राप्त नहीं किया जा सका।",
+  "smsContextoNaoInformado": "उपयोगकर्ता द्वारा कोई संदर्भ नोट प्रदान नहीं किया गया।",
+  "smsAlertaEmergenciaCorpo": "आपातकालीन अलर्ट! मैंने अपना सुरक्षा चेक-इन पूरा नहीं किया।\nस्थान: {localizacao}\nसंदर्भ: {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "सुरक्षा प्रणाली को समय से पहले निष्क्रिय करने की कोशिश करते समय PIN लगातार 2 बार गलत दर्ज किया गया।",
+  "smsTentativaDesarmeCorpo": "⚠️ सुरक्षा अलर्ट: गलत पासवर्ड के साथ निष्क्रिय करने का प्रयास!\n{motivo}\nस्थान: {localizacao}",
+  "smsSosContextoPadrao": "फिजिकल इमरजेंसी बटन (वॉल्यूम+) के माध्यम से SOS भेजा गया।",
+  "smsSosImediatoCorpo": "🚨 आपातकालीन SOS (फिजिकल बटन)!\nस्थान (अंतिम ज्ञात): {localizacao}\nसंदर्भ: {contexto}\n(इसके बाद वास्तविक समय के स्थान के साथ एक अपडेट भेजा जाएगा।)",
+  "smsLocalizacaoCacheIndisponivel": "कैश किया गया स्थान उपलब्ध नहीं — वास्तविक समय के अपडेट की प्रतीक्षा है।",
+  "smsSosAtualizadoCorpo": "🚨 आपातकालीन SOS (वास्तविक समय अपडेट)!\nअद्यतन स्थान: {localizacao}\nसंदर्भ: {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "भेजते समय स्थान उपलब्ध नहीं था।",
+  "smsFotoCorpo": "📷 SOS के दौरान फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो: {fotoUrl}\nस्थान: {localizacao}",
+  "smsResgateCorpo": "🚨 फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो और स्थान क्लाउड पर भेजे गए।\nएक्सेस: {link}\nलॉगिन: {login}\nपासवर्ड: {senha}\nयह क्रिया वापस नहीं ली जा सकती।",
+  "temaAzulProfundo": "गहरा नीला",
+  "temaCinzaPlatina": "प्लेटिनम ग्रे",
+  "temaLuzDoAmanhecer": "भोर की रोशनी",
+  "temaVerdeBotanico": "बोटैनिकल हरा",
+  "temaRosaClaro": "हल्का गुलाबी",
+  "temaLuzClassica": "क्लासिक लाइट",
+  "fontTamanhoPequeno": "छोटा",
+  "fontTamanhoPadrao": "डिफ़ॉल्ट",
+  "fontTamanhoGrande": "बड़ा",
+  "somNome1": "क्लासिक बीप",
+  "somNome2": "टैक्टिकल सायरन",
+  "somNome3": "आपातकालीन अलार्म",
+  "somNome4": "तीखा अलर्ट",
+  "somNome5": "अर्बन रिंगटोन",
+  "somNome6": "अलर्ट घंटी",
+  "somNome7": "सुरक्षा हॉर्न",
+  "somNome8": "औद्योगिक अलार्म",
+  "somNome9": "पुलिस सायरन",
+  "somNome10": "साइलेंट टोन",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: सहनशीलता समय समाप्त होने के बाद भी, अंतिम 2 मिनट की समय सीमा के भीतर नियमित चेक-इन की पुष्टि नहीं हुई।",
+  "notifCanalCheckinNome": "नियमित चेक-इन",
+  "notifCanalCheckinDescricao": "पंजीकृत नियमित अलार्म के लिए सुरक्षा चेक-इन रिमाइंडर।",
+  "notifCanalAlertaRecebidoNome": "प्राप्त आपातकालीन अलर्ट",
+  "notifCanalAlertaRecebidoDescricao": "उन संपर्कों के सुरक्षा अलर्ट जिन्होंने इस डिवाइस को आपातकालीन संपर्क के रूप में पंजीकृत किया है।",
+  "notifCanalMonitoramentoNome": "स्थान निगरानी",
+  "notifCanalMonitoramentoDescricao": "मॉनिटरिंग टैब से भेजे गए स्थान-साझाकरण अनुरोधों के उत्तर।",
+  "notifCanalSolicitacaoMonitoramentoNome": "प्राप्त स्थान अनुरोध",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "जब कोई परिवार का सदस्य आपका वास्तविक समय का स्थान देखने का अनुरोध करता है तो प्राथमिकता अलर्ट — स्वीकार या अस्वीकार आवश्यक है।",
+  "notifCheckinCorpo": "अलार्म रद्द करने के लिए टैप करें।",
+  "notifAlarmeSegurancaTitulo": "सुरक्षा अलार्म",
+  "notifAlarmeSegurancaCorpo": "अपनी सुरक्षा की पुष्टि करें या अलार्म रोकें!",
+  "notifPausarAlarmeAcao": "⏸️ अलार्म रोकें",
+  "notifAlertaDeNome": "🚨 {nome} से अलर्ट",
+  "notifAlertaSegurancaGenerico": "🚨 सुरक्षा अलर्ट",
+  "notifMonitSolicitacaoTitulo": "📍 स्थान अनुरोध",
+  "notifMonitSolicitacaoCorpo": "{nome} आपका स्थान माँग रहा है।",
+  "notifMonitAprovadoTitulo": "📍 स्थान जारी किया गया",
+  "notifMonitAprovadoCorpo": "{nome} ने आपको उनका स्थान देखने की अनुमति दी।",
+  "notifMonitNegadoTitulo": "📍 अनुरोध अस्वीकृत",
+  "notifMonitNegadoCorpo": "{nome} ने आपके स्थान अनुरोध को अस्वीकार कर दिया।",
+  "notifMonitBloqueadoTitulo": "📍 साझाकरण अवरुद्ध",
+  "notifMonitBloqueadoCorpo": "{nome} ने आपके साथ स्थान साझाकरण अवरुद्ध कर दिया।",
+  "notifMonitExpiradoTitulo": "📍 अनुरोध समाप्त",
+  "notifMonitExpiradoCorpo": "{nome} को भेजा गया आपका स्थान अनुरोध बिना उत्तर के समाप्त हो गया।",
+  "notifMonitContatoGenerico": "एक संपर्क",
+  "notifCheckinCanceladoCorpo": "अलार्म रद्द किया गया।"
 }

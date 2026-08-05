@@ -1,8 +1,6 @@
 {
   "@@locale": "ja",
-
   "appTituloConfiguracoes": "設定",
-
   "campoEmailLabel": "メールアドレス",
   "campoEmailObrigatorio": "メールアドレスを入力してください",
   "campoEmailInvalido": "無効なメールアドレスです",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "パスワードの確認",
   "campoConfirmarSenhaObrigatoria": "パスワードを確認してください",
   "senhasNaoCoincidem": "パスワードが一致しません",
-
   "botaoEntrar": "ログイン",
   "esqueciMinhaSenha": "パスワードをお忘れの方",
   "recuperacaoSenhaEmBreve": "パスワード復旧機能は近日公開予定です。",
@@ -28,19 +25,18 @@
   "emailNaoVerificadoReenviar": "メールを再送信",
   "emailVerificacaoReenviada": "確認メールを再送信しました。",
   "emailVerificacaoReenvioFalhou": "メールを再送信できませんでした。しばらくしてから再度お試しください。",
-
   "sairDaContaTitulo": "ログアウト",
   "sairDaContaConfirmar": "ログアウト",
-
   "contatoWhatsappSwitchLabel": "WhatsAppで通知する（$0.10 USD）",
   "whatsappSimultaneoTitulo": "WhatsAppでも送信する",
   "whatsappSimultaneoDescricao": "配信確認を待たずに、プッシュ通知と同時にWhatsAppでも即座にアラートを送信し、有効な連絡先ごとにウォレットから金額を差し引きます。",
-
   "alertaRecebidoTitulo": "安全警報を受信しました",
   "alertaRecebidoDe": "{nome}さんが危険な状態かもしれません",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "地図で位置を確認",
@@ -52,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "写真を共有できませんでした。",
   "alertaRecebidoFotoIndisponivel": "写真を読み込めませんでした。",
   "alertaRecebidoTentarNovo": "再試行",
-
   "carteiraTitulo": "クレジットウォレット",
   "carteiraMenuItem": "クレジットウォレット",
   "carteiraSaldoAtual": "現在の残高",
   "carteiraAteNEnvios": "最大{n}回送信可能",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "アプリ内アラートは完全無料です。WhatsAppによる予備通知は1件$0.10 USDかかります。",
@@ -77,7 +74,6 @@
   "loginFacebook": "Facebook",
   "naoTemConta": "アカウントをお持ちでないですか？",
   "cadastreSe": "新規登録",
-
   "cadastroSubtitulo": "始めるにはアカウントを作成してください",
   "campoNomeLabel": "氏名",
   "campoNomeObrigatorio": "お名前を入力してください",
@@ -87,29 +83,29 @@
   "botaoCriarConta": "アカウントを作成",
   "jaTemConta": "すでにアカウントをお持ちですか？",
   "facaLogin": "ログイン",
-
   "configuracoesIdiomaTitulo": "言語",
   "configuracoesIdiomaDescricao": "アプリの言語を選択してください。世界11言語に対応する準備が整っています。",
   "configuracoesIdiomaLabel": "アプリの言語",
   "idiomaAlteradoSnackbar": "🌐 言語が{idioma}に変更されました",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "セキュリティ",
   "tabFamilia": "家族",
   "tabMonitoramento": "モニタリング",
   "tabHistorico": "履歴",
   "tooltipAdicionarAlarme": "アラームを追加",
   "tooltipAuditoriaSensivel": "機密イベントの監査",
-
   "cancelar": "キャンセル",
   "confirmar": "確認",
   "salvar": "保存",
   "excluir": "削除",
   "fechar": "閉じる",
   "voltar": "戻る",
-
   "segurancaSelecioneTempo": "ゼロより長い時間を選択してください！",
   "segurancaCheckinDesarmado": "✅ チェックインを正常に解除しました！",
   "segurancaConfirmarSosTitulo": "SOSを確認しますか？",
@@ -132,7 +128,6 @@
   "deviceAdminDescricaoInativo": "緊急SOSの最後にアプリが自動的に画面をロックできるようにします。特別なAndroidの権限が必要で、一度だけ付与されます。",
   "deviceAdminDescricaoAtivo": "有効 — SOSシーケンスの最後に画面が自動的にロックされます。",
   "deviceAdminBotaoAtivar": "有効にする",
-
   "familiaAlarmeRemovido": "🗑️ アラームを正常に削除しました。",
   "familiaAlarmePausadoAte": "⏸️ アラームは本日の深夜0時まで一時停止しました。",
   "familiaAdicionarAlarme": "アラームを追加",
@@ -148,7 +143,11 @@
   "familiaToleranciaLabel": "「無事到着」確認までの猶予時間",
   "familiaMinutosAbrev": "{minutos}分",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "アラームを保存",
   "familiaAlarmesRotinaTitulo": "定期アラーム",
@@ -158,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "アラームを完全に削除しますか？",
   "familiaExcluirAlarmeConteudo": "アラーム「{etiqueta}」（{horario}）を完全に削除しますか？",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "本日はアラームを一時停止しますか？",
   "familiaPausarAlarmeConteudo": "アラーム「{etiqueta}」（{horario}）を深夜0時まで一時停止しますか？明日自動的に再度有効になります。",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "一時停止",
   "familiaPausadoAte0000": "深夜0時まで一時停止中",
   "familiaRetorna": "再開：{horario}（{dia}）",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ タップしてアラームを再度有効にする",
   "familiaContatosEmergenciaTitulo": "緊急連絡先",
@@ -179,9 +199,15 @@
   "familiaSemNome": "名前なし",
   "familiaReativadoComSucesso": "{etiqueta}（{horario}）を正常に再度有効にしました。",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "自分の位置情報の送信を許可",
   "monitoramentoSecaoVerLocalizacao": "家族の位置情報",
   "monitoramentoAdicionarContato": "連絡先を追加",
@@ -193,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "連絡先を削除",
   "monitoramentoExcluirContatoTitulo": "連絡先を削除しますか?",
   "monitoramentoExcluirContatoConteudo": "「{nome}」をモニタリングリストから削除しますか?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "モニタリング用の連絡先はまだ登録されていません。\n「+」をタップして最初の連絡先を追加してください。",
   "monitoramentoSolicitarLocalizacao": "位置情報をリクエスト",
   "monitoramentoVerNoMapa": "地図で見る",
   "monitoramentoAtualizadoHaMinutos": "{minutos}分前に更新",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "未リクエスト",
   "monitoramentoStatusAguardandoAprovacao": "承認待ち",
   "monitoramentoStatusAprovado": "承認済み",
@@ -212,41 +250,74 @@
   "monitoramentoErroSolicitar": "リクエストを送信できませんでした。もう一度お試しください。",
   "monitoramentoSolicitacaoRecebidaTitulo": "位置情報のリクエスト",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome}さんがあなたの位置情報をリクエストしています。許可しますか、それともブロックしますか?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "許可",
   "monitoramentoBloquearRecusar": "ブロック/拒否",
-
   "historicoFiltroTodos": "すべて",
   "historicoFiltroSistema": "システム",
   "historicoAgoraMesmo": "たった今",
   "historicoHaMinutos": "{minutos}分前",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "{horas}時間前",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "昨日",
   "historicoHaDias": "{dias}日前",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "このフィルターに該当するイベントが見つかりません。",
   "historicoLimparBotao": "履歴を消去",
   "historicoLimparConfirmarTitulo": "履歴を消去しますか？",
   "historicoLimparConfirmarConteudo": "この操作はこのカテゴリのメッセージを完全に削除します。元に戻すことはできません。",
-
   "contatosMaximoAtingido": "⚠️ すでに最大{max}件の連絡先を登録済みです。",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ 連絡先へのアクセス許可が拒否されました。",
   "contatoSemTelefone": "⚠️ この連絡先には電話番号が登録されていません。",
   "telefoneInvalido": "⚠️ 電話番号が無効です。",
   "contatoAdicionado": "✅ {nome}さんを緊急連絡先に追加しました！",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ リクエストを受け付けました。{nome}さんは24時間後に削除されます。",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "実際のPIN",
   "pinRealDescricao": "アプリへの通常アクセス用に4桁のPINを設定してください。",
   "pinRealHint": "4桁の数字を入力",
@@ -258,14 +329,18 @@
   "pinNaoDefinido": "⚠️ 未設定",
   "pinDefinidoComSucesso": "🔒 PINが正常に設定されました！",
   "pinNovaSenhaEmVigor24h": "🔒 リクエストを受け付けました。新しいパスワードは24時間後に有効になります。",
-
   "alterarPlanoFundo": "背景を変更",
   "planoFundoAlterado": "🎨 背景が変更されました！",
   "planoFundoPadrao": "クラシックライト（デフォルト）",
   "tamanhoLetrasTitulo": "文字サイズ",
   "tamanhoLetrasAlterado": "🔤 文字サイズ：{rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "プレミアムプラン",
   "premiumModalDestaque": "Guardião-Xの全機能が無制限に",
   "beneficioLocalizacaoTempoReal": "リアルタイムの位置情報共有。",
@@ -278,19 +353,23 @@
   "agoraNao": "今はしない",
   "assinarPreco": "月額9.90レアルで登録",
   "planoPremiumAtivado": "🎉 プレミアムプランが有効になりました！",
-
   "visualDoChatTitulo": "チャットの外観",
   "alertaSonoroTitulo": "サウンドアラート",
   "planoTitulo": "プラン",
   "contatosDescricao": "緊急時にアラートを受け取る家族を最大{max}人まで登録できます。",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "連絡先を削除",
   "adicionarContatoAgenda": "+ アドレス帳から連絡先を追加",
   "alertaSonoroDescricao": "チェックインのカウントダウン終了時に鳴るアラーム音と長さを選択してください。",
   "somAlarmeLabel": "アラーム音",
   "tooltipTestarSom": "音をテスト/再生",
   "somTesteVazio": "🔇 テスト用音声ファイルが空です。assets/soundsフォルダのプレースホルダーを差し替えてください。",
-
   "planoFamiliarAtivo": "ファミリープラン有効",
   "recursosPremiumDisponiveis": "すべてのプレミアム機能が利用可能",
   "premiumBadge": "プレミアム",
@@ -299,20 +378,17 @@
   "precoMensal": "11.99レアル",
   "porMes": "/月",
   "verMais": "もっと見る",
-
   "alarmeRotinaAtivoDescricao": "定期アラームが有効です。\n一時停止するには安全確認をしてください。",
   "alarmeRotinaFaseFinalDescricao": "最終チャンス！アラームが再び鳴りました。\n2分以内にPINを入力してください。入力がない場合、緊急アラートが送信されます。",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ 緊急アラートを送信しました！\n位置情報とメッセージがクラウドと登録済みの連絡先に送信されました。",
   "desligarAlarmeBotao": "アラームを止める",
   "fecharConfirmacaoBotao": "閉じる",
   "fecharConfirmacaoDica": "上にスワイプするか、閉じるをタップして続行してください",
-
   "cameraToqueOuVolume": "📸 ボタンをタップするか音量ボタンを押して写真を撮影",
   "enviando": "送信中...",
   "atencaoMaiuscula": "注意",
   "mensagemEnviadaAviso": "注意、写真と位置情報を含むメッセージが家族に送信されました。この操作は取り消せません。",
   "deslizeParaFechar": "上にスワイプして閉じる",
-
   "auditoriaSolicitacaoAprovada": "リクエストが承認されました。セキュリティとプライバシー保護のため、記録は2時間後に公開されます。",
   "auditoriaBloquearNovamenteTitulo": "再度ロックしますか？",
   "auditoriaBloquearNovamenteConteudo": "確認すると、機密記録へのアクセスは即座にロックされます。再度閲覧するには、新たにリクエストを行い、さらに2時間のセキュリティ待機時間が必要です。",
@@ -327,15 +403,19 @@
   "auditoriaSolicitarLiberacaoBotao": "機密履歴の公開をリクエストする",
   "auditoriaNenhumEvento": "閲覧が解除されました。まだ機密イベントは記録されていません。",
   "auditoriaPrazoLiberado": "セキュリティ待機期間が終了しました。このセッションの記録が公開されました。",
-
   "pinAlarmeDesligado": "アラーム停止",
   "pinSenhaIncorreta": "パスワードが間違っています",
   "pinConfirmeSeuPin": "PINを確認してください",
   "pinDigiteParaDesarmar": "チェックインを解除するにはPINを入力してください。",
   "pinDigiteParaContinuar": "続行するにはPINを入力してください。",
   "pinTempoTolerancia": "猶予時間：{segundos}秒",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "ホームに戻る",
   "historicoFiltroAlertasEnviados": "送信済みアラート",
   "dashboardSecaoPlanosTitulo": "プランを選択",
@@ -346,7 +426,6 @@
   "dashboardCentralAtendimentoTitulo": "カスタマーサポートセンター",
   "dashboardAvisoWhatsappCredito": "WhatsAppメッセージはオプション機能で、残高がプラスであることと、設定での事前有効化が必要です。",
   "dashboardAvisoGarantiaCancelamento": "プレミアムプランを最初の15日以内に解約した場合、手続き不要で支払額の50%を返金します。",
-
   "faqAppBarTitulo": "よくある質問（FAQ）",
   "faqTooltipInicio": "ホーム",
   "faqBuscaHint": "質問と回答を検索...",
@@ -375,12 +454,10 @@
   "faqResposta11": "WhatsAppチャットは、ユーザーのほとんどの質問やリクエストに自動で応答するようプログラムされています。「有人担当者と話す」メニューから行われたリクエストは、RMF Global社が定めたポリシー規定に従い、プレミアムプランのユーザーは最大48時間以内にこのサポートを優先的に受けられます。",
   "faqPergunta12": "緊急アラートメッセージは、Guardião-Xアプリがインストールされている登録番号にのみ送信されますか？",
   "faqResposta12": "いいえ。両方の携帯電話にアプリをインストールしておくことを推奨しますが、受信側の携帯電話にGuardião-Xがインストールされていない場合でも、緊急アラートはSMSまたはWhatsApp経由で送信されます。",
-
   "termosAppBarTitulo": "利用規約とプライバシー",
   "termosTabContrato": "同意契約",
   "termosTabPrivacidade": "プライバシーポリシー",
   "termosAvisoRodape": "この文書はGuardião-Xアプリの同意契約とプライバシーポリシーの概要です。ご不明な点がございましたら、アプリ内に記載のサポート窓口までご連絡ください。",
-
   "termosContratoTitulo1": "1. 目的とサービスの範囲",
   "termosContratoCorpo1": "本同意契約は、RMF Global LTDA（「RMF Global」）が開発・運営するGuardião-Xアプリの利用について定めるもので、セキュリティチェックイン、自動アラート、家族・信頼できる連絡先との位置情報共有、写真証拠の記録を通じて、個人の緊急事態においてユーザーを支援することを目的としています。Guardião-Xは個人の安全を補助するツールであり、公式の緊急機関（警察、消防、救急、またはお住まいの国の同等の緊急通報番号）その他の公的緊急サービスに代わるものではありません。差し迫った危険がある状況では、ユーザーは常に公式の緊急通報番号へ最初に連絡する必要があります。",
   "termosContratoTitulo2": "2. 位置情報の使用に関する同意（GPSおよびバックグラウンド位置情報）",
@@ -399,7 +476,6 @@
   "termosContratoCorpo8": "カスタマーサポートは主に自動化されたWhatsAppチャットで対応しており、ユーザーのほとんどの質問やリクエストに自動で応答するようプログラムされています。有人サポートへのリクエストは、RMF Globalが定めたポリシー規定に従い、プレミアムプランのユーザーは最大48（四十八）時間以内にこの有人サポートへの優先アクセスを得られます。",
   "termosContratoTitulo9": "9. 自由かつ明確な同意と撤回",
   "termosContratoCorpo9": "Guardião-Xアプリを使用し、そのセキュリティ機能を有効にすることにより、ユーザーは本契約に記載のとおり、緊急事態におけるGPS、個人データ、およびメディア（写真）の収集と使用について、自由に、十分な情報を得たうえで、かつ明確に同意することを宣言します。ユーザーは、アプリをアンインストールするか、アプリ内に記載のサポート窓口を通じてアカウントおよび関連データの削除を依頼することにより、第5条に記載のセキュリティ待機期間に従いつつ、いつでもこの同意を撤回できます。",
-
   "termosPrivacidadeTitulo1": "1. 収集するデータとその目的",
   "termosPrivacidadeCorpo1": "Guardião-Xのセキュリティ機能を実現するため、当社は以下を収集します：（a）予防アラートおよびパニックアラートの送信・保存のためにのみ使用される、リアルタイムおよびバックグラウンドでの位置情報（GPS/Background Location）、（b）パニックボタンまたは「撮影・抑止」機能の作動時に自動的に取得される写真その他のメディア、（c）ユーザーの登録情報および提供された緊急連絡先の情報（氏名・電話番号）、（d）アラート機能の動作に必要な端末の技術データ（接続状況、アプリのバージョン）。",
   "termosPrivacidadeTitulo2": "2. データ利用の目的",
@@ -413,5 +489,142 @@
   "termosPrivacidadeTitulo6": "6. ユーザーの権利（データ保護）",
   "termosPrivacidadeCorpo6": "適用されるデータ保護法（ブラジルのLGPD法第13.709/2018号など）に基づき、ユーザーはいつでも、アプリ内に記載のサポート窓口を通じて、自身の個人データへのアクセス、誤った登録情報の訂正、アカウントおよび保存されている個人データの削除、モニタリング連絡先に付与した許可の取り消しを請求できます。",
   "termosPrivacidadeTitulo7": "7. お問い合わせ",
-  "termosPrivacidadeCorpo7": "本プライバシーポリシーに関するご質問は、アプリのホーム画面に記載のサポート窓口（WhatsAppおよび法人所在地）を通じて、RMF Global LTDA（CNPJ 68.358.210/0001-90）までお寄せください。"
+  "termosPrivacidadeCorpo7": "本プライバシーポリシーに関するご質問は、アプリのホーム画面に記載のサポート窓口（WhatsAppおよび法人所在地）を通じて、RMF Global LTDA（CNPJ 68.358.210/0001-90）までお寄せください。",
+  "footerTermosLink": "利用規約および同意契約",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA（RMFグローバル合同会社）",
+  "footerEmpresaEndereco": "ブラジル ミナスジェライス州 ベロオリゾンテ市 セントロ地区 リオデジャネイロ通り243番地802号室、郵便番号30160-040",
+  "footerEmpresaCnpj": "法人登録番号（CNPJ）68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "プレミアムプランを解約しますか？",
+  "premiumCancelarConfirmConteudo": "すぐに無料プランに戻り、無料プランの月間上限が適用されます。",
+  "premiumCancelarConfirmBotao": "プレミアムを解約",
+  "premiumCanceladoSnackbar": "プレミアムプランが解約されました。現在は無料プランです。",
+  "premiumAssinarBotaoComPreco": "プレミアムに登録 — {preco}",
+  "premiumModalNotaRodape": "* 追加のWhatsApp送信はオプション機能で、「設定」ページで有効にでき、メッセージ1件につき US$0.10 の料金がかかります。",
+  "premiumCancelarBotaoModal": "プレミアムプランを解約",
+  "familiaEtiquetaPadrao": "定期アラーム",
+  "familiaDiasNuncaLabel": "なし",
+  "familiaDiasTodosLabel": "毎日",
+  "familiaDiasSegASexLabel": "月〜金",
+  "familiaDiaAbrevSeg": "月",
+  "familiaDiaAbrevTer": "火",
+  "familiaDiaAbrevQua": "水",
+  "familiaDiaAbrevQui": "木",
+  "familiaDiaAbrevSex": "金",
+  "familiaDiaAbrevSab": "土",
+  "familiaDiaAbrevDom": "日",
+  "familiaDiaInicialSeg": "月",
+  "familiaDiaInicialTer": "火",
+  "familiaDiaInicialQua": "水",
+  "familiaDiaInicialQui": "木",
+  "familiaDiaInicialSex": "金",
+  "familiaDiaInicialSab": "土",
+  "familiaDiaInicialDom": "日",
+  "familiaAcaoPausar": "一時停止",
+  "familiaAcaoExcluir": "削除",
+  "familiaAcaoEditar": "編集",
+  "familiaPinMotivoTexto": "「家族」タブで定期アラームを{acao}しようとした際、PINが2回連続で間違って入力されました。",
+  "historicoAlarmeAtivadoTitulo": "定期アラームが有効になりました",
+  "historicoAlarmeDesativadoTitulo": "定期アラームが無効になりました",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta}（{horario}）が有効になりました。",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta}（{horario}）が無効になりました。",
+  "historicoAlarmeRemovidoTitulo": "定期アラームが削除されました",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta}（{horario}）が削除されました。",
+  "historicoAlarmePausadoTitulo": "定期アラームが一時停止されました",
+  "historicoAlarmePausadoDescricao": "{etiqueta}（{horario}）が0:00まで一時停止されました。",
+  "historicoAlarmeReativadoTitulo": "定期アラームが再開されました",
+  "historicoAlarmeReativadoDescricao": "{etiqueta}（{horario}）がユーザーによって再開されました。",
+  "historicoAlarmeCriadoTitulo": "定期アラームが作成されました",
+  "historicoAlarmeEditadoTitulo": "定期アラームが編集されました",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta}　{horario}（{dias}）。",
+  "historicoContatoAdicionadoTitulo": "緊急連絡先が追加されました",
+  "historicoContatoAdicionadoDescricao": "{nome}が緊急連絡先として登録されました。",
+  "historicoContatoExclusaoSolicitadaTitulo": "連絡先の削除がリクエストされました",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome}は24時間以内に完全に削除されます。",
+  "historicoPinDefinidoTitulo": "アクセスPINが設定されました",
+  "historicoPinDefinidoDescricao": "アクセスPINが登録され、即座に有効になりました（初回登録のため、セキュリティ待機期間はありません）。",
+  "historicoPinAlteracaoSolicitadaTitulo": "PINの変更がリクエストされました",
+  "historicoPinAlteracaoSolicitadaDescricao": "新しいアクセスパスワードは保留中で、24時間後に有効になります。",
+  "historicoPlanoFundoAlteradoTitulo": "背景が変更されました",
+  "historicoPlanoFundoAlteradoDescricao": "新しい背景が選択されました：{nome}。",
+  "historicoCronometroAtivadoTitulo": "タイマーが起動しました",
+  "historicoCronometroAtivadoDescricao": "安全チェックインが開始されました。時間：{horas}時間{minutos}分。",
+  "historicoCheckinDesarmadoTitulo": "チェックインが正常に解除されました",
+  "historicoCheckinDesarmadoDescricao": "ユーザーが正しいPINで安全タイマーを停止/解除しました。",
+  "historicoCheckinRotinaConfirmadoTitulo": "定期チェックインが確認されました",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}：ユーザーが「無事到着」を正常に確認しました。",
+  "historicoCheckinRotinaUltimaChanceTitulo": "定期チェックイン — 最終チャンス",
+  "historicoCheckinRotinaUltimaChanceDescricao": "猶予時間が確認なく終了しました。アラームが再び鳴っており、緊急アラート発報まで残り2分です。",
+  "historicoAlertaEmergenciaRotinaTitulo": "緊急アラートが発報されました（定期）",
+  "historicoAlertaEmergenciaTitulo": "緊急アラートが発報されました",
+  "historicoAlertaEmergenciaDescricao": "緊急SMSが登録済みの連絡先に送信されました。位置情報：{localizacao}",
+  "historicoTentativaDesarmeTitulo": "誤ったPINでの解除試行",
+  "historicoTentativaDesarmeDescricao": "{motivo} 緊急連絡先にアラートが送信されました。位置情報：{localizacao}",
+  "historicoSosCacheTitulo": "物理ボタンによるSOSが発報されました（キャッシュ位置情報）",
+  "historicoSosCacheDescricao": "最後に確認されたキャッシュ位置情報を含む緊急SMSが即座に送信されました。位置情報：{localizacao}",
+  "historicoSosAtualizadoTitulo": "物理ボタンによるSOS — 位置情報を更新",
+  "historicoSosAtualizadoDescricao": "リアルタイム位置情報を含む2通目の緊急SMSが送信されました。位置情報：{localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "写真証拠が記録されました",
+  "historicoEvidenciaFotograficaDescricao": "救助データを含むSMSが緊急連絡先に送信されました。",
+  "historicoFotoSosSmsTitulo": "SOS写真がSMSで送信されました",
+  "historicoFotoSosSmsDescricao": "写真リンクと位置情報を含むSMSが緊急連絡先に送信されました。写真：{fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "位置情報が利用できません（端末のGPSサービスが無効です）。",
+  "smsLocalizacaoIndisponivelPermissao": "位置情報が利用できません（位置情報の権限が拒否されました）。",
+  "smsLocalizacaoIndisponivelFalha": "端末の現在位置を取得できませんでした。",
+  "smsContextoNaoInformado": "ユーザーによる状況メモの入力はありません。",
+  "smsAlertaEmergenciaCorpo": "緊急アラート！安全チェックインが完了していません。\n位置情報：{localizacao}\n状況：{contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "安全システムを早期解除しようとした際、PINが2回連続で間違って入力されました。",
+  "smsTentativaDesarmeCorpo": "⚠️ セキュリティアラート：誤ったパスワードでの解除試行！\n{motivo}\n位置情報：{localizacao}",
+  "smsSosContextoPadrao": "物理緊急ボタン（音量+）によりSOSが発報されました。",
+  "smsSosImediatoCorpo": "🚨 緊急SOS（物理ボタン）！\n位置情報（最終確認）：{localizacao}\n状況：{contexto}\n（この後リアルタイム位置情報の更新が送信されます。）",
+  "smsLocalizacaoCacheIndisponivel": "キャッシュされた位置情報がありません — リアルタイム更新を待っています。",
+  "smsSosAtualizadoCorpo": "🚨 緊急SOS（リアルタイム更新）！\n更新された位置情報：{localizacao}\n状況：{contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "送信時点で位置情報を取得できませんでした。",
+  "smsFotoCorpo": "📷 SOS中に写真証拠が記録されました！\n写真：{fotoUrl}\n位置情報：{localizacao}",
+  "smsResgateCorpo": "🚨 写真証拠が記録されました！\n写真と位置情報がクラウドに送信されました。\nアクセス：{link}\nログイン：{login}\nパスワード：{senha}\nこの操作は取り消せません。",
+  "temaAzulProfundo": "ディープブルー",
+  "temaCinzaPlatina": "プラチナグレー",
+  "temaLuzDoAmanhecer": "夜明けの光",
+  "temaVerdeBotanico": "ボタニカルグリーン",
+  "temaRosaClaro": "ライトピンク",
+  "temaLuzClassica": "クラシックライト",
+  "fontTamanhoPequeno": "小",
+  "fontTamanhoPadrao": "標準",
+  "fontTamanhoGrande": "大",
+  "somNome1": "クラシックビープ",
+  "somNome2": "タクティカルサイレン",
+  "somNome3": "緊急アラーム",
+  "somNome4": "甲高いアラート",
+  "somNome5": "アーバンリング",
+  "somNome6": "アラートベル",
+  "somNome7": "セキュリティホーン",
+  "somNome8": "産業用アラーム",
+  "somNome9": "パトカーサイレン",
+  "somNome10": "サイレントトーン",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}：猶予時間が終了した後も、最終2分間の期限内に定期チェックインが確認されませんでした。",
+  "notifCanalCheckinNome": "定期チェックイン",
+  "notifCanalCheckinDescricao": "登録済みの定期アラームに関する安全チェックインのリマインダー。",
+  "notifCanalAlertaRecebidoNome": "受信した緊急アラート",
+  "notifCanalAlertaRecebidoDescricao": "この端末を緊急連絡先として登録した連絡先からの安全アラート。",
+  "notifCanalMonitoramentoNome": "位置情報モニタリング",
+  "notifCanalMonitoramentoDescricao": "「モニタリング」タブから送信された位置情報共有リクエストへの返信。",
+  "notifCanalSolicitacaoMonitoramentoNome": "受信した位置情報リクエスト",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "家族があなたのリアルタイム位置情報を見ようとリクエストした際の優先アラート — 承認または拒否が必要です。",
+  "notifCheckinCorpo": "タップしてアラームをキャンセル。",
+  "notifAlarmeSegurancaTitulo": "セキュリティアラーム",
+  "notifAlarmeSegurancaCorpo": "安全を確認するか、アラームを一時停止してください！",
+  "notifPausarAlarmeAcao": "⏸️ アラームを一時停止",
+  "notifAlertaDeNome": "🚨 {nome}からのアラート",
+  "notifAlertaSegurancaGenerico": "🚨 セキュリティアラート",
+  "notifMonitSolicitacaoTitulo": "📍 位置情報リクエスト",
+  "notifMonitSolicitacaoCorpo": "{nome}があなたの位置情報をリクエストしています。",
+  "notifMonitAprovadoTitulo": "📍 位置情報が公開されました",
+  "notifMonitAprovadoCorpo": "{nome}があなたに位置情報の閲覧を許可しました。",
+  "notifMonitNegadoTitulo": "📍 リクエストが拒否されました",
+  "notifMonitNegadoCorpo": "{nome}があなたの位置情報リクエストを拒否しました。",
+  "notifMonitBloqueadoTitulo": "📍 共有がブロックされました",
+  "notifMonitBloqueadoCorpo": "{nome}があなたとの位置情報共有をブロックしました。",
+  "notifMonitExpiradoTitulo": "📍 リクエストが期限切れになりました",
+  "notifMonitExpiradoCorpo": "{nome}への位置情報リクエストは応答がないまま期限切れになりました。",
+  "notifMonitContatoGenerico": "連絡先の一人",
+  "notifCheckinCanceladoCorpo": "アラームがキャンセルされました。"
 }

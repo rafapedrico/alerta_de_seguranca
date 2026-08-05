@@ -1,8 +1,6 @@
 {
   "@@locale": "de",
-
   "appTituloConfiguracoes": "Einstellungen",
-
   "campoEmailLabel": "E-Mail",
   "campoEmailObrigatorio": "Bitte E-Mail eingeben",
   "campoEmailInvalido": "Ungültige E-Mail",
@@ -12,7 +10,6 @@
   "campoConfirmarSenhaLabel": "Passwort bestätigen",
   "campoConfirmarSenhaObrigatoria": "Bitte Passwort bestätigen",
   "senhasNaoCoincidem": "Die Passwörter stimmen nicht überein",
-
   "botaoEntrar": "Anmelden",
   "esqueciMinhaSenha": "Passwort vergessen",
   "recuperacaoSenhaEmBreve": "Passwort-Wiederherstellung bald verfügbar.",
@@ -28,19 +25,18 @@
   "emailNaoVerificadoReenviar": "E-Mail erneut senden",
   "emailVerificacaoReenviada": "Bestätigungs-E-Mail erneut gesendet.",
   "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
-
   "sairDaContaTitulo": "Abmelden",
   "sairDaContaConfirmar": "Abmelden",
-
   "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (0,10 $ USD)",
   "whatsappSimultaneoTitulo": "Auch über WhatsApp senden",
   "whatsappSimultaneoDescricao": "Sendet den Alarm sofort per WhatsApp zusammen mit der Push-Benachrichtigung, ohne auf die Zustellbestätigung zu warten, und zieht den Betrag für jeden aktivierten Kontakt von der Wallet ab.",
-
   "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
   "alertaRecebidoDe": "{nome} könnte in Gefahr sein",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "Standort auf der Karte anzeigen",
@@ -52,14 +48,15 @@
   "alertaRecebidoFalhaCompartilhar": "Foto konnte nicht geteilt werden.",
   "alertaRecebidoFotoIndisponivel": "Foto konnte nicht geladen werden.",
   "alertaRecebidoTentarNovo": "Erneut versuchen",
-
   "carteiraTitulo": "Guthaben-Wallet",
   "carteiraMenuItem": "Guthaben-Wallet",
   "carteiraSaldoAtual": "Aktuelles Guthaben",
   "carteiraAteNEnvios": "bis zu {n} Versendungen",
   "@carteiraAteNEnvios": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "carteiraNotaExplicativa": "Warnungen über die App sind 100% kostenlos. WhatsApp-Notfallnachrichten kosten je 0,10 $ USD.",
@@ -77,7 +74,6 @@
   "loginFacebook": "Facebook",
   "naoTemConta": "Noch kein Konto?",
   "cadastreSe": "Registrieren",
-
   "cadastroSubtitulo": "Erstelle dein Konto, um loszulegen",
   "campoNomeLabel": "Vollständiger Name",
   "campoNomeObrigatorio": "Bitte Namen eingeben",
@@ -87,29 +83,29 @@
   "botaoCriarConta": "Konto erstellen",
   "jaTemConta": "Schon ein Konto?",
   "facaLogin": "Anmelden",
-
   "configuracoesIdiomaTitulo": "Sprache",
   "configuracoesIdiomaDescricao": "Wähle die App-Sprache. Unterstützung für 11 globale Sprachen vorbereitet.",
   "configuracoesIdiomaLabel": "App-Sprache",
   "idiomaAlteradoSnackbar": "🌐 Sprache geändert zu {idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "Sicherheit",
   "tabFamilia": "Familie",
   "tabMonitoramento": "Überwachung",
   "tabHistorico": "Verlauf",
   "tooltipAdicionarAlarme": "Alarm hinzufügen",
   "tooltipAuditoriaSensivel": "Prüfung sensibler Ereignisse",
-
   "cancelar": "Abbrechen",
   "confirmar": "Bestätigen",
   "salvar": "Speichern",
   "excluir": "Löschen",
   "fechar": "Schließen",
   "voltar": "Zurück",
-
   "segurancaSelecioneTempo": "Bitte wähle eine Zeit größer als null!",
   "segurancaCheckinDesarmado": "✅ Check-in erfolgreich deaktiviert!",
   "segurancaConfirmarSosTitulo": "SOS bestätigen?",
@@ -132,7 +128,6 @@
   "deviceAdminDescricaoInativo": "Ermöglicht der App, den Bildschirm am Ende des Notfall-SOS automatisch zu sperren. Erfordert eine spezielle Android-Berechtigung, die einmalig erteilt wird.",
   "deviceAdminDescricaoAtivo": "Aktiviert — der Bildschirm wird am Ende der SOS-Sequenz automatisch gesperrt.",
   "deviceAdminBotaoAtivar": "Aktivieren",
-
   "familiaAlarmeRemovido": "🗑️ Alarm erfolgreich entfernt.",
   "familiaAlarmePausadoAte": "⏸️ Alarm bis heute Mitternacht pausiert.",
   "familiaAdicionarAlarme": "Alarm hinzufügen",
@@ -148,7 +143,11 @@
   "familiaToleranciaLabel": "Toleranz zur Bestätigung \"Bin sicher angekommen\"",
   "familiaMinutosAbrev": "{minutos} Min",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "Alarm speichern",
   "familiaAlarmesRotinaTitulo": "Routinealarme",
@@ -158,18 +157,39 @@
   "familiaExcluirAlarmeTitulo": "Alarm endgültig löschen?",
   "familiaExcluirAlarmeConteudo": "Möchtest du den Alarm \"{etiqueta}\" ({horario}) endgültig löschen?",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "Alarm für heute pausieren?",
   "familiaPausarAlarmeConteudo": "Möchtest du den Alarm \"{etiqueta}\" ({horario}) bis Mitternacht pausieren? Er wird morgen automatisch wieder aktiv.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "Pausieren",
   "familiaPausadoAte0000": "Pausiert bis Mitternacht",
   "familiaRetorna": "Kehrt zurück: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ Zum Reaktivieren des Alarms tippen",
   "familiaContatosEmergenciaTitulo": "Notfallkontakte",
@@ -179,9 +199,15 @@
   "familiaSemNome": "Kein Name",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) erfolgreich reaktiviert.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "Senden meines Standorts erlauben",
   "monitoramentoSecaoVerLocalizacao": "Standort von Familienmitgliedern",
   "monitoramentoAdicionarContato": "Kontakt hinzufügen",
@@ -193,12 +219,24 @@
   "monitoramentoExcluirContatoTooltip": "Kontakt löschen",
   "monitoramentoExcluirContatoTitulo": "Kontakt löschen?",
   "monitoramentoExcluirContatoConteudo": "Möchten Sie „{nome}“ aus Ihrer Überwachungsliste entfernen?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "Noch keine Überwachungskontakte hinzugefügt.\nTippen Sie auf „+“, um den ersten hinzuzufügen.",
   "monitoramentoSolicitarLocalizacao": "Standort anfordern",
   "monitoramentoVerNoMapa": "Auf der Karte anzeigen",
   "monitoramentoAtualizadoHaMinutos": "Vor {minutos} Min. aktualisiert",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "Nicht angefragt",
   "monitoramentoStatusAguardandoAprovacao": "Warten auf Genehmigung",
   "monitoramentoStatusAprovado": "Genehmigt",
@@ -212,41 +250,74 @@
   "monitoramentoErroSolicitar": "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
   "monitoramentoSolicitacaoRecebidaTitulo": "Standortanfrage",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} fordert Ihren Standort an. Erlauben oder Blockieren?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "Erlauben",
   "monitoramentoBloquearRecusar": "Blockieren/Ablehnen",
-
   "historicoFiltroTodos": "Alle",
   "historicoFiltroSistema": "System",
   "historicoAgoraMesmo": "Gerade eben",
   "historicoHaMinutos": "Vor {minutos} Min",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "Vor {horas}h",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "Gestern",
   "historicoHaDias": "Vor {dias} Tagen",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "Kein Ereignis für diesen Filter gefunden.",
   "historicoLimparBotao": "Verlauf löschen",
   "historicoLimparConfirmarTitulo": "Verlauf löschen?",
   "historicoLimparConfirmarConteudo": "Diese Aktion entfernt die Nachrichten dieser Kategorie dauerhaft. Sie kann nicht rückgängig gemacht werden.",
-
   "contatosMaximoAtingido": "⚠️ Du hast bereits das Maximum von {max} Kontakten registriert.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ Zugriff auf Kontakte wurde verweigert.",
   "contatoSemTelefone": "⚠️ Dieser Kontakt hat keine registrierte Telefonnummer.",
   "telefoneInvalido": "⚠️ Ungültige Telefonnummer.",
   "contatoAdicionado": "✅ {nome} zu den Notfallkontakten hinzugefügt!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "contatoRemocaoSolicitada": "⏳ Anfrage erhalten. {nome} wird in 24 Stunden entfernt.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "pinRealTitulo": "Echte PIN",
   "pinRealDescricao": "Lege eine 4-stellige PIN für den normalen App-Zugriff fest.",
   "pinRealHint": "4 Ziffern eingeben",
@@ -258,14 +329,18 @@
   "pinNaoDefinido": "⚠️ Nicht festgelegt",
   "pinDefinidoComSucesso": "🔒 PIN erfolgreich festgelegt!",
   "pinNovaSenhaEmVigor24h": "🔒 Anfrage erhalten. Das neue Passwort wird in 24 Stunden wirksam.",
-
   "alterarPlanoFundo": "Hintergrund ändern",
   "planoFundoAlterado": "🎨 Hintergrund geändert!",
   "planoFundoPadrao": "Klassisches Licht (Standard)",
   "tamanhoLetrasTitulo": "Textgröße",
   "tamanhoLetrasAlterado": "🔤 Textgröße: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "Premium-Plan",
   "premiumModalDestaque": "Alle Funktionen von Guardião-X, unbegrenzt",
   "beneficioLocalizacaoTempoReal": "Standort in Echtzeit geteilt.",
@@ -278,19 +353,23 @@
   "agoraNao": "Jetzt nicht",
   "assinarPreco": "Abonnieren 9,90 €/Monat",
   "planoPremiumAtivado": "🎉 Premium-Plan aktiviert!",
-
   "visualDoChatTitulo": "Chat-Erscheinungsbild",
   "alertaSonoroTitulo": "Tonalarm",
   "planoTitulo": "Plan",
   "contatosDescricao": "Registriere bis zu {max} Familienmitglieder, die den Notfallalarm erhalten.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "Kontakt löschen",
   "adicionarContatoAgenda": "+ Kontakt aus Adressbuch hinzufügen",
   "alertaSonoroDescricao": "Wähle den Ton und die Dauer des Alarms, der beim Ablauf des Check-in-Timers ausgelöst wird.",
   "somAlarmeLabel": "Alarmton",
   "tooltipTestarSom": "Ton testen/anhören",
   "somTesteVazio": "🔇 Leere Test-Tondatei. Ersetze den Platzhalter im Ordner assets/sounds.",
-
   "planoFamiliarAtivo": "Familienplan Aktiv",
   "recursosPremiumDisponiveis": "Alle Premium-Funktionen verfügbar",
   "premiumBadge": "Premium",
@@ -299,20 +378,17 @@
   "precoMensal": "11,99 €",
   "porMes": "/Monat",
   "verMais": "Mehr erfahren",
-
   "alarmeRotinaAtivoDescricao": "Routinealarm aktiv.\nBestätige deine Sicherheit, um zu pausieren.",
   "alarmeRotinaFaseFinalDescricao": "LETZTE CHANCE! Der Alarm hat erneut geklingelt.\nGib deine PIN innerhalb von 2 Minuten ein, sonst wird ein Notfallalarm gesendet.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Notfallalarm gesendet!\nDein Standort und die Nachricht wurden an die Cloud und an die registrierten Kontakte gesendet.",
   "desligarAlarmeBotao": "ALARM AUSSCHALTEN",
   "fecharConfirmacaoBotao": "SCHLIESSEN",
   "fecharConfirmacaoDica": "Nach oben wischen oder auf Schließen tippen, um fortzufahren",
-
   "cameraToqueOuVolume": "📸 Tippe auf die Taste oder drücke LAUTSTÄRKE, um das Foto zu machen",
   "enviando": "Wird gesendet...",
   "atencaoMaiuscula": "ACHTUNG",
   "mensagemEnviadaAviso": "ACHTUNG, EINE NACHRICHT MIT FOTO UND STANDORT WURDE AN DIE FAMILIE GESENDET. DIESER VORGANG KANN NICHT RÜCKGÄNGIG GEMACHT WERDEN.",
   "deslizeParaFechar": "Zum Schließen nach oben wischen",
-
   "auditoriaSolicitacaoAprovada": "Anfrage genehmigt. Aus Sicherheits- und Datenschutzgründen werden die Aufzeichnungen in 2 Stunden freigegeben.",
   "auditoriaBloquearNovamenteTitulo": "Erneut sperren?",
   "auditoriaBloquearNovamenteConteudo": "Nach der Bestätigung wird der Zugriff auf sensible Aufzeichnungen sofort gesperrt. Um sie erneut anzuzeigen, musst du eine neue Freigabe beantragen und weitere 2 Stunden Sicherheitswartezeit abwarten.",
@@ -327,15 +403,19 @@
   "auditoriaSolicitarLiberacaoBotao": "Freigabe des sensiblen Verlaufs beantragen",
   "auditoriaNenhumEvento": "Ansicht freigegeben. Noch keine sensiblen Ereignisse aufgezeichnet.",
   "auditoriaPrazoLiberado": "Sicherheitsfrist erfüllt. Aufzeichnungen für diese Sitzung freigegeben.",
-
   "pinAlarmeDesligado": "Alarm ausgeschaltet",
   "pinSenhaIncorreta": "falsches Passwort",
   "pinConfirmeSeuPin": "PIN BESTÄTIGEN",
   "pinDigiteParaDesarmar": "Gib deine PIN ein, um den Check-in zu deaktivieren.",
   "pinDigiteParaContinuar": "Gib deine PIN ein, um fortzufahren.",
   "pinTempoTolerancia": "Toleranzzeit: {segundos}s",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } },
-
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipInicio": "Zurück zum Start",
   "historicoFiltroAlertasEnviados": "Gesendete Alarme",
   "dashboardSecaoPlanosTitulo": "Wähle deinen Plan",
@@ -346,7 +426,6 @@
   "dashboardCentralAtendimentoTitulo": "Kundenservice-Center",
   "dashboardAvisoWhatsappCredito": "WhatsApp-Nachrichten sind eine optionale Funktion und hängen von einem positiven Guthaben und der vorherigen Aktivierung in den Einstellungen ab.",
   "dashboardAvisoGarantiaCancelamento": "Bei Kündigung des Premium-Plans innerhalb der ersten 15 Tage erhältst du 50 % des gezahlten Betrags zurück, ohne Aufwand.",
-
   "faqAppBarTitulo": "Häufig gestellte Fragen (FAQ)",
   "faqTooltipInicio": "Start",
   "faqBuscaHint": "In Fragen und Antworten suchen...",
@@ -375,12 +454,10 @@
   "faqResposta11": "Der WhatsApp-Chat wurde so programmiert, dass er die meisten Fragen und Anliegen der Nutzer automatisch beantwortet. Anfragen über das Menü „Mit einem persönlichen Mitarbeiter sprechen“ folgen den Regeln der von der RMF Global festgelegten Richtlinie, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem Support innerhalb von bis zu 48 Stunden erhalten.",
   "faqPergunta12": "Werden Notfallalarm-Nachrichten nur an registrierte Nummern gesendet, auf denen die Guardião-X-App installiert ist?",
   "faqResposta12": "Nein. Wir empfehlen, dass beide Telefone die App installiert haben, aber selbst wenn das Zieltelefon Guardião-X nicht hat, wird der Notfallalarm per SMS oder WhatsApp gesendet.",
-
   "termosAppBarTitulo": "Bedingungen und Datenschutz",
   "termosTabContrato": "Einwilligungsvertrag",
   "termosTabPrivacidade": "Datenschutzrichtlinie",
   "termosAvisoRodape": "Dieses Dokument fasst den Einwilligungsvertrag und die Datenschutzrichtlinie der Guardião-X-App zusammen. Bei Fragen kontaktiere uns über die in der App angegebenen Support-Kanäle.",
-
   "termosContratoTitulo1": "1. Zweck und Grenzen des Dienstes",
   "termosContratoCorpo1": "Dieser Einwilligungsvertrag regelt die Nutzung der Guardião-X-App, entwickelt und betrieben von RMF Global LTDA („RMF Global“), die den Nutzer bei persönlichen Notfällen durch Sicherheits-Check-ins, automatische Alarme, Standortfreigabe zwischen Familienmitgliedern und vertrauenswürdigen Kontakten sowie Erfassung von Fotobeweisen unterstützen soll. Guardião-X ist ein Hilfsmittel zur persönlichen Sicherheit und ersetzt NICHT die offiziellen Notdienste (Polizei - 190, Feuerwehr - 193, SAMU - 192, bzw. die entsprechenden Notrufnummern deines Landes) oder andere öffentliche Notdienste. Bei unmittelbarer Gefahr muss der Nutzer immer zuerst die offiziellen Notrufnummern kontaktieren.",
   "termosContratoTitulo2": "2. Einwilligung zur Standortnutzung (GPS und Hintergrundstandort)",
@@ -399,7 +476,6 @@
   "termosContratoCorpo8": "Der Kundenservice erfolgt primär über den automatisierten WhatsApp-Chat, der so programmiert ist, dass er die meisten Fragen und Anliegen der Nutzer automatisch beantwortet. Anfragen nach persönlichem Support folgen den von RMF Global festgelegten Richtlinien, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem persönlichen Support innerhalb von bis zu 48 (achtundvierzig) Stunden erhalten.",
   "termosContratoTitulo9": "9. Freie, eindeutige Einwilligung und Widerruf",
   "termosContratoCorpo9": "Durch die Nutzung der Guardião-X-App und die Aktivierung ihrer Sicherheitsfunktionen erklärt der Nutzer, dass er frei, informiert und eindeutig in die Erhebung und Nutzung von GPS, personenbezogenen Daten und Medien (Fotos) in Notfallsituationen einwilligt, wie in diesem Vertrag beschrieben. Der Nutzer kann diese Einwilligung jederzeit widerrufen, indem er die App deinstalliert oder die Löschung seines Kontos und der zugehörigen Daten über die in der App angegebenen Support-Kanäle beantragt, vorbehaltlich der in Abschnitt 5 beschriebenen Sicherheitswartezeiten.",
-
   "termosPrivacidadeTitulo1": "1. Erhobene Daten und Zweck",
   "termosPrivacidadeCorpo1": "Um die Sicherheitsfunktionen von Guardião-X zu ermöglichen, erheben wir: (a) geografischen Standort (GPS) in Echtzeit und im Hintergrund (Background Location), ausschließlich zum Senden und Speichern präventiver Alarme und Panikalarme; (b) Fotos und andere Medien, die automatisch beim Auslösen des Panikknopfs oder der Funktion „Erfassung und Abschreckung“ aufgenommen werden; (c) Registrierungsdaten des Nutzers und der angegebenen Notfallkontakte (Name und Telefonnummer); und (d) technische Gerätedaten, die für die Funktion der Alarme erforderlich sind (Verbindungsstatus, App-Version).",
   "termosPrivacidadeTitulo2": "2. Zweck der Datennutzung",
@@ -413,5 +489,142 @@
   "termosPrivacidadeTitulo6": "6. Rechte des Nutzers (Datenschutz)",
   "termosPrivacidadeCorpo6": "Gemäß den geltenden Datenschutzvorschriften (wie der brasilianischen LGPD - Gesetz Nr. 13.709/2018, oder der DSGVO je nach Rechtsraum) kann der Nutzer jederzeit Zugang zu seinen personenbezogenen Daten, die Berichtigung fehlerhafter Registrierungsdaten, die Löschung seines Kontos und der gespeicherten personenbezogenen Daten sowie den Widerruf von Berechtigungen für Überwachungskontakte über die in der App angegebenen Support-Kanäle beantragen.",
   "termosPrivacidadeTitulo7": "7. Kontakt",
-  "termosPrivacidadeCorpo7": "Fragen zu dieser Datenschutzrichtlinie können an RMF Global LTDA (CNPJ 68.358.210/0001-90) über die auf dem Startbildschirm der App angegebenen Support-Kanäle (WhatsApp und institutionelle Adresse) gerichtet werden."
+  "termosPrivacidadeCorpo7": "Fragen zu dieser Datenschutzrichtlinie können an RMF Global LTDA (CNPJ 68.358.210/0001-90) über die auf dem Startbildschirm der App angegebenen Support-Kanäle (WhatsApp und institutionelle Adresse) gerichtet werden.",
+  "footerTermosLink": "Nutzungsbedingungen und Einwilligungsvertrag",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA",
+  "footerEmpresaEndereco": "Rio-de-Janeiro-Straße, Nr. 243, Raum 802, Centro, Belo Horizonte - MG, Brasilien, PLZ 30160-040",
+  "footerEmpresaCnpj": "Handelsregisternummer (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "Premium-Plan kündigen?",
+  "premiumCancelarConfirmConteudo": "Sie kehren sofort zum kostenlosen Plan mit dessen monatlichen Limits zurück.",
+  "premiumCancelarConfirmBotao": "Premium kündigen",
+  "premiumCanceladoSnackbar": "Premium-Plan gekündigt. Sie befinden sich jetzt im kostenlosen Plan.",
+  "premiumAssinarBotaoComPreco": "Premium abonnieren — {preco}",
+  "premiumModalNotaRodape": "* Der zusätzliche WhatsApp-Versand ist eine optionale Funktion, die auf der Seite „Einstellungen“ aktiviert werden kann und 0,10 US$ pro Nachricht kostet.",
+  "premiumCancelarBotaoModal": "Premium-Plan kündigen",
+  "familiaEtiquetaPadrao": "Routinealarm",
+  "familiaDiasNuncaLabel": "Nie",
+  "familiaDiasTodosLabel": "Täglich",
+  "familiaDiasSegASexLabel": "Mo bis Fr",
+  "familiaDiaAbrevSeg": "Mo",
+  "familiaDiaAbrevTer": "Di",
+  "familiaDiaAbrevQua": "Mi",
+  "familiaDiaAbrevQui": "Do",
+  "familiaDiaAbrevSex": "Fr",
+  "familiaDiaAbrevSab": "Sa",
+  "familiaDiaAbrevDom": "So",
+  "familiaDiaInicialSeg": "M",
+  "familiaDiaInicialTer": "D",
+  "familiaDiaInicialQua": "M",
+  "familiaDiaInicialQui": "D",
+  "familiaDiaInicialSex": "F",
+  "familiaDiaInicialSab": "S",
+  "familiaDiaInicialDom": "S",
+  "familiaAcaoPausar": "pausieren",
+  "familiaAcaoExcluir": "löschen",
+  "familiaAcaoEditar": "bearbeiten",
+  "familiaPinMotivoTexto": "PIN 2 Mal hintereinander falsch eingegeben beim Versuch, einen Routinealarm im Tab „Familie“ zu {acao}.",
+  "historicoAlarmeAtivadoTitulo": "Routinealarm aktiviert",
+  "historicoAlarmeDesativadoTitulo": "Routinealarm deaktiviert",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta} ({horario}) wurde aktiviert.",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta} ({horario}) wurde deaktiviert.",
+  "historicoAlarmeRemovidoTitulo": "Routinealarm entfernt",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta} ({horario}) wurde entfernt.",
+  "historicoAlarmePausadoTitulo": "Routinealarm pausiert",
+  "historicoAlarmePausadoDescricao": "{etiqueta} ({horario}) wurde bis Mitternacht pausiert.",
+  "historicoAlarmeReativadoTitulo": "Routinealarm reaktiviert",
+  "historicoAlarmeReativadoDescricao": "{etiqueta} ({horario}) wurde vom Benutzer reaktiviert.",
+  "historicoAlarmeCriadoTitulo": "Routinealarm erstellt",
+  "historicoAlarmeEditadoTitulo": "Routinealarm bearbeitet",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} um {horario} ({dias}).",
+  "historicoContatoAdicionadoTitulo": "Notfallkontakt hinzugefügt",
+  "historicoContatoAdicionadoDescricao": "{nome} wurde als Notfallkontakt registriert.",
+  "historicoContatoExclusaoSolicitadaTitulo": "Löschung des Kontakts angefordert",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} wird innerhalb von 24 Stunden endgültig entfernt.",
+  "historicoPinDefinidoTitulo": "Zugangs-PIN festgelegt",
+  "historicoPinDefinidoDescricao": "Zugangs-PIN registriert und sofort aktiviert (Ersteinrichtung, keine Sicherheitswartezeit).",
+  "historicoPinAlteracaoSolicitadaTitulo": "PIN-Änderung angefordert",
+  "historicoPinAlteracaoSolicitadaDescricao": "Neues Zugangspasswort ausstehend, es tritt in 24 Stunden in Kraft.",
+  "historicoPlanoFundoAlteradoTitulo": "Hintergrund geändert",
+  "historicoPlanoFundoAlteradoDescricao": "Neuer Hintergrund ausgewählt: {nome}.",
+  "historicoCronometroAtivadoTitulo": "Timer aktiviert",
+  "historicoCronometroAtivadoDescricao": "Sicherheits-Check-in gestartet mit einer Dauer von {horas}Std{minutos}Min.",
+  "historicoCheckinDesarmadoTitulo": "Check-in erfolgreich deaktiviert",
+  "historicoCheckinDesarmadoDescricao": "Der Sicherheitstimer wurde vom Benutzer mit dem richtigen PIN gestoppt/deaktiviert.",
+  "historicoCheckinRotinaConfirmadoTitulo": "Routine-Check-in bestätigt",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: Der Benutzer hat „Bin gut angekommen“ erfolgreich bestätigt.",
+  "historicoCheckinRotinaUltimaChanceTitulo": "Routine-Check-in — letzte Chance",
+  "historicoCheckinRotinaUltimaChanceDescricao": "Die Toleranzzeit ist ohne Bestätigung abgelaufen. Der Alarm klingelt erneut, mit einer letzten Frist von 2 Minuten, bevor der Notfallalarm ausgelöst wird.",
+  "historicoAlertaEmergenciaRotinaTitulo": "Notfallalarm ausgelöst (Routine)",
+  "historicoAlertaEmergenciaTitulo": "Notfallalarm ausgelöst",
+  "historicoAlertaEmergenciaDescricao": "Notfall-SMS an die registrierten Kontakte gesendet. Standort: {localizacao}",
+  "historicoTentativaDesarmeTitulo": "Deaktivierungsversuch mit falschem PIN",
+  "historicoTentativaDesarmeDescricao": "{motivo} Alarm an die Notfallkontakte gesendet. Standort: {localizacao}",
+  "historicoSosCacheTitulo": "SOS über physischen Knopf ausgelöst (zwischengespeicherter Standort)",
+  "historicoSosCacheDescricao": "Sofortige Notfall-SMS mit dem letzten bekannten zwischengespeicherten Standort gesendet. Standort: {localizacao}",
+  "historicoSosAtualizadoTitulo": "SOS über physischen Knopf — Standort aktualisiert",
+  "historicoSosAtualizadoDescricao": "Zweite Notfall-SMS mit dem Echtzeit-Standort gesendet. Standort: {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "Fotografischer Beweis erfasst",
+  "historicoEvidenciaFotograficaDescricao": "SMS mit Rettungsdaten an die Notfallkontakte gesendet.",
+  "historicoFotoSosSmsTitulo": "SOS-Foto per SMS gesendet",
+  "historicoFotoSosSmsDescricao": "SMS mit dem Fotolink und dem Standort an die Notfallkontakte gesendet. Foto: {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "Standort nicht verfügbar (GPS-Dienst auf dem Gerät deaktiviert).",
+  "smsLocalizacaoIndisponivelPermissao": "Standort nicht verfügbar (Standortberechtigung verweigert).",
+  "smsLocalizacaoIndisponivelFalha": "Der aktuelle Standort des Geräts konnte nicht ermittelt werden.",
+  "smsContextoNaoInformado": "Keine Kontextnotiz vom Benutzer angegeben.",
+  "smsAlertaEmergenciaCorpo": "NOTFALLALARM! Ich habe meinen Sicherheits-Check-in nicht durchgeführt.\nStandort: {localizacao}\nKontext: {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "Der PIN wurde 2 Mal hintereinander falsch eingegeben beim Versuch, das Sicherheitssystem vorzeitig zu deaktivieren.",
+  "smsTentativaDesarmeCorpo": "⚠️ SICHERHEITSALARM: DEAKTIVIERUNGSVERSUCH MIT FALSCHEM PASSWORT!\n{motivo}\nStandort: {localizacao}",
+  "smsSosContextoPadrao": "SOS über den physischen Notfallknopf ausgelöst (Lautstärke+).",
+  "smsSosImediatoCorpo": "🚨 NOTFALL-SOS (physischer Knopf)!\nStandort (zuletzt bekannt): {localizacao}\nKontext: {contexto}\n(Ein Update mit dem Echtzeit-Standort folgt in Kürze.)",
+  "smsLocalizacaoCacheIndisponivel": "Zwischengespeicherter Standort nicht verfügbar — Echtzeit-Update wird erwartet.",
+  "smsSosAtualizadoCorpo": "🚨 NOTFALL-SOS (Echtzeit-Update)!\nAktualisierter Standort: {localizacao}\nKontext: {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "Standort zum Zeitpunkt des Versands nicht verfügbar.",
+  "smsFotoCorpo": "📷 FOTOGRAFISCHER BEWEIS während des SOS erfasst!\nFoto: {fotoUrl}\nStandort: {localizacao}",
+  "smsResgateCorpo": "🚨 FOTOGRAFISCHER BEWEIS ERFASST!\nFotos und Standort in die Cloud gesendet.\nZugang: {link}\nBenutzername: {login}\nPasswort: {senha}\nDieser Vorgang ist unumkehrbar.",
+  "temaAzulProfundo": "Tiefblau",
+  "temaCinzaPlatina": "Platingrau",
+  "temaLuzDoAmanhecer": "Morgendämmerung",
+  "temaVerdeBotanico": "Botanisches Grün",
+  "temaRosaClaro": "Hellrosa",
+  "temaLuzClassica": "Klassisches Hell",
+  "fontTamanhoPequeno": "Klein",
+  "fontTamanhoPadrao": "Standard",
+  "fontTamanhoGrande": "Groß",
+  "somNome1": "Klassischer Piepton",
+  "somNome2": "Taktische Sirene",
+  "somNome3": "Notfallalarm",
+  "somNome4": "Schriller Alarm",
+  "somNome5": "Urbaner Ton",
+  "somNome6": "Alarmglocke",
+  "somNome7": "Sicherheitshupe",
+  "somNome8": "Industriealarm",
+  "somNome9": "Polizeisirene",
+  "somNome10": "Stiller Ton",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: Der Routine-Check-in wurde nicht innerhalb der letzten 2-Minuten-Frist bestätigt, selbst nachdem die Toleranzzeit bereits abgelaufen war.",
+  "notifCanalCheckinNome": "Routine-Check-in",
+  "notifCanalCheckinDescricao": "Erinnerungen an Sicherheits-Check-ins für die registrierten Routinealarme.",
+  "notifCanalAlertaRecebidoNome": "Notfallalarm Empfangen",
+  "notifCanalAlertaRecebidoDescricao": "Sicherheitsalarme von Kontakten, die dieses Gerät als Notfallkontakt registriert haben.",
+  "notifCanalMonitoramentoNome": "Standortüberwachung",
+  "notifCanalMonitoramentoDescricao": "Antworten auf Standortfreigabeanfragen, die im Tab „Überwachung“ gesendet wurden.",
+  "notifCanalSolicitacaoMonitoramentoNome": "Standortanfrage Empfangen",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "Prioritätsalarm, wenn ein Familienmitglied Ihren Echtzeit-Standort sehen möchte — erfordert Annehmen oder Ablehnen.",
+  "notifCheckinCorpo": "Tippen, um den Alarm abzubrechen.",
+  "notifAlarmeSegurancaTitulo": "Sicherheitsalarm",
+  "notifAlarmeSegurancaCorpo": "Bestätigen Sie Ihre Sicherheit oder pausieren Sie den Alarm!",
+  "notifPausarAlarmeAcao": "⏸️ Alarm Pausieren",
+  "notifAlertaDeNome": "🚨 Alarm von {nome}",
+  "notifAlertaSegurancaGenerico": "🚨 Sicherheitsalarm",
+  "notifMonitSolicitacaoTitulo": "📍 Standortanfrage",
+  "notifMonitSolicitacaoCorpo": "{nome} fordert Ihren Standort an.",
+  "notifMonitAprovadoTitulo": "📍 Standort freigegeben",
+  "notifMonitAprovadoCorpo": "{nome} hat Ihnen erlaubt, den Standort zu sehen.",
+  "notifMonitNegadoTitulo": "📍 Anfrage abgelehnt",
+  "notifMonitNegadoCorpo": "{nome} hat Ihre Standortanfrage abgelehnt.",
+  "notifMonitBloqueadoTitulo": "📍 Freigabe blockiert",
+  "notifMonitBloqueadoCorpo": "{nome} hat die Standortfreigabe mit Ihnen blockiert.",
+  "notifMonitExpiradoTitulo": "📍 Anfrage abgelaufen",
+  "notifMonitExpiradoCorpo": "Ihre Standortanfrage an {nome} ist ohne Antwort abgelaufen.",
+  "notifMonitContatoGenerico": "ein Kontakt",
+  "notifCheckinCanceladoCorpo": "Alarm abgebrochen."
 }
