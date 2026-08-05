@@ -16,6 +16,11 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
+    <!-- Exigida pelo Android 14+ para declarar um Foreground Service do
+         tipo "dataSync" (ver SosDispatchService) — janela crítica de
+         envio do SMS/upload do SOS que sobrevive à morte da Activity. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -174,6 +179,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Alarme de rotina de seguranca pessoal (check-in)"/>
         </service>
+
+        <!-- Janela crítica de disparo do SOS (SMS nativo + upload da foto
+             ao Firebase Storage/Firestore) — mantém o processo vivo
+             durante o envio, independente da Activity/engine principal
+             ser destruída (ver SosDispatchService/SosDisparoService). -->
+        <service
+            android:name=".SosDispatchService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
 
         <!-- Solicitação de localização (aba Monitoramento) via FCM: mesmo
              caminho 100% nativo do botão de SOS/alarme de rotina acima —

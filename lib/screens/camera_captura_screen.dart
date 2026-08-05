@@ -86,7 +86,48 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
     }
   }
 
-  Future<void> _inicializarCamera() async {
+  /// Libera de forma síncrona/aguardada qualquer [CameraController]
+  /// ainda referenciado por ESTA instância antes de tentar adquirir um
+  /// novo — equivalente ao `cameraProvider.unbindAll()` do CameraX
+  /// nativo (aqui não há acesso direto ao `ProcessCameraProvider`: o
+  /// plugin `camera` encapsula o CameraX internamente no lado Android).
+  /// Diferente de [_descartarCameraSuavemente] (chamado em [dispose],
+  /// que não pode ser `async`), este É aguardado — importante porque o
+  /// hardware da câmera só é considerado livre para um novo
+  /// `initialize()` depois que o dispose anterior TERMINAR no nível do
+  /// HAL nativo, não apenas no lado Dart.
+  Future<void> _liberarControladorAnterior() async {
+    final anterior = _controller;
+    _controller = null;
+    if (anterior != null) {
+      try {
+        await anterior.dispose();
+      } catch (e) {
+        debugPrint('⚠️ [CameraCapturaScreen] Falha ao liberar controlador anterior: $e');
+      }
+    }
+  }
+
+  /// `true` quando [erro] indica que o hardware da câmera está OCUPADO
+  /// por outro consumidor (outra instância desta mesma tela ainda
+  /// finalizando seu dispose, ou — no cenário mais raro do gatilho
+  /// físico — a `LockscreenCameraActivity` e a tela empurrada pelo
+  /// engine principal disputando o mesmo dispositivo momentaneamente) —
+  /// nesse caso vale a pena tentar de novo em vez de desistir na
+  /// primeira falha (ver [_inicializarCamera]).
+  bool _erroIndicaCameraEmUso(CameraException erro) {
+    const codigosOcupada = {
+      'cameraInUse',
+      'CameraAccessException',
+      'CameraAccessFailure',
+      'audioInUse',
+    };
+    if (codigosOcupada.contains(erro.code)) return true;
+    final descricao = erro.description?.toLowerCase() ?? '';
+    return descricao.contains('in use') || descricao.contains('busy');
+  }
+
+  Future<void> _inicializarCamera({int tentativa = 0}) async {
     try {
       final statusAtual = await Permission.camera.status;
       if (!statusAtual.isGranted) {
@@ -111,6 +152,12 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
         orElse: () => cameras.first,
       );
 
+      // LOCK DE RECURSO (equivalente a `unbindAll()`): garante que nenhum
+      // CameraController de uma tentativa anterior desta mesma instância
+      // ainda esteja segurando o hardware antes de adquiri-lo de novo.
+      await _liberarControladorAnterior();
+      if (!mounted) return;
+
       // 📸 RESOLUÇÃO MÁXIMA NATIVA + FORMATO JPEG
       final controller = CameraController(
         cameraTraseira,
@@ -119,7 +166,31 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
-      await controller.initialize();
+      try {
+        await controller.initialize();
+      } on CameraException catch (e) {
+        // RETRY com liberação explícita: cobre a janela em que o
+        // hardware da câmera ainda está sendo liberado por OUTRO
+        // consumidor (ex: dispose assíncrono de uma instância anterior
+        // desta mesma tela, ainda em andamento no HAL nativo — o
+        // equivalente Android/CameraX seria um `CameraInUseException`
+        // logo após um `unbindAll()` que ainda não completou). No
+        // máximo 2 tentativas extras, com backoff curto — nunca deixa o
+        // usuário esperando indefinidamente pelo botão de pânico.
+        if (_erroIndicaCameraEmUso(e) && tentativa < 2) {
+          debugPrint(
+              '⚠️ [CameraCapturaScreen] Câmera ocupada (tentativa ${tentativa + 1}/3, '
+              'code=${e.code}) — liberando e tentando novamente.');
+          try {
+            await controller.dispose();
+          } catch (_) {}
+          await Future.delayed(Duration(milliseconds: 350 * (tentativa + 1)));
+          if (!mounted) return;
+          return _inicializarCamera(tentativa: tentativa + 1);
+        }
+        rethrow;
+      }
+
       if (!mounted) {
         await controller.dispose();
         return;

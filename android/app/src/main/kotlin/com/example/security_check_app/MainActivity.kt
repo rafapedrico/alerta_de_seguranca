@@ -25,6 +25,7 @@ open class MainActivity: FlutterActivity() {
         flutterEngine.plugins.add(LockscreenPlugin())
         flutterEngine.plugins.add(RotinaAlarmPlugin())
         flutterEngine.plugins.add(DeviceAdminPlugin())
+        flutterEngine.plugins.add(SosDispatchPlugin())
 
         // ATENÇÃO — NÃO registre aqui um MethodChannel manual no canal
         // "com.example.security_check_app/rotina_alarme": esse canal já

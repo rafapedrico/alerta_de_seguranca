@@ -25,6 +25,7 @@ import 'services/font_scale_service.dart';
 import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/plano_limite_service.dart';
+import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
 import 'services/sos_disparo_service.dart';
 import 'services/volume_sos_service.dart';
@@ -102,6 +103,14 @@ void main() async {
   await NotificacaoService.inicializar();
   await VolumeSosService().iniciarMonitoramento();
   await PlanoLimiteService().inicializar();
+
+  // Resiliência offline do P2 do SOS (ver RetryUploadService): reagenda
+  // o alarme periódico de retry (precisa do AndroidAlarmManager já
+  // inicializado por AlarmeService.inicializar() acima) e tenta drenar a
+  // fila imediatamente — cobre o caso comum de o app ser reaberto depois
+  // que a conectividade voltou. Fire-and-forget: nunca atrasa o cold
+  // start.
+  RetryUploadService().iniciar();
 
   VolumeSosService().aoDispararSos.listen((_) {
     _dispararFluxoCompletoDeSos(origem: 'sos_fisico');

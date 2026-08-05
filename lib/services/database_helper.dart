@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 17,
+      version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -162,6 +162,26 @@ class DatabaseHelper {
         foto_url TEXT,
         recebido_em TEXT NOT NULL,
         visualizado INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // Table: fila_retry_upload_sos - fila de resiliência offline (ver
+    // RetryUploadService): quando o upload da foto do SOS ao Firebase
+    // Storage falha (sem internet/Wi-Fi/4G no momento do disparo), o SMS
+    // com o link já foi enviado com fallback via GSM normalmente, mas o
+    // PAYLOAD do upload (caminho local da foto já copiada para um
+    // diretório permanente do app + metadados) fica registrado aqui para
+    // ser reenviado automaticamente assim que a conectividade voltar,
+    // sem exigir nenhuma ação do usuário.
+    await db.execute('''
+      CREATE TABLE fila_retry_upload_sos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        foto_path TEXT NOT NULL,
+        origem TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        criado_em TEXT NOT NULL,
+        tentativas INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -446,6 +466,23 @@ class DatabaseHelper {
           foto_url TEXT,
           recebido_em TEXT NOT NULL,
           visualizado INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    }
+    // Migration from v17 to v18: cria a tabela 'fila_retry_upload_sos' —
+    // fila de resiliência offline para reenviar o upload da foto do SOS
+    // à nuvem quando a chamada de rede falhar no momento do disparo (ver
+    // RetryUploadService/SosDisparoService).
+    if (oldVersion < 18) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS fila_retry_upload_sos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          foto_path TEXT NOT NULL,
+          origem TEXT NOT NULL,
+          latitude REAL,
+          longitude REAL,
+          criado_em TEXT NOT NULL,
+          tentativas INTEGER NOT NULL DEFAULT 0
         )
       ''');
     }
@@ -1357,6 +1394,57 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       {'visualizado': 1},
       where: 'id_entrega = ?',
       whereArgs: [idEntrega],
+    );
+  }
+
+  // ==========================================================
+  // FILA DE RETRY OFFLINE (ver RetryUploadService)
+  // ==========================================================
+
+  /// Enfileira um upload de foto do SOS que falhou por falta de
+  /// conectividade — [fotoPath] deve já ser um caminho PERMANENTE (não o
+  /// arquivo temporário original da captura, que o SO pode reciclar a
+  /// qualquer momento), ver [RetryUploadService.enfileirar].
+  Future<int> enfileirarRetryUploadSos({
+    required String fotoPath,
+    required String origem,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final db = await database;
+    return await db.insert('fila_retry_upload_sos', {
+      'foto_path': fotoPath,
+      'origem': origem,
+      'latitude': latitude,
+      'longitude': longitude,
+      'criado_em': DateTime.now().toIso8601String(),
+      'tentativas': 0,
+    });
+  }
+
+  /// Lista todos os uploads de SOS ainda pendentes de reenvio, do mais
+  /// antigo para o mais novo (ordem de chegada).
+  Future<List<Map<String, dynamic>>> listarRetryUploadSosPendentes() async {
+    final db = await database;
+    return await db.query('fila_retry_upload_sos', orderBy: 'id ASC');
+  }
+
+  /// Remove um item da fila — chamado assim que o reenvio for concluído
+  /// com sucesso (upload + SMS/nuvem despachados).
+  Future<void> removerRetryUploadSos(int id) async {
+    final db = await database;
+    await db.delete('fila_retry_upload_sos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Incrementa o contador de tentativas de um item que falhou de novo —
+  /// usado por [RetryUploadService] para desistir depois de um número
+  /// máximo de tentativas, evitando reter arquivos de foto órfãos
+  /// indefinidamente no armazenamento do aparelho.
+  Future<void> incrementarTentativaRetryUploadSos(int id) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE fila_retry_upload_sos SET tentativas = tentativas + 1 WHERE id = ?',
+      [id],
     );
   }
 }

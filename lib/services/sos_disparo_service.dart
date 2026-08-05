@@ -11,6 +11,8 @@ import 'emergency_alert_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'plano_limite_service.dart';
+import 'retry_upload_service.dart';
+import 'sos_dispatch_native_service.dart';
 
 /// Serviço ÚNICO e UNIFICADO de disparo do SOS — reúne, num só lugar, a
 /// sequência estritamente sequencial exigida para o botão físico
@@ -110,22 +112,34 @@ class SosDisparoService {
 
     final String? uid = FirebaseAuthService().uidAtual;
 
-    // Canal 1 (SEMPRE, independente de sessão): SMS nativo, direto do
-    // aparelho — ver EmergencyAlertService.dispararSosComDuplaLocalizacao.
-    final smsFuture = _emergencyAlertService.dispararSosComDuplaLocalizacao();
+    // JANELA CRÍTICA: do início do envio até aqui embaixo, um Foreground
+    // Service nativo (ver SosDispatchNativeService) mantém o PROCESSO do
+    // app vivo — sem isso, o SMS/upload em voo seria perdido caso o
+    // Android decidisse matar o processo no meio do envio (memória
+    // baixa, Doze agressivo, app forçado a fechar logo após o toque no
+    // botão de pânico). Nunca depende da Activity/engine continuar em
+    // primeiro plano.
+    await SosDispatchNativeService().executarComServicoAtivo(() async {
+      // Canal 1 (SEMPRE, independente de sessão): SMS nativo, direto do
+      // aparelho — ver EmergencyAlertService.dispararSosComDuplaLocalizacao.
+      // Roda numa child Future totalmente independente da nuvem: uma
+      // falha/demora na chamada de rede abaixo NUNCA atrasa ou cancela o
+      // SMS, que não depende de internet nenhuma (rádio GSM puro).
+      final smsFuture = _emergencyAlertService.dispararSosComDuplaLocalizacao();
 
-    // Canais 2+3 (App-para-App + WhatsApp): só quando há sessão
-    // autenticada — ver documentação da classe.
-    Future<void> nuvemFuture = Future.value();
-    if (uid != null) {
-      debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 ($origem) também via Push+WhatsApp.');
-      nuvemFuture = _dispararLocalizacaoViaNuvem(origem: origem);
-    } else {
-      debugPrint(
-          '📵 [SosDisparoService] Sem sessão autenticada — P1 ($origem) só via SMS (canal oficial único).');
-    }
+      // Canais 2+3 (App-para-App + WhatsApp): só quando há sessão
+      // autenticada — ver documentação da classe.
+      Future<void> nuvemFuture = Future.value();
+      if (uid != null) {
+        debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 ($origem) também via Push+WhatsApp.');
+        nuvemFuture = _dispararLocalizacaoViaNuvem(origem: origem);
+      } else {
+        debugPrint(
+            '📵 [SosDisparoService] Sem sessão autenticada — P1 ($origem) só via SMS (canal oficial único).');
+      }
 
-    await Future.wait([smsFuture, nuvemFuture]);
+      await Future.wait([smsFuture, nuvemFuture]);
+    });
   }
 
   Future<void> _dispararLocalizacaoViaNuvem({required String origem}) async {
@@ -155,29 +169,88 @@ class SosDisparoService {
     final String? uid = FirebaseAuthService().uidAtual;
     String? fotoUrl;
 
-    if (uid != null) {
-      try {
-        fotoUrl = await _uploadFotoParaStorage(foto, uid);
-        debugPrint('☁️ [SosDisparoService] Foto do SOS ($origem) enviada ao Storage: $fotoUrl');
-      } catch (e) {
-        debugPrint('⚠️ [SosDisparoService] Falha ao enviar foto ao Storage — SMS usará o fallback sem link: $e');
+    // Mesma janela crítica do P1 (ver executarP1LocalizacaoImediata):
+    // Foreground Service nativo ativo durante todo o upload/SMS, para
+    // que uma morte do processo no meio do envio não perca o trabalho.
+    await SosDispatchNativeService().executarComServicoAtivo(() async {
+      if (uid != null) {
+        try {
+          fotoUrl = await _uploadFotoParaStorage(foto, uid);
+          debugPrint('☁️ [SosDisparoService] Foto do SOS ($origem) enviada ao Storage: $fotoUrl');
+        } catch (e) {
+          // RESILIÊNCIA OFFLINE: a falha de rede (sem Wi-Fi/4G, Storage
+          // indisponível, etc.) NUNCA interrompe o fluxo — é capturada
+          // aqui, o SMS abaixo segue via GSM normalmente (independente
+          // de internet) e o payload do upload é salvo localmente para
+          // ser reenviado automaticamente assim que a conectividade for
+          // reestabelecida (ver RetryUploadService).
+          debugPrint('⚠️ [SosDisparoService] Falha ao enviar foto ao Storage — SMS usará o fallback sem link. '
+              'Payload salvo para retry automático: $e');
+          try {
+            await RetryUploadService().enfileirar(fotoOriginal: foto, origem: origem);
+          } catch (e2) {
+            debugPrint('⚠️ [SosDisparoService] Falha ao enfileirar retry do upload: $e2');
+          }
+        }
+      } else {
+        debugPrint('📵 [SosDisparoService] Sem sessão autenticada — P2 ($origem) só via SMS (canal oficial único).');
       }
-    } else {
-      debugPrint('📵 [SosDisparoService] Sem sessão autenticada — P2 ($origem) só via SMS (canal oficial único).');
+
+      // Canal 1 (SEMPRE): SMS — com o link real da foto quando
+      // disponível, ou a mensagem de fallback (sem link) caso
+      // contrário. Child Future totalmente independente da nuvem
+      // abaixo — nunca espera/depende dela.
+      final smsFuture = fotoUrl != null
+          ? _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl!)
+          : _dispararFotoViaSmsFallback();
+
+      // Canais 2+3 (App-para-App + WhatsApp): só quando o upload deu certo.
+      final nuvemFuture = fotoUrl != null
+          ? FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl!, origem: origem)
+          : Future.value(false);
+
+      await Future.wait([smsFuture, nuvemFuture]);
+    });
+  }
+
+  /// Reenvia uma foto de SOS que ficou pendente na fila de retry local
+  /// (ver [RetryUploadService]) — mesma lógica de upload+despacho de
+  /// [dispararFotoCapturada], mas a partir de um arquivo já copiado para
+  /// um caminho permanente em disco (o arquivo temporário original da
+  /// captura pode já ter sido reciclado pelo SO). Retorna `true` só
+  /// quando o upload E o despacho (SMS com link + nuvem) forem
+  /// concluídos com sucesso — [RetryUploadService] só remove o item da
+  /// fila local nesse caso; qualquer outra falha mantém o item na fila
+  /// para a próxima tentativa periódica.
+  Future<bool> tentarReenviarFotoEnfileirada({
+    required String fotoPathLocal,
+    required String origem,
+  }) async {
+    final String? uid = FirebaseAuthService().uidAtual;
+    if (uid == null) {
+      debugPrint('📵 [SosDisparoService] Retry de upload adiado — sem sessão autenticada no momento.');
+      return false;
     }
 
-    // Canal 1 (SEMPRE): SMS — com o link real da foto quando disponível,
-    // ou a mensagem de fallback (sem link) caso contrário.
-    final smsFuture = fotoUrl != null
-        ? _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl)
-        : _dispararFotoViaSmsFallback();
+    String fotoUrl;
+    try {
+      fotoUrl = await _uploadFotoParaStorage(XFile(fotoPathLocal), uid);
+    } catch (e) {
+      debugPrint('⚠️ [SosDisparoService] Retry de upload falhou de novo (mantido na fila): $e');
+      return false;
+    }
 
-    // Canais 2+3 (App-para-App + WhatsApp): só quando o upload deu certo.
-    final nuvemFuture = fotoUrl != null
-        ? FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl, origem: origem)
-        : Future.value(false);
-
-    await Future.wait([smsFuture, nuvemFuture]);
+    try {
+      await Future.wait([
+        _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl),
+        FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl, origem: origem),
+      ]);
+      debugPrint('✅ [SosDisparoService] Retry de upload ($origem) concluído com sucesso: $fotoUrl');
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ [SosDisparoService] Retry de upload — Storage ok mas despacho falhou (mantido na fila): $e');
+      return false;
+    }
   }
 
   Future<String> _uploadFotoParaStorage(XFile foto, String uid) async {
