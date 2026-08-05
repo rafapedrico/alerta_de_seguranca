@@ -12,6 +12,7 @@ import '../../services/firebase_auth_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/firebase_sync_service.dart';
+import '../../services/sms_permission_service.dart';
 import '../../utils/telefone_utils.dart';
 import '../carteira_screen.dart';
 import '../login_screen.dart';
@@ -280,6 +281,16 @@ Future<void> _selecionarSom(int? numero) async {
         );
       }
       return;
+    }
+
+    // 0) Verifica/solicita a permissão de SMS de emergência ANTES de
+    // finalizar o cadastro do PRIMEIRO contato (ver SmsPermissionService)
+    // — momento mais contextual para explicar o motivo: é exatamente
+    // para ESTE contato que o SMS de pânico seria enviado. Nunca bloqueia
+    // o cadastro em si, mesmo se o usuário negar.
+    if (_contatosEmergencia.isEmpty) {
+      await SmsPermissionService().verificarAoAdicionarPrimeiroContato(context);
+      if (!mounted) return;
     }
 
     // 1) Solicita permissão explicitamente ANTES de abrir a agenda.

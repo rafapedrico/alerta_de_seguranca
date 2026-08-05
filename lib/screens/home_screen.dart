@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../services/alertas_recebidos_service.dart';
+import '../services/sms_permission_service.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/monitoramento_tab.dart';
@@ -52,6 +53,15 @@ class _HomeScreenState extends State<HomeScreen> {
     // Home é (re)construída, garantindo que reflita alertas recebidos
     // enquanto o app estava fechado/em segundo plano.
     AlertasRecebidosService.atualizarContagem();
+
+    // Checklist de permissões do onboarding: SEND_SMS/READ_PHONE_STATE
+    // (ver SmsPermissionService) nunca tinham nenhum ponto de
+    // solicitação em runtime no app inteiro — verificado/perguntado uma
+    // única vez por instalação, logo na primeira entrada na Home (pós
+    // post-frame, já com o BuildContext totalmente montado).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) SmsPermissionService().verificarNoOnboarding(context);
+    });
   }
 
   // Ordem exata das abas: Segurança, Família, Monitoramento, Histórico
