@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "連絡先を削除",
+  "contatoApagarConfirmacaoMensagem": "承認されると、24時間以内に削除が完了します",
+  "historicoLatitudeLabel": "緯度",
+  "historicoLongitudeLabel": "経度",
   "pinRealTitulo": "実際のPIN",
   "pinRealDescricao": "アプリへの通常アクセス用に4桁のPINを設定してください。",
   "pinRealHint": "4桁の数字を入力",

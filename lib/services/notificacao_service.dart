@@ -282,6 +282,14 @@ class NotificacaoService {
       canalNome,
       description: canalDescricao,
       importance: Importance.max,
+      // CORREÇÃO (bug real observado em teste — "toque duplo"): sem
+      // `playSound: false`, este canal tocava o som PADRÃO de
+      // notificação do Android (~1 minuto, sem controle de volume pelo
+      // app) em PARALELO ao alarme sonoro customizado do próprio
+      // Guardião-X (player nativo/Dart, ver AlarmeDisparadoScreen), toda
+      // vez que o alarme de rotina disparava. O áudio do alerta passa a
+      // ficar 100% sob controle do player do app.
+      playSound: false,
     );
     final canalAlertaRecebido = AndroidNotificationChannel(
       canalAlertaRecebidoId,
@@ -303,6 +311,21 @@ class NotificacaoService {
     );
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
+
+    // O Android trava as configurações de um canal (incluindo som) no
+    // momento em que ele é criado pela PRIMEIRA vez — chamar
+    // `createNotificationChannel` de novo com `playSound: false` NÃO
+    // atualiza um canal 'checkin_rotina' já existente em instalações
+    // anteriores ao ajuste acima. Remover e recriar aqui garante que a
+    // correção do "toque duplo" também se aplique a quem já tinha o app
+    // instalado, não só a instalações novas. Idempotente e seguro: apagar
+    // um canal inexistente (instalação nova) é um no-op.
+    try {
+      await implementacaoAndroid?.deleteNotificationChannel(canalId);
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao remover canal antigo de check-in: $e');
+    }
+
     await implementacaoAndroid?.createNotificationChannel(canal);
     await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
     await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
@@ -345,6 +368,10 @@ class NotificacaoService {
       autoCancel: false,
       fullScreenIntent: true,
       vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
+      // Áudio 100% sob controle do player do próprio app (ver o mesmo
+      // ajuste, com a explicação completa, no canal 'checkin_rotina' em
+      // [inicializar]) — nunca o som padrão de notificação do sistema.
+      playSound: false,
     );
 
     final details = NotificationDetails(android: androidDetails);

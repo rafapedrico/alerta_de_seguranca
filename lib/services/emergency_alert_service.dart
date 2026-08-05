@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,9 +33,15 @@ class EmergencyAlertService {
   final DatabaseHelper _db = DatabaseHelper();
 
   /// Formata uma [Position] em texto legível (latitude/longitude + link
-  /// do Google Maps) para ser inserida no corpo do SMS.
-  String _formatarPosicao(Position posicao) {
-    return 'Latitude: ${posicao.latitude}, Longitude: ${posicao.longitude} '
+  /// do Google Maps) para ser inserida no corpo do SMS e no histórico.
+  /// [l10n] resolve "Latitude"/"Longitude" no idioma atualmente
+  /// selecionado (ver [L10nHeadlessService]) — nunca mais fixo em
+  /// português, já que este texto é persistido no histórico local e
+  /// pode ser lido bem depois, mesmo que o idioma do app mude entre o
+  /// disparo e a leitura.
+  String _formatarPosicao(Position posicao, AppLocalizations l10n) {
+    return '${l10n.historicoLatitudeLabel}: ${posicao.latitude}, '
+        '${l10n.historicoLongitudeLabel}: ${posicao.longitude} '
         '(https://maps.google.com/?q=${posicao.latitude},${posicao.longitude})';
   }
 
@@ -51,7 +58,7 @@ class EmergencyAlertService {
     final l10n = await L10nHeadlessService.obter();
 
     if (posicaoEmMemoria != null) {
-      return _formatarPosicao(posicaoEmMemoria);
+      return _formatarPosicao(posicaoEmMemoria, l10n);
     }
 
     Position? ultimaConhecida;
@@ -62,7 +69,7 @@ class EmergencyAlertService {
     try {
       final bool servicoAtivo = await Geolocator.isLocationServiceEnabled();
       if (!servicoAtivo) {
-        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
+        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida, l10n);
         return l10n.smsLocalizacaoIndisponivelGps;
       }
 
@@ -72,7 +79,7 @@ class EmergencyAlertService {
       }
       if (permissao == LocationPermission.denied ||
           permissao == LocationPermission.deniedForever) {
-        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
+        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida, l10n);
         return l10n.smsLocalizacaoIndisponivelPermissao;
       }
 
@@ -81,13 +88,13 @@ class EmergencyAlertService {
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 7),
         );
-        return _formatarPosicao(posicaoAtual);
+        return _formatarPosicao(posicaoAtual, l10n);
       } catch (_) {
-        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
+        if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida, l10n);
         return l10n.smsLocalizacaoIndisponivelFalha;
       }
     } catch (_) {
-      if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida);
+      if (ultimaConhecida != null) return _formatarPosicao(ultimaConhecida, l10n);
       return l10n.smsLocalizacaoIndisponivelFalha;
     }
   }
@@ -437,18 +444,24 @@ class EmergencyAlertService {
   /// em CACHE do aparelho ([Geolocator.getLastKnownPosition]), que
   /// retorna instantaneamente (sem acionar o hardware do GPS).
   ///
-  /// ETAPA 2 (em paralelo/logo em seguida, fire-and-forget): inicia uma
-  /// nova busca de localização em tempo real (GPS ligado, alta
-  /// precisão) e, assim que finalizar, reenvia um SEGUNDO SMS +
-  /// segundo POST para `/api/alerta` com as coordenadas atualizadas —
-  /// sem bloquear ou atrasar a Etapa 1.
+  /// P1 da sequência unificada de SOS (ver [SosDisparoService]): dispara
+  /// UM ÚNICO SMS, IMEDIATAMENTE, com a localização atual — nunca mais de
+  /// uma mensagem nesta etapa (requisito de produto: o disparo tem que
+  /// ser instantâneo, sem uma segunda mensagem de "atualização" chegando
+  /// depois e sem atrasar a abertura da câmera do P2, que roda em
+  /// paralelo a este método, não depois dele).
+  ///
+  /// "Localização atual" é resolvida com o mínimo de espera possível: 1)
+  /// última posição em cache do sistema (instantânea); 2) só na ausência
+  /// de cache, UMA única leitura de GPS em tempo real com timeout curto.
+  /// Nunca faz uma segunda leitura/reenvio depois disso.
   ///
   /// Como o gatilho físico não tem acesso a nenhum
   /// TextEditingController/contexto de UI, [contexto] é sempre lido do
   /// SQLite ('contexto_timer_ativo'), com fallback para uma mensagem
   /// padrão caso não exista nada salvo.
   Future<void> dispararSosComDuplaLocalizacao() async {
-    debugPrint('🚨 [SOS] Canal SMS oficial acionado — disparando com dupla localização.');
+    debugPrint('🚨 [SOS] Canal SMS oficial acionado — disparando localização imediata (1 SMS).');
 
     final l10n = await L10nHeadlessService.obter();
 
@@ -470,81 +483,50 @@ class EmergencyAlertService {
       debugPrint('⚠️ [SOS FÍSICO] Falha ao buscar contatos de emergência: $e');
     }
 
-    // ===================== ETAPA 1: DISPARO IMEDIATO =====================
-    final Position? posicaoCache = await _obterPosicaoDeCacheImediata();
-    final String localizacaoCacheFormatada = posicaoCache != null
-        ? _formatarPosicao(posicaoCache)
+    // Cache instantâneo primeiro; só consulta o GPS em tempo real (timeout
+    // curto) se não houver NENHUMA posição em cache — nunca as duas.
+    Position? posicaoAtual = await _obterPosicaoDeCacheImediata();
+    if (posicaoAtual == null) {
+      try {
+        posicaoAtual = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 6),
+        );
+      } catch (e) {
+        debugPrint('⚠️ [SOS FÍSICO] Falha ao obter localização em tempo real: $e');
+      }
+    }
+
+    final String localizacaoFormatada = posicaoAtual != null
+        ? _formatarPosicao(posicaoAtual, l10n)
         : l10n.smsLocalizacaoCacheIndisponivel;
 
     final mensagemImediata =
-        l10n.smsSosImediatoCorpo(localizacaoCacheFormatada, anotacoesUsuario);
+        l10n.smsSosImediatoCorpo(localizacaoFormatada, anotacoesUsuario);
 
-    debugPrint('📋 [SOS FÍSICO] Etapa 1 (cache imediato): $mensagemImediata');
+    debugPrint('📋 [SOS FÍSICO] SMS imediato (localização atual): $mensagemImediata');
 
     try {
       await _db.inserirEventoHistorico(
         titulo: l10n.historicoSosCacheTitulo,
-        descricao: l10n.historicoSosCacheDescricao(localizacaoCacheFormatada),
+        descricao: l10n.historicoSosCacheDescricao(localizacaoFormatada),
         categoria: 'critico',
       );
     } catch (e) {
-      debugPrint('⚠️ [SOS FÍSICO] Falha ao registrar evento no histórico (etapa 1): $e');
+      debugPrint('⚠️ [SOS FÍSICO] Falha ao registrar evento no histórico: $e');
     }
 
-    if (posicaoCache != null) {
-      // Fire-and-forget: não bloqueia a etapa 1 nem a etapa 2 seguinte.
+    if (posicaoAtual != null) {
+      // Fire-and-forget: não bloqueia o envio do SMS abaixo.
       ApiService().dispararAlertaWeb(
-        latitude: posicaoCache.latitude,
-        longitude: posicaoCache.longitude,
-        contexto: '$anotacoesUsuario (localização em cache)',
+        latitude: posicaoAtual.latitude,
+        longitude: posicaoAtual.longitude,
+        contexto: anotacoesUsuario,
         timestampLocal: DateTime.now(),
       );
     }
-
 
     await _enviarSms(contatosEmergencia, mensagemImediata);
-
-    // ================ ETAPA 2: ATUALIZAÇÃO EM TEMPO REAL ================
-    // Executada em seguida (não aguardada pelo chamador original, mas
-    // aguardada aqui dentro do próprio método para garantir que o
-    // fluxo completo — incluindo a atualização — sempre seja concluído
-    // mesmo que o método seja chamado de forma fire-and-forget).
-    try {
-      final posicaoAtualizada = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
-      );
-
-      final localizacaoAtualizadaFormatada = _formatarPosicao(posicaoAtualizada);
-      final mensagemAtualizada =
-          l10n.smsSosAtualizadoCorpo(localizacaoAtualizadaFormatada, anotacoesUsuario);
-
-      debugPrint('📋 [SOS FÍSICO] Etapa 2 (tempo real): $mensagemAtualizada');
-
-      try {
-        await _db.inserirEventoHistorico(
-          titulo: l10n.historicoSosAtualizadoTitulo,
-          descricao: l10n.historicoSosAtualizadoDescricao(localizacaoAtualizadaFormatada),
-          categoria: 'critico',
-        );
-      } catch (e) {
-        debugPrint('⚠️ [SOS FÍSICO] Falha ao registrar evento no histórico (etapa 2): $e');
-      }
-
-      ApiService().dispararAlertaWeb(
-        latitude: posicaoAtualizada.latitude,
-        longitude: posicaoAtualizada.longitude,
-        contexto: '$anotacoesUsuario (localização atualizada)',
-        timestampLocal: DateTime.now(),
-      );
-
-
-      await _enviarSms(contatosEmergencia, mensagemAtualizada);
-    } catch (e) {
-      debugPrint(
-          '⚠️ [SOS FÍSICO] Falha ao obter localização em tempo real para a etapa 2 '
-          '(o SMS/alerta imediato da etapa 1 já foi enviado normalmente): $e');
-    }
   }
 /// FALLBACK de contingência (SMS de texto, SEM a foto em si) usado por
   /// [SosDisparoService.dispararFotoCapturada] exclusivamente quando não
@@ -605,7 +587,7 @@ class EmergencyAlertService {
     final l10n = await L10nHeadlessService.obter();
     final Position? posicao = await _obterPosicaoDeCacheImediata();
     final String localizacaoFormatada = posicao != null
-        ? _formatarPosicao(posicao)
+        ? _formatarPosicao(posicao, l10n)
         : l10n.smsLocalizacaoIndisponivelMomentoEnvio;
 
     final String mensagem = l10n.smsFotoCorpo(fotoUrl, localizacaoFormatada);

@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Eliminar contacto",
+  "contatoApagarConfirmacaoMensagem": "Si se aprueba, la eliminación se completará en 24h00",
+  "historicoLatitudeLabel": "Latitud",
+  "historicoLongitudeLabel": "Longitud",
   "pinRealTitulo": "PIN Real",
   "pinRealDescricao": "Define un PIN de 4 dígitos para el acceso normal a la app.",
   "pinRealHint": "Ingresa 4 números",

@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "حذف جهة الاتصال",
+  "contatoApagarConfirmacaoMensagem": "في حال الموافقة، سيتم التنفيذ خلال 24h00",
+  "historicoLatitudeLabel": "خط العرض",
+  "historicoLongitudeLabel": "خط الطول",
   "pinRealTitulo": "رمز PIN الحقيقي",
   "pinRealDescricao": "حدد رمز PIN مكونًا من 4 أرقام للوصول العادي إلى التطبيق.",
   "pinRealHint": "أدخل 4 أرقام",

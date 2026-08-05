@@ -336,6 +336,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Delete contact",
+  "contatoApagarConfirmacaoMensagem": "If approved, this will take effect within 24h00",
+  "historicoLatitudeLabel": "Latitude",
+  "historicoLongitudeLabel": "Longitude",
   "pinRealTitulo": "Real PIN",
   "pinRealDescricao": "Set a 4-digit PIN for normal access to the app.",
   "pinRealHint": "Enter 4 digits",

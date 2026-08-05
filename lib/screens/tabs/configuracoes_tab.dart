@@ -413,6 +413,46 @@ Future<void> _selecionarSom(int? numero) async {
     await _loadConfig();
   }
 
+  /// Exibe o modal de confirmação ("Apagar contato" / "Se aprovada a
+  /// efetivação será concluída em 24h00") ANTES de sequer iniciar a
+  /// contagem de 24h — o ícone de lixeira, sozinho, não deve mais
+  /// disparar a exclusão. Só ao tocar em "Confirmar" é que
+  /// [_excluirContato] (e, com ele, a trava de segurança de 24h) é
+  /// acionado; "Cancelar" ou fechar o diálogo não tem nenhum efeito.
+  Future<void> _confirmarEExcluirContato(int id, String nome) async {
+    final l10n = AppLocalizations.of(context)!;
+    final bool? confirmou = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            l10n.contatoApagarConfirmacaoTitulo,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            l10n.contatoApagarConfirmacaoMensagem,
+            style: const TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancelar),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.confirmar, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmou != true || !mounted) return;
+    await _excluirContato(id, nome);
+  }
+
   Future<void> _excluirContato(int id, String nome) async {
     await _db.solicitarExclusaoContatoEmergencia(id);
 
@@ -1094,7 +1134,7 @@ Future<void> _selecionarSom(int? numero) async {
                         : IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             tooltip: AppLocalizations.of(context)!.tooltipExcluirContato,
-                            onPressed: () => _excluirContato(id, nome),
+                            onPressed: () => _confirmarEExcluirContato(id, nome),
                           ),
                   ),
                   const Divider(height: 1),

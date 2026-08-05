@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nome exibido embaixo do ícone do app no launcher do Android. -->
+    <string name="app_name">Guardião-X</string>
+</resources>

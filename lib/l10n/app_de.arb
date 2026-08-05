@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Kontakt löschen",
+  "contatoApagarConfirmacaoMensagem": "Bei Bestätigung wird die Löschung innerhalb von 24h00 wirksam",
+  "historicoLatitudeLabel": "Breitengrad",
+  "historicoLongitudeLabel": "Längengrad",
   "pinRealTitulo": "Echte PIN",
   "pinRealDescricao": "Lege eine 4-stellige PIN für den normalen App-Zugriff fest.",
   "pinRealHint": "4 Ziffern eingeben",

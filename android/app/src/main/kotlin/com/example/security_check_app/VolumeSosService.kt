@@ -1,5 +1,6 @@
 package com.example.security_check_app
 
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -177,7 +178,29 @@ class VolumeSosService : Service() {
                 if (agora - ultimoDisparoMs >= cooldownDisparoMs) {
                     ultimoDisparoMs = agora
                     VolumeSosEventBridge.notificarSosDisparado()
-                    forcarAberturaLockscreenCameraActivity()
+
+                    // CORREÇÃO (bug real observado em teste — "câmera reabre"
+                    // ao deslizar a tela vermelha para cima): com o app
+                    // aberto (foreground) OU na tela de login, o engine
+                    // Flutter da MainActivity já está vivo e o EventChannel
+                    // acima já entrega o gatilho a ele, que empurra a
+                    // CameraCapturaScreen por cima da tela atual. Chamar
+                    // [forcarAberturaLockscreenCameraActivity] TAMBÉM nesse
+                    // caso empilhava uma SEGUNDA Activity/engine de câmera
+                    // por cima da primeira — ao deslizar para cima, só a de
+                    // cima fechava/bloqueava, revelando a outra por baixo (
+                    // parecendo, para o usuário, que a câmera "reabria" em
+                    // vez do Android bloquear de verdade). Só continuamos
+                    // abrindo a Activity nativa separada quando o aparelho
+                    // está DE FATO com a tela bloqueada (Keyguard ativo) —
+                    // único cenário em que a MainActivity normal não pode
+                    // aparecer por cima do bloqueio, exigindo a Activity
+                    // dedicada com `setShowWhenLocked(true)` — ou quando não
+                    // há nenhum engine Dart vivo para receber o EventChannel
+                    // (app totalmente fechado).
+                    if (aparelhoBloqueadoOuSemEngineDartVivo()) {
+                        forcarAberturaLockscreenCameraActivity()
+                    }
                 }
             }
         } else if (volumeAtual < volumeAnterior) {
@@ -267,6 +290,29 @@ class VolumeSosService : Service() {
         } catch (_: Exception) {
         } finally {
             wakeLock = null
+        }
+    }
+
+    /**
+     * `true` quando a Activity nativa dedicada ([LockscreenCameraActivity])
+     * ainda é necessária: ou o aparelho está com a tela REALMENTE
+     * bloqueada (Keyguard ativo — a MainActivity comum não tem
+     * `setShowWhenLocked`, então não conseguiria aparecer por cima do
+     * bloqueio), ou não há nenhum engine Dart vivo para receber o evento
+     * pelo EventChannel (app totalmente fechado). Nos demais casos (app em
+     * foreground ou na tela de login, com a tela desbloqueada), o próprio
+     * [VolumeSosEventBridge.eventSink] já entrega o gatilho ao engine já
+     * rodando — ver chamador para o contexto completo do bug corrigido.
+     */
+    private fun aparelhoBloqueadoOuSemEngineDartVivo(): Boolean {
+        if (VolumeSosEventBridge.eventSink == null) return true
+        return try {
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            keyguardManager?.isKeyguardLocked ?: false
+        } catch (_: Exception) {
+            // Na dúvida, prefere abrir a Activity dedicada (comportamento
+            // histórico) a arriscar não mostrar a câmera de jeito nenhum.
+            true
         }
     }
 

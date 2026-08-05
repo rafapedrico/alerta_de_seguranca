@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Supprimer le contact",
+  "contatoApagarConfirmacaoMensagem": "Si approuvée, la suppression sera effective sous 24h00",
+  "historicoLatitudeLabel": "Latitude",
+  "historicoLongitudeLabel": "Longitude",
   "pinRealTitulo": "PIN réel",
   "pinRealDescricao": "Définissez un code PIN à 4 chiffres pour l'accès normal à l'application.",
   "pinRealHint": "Saisissez 4 chiffres",

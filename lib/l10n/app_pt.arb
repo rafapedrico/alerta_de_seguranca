@@ -336,6 +336,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Apagar contato",
+  "contatoApagarConfirmacaoMensagem": "Se aprovada a efetivação será concluída em 24h00",
+  "historicoLatitudeLabel": "Latitude",
+  "historicoLongitudeLabel": "Longitude",
   "pinRealTitulo": "PIN Real",
   "pinRealDescricao": "Defina um PIN de 4 dígitos para acesso normal ao app.",
   "pinRealHint": "Digite 4 números",

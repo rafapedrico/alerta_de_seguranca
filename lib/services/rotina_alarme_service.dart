@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
+import '../models/alarme_rotina.dart';
 import 'alarme_agendado_cloud_service.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
@@ -520,8 +521,8 @@ class RotinaAlarmeService {
     }
 
     final l10n = await L10nHeadlessService.obter();
-    final etiqueta = (dados?['etiqueta'] as String?)?.trim().isNotEmpty == true
-        ? dados!['etiqueta'] as String
+    final etiqueta = dados != null
+        ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
         : l10n.familiaEtiquetaPadrao;
 
     await NotificacaoService.registrarEventoSistema(
@@ -656,7 +657,10 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     return;
   }
 
-  final etiqueta = (dados['etiqueta'] as String?) ?? 'Check-in de rotina';
+  // Resolve a chave neutra padrão (ou uma tradução legada já gravada no
+  // banco — ver AlarmeRotina.etiquetaExibida) para o texto traduzido no
+  // idioma ATUAL do app, nunca um texto fixo/de outro idioma.
+  final etiqueta = AlarmeRotina.fromMap(dados).etiquetaExibida(await L10nHeadlessService.obter());
   final minutosTolerancia = dados['minutos_tolerancia'] as int? ?? 10;
 
   try {
@@ -815,9 +819,7 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
   try {
     final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
     if (dados != null) {
-      etiqueta = (dados['etiqueta'] as String?)?.trim().isNotEmpty == true
-          ? dados['etiqueta'] as String
-          : etiqueta;
+      etiqueta = AlarmeRotina.fromMap(dados).etiquetaExibida(l10n);
       // TRAVA CONTRA MENSAGENS DUPLICADAS: MESMO eventoId calculado em
       // [AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme] (mesmo
       // idAlarme + mesmo `ultimo_disparo_epoch`, gravado uma única vez

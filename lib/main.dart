@@ -154,14 +154,19 @@ void main() async {
   }
 }
 
-/// Executa P1 (localização imediata, deduplicada entre engines — ver
-/// [SosDisparoService]) e, só depois de concluído, avança para P2
-/// (abre a câmera) — ordem estrita exigida pela sequência unificada de
-/// SOS. Compartilhado pelos DOIS pontos de entrada do botão físico
-/// (cold-start via lockscreen acima e o EventChannel de
+/// Dispara P1 (localização imediata, deduplicada entre engines — ver
+/// [SosDisparoService]) e P2 (abre a câmera) EM PARALELO — P1 continua
+/// enviando o SMS/nuvem de localização assim que possível, mas NUNCA
+/// bloqueia a abertura da câmera, que é a etapa perceptível pelo
+/// usuário (câmera física ~3s: obturador livre quase instantaneamente).
+/// Antes, P2 só começava depois de P1 concluir (SMS + geolocalização),
+/// somando vários segundos de espera com a tela preta antes do
+/// obturador aparecer. Compartilhado pelos DOIS pontos de entrada do
+/// botão físico (cold-start via lockscreen acima e o EventChannel de
 /// [_dispararFluxoCompletoDeSos] abaixo).
 Future<void> _dispararSequenciaUnificadaDeSos({required String origem}) async {
-  await SosDisparoService().executarP1LocalizacaoImediata(origem: origem);
+  // Fire-and-forget: P1 (SMS + nuvem) roda em paralelo, nunca atrasa P2.
+  unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: origem));
   // CapturaDissuasaoService encapsula a checagem de limite mensal de
   // fotos do Plano Gratuito e o retry-loop de NavigatorState — reusado
   // aqui (em vez de `navigateToCameraCaptura` direto) para preservar

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -484,6 +485,61 @@ class _HistoricoTabState extends State<HistoricoTab> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     }
+  }
+
+  /// Abre [url] no aplicativo mais apropriado do aparelho: um link do
+  /// Google Maps abre o próprio app de mapas (coordenadas GPS); um link
+  /// do Firebase Storage abre o navegador, exibindo a foto em alta
+  /// resolução (com opção nativa de download/compartilhamento do
+  /// navegador). Usado por [_linkificarTexto] — item 6 do pedido de UX:
+  /// transformar os textos de GPS/foto do histórico de "Alertas
+  /// Enviados" em links de fato clicáveis.
+  Future<void> _abrirLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [HistoricoTab] Falha ao abrir link do histórico: $e');
+    }
+  }
+
+  /// Varre [texto] em busca de URLs (`http`/`https` — cobre tanto o link
+  /// do Google Maps das coordenadas quanto o link do Firebase Storage da
+  /// foto, ambos embutidos como texto simples nas mensagens de SOS já
+  /// persistidas) e devolve os spans prontos para um `Text.rich`, com
+  /// cada URL encontrada sublinhada e clicável (abre via [_abrirLink]) —
+  /// o restante do texto permanece como texto comum, sem estilo de link.
+  List<InlineSpan> _linkificarTexto(String texto, TextStyle estiloBase) {
+    final regexUrl = RegExp(r'https?://[^\s\)]+');
+    final spans = <InlineSpan>[];
+    int ultimoIndice = 0;
+
+    for (final match in regexUrl.allMatches(texto)) {
+      if (match.start > ultimoIndice) {
+        spans.add(TextSpan(text: texto.substring(ultimoIndice, match.start), style: estiloBase));
+      }
+      final url = match.group(0)!;
+      spans.add(
+        TextSpan(
+          text: url,
+          style: estiloBase.copyWith(
+            color: Colors.blue.shade700,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()..onTap = () => _abrirLink(url),
+        ),
+      );
+      ultimoIndice = match.end;
+    }
+
+    if (ultimoIndice < texto.length) {
+      spans.add(TextSpan(text: texto.substring(ultimoIndice), style: estiloBase));
+    }
+
+    return spans;
   }
 
   @override
@@ -989,7 +1045,18 @@ class _HistoricoTabState extends State<HistoricoTab> {
                       child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
                     ),
                     title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(descricao),
+                    // Coordenadas GPS e o link da foto (quando presentes no
+                    // texto — ver EmergencyAlertService) viram links de
+                    // fato clicáveis: GPS abre o Google Maps, foto abre a
+                    // imagem em alta resolução no navegador.
+                    subtitle: Text.rich(
+                      TextSpan(
+                        children: _linkificarTexto(
+                          descricao,
+                          TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                        ),
+                      ),
+                    ),
                     trailing: Text(
                       _formatarDataHora(timestamp),
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),

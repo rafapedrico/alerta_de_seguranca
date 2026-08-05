@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "संपर्क हटाएं",
+  "contatoApagarConfirmacaoMensagem": "स्वीकृति मिलने पर, यह 24h00 में प्रभावी हो जाएगा",
+  "historicoLatitudeLabel": "अक्षांश",
+  "historicoLongitudeLabel": "देशांतर",
   "pinRealTitulo": "वास्तविक PIN",
   "pinRealDescricao": "ऐप तक सामान्य पहुंच के लिए 4 अंकों का PIN सेट करें।",
   "pinRealHint": "4 अंक दर्ज करें",

@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "删除联系人",
+  "contatoApagarConfirmacaoMensagem": "若确认，将在24小时内完成删除",
+  "historicoLatitudeLabel": "纬度",
+  "historicoLongitudeLabel": "经度",
   "pinRealTitulo": "真实PIN码",
   "pinRealDescricao": "设置一个4位数PIN码，用于正常访问应用。",
   "pinRealHint": "输入4个数字",

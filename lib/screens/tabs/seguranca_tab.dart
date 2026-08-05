@@ -676,19 +676,13 @@ class _SegurancaTabState extends State<SegurancaTab> {
     if (confirmou != true || !mounted) return;
 
     try {
-      // P1 da sequência unificada de SOS (ver SosDisparoService): captura
-      // localização + timestamp e despacha IMEDIATAMENTE via App-para-App
-      // + WhatsApp (pipeline híbrido), com fallback automático para SMS
-      // nativo se não houver sessão autenticada.
-      await SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.segurancaSosDisparado),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // P1 (SMS + nuvem/WhatsApp) e P2 (abre a câmera) disparam EM
+      // PARALELO — P1 nunca deve atrasar o obturador (câmera física
+      // ~3s: nenhuma espera de rede/GPS entre o toque e a câmera
+      // abrindo). Também não exibimos mais nenhuma faixa/SnackBar de
+      // aviso por cima do botão/câmera: a tela vermelha de dissuasão
+      // exibida após a foto já confirma visualmente o disparo.
+      unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual'));
       // P2: abre a câmera (Recurso de Captura e Dissuasão) — checa o
       // limite mensal de fotos do Plano Gratuito internamente.
       await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: 'sos_manual');

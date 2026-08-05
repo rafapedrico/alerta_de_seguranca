@@ -39,7 +39,14 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
   bool _processandoFoto = false;
   final FocusNode _focusNode = FocusNode();
 
-  static const Duration _duracaoSimulacaoEnvio = Duration(milliseconds: 1800);
+  // Pequena pausa cosmética só para a UI não "piscar" direto para a tela
+  // de dissuasão quando o envio (upload/SMS/push) foi extremamente
+  // rápido — NÃO é mais usada para simular tempo de envio: o envio real
+  // já é aguardado antes desta pausa (ver [_processarEnvioEEnviarSmsResgate]).
+  // Mantida curta de propósito: cada milissegundo aqui atrasa o
+  // obturador percebido pelo usuário, que deve ficar o mais perto
+  // possível dos ~3s do botão físico.
+  static const Duration _duracaoSimulacaoEnvio = Duration(milliseconds: 250);
 
   static const MethodChannel _lockscreenChannel =
       MethodChannel('com.example.security_check_app/lockscreen');

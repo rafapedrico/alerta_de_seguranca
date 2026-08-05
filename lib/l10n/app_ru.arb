@@ -318,6 +318,10 @@
       }
     }
   },
+  "contatoApagarConfirmacaoTitulo": "Удалить контакт",
+  "contatoApagarConfirmacaoMensagem": "После подтверждения удаление вступит в силу в течение 24h00",
+  "historicoLatitudeLabel": "Широта",
+  "historicoLongitudeLabel": "Долгота",
   "pinRealTitulo": "Настоящий PIN",
   "pinRealDescricao": "Установите 4-значный PIN-код для обычного доступа к приложению.",
   "pinRealHint": "Введите 4 цифры",

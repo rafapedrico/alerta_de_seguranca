@@ -224,8 +224,7 @@ Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
 
     if (mounted) {
       final l10n = AppLocalizations.of(context)!;
-      final etiquetaEvento =
-          alarme.etiqueta.isNotEmpty ? alarme.etiqueta : l10n.familiaEtiquetaPadrao;
+      final etiquetaEvento = alarme.etiquetaExibida(l10n);
       await _db.inserirEventoHistorico(
         titulo: ativo ? l10n.historicoAlarmeAtivadoTitulo : l10n.historicoAlarmeDesativadoTitulo,
         descricao: ativo
@@ -257,8 +256,7 @@ Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
 
     if (mounted) {
       final l10n = AppLocalizations.of(context)!;
-      final etiquetaEvento =
-          alarme.etiqueta.isNotEmpty ? alarme.etiqueta : l10n.familiaEtiquetaPadrao;
+      final etiquetaEvento = alarme.etiquetaExibida(l10n);
       await _db.inserirEventoHistorico(
         titulo: l10n.historicoAlarmeRemovidoTitulo,
         descricao: l10n.historicoAlarmeRemovidoDescricao(etiquetaEvento, alarme.horarioFormatado),
@@ -305,8 +303,7 @@ Future<void> _pausarAlarmePorHoje(AlarmeRotina alarme) async {
 
     if (mounted) {
       final l10n = AppLocalizations.of(context)!;
-      final etiquetaEvento =
-          alarme.etiqueta.isNotEmpty ? alarme.etiqueta : l10n.familiaEtiquetaPadrao;
+      final etiquetaEvento = alarme.etiquetaExibida(l10n);
       await _db.inserirEventoHistorico(
         titulo: l10n.historicoAlarmePausadoTitulo,
         descricao: l10n.historicoAlarmePausadoDescricao(etiquetaEvento, alarme.horarioFormatado),
@@ -372,8 +369,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
     // 4. Registra no histórico
     if (mounted) {
       final l10n = AppLocalizations.of(context)!;
-      final etiquetaEvento =
-          alarme.etiqueta.isNotEmpty ? alarme.etiqueta : l10n.familiaEtiquetaPadrao;
+      final etiquetaEvento = alarme.etiquetaExibida(l10n);
       await _db.inserirEventoHistorico(
         titulo: l10n.historicoAlarmeReativadoTitulo,
         descricao: l10n.historicoAlarmeReativadoDescricao(etiquetaEvento, alarme.horarioFormatado),
@@ -390,7 +386,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
         SnackBar(
           content: Text(
             l10n.familiaReativadoComSucesso(
-              alarme.etiqueta.isNotEmpty ? alarme.etiqueta : l10n.familiaEtiquetaPadrao,
+              alarme.etiquetaExibida(l10n),
               alarme.horarioFormatado,
             ),
           ),
@@ -424,7 +420,15 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
     int horaSelecionada = alarmeExistente?.hora ?? TimeOfDay.now().hour;
     int minutoSelecionado = alarmeExistente?.minuto ?? 0;
     final Set<int> diasSelecionados = Set<int>.from(alarmeExistente?.diasSemana ?? {});
-    final etiquetaController = TextEditingController(text: alarmeExistente?.etiqueta ?? '');
+    // Se a etiqueta atual for a chave neutra padrão (ou uma tradução
+    // legada — ver AlarmeRotina.temEtiquetaPadrao), o campo começa VAZIO
+    // em vez de mostrar "KEY_ALARME_ROTINA"/um texto de outro idioma: o
+    // usuário só vê algo aqui quando de fato digitou um rótulo próprio.
+    final etiquetaController = TextEditingController(
+      text: (alarmeExistente == null || alarmeExistente.temEtiquetaPadrao)
+          ? ''
+          : alarmeExistente.etiqueta,
+    );
     final contextoController =
         TextEditingController(text: alarmeExistente?.contextoPersonalizado ?? '');
     int minutosTolerancia = alarmeExistente?.minutosTolerancia ?? 10;
@@ -644,9 +648,15 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                               minuto: minutoSelecionado,
                               diasSemana: diasSelecionados,
                               ativo: alarmeExistente?.ativo ?? true,
+                              // Chave NEUTRA (independente de idioma) quando
+                              // o campo fica em branco — nunca o texto já
+                              // traduzido: é isso que garante que este
+                              // agendamento também traduza corretamente ao
+                              // trocar o idioma do app mais tarde (ver
+                              // AlarmeRotina.etiquetaExibida).
                               etiqueta: etiqueta.isNotEmpty
                                   ? etiqueta
-                                  : AppLocalizations.of(ctx)!.familiaEtiquetaPadrao,
+                                  : AlarmeRotina.chaveEtiquetaPadrao,
                               contextoPersonalizado: contexto,
                               minutosTolerancia: minutosTolerancia,
                             );
@@ -658,7 +668,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                               await _db.inserirEventoHistorico(
                                 titulo: l10nCtx.historicoAlarmeCriadoTitulo,
                                 descricao: l10nCtx.historicoAlarmeCriadoEditadoDescricao(
-                                  alarme.etiqueta,
+                                  alarme.etiquetaExibida(l10nCtx),
                                   alarme.horarioFormatado,
                                   alarme.diasResumidos(l10nCtx),
                                 ),
@@ -670,7 +680,7 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                               await _db.inserirEventoHistorico(
                                 titulo: l10nCtx.historicoAlarmeEditadoTitulo,
                                 descricao: l10nCtx.historicoAlarmeCriadoEditadoDescricao(
-                                  alarme.etiqueta,
+                                  alarme.etiquetaExibida(l10nCtx),
                                   alarme.horarioFormatado,
                                   alarme.diasResumidos(l10nCtx),
                                 ),
@@ -861,7 +871,7 @@ Widget _construirListaAlarmes() {
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeTitulo),
-                      content: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeConteudo(alarme.etiqueta, alarme.horarioFormatado)),
+                      content: Text(AppLocalizations.of(ctx)!.familiaExcluirAlarmeConteudo(alarme.etiquetaExibida(AppLocalizations.of(ctx)!), alarme.horarioFormatado)),
                       actions: [
                         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(AppLocalizations.of(ctx)!.cancelar)),
                         FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.of(ctx).pop(true), child: Text(AppLocalizations.of(ctx)!.excluir)),
@@ -876,7 +886,7 @@ Widget _construirListaAlarmes() {
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeTitulo),
-                      content: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeConteudo(alarme.etiqueta, alarme.horarioFormatado)),
+                      content: Text(AppLocalizations.of(ctx)!.familiaPausarAlarmeConteudo(alarme.etiquetaExibida(AppLocalizations.of(ctx)!), alarme.horarioFormatado)),
                       actions: [
                         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(AppLocalizations.of(ctx)!.cancelar)),
                         FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.blue), onPressed: () => Navigator.of(ctx).pop(true), child: Text(AppLocalizations.of(ctx)!.familiaPausarBotao)),
@@ -931,10 +941,11 @@ Widget _construirListaAlarmes() {
                                   _obterDiaRetorno(alarme, AppLocalizations.of(context)!)),
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
                             ),
-                            if (alarme.etiqueta.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(alarme.etiqueta, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                            ],
+                            const SizedBox(height: 2),
+                            Text(
+                              alarme.etiquetaExibida(AppLocalizations.of(context)!),
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
                             const SizedBox(height: 6),
                             InkWell(
                               onTap: () async {
@@ -954,10 +965,11 @@ Widget _construirListaAlarmes() {
                               alarme.diasResumidos(AppLocalizations.of(context)!),
                               style: TextStyle(color: alarme.ativo ? Colors.grey.shade800 : Colors.grey.shade400, fontWeight: FontWeight.w500),
                             ),
-                            if (alarme.etiqueta.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(alarme.etiqueta, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                            ],
+                            const SizedBox(height: 2),
+                            Text(
+                              alarme.etiquetaExibida(AppLocalizations.of(context)!),
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
                           ],
                         ],
                       ),
