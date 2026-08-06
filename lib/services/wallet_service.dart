@@ -8,19 +8,26 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'firebase_auth_service.dart';
 
-/// Um produto consumível de recarga da Carteira em USD.
+/// Um pacote de créditos (unidades de disparo) disponível para compra.
 class ProdutoCredito {
   final String id;
-  final double valorUsd;
-  const ProdutoCredito(this.id, this.valorUsd);
+
+  /// Quantidade de CRÉDITOS (unidades de disparo — 1 crédito = 1 envio
+  /// de WhatsApp de contingência) concedida por este pacote. NUNCA um
+  /// valor monetário: a Carteira não trabalha com moeda financeira, só
+  /// com essa contagem de unidades.
+  final int quantidadeCreditos;
+  const ProdutoCredito(this.id, this.quantidadeCreditos);
 }
 
-/// Serviço central da Carteira em USD: expõe o saldo e o histórico de
-/// créditos (ambos SOMENTE LEITURA no cliente — toda escrita é feita
+/// Serviço central da Carteira de Créditos: expõe o saldo (em CRÉDITOS —
+/// unidades de disparo, nunca moeda financeira) e o histórico de
+/// movimentações (ambos SOMENTE LEITURA no cliente — toda escrita é feita
 /// pelas Cloud Functions, ver `firestore.rules`) e orquestra a compra de
-/// recargas via `in_app_purchase` (Google Play), sempre confirmando a
-/// compra no servidor (`confirmarCompraCredito`, callable) antes de
-/// considerá-la concluída — nunca credita saldo otimisticamente no app.
+/// pacotes de créditos via `in_app_purchase` (Google Play), sempre
+/// confirmando a compra no servidor (`confirmarCompraCredito`, callable)
+/// antes de considerá-la concluída — nunca credita saldo otimisticamente
+/// no app.
 class WalletService {
   WalletService._internal() {
     // Assinatura mantida viva pela duração inteira do app (singleton,
@@ -36,15 +43,19 @@ class WalletService {
   factory WalletService() => _instance;
 
   /// Mesmos productId configurados no Play Console e em
-  /// `functions/comprasService.js` (`PRODUTOS_CREDITO`).
+  /// `functions/comprasService.js` (`PRODUTOS_CREDITO`) — os ids em si
+  /// (herdados da fase em que a Carteira era em USD) não foram
+  /// renomeados de propósito, só a quantidade de créditos que cada um
+  /// concede (era valor em dólar, agora é nº de envios).
   static const List<ProdutoCredito> produtosDisponiveis = [
-    ProdutoCredito('credito_usd_1', 1),
-    ProdutoCredito('credito_usd_5', 5),
-    ProdutoCredito('credito_usd_10', 10),
+    ProdutoCredito('credito_usd_1', 10),
+    ProdutoCredito('credito_usd_5', 50),
+    ProdutoCredito('credito_usd_10', 100),
   ];
 
-  /// Mesmo valor de `CUSTO_WHATSAPP_USD` em `functions/constantes.js`.
-  static const double custoWhatsappUsd = 0.10;
+  /// Custo, em CRÉDITOS, de cada envio de WhatsApp de contingência —
+  /// mesmo valor de `CUSTO_WHATSAPP_CREDITOS` em `functions/constantes.js`.
+  static const int custoWhatsappCreditos = 1;
 
   final StreamController<String> _statusCompraController =
       StreamController<String>.broadcast();
@@ -64,14 +75,15 @@ class WalletService {
     return FirebaseFirestore.instance.collection('usuarios').doc(uid);
   }
 
-  /// Saldo atual em USD, em tempo real. `0` se não houver sessão ativa ou
-  /// o campo ainda não existir (conta recém-criada).
-  Stream<double> saldoStream() {
+  /// Saldo atual em CRÉDITOS (unidades de disparo), em tempo real. `0`
+  /// se não houver sessão ativa ou o campo ainda não existir (conta
+  /// recém-criada). NUNCA um valor monetário.
+  Stream<int> saldoStream() {
     final doc = _documentoUsuario;
     if (!_firebaseDisponivel || doc == null) return Stream.value(0);
     return doc.snapshots().map((snap) {
-      final saldo = snap.data()?['saldoUsd'];
-      return saldo is num ? saldo.toDouble() : 0.0;
+      final creditos = snap.data()?['creditosDisponiveis'];
+      return creditos is num ? creditos.toInt() : 0;
     });
   }
 
@@ -87,7 +99,7 @@ class WalletService {
         .map((snap) => snap.docs.map((d) => d.data()).toList());
   }
 
-  /// Inicia a compra do produto consumível [produtoId] via Google Play.
+  /// Inicia a compra do pacote de créditos [produtoId] via Google Play.
   /// O crédito real só acontece quando [_confirmarCompraNoServidor]
   /// receber `sucesso: true` da Cloud Function.
   Future<void> comprarCredito(String produtoId) async {
@@ -133,8 +145,8 @@ class WalletService {
   }
 
   /// Chama a Cloud Function callable `confirmarCompraCredito`, que
-  /// verifica a compra na Play Developer API antes de creditar o saldo.
-  /// Só marca a compra como concluída no dispositivo
+  /// verifica a compra na Play Developer API antes de creditar os
+  /// créditos. Só marca a compra como concluída no dispositivo
   /// (`InAppPurchase.completePurchase`) em caso de SUCESSO do servidor —
   /// se a verificação falhar, deixa pendente para nova tentativa em vez
   /// de perder a compra silenciosamente.

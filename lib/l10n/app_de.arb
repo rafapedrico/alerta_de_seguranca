@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
   "sairDaContaTitulo": "Abmelden",
   "sairDaContaConfirmar": "Abmelden",
-  "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (0,10 $ USD)",
+  "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (1 Credit)",
   "whatsappSimultaneoTitulo": "Auch über WhatsApp senden",
   "whatsappSimultaneoDescricao": "Sendet den Alarm sofort per WhatsApp zusammen mit der Push-Benachrichtigung, ohne auf die Zustellbestätigung zu warten, und zieht den Betrag für jeden aktivierten Kontakt von der Wallet ab.",
   "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Guthaben-Wallet",
   "carteiraMenuItem": "Guthaben-Wallet",
   "carteiraSaldoAtual": "Aktuelles Guthaben",
-  "carteiraAteNEnvios": "bis zu {n} Versendungen",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Credits",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "Warnungen über die App sind 100% kostenlos. WhatsApp-Notfallnachrichten kosten je 0,10 $ USD.",
+  "carteiraLegendaCredito": "1 Credit = 1 WhatsApp-Notfallnachricht",
+  "carteiraPacoteEnvios": "Paket mit {n} Versendungen",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} Credits",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "Warnungen über die App sind 100% kostenlos. WhatsApp-Notfallnachrichten kosten je 1 Credit.",
   "carteiraRecarregarTitulo": "Aufladen",
   "carteiraHistoricoTitulo": "Verlauf",
   "carteiraHistoricoVazio": "Noch keine Bewegungen.",
@@ -466,11 +483,11 @@
   "faqPergunta7": "Ist es sicher, für den Premium-Plan zu bezahlen oder Geld in die Kredit-Wallet einzuzahlen?",
   "faqResposta7": "Ja, es ist sicher. Es wird keine Zahlung direkt an das Unternehmen RMF GLOBAL geleistet. Alle Zahlungen werden direkt über die Plattform Google Play Store oder Apple App Store abgewickelt, mit voller Garantie der Plattformen.",
   "faqPergunta8": "Kann ich das in die Kredit-Wallet eingezahlte Geld zurückfordern?",
-  "faqResposta8": "Ja, gemäß den Bestimmungen von Google Play Store und Apple können alle als Guthaben eingezahlten Beträge dem Nutzer erstattet werden. Diese Rückerstattung erfolgt direkt durch das Finanzinstitut und die Plattformen Google Play Store und Apple gemäß der Verbraucherkreditschutzrichtlinie. Bei Abhebung eines Betrags aus der Kredit-Wallet wird eine Gebühr von 0,50 USD (fünfzig Cent) berechnet.",
+  "faqResposta8": "Ja, gemäß den Bestimmungen von Google Play Store und Apple kann der beim Kauf eines Credit-Pakets gezahlte Betrag dem Nutzer erstattet werden. Diese Rückerstattung erfolgt direkt durch das Finanzinstitut und die Plattformen Google Play Store und Apple gemäß der Verbraucherschutzrichtlinie des jeweiligen Stores — die Guardião-X Credit-Wallet erlaubt kein Auszahlen/Umtauschen der Credits in Geld, da es sich um Versand-Einheiten handelt, keine Währung.",
   "faqPergunta9": "Wie werden Notfallalarme geteilt?",
   "faqResposta9": "Alle Sicherheitsalarm-Nachrichten werden auf zwei Standardwegen gesendet: von App zu App und per SMS an die auf der Seite „Einstellungen“ registrierten Handynummern.",
   "faqPergunta10": "Wie funktioniert der zusätzliche Versand von Notfallalarmen an WhatsApp?",
-  "faqResposta10": "Das Senden einer Nachricht an WhatsApp ist eine zusätzliche Sicherheitsform und stellt die dritte Schutzebene dar, als zusätzliche Garantie dafür, dass die registrierte Nummer eine weitere Sicherheit hat, dass der Notfallalarm sein Ziel erreicht und vom Nutzer gesehen wird. Für jede an jede WhatsApp-Nummer gesendete Nachricht wird eine Servicegebühr von 0,10 USD (zehn Cent) berechnet. WhatsApp-Nachrichten werden nur gesendet, wenn Guthaben in der Kredit-Wallet vorhanden ist, die Berechtigung zum Senden von WhatsApp-Nachrichten aktiviert ist (auf der Seite Einstellungen) und eine Handynummer zum Empfang dieser Nachrichten aktiviert ist.",
+  "faqResposta10": "Das Senden einer Nachricht an WhatsApp ist eine zusätzliche Sicherheitsform und stellt die dritte Schutzebene dar, als zusätzliche Garantie dafür, dass die registrierte Nummer eine weitere Sicherheit hat, dass der Notfallalarm sein Ziel erreicht und vom Nutzer gesehen wird. Für jede an jede WhatsApp-Nummer gesendete Nachricht wird 1 Credit von der Wallet abgebucht. WhatsApp-Nachrichten werden nur gesendet, wenn Credits in der Wallet vorhanden sind, die Berechtigung zum Senden von WhatsApp-Nachrichten aktiviert ist (auf der Seite Einstellungen) und eine Handynummer zum Empfang dieser Nachrichten aktiviert ist.",
   "faqPergunta11": "Wie funktioniert der Kundenservice?",
   "faqResposta11": "Der WhatsApp-Chat wurde so programmiert, dass er die meisten Fragen und Anliegen der Nutzer automatisch beantwortet. Anfragen über das Menü „Mit einem persönlichen Mitarbeiter sprechen“ folgen den Regeln der von der RMF Global festgelegten Richtlinie, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem Support innerhalb von bis zu 48 Stunden erhalten.",
   "faqPergunta12": "Werden Notfallalarm-Nachrichten nur an registrierte Nummern gesendet, auf denen die Guardião-X-App installiert ist?",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. Sicherheitsfristen (Wartezeit)",
   "termosContratoCorpo5": "Bestimmte sensible Aktionen (Änderung von Passwort/PIN, Löschen von Notfallkontakten, sofortige Anzeige des Verlaufs) unterliegen einer Wartezeit, bevor sie wirksam werden, um zu verhindern, dass unbefugte Dritte die Sicherheitsfunktionen des Nutzers unter Zwang deaktivieren.",
   "termosContratoTitulo6": "6. Pläne, Preise und Zahlungen",
-  "termosContratoCorpo6": "Der Free-Plan schaltet alle Premium-Funktionen für bis zu 10 (zehn) Tage pro Monat frei, wobei die übrigen Tage den Beschränkungen des kostenlosen Plans unterliegen. Der Premium-Plan kostet 11,99 €/Monat mit unbegrenztem Zugriff auf alle Funktionen der App. Abonnements des Premium-Plans und Aufladungen der Kredit-Wallet werden ausschließlich über die Plattformen Google Play Store und Apple App Store abgewickelt, vorbehaltlich deren jeweiliger Abrechnungs-, Rückerstattungs- und Verbraucherschutzrichtlinien — RMF Global erhält oder verarbeitet keine Zahlungen direkt.",
+  "termosContratoCorpo6": "Der Free-Plan schaltet alle Premium-Funktionen für bis zu 10 (zehn) Tage pro Monat frei, wobei die übrigen Tage den Beschränkungen des kostenlosen Plans unterliegen. Der Premium-Plan kostet den in der App zum Zeitpunkt des Abonnements angezeigten Betrag, monatlich abgerechnet, mit unbegrenztem Zugriff auf alle Funktionen der App. Abonnements des Premium-Plans und Aufladungen der Kredit-Wallet werden ausschließlich über die Plattformen Google Play Store und Apple App Store abgewickelt, vorbehaltlich deren jeweiliger Abrechnungs-, Rückerstattungs- und Verbraucherschutzrichtlinien — RMF Global erhält oder verarbeitet keine Zahlungen direkt.",
   "termosContratoTitulo7": "7. Kündigung und Rückerstattung",
   "termosContratoCorpo7": "Wird der Premium-Plan innerhalb der ersten 15 (fünfzehn) Tage nach Abschluss gekündigt, erhält der Nutzer ohne Aufwand 50 % (fünfzig Prozent) des gezahlten Betrags zurück, vorbehaltlich der Rückerstattungsrichtlinien des Google Play Store oder Apple App Store, je nachdem, welche Plattform für das Abonnement verwendet wurde.",
   "termosContratoTitulo8": "8. Kundenservice (SAC)",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "Premium kündigen",
   "premiumCanceladoSnackbar": "Premium-Plan gekündigt. Sie befinden sich jetzt im kostenlosen Plan.",
   "premiumAssinarBotaoComPreco": "Premium abonnieren — {preco}",
-  "premiumModalNotaRodape": "* Der zusätzliche WhatsApp-Versand ist eine optionale Funktion, die auf der Seite „Einstellungen“ aktiviert werden kann und 0,10 US$ pro Nachricht kostet.",
+  "premiumModalNotaRodape": "* Der zusätzliche WhatsApp-Versand ist eine optionale Funktion, die auf der Seite „Einstellungen“ aktiviert werden kann und 1 Credit aus der Wallet pro Nachricht kostet.",
   "premiumCancelarBotaoModal": "Premium-Plan kündigen",
   "familiaEtiquetaPadrao": "Routinealarm",
   "familiaDiasNuncaLabel": "Nie",

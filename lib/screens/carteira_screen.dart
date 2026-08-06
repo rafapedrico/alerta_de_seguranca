@@ -6,9 +6,10 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../services/wallet_service.dart';
 
-/// Tela/módulo de Carteira: saldo em USD, equivalência em envios de
-/// WhatsApp, nota explicativa (Push via app é gratuito; WhatsApp de
-/// contingência custa $0.10 USD) e histórico de recargas/descontos.
+/// Tela/módulo de Carteira: saldo em CRÉDITOS (unidades de disparo —
+/// NUNCA moeda financeira), nota explicativa (Push via app é gratuito;
+/// WhatsApp de contingência custa 1 crédito) e histórico de
+/// recargas/descontos.
 class CarteiraScreen extends StatefulWidget {
   const CarteiraScreen({super.key});
 
@@ -75,17 +76,16 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.carteiraTitulo)),
-      body: StreamBuilder<double>(
+      body: StreamBuilder<int>(
         stream: _wallet.saldoStream(),
         initialData: 0,
         builder: (context, snapshotSaldo) {
           final saldo = snapshotSaldo.data ?? 0;
-          final envios = (saldo / WalletService.custoWhatsappUsd).floor();
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _buildCartaoSaldo(l10n, saldo, envios),
+              _buildCartaoSaldo(l10n, saldo),
               const SizedBox(height: 12),
               _buildNotaExplicativa(l10n),
               const SizedBox(height: 20),
@@ -94,7 +94,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              _buildBotoesRecarga(),
+              _buildBotoesRecarga(l10n),
               const SizedBox(height: 24),
               Text(
                 l10n.carteiraHistoricoTitulo,
@@ -109,7 +109,12 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
     );
   }
 
-  Widget _buildCartaoSaldo(AppLocalizations l10n, double saldo, int envios) {
+  /// Cartão de saldo: o número grande já É a contagem de créditos
+  /// (unidades de disparo) — cada crédito corresponde a exatamente 1
+  /// envio de WhatsApp de contingência, então não há nenhuma conversão/
+  /// cálculo a fazer aqui, diferente da versão antiga em USD (que
+  /// precisava dividir o saldo pelo custo por envio).
+  Widget _buildCartaoSaldo(AppLocalizations l10n, int saldo) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -127,12 +132,12 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
           Text(l10n.carteiraSaldoAtual, style: const TextStyle(color: Colors.white70, fontSize: 13)),
           const SizedBox(height: 6),
           Text(
-            '\$${saldo.toStringAsFixed(2)} USD',
+            l10n.carteiraSaldoCreditos(saldo),
             style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            l10n.carteiraAteNEnvios(envios),
+            l10n.carteiraLegendaCredito,
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
         ],
@@ -164,7 +169,10 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
     );
   }
 
-  Widget _buildBotoesRecarga() {
+  /// Botões de recarga: cada pacote concede uma quantidade de CRÉDITOS
+  /// (unidades de disparo, ver [WalletService.produtosDisponiveis]) —
+  /// rótulo "Pacote N Envios" em vez do antigo "+$N" em dólar.
+  Widget _buildBotoesRecarga(AppLocalizations l10n) {
     return Row(
       children: WalletService.produtosDisponiveis.map((produto) {
         return Expanded(
@@ -178,7 +186,11 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('+ \$${produto.valorUsd.toStringAsFixed(0)}'),
+              child: Text(
+                l10n.carteiraPacoteEnvios(produto.quantidadeCreditos),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         );
@@ -215,7 +227,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
 
   Widget _buildItemHistorico(AppLocalizations l10n, Map<String, dynamic> item) {
     final tipo = item['tipo'] as String? ?? '';
-    final valor = (item['valorUsd'] as num?)?.toDouble() ?? 0;
+    final quantidade = (item['quantidadeCreditos'] as num?)?.toInt() ?? 0;
     final descricao = item['descricao'] as String? ?? '';
     final criadoEm = item['criadoEm'];
     final data = criadoEm is Timestamp ? criadoEm.toDate() : null;
@@ -242,10 +254,10 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
           style: const TextStyle(fontSize: 12),
         ),
         trailing: Text(
-          '${valor >= 0 ? '+' : ''}\$${valor.toStringAsFixed(2)}',
+          '${quantidade >= 0 ? '+' : ''}${l10n.carteiraValorCreditos(quantidade)}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: valor >= 0 ? Colors.green.shade700 : Colors.orange.shade700,
+            color: quantidade >= 0 ? Colors.green.shade700 : Colors.orange.shade700,
           ),
         ),
       ),

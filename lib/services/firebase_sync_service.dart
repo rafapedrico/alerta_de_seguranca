@@ -83,9 +83,10 @@ class FirebaseSyncService {
   /// a Cloud Function resolve, na hora de um alerta, quais contatos de
   /// emergência têm conta no app (ver `alertaHibridoService.js`).
   ///
-  /// `saldoUsd: 0` só é gravado AQUI (cadastro) — nenhum outro ponto do
-  /// app cliente deve voltar a escrever este campo depois disso; toda
-  /// alteração de saldo passa exclusivamente por Cloud Functions (ver
+  /// `creditosDisponiveis: 0` só é gravado AQUI (cadastro) — nenhum
+  /// outro ponto do app cliente deve voltar a escrever este campo
+  /// depois disso; toda alteração de saldo (unidades de disparo, NUNCA
+  /// moeda financeira) passa exclusivamente por Cloud Functions (ver
   /// `functions/walletService.js`).
   Future<void> criarPerfilInicial({
     required String nome,
@@ -99,7 +100,7 @@ class FirebaseSyncService {
           'nome': nome,
           'email': email,
           'telefone': telefone,
-          'saldoUsd': 0,
+          'creditosDisponiveis': 0,
           'criadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -196,7 +197,7 @@ class FirebaseSyncService {
     // própria (ver firestore.rules) que permite acesso a qualquer usuário
     // com permissão "aprovado" na aba Monitoramento (MonitoramentoService),
     // sem expor os demais campos privados do documento principal
-    // (saldoUsd, fcmToken). Best-effort e independente da escrita acima —
+    // (creditosDisponiveis, fcmToken). Best-effort e independente da escrita acima —
     // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
     // pânico.
     try {

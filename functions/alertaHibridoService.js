@@ -159,7 +159,7 @@ async function enviarWhatsappSimultaneoParaContatos(usuarioId, contatosResolvido
       await enviarSmsParaTelefones([contato.telefone], mensagem);
       enviados.add(contato.telefone);
       logger.info(
-          `[WhatsApp Simultâneo] entregas_alerta/${idEntrega} — $0.10 USD debitado do ` +
+          `[WhatsApp Simultâneo] entregas_alerta/${idEntrega} — 1 crédito debitado do ` +
           `usuário ${usuarioId}; WhatsApp enviado IMEDIATAMENTE (junto com o Push, sem ` +
           `aguardar os 60s de transbordo) para ${contato.telefone}.`,
       );

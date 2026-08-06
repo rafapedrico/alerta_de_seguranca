@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "无法重新发送邮件，请稍后重试。",
   "sairDaContaTitulo": "退出登录",
   "sairDaContaConfirmar": "退出",
-  "contatoWhatsappSwitchLabel": "通过WhatsApp通知（$0.10 USD）",
+  "contatoWhatsappSwitchLabel": "通过WhatsApp通知（1积分）",
   "whatsappSimultaneoTitulo": "同时通过WhatsApp发送",
   "whatsappSimultaneoDescricao": "在不等待送达确认的情况下，立即通过WhatsApp与推送通知同时发送警报，并为每个已启用的联系人从钱包中扣除相应金额。",
   "alertaRecebidoTitulo": "收到安全警报",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "信用钱包",
   "carteiraMenuItem": "信用钱包",
   "carteiraSaldoAtual": "当前余额",
-  "carteiraAteNEnvios": "最多可发送{n}次",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} 积分",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "应用内提醒完全免费。WhatsApp应急发送每条收费$0.10美元。",
+  "carteiraLegendaCredito": "1积分 = 1条WhatsApp应急发送",
+  "carteiraPacoteEnvios": "{n}次发送套餐",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} 积分",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "应用内提醒完全免费。WhatsApp应急发送每条消耗1个积分。",
   "carteiraRecarregarTitulo": "充值",
   "carteiraHistoricoTitulo": "历史记录",
   "carteiraHistoricoVazio": "暂无记录。",
@@ -466,11 +483,11 @@
   "faqPergunta7": "支付高级套餐费用或向信用钱包充值是否安全？",
   "faqResposta7": "是的，这是安全的。任何款项都不会直接支付给RMF GLOBAL公司。所有付款均直接通过Google Play商店或Apple App Store平台处理，并享有平台的完全保障。",
   "faqPergunta8": "我可以取出存入信用钱包的钱吗？",
-  "faqResposta8": "可以，根据Google Play商店和Apple的规定，所有作为信用余额存入的资金均可退还给用户。此退款由金融机构以及Google Play商店和Apple平台直接按照消费者信用保护政策处理。从信用钱包提取任何金额将收取0.50美元（五十美分）的手续费。",
+  "faqResposta8": "可以，根据Google Play商店和Apple的规定，购买积分套餐所支付的金额可退还给用户。此退款由金融机构以及Google Play商店和Apple平台按照各自的消费者保护政策直接处理——Guardião-X的积分钱包不允许将积分兑换/提现为现金，因为积分是发送单位，而非货币。",
   "faqPergunta9": "紧急警报是如何共享的？",
   "faqResposta9": "所有安全警报消息均以两种标准方式发送：应用程序之间，以及通过短信发送到「设置」页面中登记的手机号码。",
   "faqPergunta10": "额外发送紧急警报到WhatsApp是如何运作的？",
-  "faqResposta10": "发送消息到WhatsApp是一种额外的安全形式，作为第三重保护层，为已登记号码提供额外保障，确保紧急警报能够送达并被用户看到。每发送一条消息到每个WhatsApp号码将收取0.10美元（十美分）的服务费。只有在信用钱包中有余额、已在设置页面启用WhatsApp消息发送授权，且某个手机号码已启用接收此类消息的情况下，WhatsApp消息才会被发送。",
+  "faqResposta10": "发送消息到WhatsApp是一种额外的安全形式，作为第三重保护层，为已登记号码提供额外保障，确保紧急警报能够送达并被用户看到。每发送一条消息到每个WhatsApp号码将从钱包中扣除1个积分。只有在钱包中有积分余额、已在设置页面启用WhatsApp消息发送授权，且某个手机号码已启用接收此类消息的情况下，WhatsApp消息才会被发送。",
   "faqPergunta11": "客户服务是如何运作的？",
   "faqResposta11": "WhatsApp聊天已被设定为自动回复用户的大多数疑问和请求。通过「与人工客服交谈」菜单提出的请求将遵循RMF Global公司制定的政策规定，其中高级套餐用户将在最长48小时内享有此项服务的优先权。",
   "faqPergunta12": "紧急警报消息是否只会发送给安装了Guardião-X应用的已登记号码？",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. 安全等待期",
   "termosContratoCorpo5": "某些敏感操作（更改密码/PIN码、删除紧急联系人、立即查看历史记录）在生效前需经过一段等待期，目的是防止未经授权的第三方在胁迫情况下停用用户的安全功能。",
   "termosContratoTitulo6": "6. 套餐、价格与付款",
-  "termosContratoCorpo6": "免费套餐每月最多可解锁10（十）天的全部高级功能，其余天数受免费套餐限制约束。高级套餐费用为每月11.99美元，可无限制使用应用的所有功能。高级套餐订阅和信用钱包充值均仅通过Google Play商店和Apple App Store平台处理，并受这些平台各自的计费、退款及消费者保护政策约束——RMF Global不直接接收或处理任何付款。",
+  "termosContratoCorpo6": "免费套餐每月最多可解锁10（十）天的全部高级功能，其余天数受免费套餐限制约束。高级套餐费用为订阅时应用内显示的金额，按月收取，可无限制使用应用的所有功能。高级套餐订阅和信用钱包充值均仅通过Google Play商店和Apple App Store平台处理，并受这些平台各自的计费、退款及消费者保护政策约束——RMF Global不直接接收或处理任何付款。",
   "termosContratoTitulo7": "7. 取消与退款",
   "termosContratoCorpo7": "如在订阅后的前15（十五）天内取消高级套餐，用户可无手续地退回已支付金额的50%（百分之五十），具体以订阅所用平台（Google Play商店或Apple App Store）的退款政策为准。",
   "termosContratoTitulo8": "8. 客户服务（SAC）",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "取消高级套餐",
   "premiumCanceladoSnackbar": "高级套餐已取消。您现在处于免费套餐。",
   "premiumAssinarBotaoComPreco": "订阅高级版 — {preco}",
-  "premiumModalNotaRodape": "* 额外的WhatsApp发送为可选功能，可在“设置”页面启用，每条消息费用为0.10美元。",
+  "premiumModalNotaRodape": "* 额外的WhatsApp发送为可选功能，可在“设置”页面启用，每条消息将从钱包中消耗1个积分。",
   "premiumCancelarBotaoModal": "取消高级套餐",
   "familiaEtiquetaPadrao": "常规闹钟",
   "familiaDiasNuncaLabel": "从不",

@@ -74,7 +74,7 @@ async function buscarUidsConfirmados(entregaRef) {
  */
 async function processarContingenciaContato(usuarioId, contato, idEntrega, mensagem) {
   logger.info(
-      `[Verificando Chave/Saldo USD] entregas_alerta/${idEntrega} — ` +
+      `[Verificando Saldo de Créditos] entregas_alerta/${idEntrega} — ` +
       `contato ${contato.telefone} (whatsappHabilitado=${contato.whatsappHabilitado}).`,
   );
 
@@ -98,7 +98,7 @@ async function processarContingenciaContato(usuarioId, contato, idEntrega, mensa
 
   await enviarSmsParaTelefones([contato.telefone], mensagem);
   logger.info(
-      `[Desconto Aplicado] entregas_alerta/${idEntrega} — $0.10 USD debitado do ` +
+      `[Desconto Aplicado] entregas_alerta/${idEntrega} — 1 crédito debitado do ` +
       `usuário ${usuarioId}; WhatsApp de contingência enviado para ${contato.telefone}.`,
   );
 }

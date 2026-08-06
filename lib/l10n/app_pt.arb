@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "Não foi possível reenviar o e-mail. Tente novamente mais tarde.",
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
-  "contatoWhatsappSwitchLabel": "Notificar via WhatsApp ($0.10 USD)",
+  "contatoWhatsappSwitchLabel": "Notificar via WhatsApp (1 crédito)",
   "whatsappSimultaneoTitulo": "Enviar também via WhatsApp",
   "whatsappSimultaneoDescricao": "Envia o alerta imediatamente por WhatsApp junto com o Push, sem esperar a confirmação de entrega, descontando o valor da Carteira para cada contato habilitado.",
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Carteira de Créditos",
   "carteiraMenuItem": "Carteira de Créditos",
   "carteiraSaldoAtual": "Saldo atual",
-  "carteiraAteNEnvios": "até {n} envios",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Créditos",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "Alertas via App são 100% gratuitos. Envios de contingência via WhatsApp custam $0.10 USD cada.",
+  "carteiraLegendaCredito": "Cada crédito = 1 envio de WhatsApp de contingência",
+  "carteiraPacoteEnvios": "Pacote {n} Envios",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} créditos",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "Alertas via App são 100% gratuitos. Envios de contingência via WhatsApp custam 1 crédito cada.",
   "carteiraRecarregarTitulo": "Recarregar",
   "carteiraHistoricoTitulo": "Histórico",
   "carteiraHistoricoVazio": "Nenhuma movimentação ainda.",
@@ -484,11 +501,11 @@
   "faqPergunta7": "É seguro fazer o pagamento para contratar o plano premium ou depositar dinheiro na carteira de crédito?",
   "faqResposta7": "Sim, é seguro. Nenhum pagamento é efetuado direto para a empresa RMF GLOBAL. Todos os pagamentos são efetuados direto na plataforma do Google Play Store ou Apple App Store, com total garantia das plataformas.",
   "faqPergunta8": "Posso resgatar o dinheiro depositado na carteira de crédito?",
-  "faqResposta8": "Sim, conforme regulamento do Google Play Store e Apple, todos os valores financeiros depositados como fundo de crédito podem ser reembolsados pelo usuário. Esta devolução é feita diretamente pela instituição financeira e pelas plataformas Google Play Store e Apple seguindo a política de proteção ao crédito do consumidor. Em caso de resgate de qualquer valor da carteira de crédito será debitado o valor de US$ 0,50 (cinquenta centavos de dólar).",
+  "faqResposta8": "Sim, conforme regulamento do Google Play Store e Apple, o valor pago na compra de um pacote de créditos pode ser reembolsado ao usuário. Esse reembolso é feito diretamente pela instituição financeira e pelas plataformas Google Play Store e Apple, seguindo a política de proteção ao consumidor de cada loja — a Carteira de Créditos do Guardião-X não permite resgate/saque dos créditos em dinheiro, já que eles são unidades de envio, não moeda.",
   "faqPergunta9": "Como é feito o compartilhamento dos alertas de emergência?",
   "faqResposta9": "Todas as mensagens de alerta de segurança são enviadas de duas formas padrão: de aplicativo para aplicativo e por SMS para os números de celular cadastrados na página de \"Configurações\".",
   "faqPergunta10": "Como funciona o envio adicional de alerta de emergência para o WhatsApp?",
-  "faqResposta10": "O envio de mensagem para o WhatsApp é uma forma adicional de segurança, sendo a terceira camada de proteção como garantia extra de que o número cadastrado terá uma garantia a mais de que o alerta de emergência chegará ao destino e será visualizado pelo usuário. Cada mensagem enviada para cada número de WhatsApp será cobrada uma taxa de serviço de US$ 0,10 (dez centavos de dólar). As mensagens para o WhatsApp só serão enviadas se houver fundos na carteira de crédito, se estiver ativada a autorização para o envio de mensagens para o WhatsApp (na página de Configurações) e se algum número de celular estiver ativado para receber estas mensagens.",
+  "faqResposta10": "O envio de mensagem para o WhatsApp é uma forma adicional de segurança, sendo a terceira camada de proteção como garantia extra de que o número cadastrado terá uma garantia a mais de que o alerta de emergência chegará ao destino e será visualizado pelo usuário. Cada mensagem enviada para cada número de WhatsApp debita 1 crédito da Carteira. As mensagens para o WhatsApp só serão enviadas se houver créditos na carteira, se estiver ativada a autorização para o envio de mensagens para o WhatsApp (na página de Configurações) e se algum número de celular estiver ativado para receber estas mensagens.",
   "faqPergunta11": "Como funciona o serviço de atendimento ao consumidor?",
   "faqResposta11": "O chat do WhatsApp foi programado para responder de maneira automática a maioria das dúvidas e solicitações do usuário. As solicitações feitas no menu \"Falar com o atendente físico\" seguirão as normas dos regulamentos da política estabelecida pela empresa RMF Global, onde os usuários do Plano Premium terão exclusividade a este atendimento num prazo de até 48 horas.",
   "faqPergunta12": "As mensagens de alerta de emergência só serão enviadas para os números cadastrados que tiverem o aplicativo Guardião-X instalado no celular?",
@@ -508,7 +525,7 @@
   "termosContratoTitulo5": "5. Prazos de segurança (carência)",
   "termosContratoCorpo5": "Determinadas ações sensíveis (alteração de senha/PIN, exclusão de contatos de emergência, visualização imediata de histórico) estão sujeitas a um prazo de carência antes de serem efetivadas, com o objetivo de impedir que terceiros não autorizados desativem funções de segurança do usuário sob coação.",
   "termosContratoTitulo6": "6. Planos, preços e pagamentos",
-  "termosContratoCorpo6": "O Plano Free libera todas as funções Premium por até 10 (dez) dias a cada mês, com os demais dias sujeitos aos limites do plano gratuito. O Plano Premium tem o valor de R$ 11,99/mês, com acesso ilimitado a todas as funções do aplicativo. Assinaturas do Plano Premium e recargas da carteira de crédito são processadas exclusivamente pelas plataformas Google Play Store e Apple App Store, sujeitas às respectivas políticas de cobrança, reembolso e proteção ao consumidor dessas plataformas — a RMF Global não recebe nem processa pagamentos diretamente.",
+  "termosContratoCorpo6": "O Plano Free libera todas as funções Premium por até 10 (dez) dias a cada mês, com os demais dias sujeitos aos limites do plano gratuito. O Plano Premium tem o valor exibido no aplicativo no momento da assinatura, cobrado mensalmente, com acesso ilimitado a todas as funções do aplicativo. Assinaturas do Plano Premium e recargas da carteira de crédito são processadas exclusivamente pelas plataformas Google Play Store e Apple App Store, sujeitas às respectivas políticas de cobrança, reembolso e proteção ao consumidor dessas plataformas — a RMF Global não recebe nem processa pagamentos diretamente.",
   "termosContratoTitulo7": "7. Cancelamento e reembolso",
   "termosContratoCorpo7": "Em caso de cancelamento do Plano Premium dentro dos primeiros 15 (quinze) dias a partir da contratação, o usuário recebe de volta 50% (cinquenta por cento) do valor pago, sem burocracia, respeitadas as políticas de reembolso da Google Play Store ou da Apple App Store, conforme a plataforma utilizada na assinatura.",
   "termosContratoTitulo8": "8. Atendimento ao Consumidor (SAC)",
@@ -545,7 +562,7 @@
       }
     }
   },
-  "premiumModalNotaRodape": "* O envio adicional para WhatsApp é um recurso opcional que pode ser ativado na página \"Configurações\" e possui o custo de US$ 0,10 por mensagem.",
+  "premiumModalNotaRodape": "* O envio adicional para WhatsApp é um recurso opcional que pode ser ativado na página \"Configurações\" e consome 1 crédito da Carteira por mensagem.",
   "premiumCancelarBotaoModal": "Cancelar Plano Premium",
   "familiaEtiquetaPadrao": "Alarme de rotina",
   "familiaDiasNuncaLabel": "Nunca",

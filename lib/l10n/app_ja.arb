@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "メールを再送信できませんでした。しばらくしてから再度お試しください。",
   "sairDaContaTitulo": "ログアウト",
   "sairDaContaConfirmar": "ログアウト",
-  "contatoWhatsappSwitchLabel": "WhatsAppで通知する（$0.10 USD）",
+  "contatoWhatsappSwitchLabel": "WhatsAppで通知する（1クレジット）",
   "whatsappSimultaneoTitulo": "WhatsAppでも送信する",
   "whatsappSimultaneoDescricao": "配信確認を待たずに、プッシュ通知と同時にWhatsAppでも即座にアラートを送信し、有効な連絡先ごとにウォレットから金額を差し引きます。",
   "alertaRecebidoTitulo": "安全警報を受信しました",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "クレジットウォレット",
   "carteiraMenuItem": "クレジットウォレット",
   "carteiraSaldoAtual": "現在の残高",
-  "carteiraAteNEnvios": "最大{n}回送信可能",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n}クレジット",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "アプリ内アラートは完全無料です。WhatsAppによる予備通知は1件$0.10 USDかかります。",
+  "carteiraLegendaCredito": "1クレジット = WhatsApp予備通知1件",
+  "carteiraPacoteEnvios": "{n}件送信パック",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n}クレジット",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "アプリ内アラートは完全無料です。WhatsAppによる予備通知は1件につき1クレジットかかります。",
   "carteiraRecarregarTitulo": "チャージ",
   "carteiraHistoricoTitulo": "履歴",
   "carteiraHistoricoVazio": "まだ履歴がありません。",
@@ -466,11 +483,11 @@
   "faqPergunta7": "プレミアムプランの契約料の支払いやクレジットウォレットへの入金は安全ですか？",
   "faqResposta7": "はい、安全です。RMF GLOBAL社に直接支払われる料金はありません。すべての支払いはGoogle Play StoreまたはApple App Storeのプラットフォーム上で直接処理され、各プラットフォームの完全な保証があります。",
   "faqPergunta8": "クレジットウォレットに入金したお金を引き出すことはできますか？",
-  "faqResposta8": "はい。Google Play StoreおよびAppleの規定に従い、クレジット残高として入金されたすべての金額はユーザーに返金可能です。この返金は、消費者信用保護方針に従い、金融機関およびGoogle Play StoreとAppleのプラットフォームによって直接行われます。クレジットウォレットからの引き出しには、US$0.50（50セント）の手数料がかかります。",
+  "faqResposta8": "はい。Google Play StoreおよびAppleの規定に従い、クレジットパッケージ購入時に支払った金額はユーザーに返金可能です。この返金は、各ストアの消費者保護方針に従い、金融機関およびGoogle Play StoreとAppleのプラットフォームによって直接行われます。Guardião-Xのクレジットウォレットでは、クレジットは送信単位であり通貨ではないため、クレジットを現金として引き出す/換金することはできません。",
   "faqPergunta9": "緊急アラートはどのように共有されますか？",
   "faqResposta9": "すべてのセキュリティアラートメッセージは、アプリ間、および「設定」ページに登録された携帯電話番号へのSMSという2つの標準的な方法で送信されます。",
   "faqPergunta10": "WhatsAppへの緊急アラートの追加送信はどのように機能しますか？",
-  "faqResposta10": "WhatsAppへのメッセージ送信は追加的なセキュリティ手段であり、第3の保護層として、緊急アラートが確実に届きユーザーに閲覧されるための追加の保証となります。WhatsApp番号ごとに送信されるメッセージには、US$0.10（10セント）のサービス料が課金されます。WhatsAppメッセージは、クレジットウォレットに残高がある場合、WhatsAppメッセージ送信の許可が（設定ページで）有効になっている場合、かつ受信用の携帯電話番号が有効になっている場合にのみ送信されます。",
+  "faqResposta10": "WhatsAppへのメッセージ送信は追加的なセキュリティ手段であり、第3の保護層として、緊急アラートが確実に届きユーザーに閲覧されるための追加の保証となります。WhatsApp番号ごとに送信されるメッセージは、ウォレットから1クレジットが差し引かれます。WhatsAppメッセージは、ウォレットにクレジット残高がある場合、WhatsAppメッセージ送信の許可が（設定ページで）有効になっている場合、かつ受信用の携帯電話番号が有効になっている場合にのみ送信されます。",
   "faqPergunta11": "カスタマーサポートサービスはどのように機能しますか？",
   "faqResposta11": "WhatsAppチャットは、ユーザーのほとんどの質問やリクエストに自動で応答するようプログラムされています。「有人担当者と話す」メニューから行われたリクエストは、RMF Global社が定めたポリシー規定に従い、プレミアムプランのユーザーは最大48時間以内にこのサポートを優先的に受けられます。",
   "faqPergunta12": "緊急アラートメッセージは、Guardião-Xアプリがインストールされている登録番号にのみ送信されますか？",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. セキュリティ待機期間（猶予期間）",
   "termosContratoCorpo5": "特定の機微な操作（パスワード/PINの変更、緊急連絡先の削除、履歴の即時閲覧）は、許可されていない第三者が強要のもとでユーザーのセキュリティ機能を無効化することを防ぐ目的で、有効化される前に待機期間の対象となります。",
   "termosContratoTitulo6": "6. プラン、料金、お支払い",
-  "termosContratoCorpo6": "無料プランでは、月に最大10（十）日間、すべてのプレミアム機能が解放され、残りの日は無料プランの制限が適用されます。プレミアムプランの料金は月額11.99レアルで、アプリのすべての機能に無制限にアクセスできます。プレミアムプランのサブスクリプションおよびクレジットウォレットのチャージは、Google Play StoreおよびApple App Storeのプラットフォームを通じてのみ処理され、各プラットフォームの請求・返金・消費者保護に関するポリシーが適用されます。RMF Globalが直接支払いを受領・処理することはありません。",
+  "termosContratoCorpo6": "無料プランでは、月に最大10（十）日間、すべてのプレミアム機能が解放され、残りの日は無料プランの制限が適用されます。プレミアムプランの料金はご契約時にアプリ内に表示される金額で、毎月請求され、アプリのすべての機能に無制限にアクセスできます。プレミアムプランのサブスクリプションおよびクレジットウォレットのチャージは、Google Play StoreおよびApple App Storeのプラットフォームを通じてのみ処理され、各プラットフォームの請求・返金・消費者保護に関するポリシーが適用されます。RMF Globalが直接支払いを受領・処理することはありません。",
   "termosContratoTitulo7": "7. 解約と返金",
   "termosContratoCorpo7": "プレミアムプランを契約後最初の15（十五）日以内に解約した場合、ユーザーは支払額の50%（パーセント）の返金を、手続き不要で受け取ることができます。ただし、サブスクリプションに使用されたプラットフォーム（Google Play StoreまたはApple App Store）の返金ポリシーが適用されます。",
   "termosContratoTitulo8": "8. カスタマーサポート（SAC）",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "プレミアムを解約",
   "premiumCanceladoSnackbar": "プレミアムプランが解約されました。現在は無料プランです。",
   "premiumAssinarBotaoComPreco": "プレミアムに登録 — {preco}",
-  "premiumModalNotaRodape": "* 追加のWhatsApp送信はオプション機能で、「設定」ページで有効にでき、メッセージ1件につき US$0.10 の料金がかかります。",
+  "premiumModalNotaRodape": "* 追加のWhatsApp送信はオプション機能で、「設定」ページで有効にでき、メッセージ1件につきウォレットから1クレジットが消費されます。",
   "premiumCancelarBotaoModal": "プレミアムプランを解約",
   "familiaEtiquetaPadrao": "定期アラーム",
   "familiaDiasNuncaLabel": "なし",

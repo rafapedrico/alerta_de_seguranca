@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "Couldn't resend the email. Please try again later.",
   "sairDaContaTitulo": "Sign out",
   "sairDaContaConfirmar": "Sign out",
-  "contatoWhatsappSwitchLabel": "Notify via WhatsApp ($0.10 USD)",
+  "contatoWhatsappSwitchLabel": "Notify via WhatsApp (1 credit)",
   "whatsappSimultaneoTitulo": "Also send via WhatsApp",
   "whatsappSimultaneoDescricao": "Sends the alert immediately via WhatsApp together with the Push, without waiting for delivery confirmation, deducting the amount from the Wallet for each enabled contact.",
   "alertaRecebidoTitulo": "Security alert received",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Credit Wallet",
   "carteiraMenuItem": "Credit Wallet",
   "carteiraSaldoAtual": "Current balance",
-  "carteiraAteNEnvios": "up to {n} sends",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Credits",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "In-app alerts are 100% free. WhatsApp contingency messages cost $0.10 USD each.",
+  "carteiraLegendaCredito": "Each credit = 1 contingency WhatsApp message",
+  "carteiraPacoteEnvios": "{n} Sends Package",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} credits",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "In-app alerts are 100% free. WhatsApp contingency messages cost 1 credit each.",
   "carteiraRecarregarTitulo": "Top up",
   "carteiraHistoricoTitulo": "History",
   "carteiraHistoricoVazio": "No transactions yet.",
@@ -484,11 +501,11 @@
   "faqPergunta7": "Is it safe to pay for the Premium plan or deposit money into the credit wallet?",
   "faqResposta7": "Yes, it's safe. No payment is made directly to the RMF GLOBAL company. All payments are processed directly through the Google Play Store or Apple App Store platform, with the platforms' full guarantee.",
   "faqPergunta8": "Can I withdraw the money deposited in the credit wallet?",
-  "faqResposta8": "Yes, in accordance with Google Play Store and Apple regulations, all funds deposited as credit can be refunded to the user. This refund is made directly by the financial institution and by the Google Play Store and Apple platforms, following consumer credit protection policy. Withdrawing any amount from the credit wallet incurs a fee of US$0.50 (fifty cents).",
+  "faqResposta8": "Yes, in accordance with Google Play Store and Apple regulations, the amount paid when purchasing a credit package can be refunded to the user. This refund is made directly by the financial institution and by the Google Play Store and Apple platforms, following each store's consumer protection policy — the Guardião-X Credit Wallet does not allow cashing out/withdrawing credits as money, since they are send units, not currency.",
   "faqPergunta9": "How are emergency alerts shared?",
   "faqResposta9": "All security alert messages are sent in two standard ways: from app to app, and by SMS to the mobile numbers registered on the \"Settings\" page.",
   "faqPergunta10": "How does sending an additional emergency alert to WhatsApp work?",
-  "faqResposta10": "Sending a message to WhatsApp is an additional form of security, being the third layer of protection as extra assurance that the registered number will have one more guarantee that the emergency alert will reach its destination and be seen by the user. Each message sent to each WhatsApp number is charged a service fee of US$0.10 (ten cents). WhatsApp messages are only sent if there are funds in the credit wallet, if authorization to send WhatsApp messages is enabled (on the Settings page), and if a phone number is enabled to receive these messages.",
+  "faqResposta10": "Sending a message to WhatsApp is an additional form of security, being the third layer of protection as extra assurance that the registered number will have one more guarantee that the emergency alert will reach its destination and be seen by the user. Each message sent to each WhatsApp number debits 1 credit from the Wallet. WhatsApp messages are only sent if there are credits in the wallet, if authorization to send WhatsApp messages is enabled (on the Settings page), and if a phone number is enabled to receive these messages.",
   "faqPergunta11": "How does the customer support service work?",
   "faqResposta11": "The WhatsApp chat has been programmed to automatically answer most of the user's questions and requests. Requests made through the \"Talk to a human agent\" menu will follow the policy rules set by the RMF Global company, where Premium plan users will have exclusive access to this support within up to 48 hours.",
   "faqPergunta12": "Will emergency alert messages only be sent to registered numbers that have the Guardião-X app installed?",
@@ -508,7 +525,7 @@
   "termosContratoTitulo5": "5. Security waiting periods",
   "termosContratoCorpo5": "Certain sensitive actions (changing the password/PIN, deleting emergency contacts, immediate viewing of history) are subject to a waiting period before taking effect, to prevent unauthorized third parties from disabling the user's security functions under duress.",
   "termosContratoTitulo6": "6. Plans, pricing and payments",
-  "termosContratoCorpo6": "The Free Plan unlocks all Premium features for up to 10 (ten) days each month, with the remaining days subject to the free plan's limits. The Premium Plan costs $11.99/month, with unlimited access to all app features. Premium Plan subscriptions and credit wallet top-ups are processed exclusively through the Google Play Store and Apple App Store platforms, subject to those platforms' respective billing, refund, and consumer protection policies — RMF Global does not receive or process payments directly.",
+  "termosContratoCorpo6": "The Free Plan unlocks all Premium features for up to 10 (ten) days each month, with the remaining days subject to the free plan's limits. The Premium Plan costs the amount shown in the app at the time of subscription, charged monthly, with unlimited access to all app features. Premium Plan subscriptions and credit wallet top-ups are processed exclusively through the Google Play Store and Apple App Store platforms, subject to those platforms' respective billing, refund, and consumer protection policies — RMF Global does not receive or process payments directly.",
   "termosContratoTitulo7": "7. Cancellation and refund",
   "termosContratoCorpo7": "If the Premium Plan is canceled within the first 15 (fifteen) days of subscribing, the user gets back 50% (fifty percent) of the amount paid, hassle-free, subject to the refund policies of the Google Play Store or Apple App Store, depending on the platform used for the subscription.",
   "termosContratoTitulo8": "8. Customer Support (SAC)",
@@ -538,7 +555,7 @@
   "premiumCancelarConfirmBotao": "Cancel Premium",
   "premiumCanceladoSnackbar": "Premium Plan canceled. You are now on the Free Plan.",
   "premiumAssinarBotaoComPreco": "Subscribe to Premium — {preco}",
-  "premiumModalNotaRodape": "* The additional WhatsApp delivery is an optional feature that can be enabled on the \"Settings\" page and costs US$0.10 per message.",
+  "premiumModalNotaRodape": "* The additional WhatsApp delivery is an optional feature that can be enabled on the \"Settings\" page and costs 1 credit from the Wallet per message.",
   "premiumCancelarBotaoModal": "Cancel Premium Plan",
   "familiaEtiquetaPadrao": "Routine alarm",
   "familiaDiasNuncaLabel": "Never",

@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "Impossible de renvoyer l'e-mail. Veuillez réessayer plus tard.",
   "sairDaContaTitulo": "Se déconnecter",
   "sairDaContaConfirmar": "Se déconnecter",
-  "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (0,10 $ USD)",
+  "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (1 crédit)",
   "whatsappSimultaneoTitulo": "Envoyer aussi par WhatsApp",
   "whatsappSimultaneoDescricao": "Envoie l'alerte immédiatement par WhatsApp en même temps que le Push, sans attendre la confirmation de livraison, en déduisant le montant du Portefeuille pour chaque contact activé.",
   "alertaRecebidoTitulo": "Alerte de sécurité reçue",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Portefeuille de crédits",
   "carteiraMenuItem": "Portefeuille de crédits",
   "carteiraSaldoAtual": "Solde actuel",
-  "carteiraAteNEnvios": "jusqu'à {n} envois",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Crédits",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "Les alertes via l'application sont 100% gratuites. Les envois de secours via WhatsApp coûtent 0,10 $ USD chacun.",
+  "carteiraLegendaCredito": "Chaque crédit = 1 envoi WhatsApp de secours",
+  "carteiraPacoteEnvios": "Pack {n} Envois",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} crédits",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "Les alertes via l'application sont 100% gratuites. Les envois de secours via WhatsApp coûtent 1 crédit chacun.",
   "carteiraRecarregarTitulo": "Recharger",
   "carteiraHistoricoTitulo": "Historique",
   "carteiraHistoricoVazio": "Aucun mouvement pour l'instant.",
@@ -466,11 +483,11 @@
   "faqPergunta7": "Est-il sûr de payer pour souscrire au forfait premium ou de déposer de l'argent dans le portefeuille de crédit ?",
   "faqResposta7": "Oui, c'est sûr. Aucun paiement n'est effectué directement à l'entreprise RMF GLOBAL. Tous les paiements sont traités directement sur la plateforme Google Play Store ou Apple App Store, avec la garantie totale de ces plateformes.",
   "faqPergunta8": "Puis-je récupérer l'argent déposé dans le portefeuille de crédit ?",
-  "faqResposta8": "Oui, conformément au règlement de Google Play Store et d'Apple, toutes les sommes déposées comme fonds de crédit peuvent être remboursées à l'utilisateur. Ce remboursement est effectué directement par l'institution financière et par les plateformes Google Play Store et Apple, selon la politique de protection du crédit du consommateur. Le retrait de toute somme du portefeuille de crédit entraîne des frais de 0,50 USD (cinquante cents).",
+  "faqResposta8": "Oui, conformément au règlement de Google Play Store et d'Apple, le montant payé lors de l'achat d'un pack de crédits peut être remboursé à l'utilisateur. Ce remboursement est effectué directement par l'institution financière et par les plateformes Google Play Store et Apple, selon la politique de protection des consommateurs de chaque boutique — le Portefeuille de Crédits de Guardião-X ne permet pas de retirer/échanger les crédits contre de l'argent, car ce sont des unités d'envoi, pas une monnaie.",
   "faqPergunta9": "Comment le partage des alertes d'urgence est-il effectué ?",
   "faqResposta9": "Tous les messages d'alerte de sécurité sont envoyés de deux manières standard : d'application à application et par SMS aux numéros de téléphone enregistrés dans la page « Paramètres ».",
   "faqPergunta10": "Comment fonctionne l'envoi supplémentaire d'alerte d'urgence vers WhatsApp ?",
-  "faqResposta10": "L'envoi de message vers WhatsApp est une forme supplémentaire de sécurité, constituant la troisième couche de protection, garantissant davantage que l'alerte d'urgence atteindra sa destination et sera vue par l'utilisateur. Chaque message envoyé à chaque numéro WhatsApp est facturé des frais de service de 0,10 USD (dix cents). Les messages WhatsApp ne sont envoyés que s'il y a des fonds dans le portefeuille de crédit, si l'autorisation d'envoi de messages WhatsApp est activée (dans la page Paramètres) et si un numéro de téléphone est activé pour recevoir ces messages.",
+  "faqResposta10": "L'envoi de message vers WhatsApp est une forme supplémentaire de sécurité, constituant la troisième couche de protection, garantissant davantage que l'alerte d'urgence atteindra sa destination et sera vue par l'utilisateur. Chaque message envoyé à chaque numéro WhatsApp débite 1 crédit du Portefeuille. Les messages WhatsApp ne sont envoyés que s'il y a des crédits dans le portefeuille, si l'autorisation d'envoi de messages WhatsApp est activée (dans la page Paramètres) et si un numéro de téléphone est activé pour recevoir ces messages.",
   "faqPergunta11": "Comment fonctionne le service client ?",
   "faqResposta11": "Le chat WhatsApp a été programmé pour répondre automatiquement à la plupart des questions et demandes des utilisateurs. Les demandes effectuées via le menu « Parler à un agent physique » suivront les règles de la politique établie par l'entreprise RMF Global, les utilisateurs du forfait Premium bénéficiant d'une exclusivité pour ce service dans un délai maximal de 48 heures.",
   "faqPergunta12": "Les messages d'alerte d'urgence ne seront-ils envoyés qu'aux numéros enregistrés ayant l'application Guardião-X installée ?",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. Délais de sécurité (période de carence)",
   "termosContratoCorpo5": "Certaines actions sensibles (changement de mot de passe/PIN, suppression de contacts d'urgence, consultation immédiate de l'historique) sont soumises à un délai de carence avant d'être appliquées, afin d'empêcher des tiers non autorisés de désactiver les fonctions de sécurité de l'utilisateur sous la contrainte.",
   "termosContratoTitulo6": "6. Forfaits, tarifs et paiements",
-  "termosContratoCorpo6": "Le Forfait Free débloque toutes les fonctionnalités Premium pendant jusqu'à 10 (dix) jours par mois, les jours restants étant soumis aux limites du forfait gratuit. Le Forfait Premium coûte 11,99 €/mois, avec un accès illimité à toutes les fonctionnalités de l'application. Les abonnements au Forfait Premium et les recharges du portefeuille de crédit sont traités exclusivement via les plateformes Google Play Store et Apple App Store, soumis à leurs politiques respectives de facturation, de remboursement et de protection des consommateurs — RMF Global ne reçoit ni ne traite les paiements directement.",
+  "termosContratoCorpo6": "Le Forfait Free débloque toutes les fonctionnalités Premium pendant jusqu'à 10 (dix) jours par mois, les jours restants étant soumis aux limites du forfait gratuit. Le Forfait Premium coûte le montant affiché dans l'application au moment de l'abonnement, facturé mensuellement, avec un accès illimité à toutes les fonctionnalités de l'application. Les abonnements au Forfait Premium et les recharges du portefeuille de crédit sont traités exclusivement via les plateformes Google Play Store et Apple App Store, soumis à leurs politiques respectives de facturation, de remboursement et de protection des consommateurs — RMF Global ne reçoit ni ne traite les paiements directement.",
   "termosContratoTitulo7": "7. Annulation et remboursement",
   "termosContratoCorpo7": "En cas d'annulation du Forfait Premium dans les 15 (quinze) premiers jours suivant la souscription, l'utilisateur récupère 50 % (cinquante pour cent) du montant payé, sans démarches, sous réserve des politiques de remboursement de Google Play Store ou d'Apple App Store, selon la plateforme utilisée pour l'abonnement.",
   "termosContratoTitulo8": "8. Service Client (SAC)",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "Annuler Premium",
   "premiumCanceladoSnackbar": "Forfait Premium annulé. Vous êtes maintenant sur le forfait Gratuit.",
   "premiumAssinarBotaoComPreco": "S'abonner à Premium — {preco}",
-  "premiumModalNotaRodape": "* L'envoi supplémentaire par WhatsApp est une fonctionnalité optionnelle activable dans la page « Paramètres » et coûte 0,10 $ US par message.",
+  "premiumModalNotaRodape": "* L'envoi supplémentaire par WhatsApp est une fonctionnalité optionnelle activable dans la page « Paramètres » et consomme 1 crédit du Portefeuille par message.",
   "premiumCancelarBotaoModal": "Annuler le forfait Premium",
   "familiaEtiquetaPadrao": "Alarme de routine",
   "familiaDiasNuncaLabel": "Jamais",

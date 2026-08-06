@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "No se pudo reenviar el correo. Inténtalo de nuevo más tarde.",
   "sairDaContaTitulo": "Cerrar sesión",
   "sairDaContaConfirmar": "Salir",
-  "contatoWhatsappSwitchLabel": "Notificar por WhatsApp ($0.10 USD)",
+  "contatoWhatsappSwitchLabel": "Notificar por WhatsApp (1 crédito)",
   "whatsappSimultaneoTitulo": "Enviar también por WhatsApp",
   "whatsappSimultaneoDescricao": "Envía la alerta de inmediato por WhatsApp junto con el Push, sin esperar la confirmación de entrega, descontando el monto de la Cartera para cada contacto habilitado.",
   "alertaRecebidoTitulo": "Alerta de seguridad recibida",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Cartera de Créditos",
   "carteiraMenuItem": "Cartera de Créditos",
   "carteiraSaldoAtual": "Saldo actual",
-  "carteiraAteNEnvios": "hasta {n} envíos",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Créditos",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "Las alertas por la app son 100% gratuitas. Los envíos de contingencia por WhatsApp cuestan $0.10 USD cada uno.",
+  "carteiraLegendaCredito": "Cada crédito = 1 envío de WhatsApp de contingencia",
+  "carteiraPacoteEnvios": "Paquete {n} Envíos",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} créditos",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "Las alertas por la app son 100% gratuitas. Los envíos de contingencia por WhatsApp cuestan 1 crédito cada uno.",
   "carteiraRecarregarTitulo": "Recargar",
   "carteiraHistoricoTitulo": "Historial",
   "carteiraHistoricoVazio": "Aún no hay movimientos.",
@@ -466,11 +483,11 @@
   "faqPergunta7": "¿Es seguro pagar para contratar el plan premium o depositar dinero en la billetera de crédito?",
   "faqResposta7": "Sí, es seguro. Ningún pago se realiza directamente a la empresa RMF GLOBAL. Todos los pagos se procesan directamente en la plataforma de Google Play Store o Apple App Store, con la garantía total de las plataformas.",
   "faqPergunta8": "¿Puedo retirar el dinero depositado en la billetera de crédito?",
-  "faqResposta8": "Sí, conforme al reglamento de Google Play Store y Apple, todos los valores depositados como fondo de crédito pueden ser reembolsados al usuario. Esta devolución la realiza directamente la institución financiera y las plataformas Google Play Store y Apple, siguiendo la política de protección al crédito del consumidor. Al retirar cualquier valor de la billetera de crédito se debitará US$0,50 (cincuenta centavos de dólar).",
+  "faqResposta8": "Sí, conforme al reglamento de Google Play Store y Apple, el monto pagado al comprar un paquete de créditos puede ser reembolsado al usuario. Esta devolución la realiza directamente la institución financiera y las plataformas Google Play Store y Apple, siguiendo la política de protección al consumidor de cada tienda — la Cartera de Créditos de Guardião-X no permite canjear/retirar los créditos como dinero, ya que son unidades de envío, no moneda.",
   "faqPergunta9": "¿Cómo se comparten las alertas de emergencia?",
   "faqResposta9": "Todos los mensajes de alerta de seguridad se envían de dos formas estándar: de aplicación a aplicación y por SMS a los números de celular registrados en la página \"Configuración\".",
   "faqPergunta10": "¿Cómo funciona el envío adicional de alerta de emergencia por WhatsApp?",
-  "faqResposta10": "El envío de mensajes por WhatsApp es una forma adicional de seguridad, siendo la tercera capa de protección como garantía extra de que el número registrado tendrá una garantía más de que la alerta de emergencia llegará a su destino y será vista por el usuario. Cada mensaje enviado a cada número de WhatsApp tendrá un cargo por servicio de US$0,10 (diez centavos de dólar). Los mensajes por WhatsApp solo se enviarán si hay fondos en la billetera de crédito, si está activada la autorización para el envío de mensajes por WhatsApp (en la página de Configuración) y si algún número de celular está habilitado para recibir estos mensajes.",
+  "faqResposta10": "El envío de mensajes por WhatsApp es una forma adicional de seguridad, siendo la tercera capa de protección como garantía extra de que el número registrado tendrá una garantía más de que la alerta de emergencia llegará a su destino y será vista por el usuario. Cada mensaje enviado a cada número de WhatsApp debita 1 crédito de la Cartera. Los mensajes por WhatsApp solo se enviarán si hay créditos en la cartera, si está activada la autorización para el envío de mensajes por WhatsApp (en la página de Configuración) y si algún número de celular está habilitado para recibir estos mensajes.",
   "faqPergunta11": "¿Cómo funciona el servicio de atención al consumidor?",
   "faqResposta11": "El chat de WhatsApp fue programado para responder de manera automática la mayoría de las dudas y solicitudes del usuario. Las solicitudes hechas en el menú \"Hablar con un agente físico\" seguirán las normas del reglamento de la política establecida por la empresa RMF Global, donde los usuarios del plan Premium tendrán exclusividad en esta atención en un plazo de hasta 48 horas.",
   "faqPergunta12": "¿Los mensajes de alerta de emergencia solo se enviarán a los números registrados que tengan la aplicación Guardião-X instalada?",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. Plazos de seguridad (carencia)",
   "termosContratoCorpo5": "Determinadas acciones sensibles (cambio de contraseña/PIN, eliminación de contactos de emergencia, visualización inmediata del historial) están sujetas a un plazo de carencia antes de hacerse efectivas, con el fin de impedir que terceros no autorizados desactiven funciones de seguridad del usuario bajo coacción.",
   "termosContratoTitulo6": "6. Planes, precios y pagos",
-  "termosContratoCorpo6": "El Plan Free desbloquea todas las funciones Premium por hasta 10 (diez) días al mes, con los demás días sujetos a los límites del plan gratuito. El Plan Premium tiene un valor de $11,99/mes, con acceso ilimitado a todas las funciones de la aplicación. Las suscripciones al Plan Premium y las recargas de la billetera de crédito se procesan exclusivamente a través de las plataformas Google Play Store y Apple App Store, sujetas a sus respectivas políticas de cobro, reembolso y protección al consumidor — RMF Global no recibe ni procesa pagos directamente.",
+  "termosContratoCorpo6": "El Plan Free desbloquea todas las funciones Premium por hasta 10 (diez) días al mes, con los demás días sujetos a los límites del plan gratuito. El Plan Premium tiene el valor que se muestra en la aplicación al momento de suscribirse, cobrado mensualmente, con acceso ilimitado a todas las funciones de la aplicación. Las suscripciones al Plan Premium y las recargas de la billetera de crédito se procesan exclusivamente a través de las plataformas Google Play Store y Apple App Store, sujetas a sus respectivas políticas de cobro, reembolso y protección al consumidor — RMF Global no recibe ni procesa pagos directamente.",
   "termosContratoTitulo7": "7. Cancelación y reembolso",
   "termosContratoCorpo7": "Si se cancela el Plan Premium dentro de los primeros 15 (quince) días desde la contratación, el usuario recibe de vuelta el 50% (cincuenta por ciento) del valor pagado, sin trámites, respetando las políticas de reembolso de Google Play Store o Apple App Store, según la plataforma utilizada en la suscripción.",
   "termosContratoTitulo8": "8. Atención al Consumidor (SAC)",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "Cancelar Premium",
   "premiumCanceladoSnackbar": "Plan Premium cancelado. Ahora estás en el Plan Gratuito.",
   "premiumAssinarBotaoComPreco": "Suscribirse a Premium — {preco}",
-  "premiumModalNotaRodape": "* El envío adicional por WhatsApp es una función opcional que se puede activar en la página \"Configuración\" y tiene un costo de US$0.10 por mensaje.",
+  "premiumModalNotaRodape": "* El envío adicional por WhatsApp es una función opcional que se puede activar en la página \"Configuración\" y consume 1 crédito de la Cartera por mensaje.",
   "premiumCancelarBotaoModal": "Cancelar Plan Premium",
   "familiaEtiquetaPadrao": "Alarma de rutina",
   "familiaDiasNuncaLabel": "Nunca",

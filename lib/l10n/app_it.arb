@@ -27,7 +27,7 @@
   "emailVerificacaoReenvioFalhou": "Impossibile reinviare l'e-mail. Riprova più tardi.",
   "sairDaContaTitulo": "Esci",
   "sairDaContaConfirmar": "Esci",
-  "contatoWhatsappSwitchLabel": "Notifica via WhatsApp ($0.10 USD)",
+  "contatoWhatsappSwitchLabel": "Notifica via WhatsApp (1 credito)",
   "whatsappSimultaneoTitulo": "Invia anche via WhatsApp",
   "whatsappSimultaneoDescricao": "Invia l'allerta immediatamente via WhatsApp insieme al Push, senza attendere la conferma di consegna, addebitando l'importo dal Portafoglio per ogni contatto abilitato.",
   "alertaRecebidoTitulo": "Avviso di sicurezza ricevuto",
@@ -51,15 +51,32 @@
   "carteiraTitulo": "Portafoglio Crediti",
   "carteiraMenuItem": "Portafoglio Crediti",
   "carteiraSaldoAtual": "Saldo attuale",
-  "carteiraAteNEnvios": "fino a {n} invii",
-  "@carteiraAteNEnvios": {
+  "carteiraSaldoCreditos": "{n} Crediti",
+  "@carteiraSaldoCreditos": {
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
   },
-  "carteiraNotaExplicativa": "Gli avvisi tramite app sono 100% gratuiti. Gli invii di emergenza via WhatsApp costano $0.10 USD ciascuno.",
+  "carteiraLegendaCredito": "Ogni credito = 1 invio WhatsApp di emergenza",
+  "carteiraPacoteEnvios": "Pacchetto {n} Invii",
+  "@carteiraPacoteEnvios": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraValorCreditos": "{n} crediti",
+  "@carteiraValorCreditos": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "carteiraNotaExplicativa": "Gli avvisi tramite app sono 100% gratuiti. Gli invii di emergenza via WhatsApp costano 1 credito ciascuno.",
   "carteiraRecarregarTitulo": "Ricarica",
   "carteiraHistoricoTitulo": "Cronologia",
   "carteiraHistoricoVazio": "Nessun movimento ancora.",
@@ -466,11 +483,11 @@
   "faqPergunta7": "È sicuro pagare per attivare il piano premium o depositare denaro nel portafoglio di credito?",
   "faqResposta7": "Sì, è sicuro. Nessun pagamento viene effettuato direttamente all'azienda RMF GLOBAL. Tutti i pagamenti sono elaborati direttamente sulla piattaforma Google Play Store o Apple App Store, con la garanzia totale delle piattaforme.",
   "faqPergunta8": "Posso ritirare il denaro depositato nel portafoglio di credito?",
-  "faqResposta8": "Sì, in conformità al regolamento di Google Play Store e Apple, tutti gli importi depositati come fondo di credito possono essere rimborsati all'utente. Questo rimborso viene effettuato direttamente dall'istituto finanziario e dalle piattaforme Google Play Store e Apple, seguendo la politica di protezione del credito del consumatore. Il prelievo di qualsiasi importo dal portafoglio di credito comporta un addebito di 0,50 USD (cinquanta centesimi di dollaro).",
+  "faqResposta8": "Sì, in conformità al regolamento di Google Play Store e Apple, l'importo pagato per l'acquisto di un pacchetto di crediti può essere rimborsato all'utente. Questo rimborso viene effettuato direttamente dall'istituto finanziario e dalle piattaforme Google Play Store e Apple, seguendo la politica di protezione del consumatore di ciascun negozio — il Portafoglio Crediti di Guardião-X non consente di prelevare/convertire i crediti in denaro, poiché sono unità di invio, non valuta.",
   "faqPergunta9": "Come avviene la condivisione degli allarmi di emergenza?",
   "faqResposta9": "Tutti i messaggi di allarme di sicurezza vengono inviati in due modi standard: da app ad app e via SMS ai numeri di cellulare registrati nella pagina \"Impostazioni\".",
   "faqPergunta10": "Come funziona l'invio aggiuntivo di allarme di emergenza su WhatsApp?",
-  "faqResposta10": "L'invio di messaggi su WhatsApp è una forma aggiuntiva di sicurezza, costituendo il terzo livello di protezione come garanzia extra che il numero registrato abbia una garanzia in più che l'allarme di emergenza raggiunga la destinazione e venga visto dall'utente. Ogni messaggio inviato a ciascun numero WhatsApp comporta un costo di servizio di 0,10 USD (dieci centesimi di dollaro). I messaggi WhatsApp vengono inviati solo se ci sono fondi nel portafoglio di credito, se è attivata l'autorizzazione all'invio di messaggi WhatsApp (nella pagina Impostazioni) e se un numero di cellulare è abilitato a ricevere questi messaggi.",
+  "faqResposta10": "L'invio di messaggi su WhatsApp è una forma aggiuntiva di sicurezza, costituendo il terzo livello di protezione come garanzia extra che il numero registrato abbia una garanzia in più che l'allarme di emergenza raggiunga la destinazione e venga visto dall'utente. Ogni messaggio inviato a ciascun numero WhatsApp addebita 1 credito dal Portafoglio. I messaggi WhatsApp vengono inviati solo se ci sono crediti nel portafoglio, se è attivata l'autorizzazione all'invio di messaggi WhatsApp (nella pagina Impostazioni) e se un numero di cellulare è abilitato a ricevere questi messaggi.",
   "faqPergunta11": "Come funziona il servizio di assistenza clienti?",
   "faqResposta11": "La chat di WhatsApp è stata programmata per rispondere automaticamente alla maggior parte dei dubbi e delle richieste dell'utente. Le richieste effettuate nel menu \"Parla con un operatore fisico\" seguiranno le norme del regolamento della politica stabilita dall'azienda RMF Global, dove gli utenti del piano Premium avranno l'esclusività di questa assistenza entro un termine massimo di 48 ore.",
   "faqPergunta12": "I messaggi di allarme di emergenza verranno inviati solo ai numeri registrati che hanno l'app Guardião-X installata?",
@@ -490,7 +507,7 @@
   "termosContratoTitulo5": "5. Tempi di sicurezza (periodo di carenza)",
   "termosContratoCorpo5": "Alcune azioni sensibili (cambio password/PIN, eliminazione dei contatti di emergenza, visualizzazione immediata della cronologia) sono soggette a un periodo di carenza prima di diventare effettive, con l'obiettivo di impedire che terzi non autorizzati disattivino le funzioni di sicurezza dell'utente sotto costrizione.",
   "termosContratoTitulo6": "6. Piani, prezzi e pagamenti",
-  "termosContratoCorpo6": "Il Piano Free sblocca tutte le funzioni Premium per un massimo di 10 (dieci) giorni al mese, con i restanti giorni soggetti ai limiti del piano gratuito. Il Piano Premium ha un costo di 11,99 €/mese, con accesso illimitato a tutte le funzioni dell'app. Gli abbonamenti al Piano Premium e le ricariche del portafoglio crediti sono elaborati esclusivamente tramite le piattaforme Google Play Store e Apple App Store, soggetti alle rispettive politiche di fatturazione, rimborso e tutela del consumatore di tali piattaforme — RMF Global non riceve né elabora pagamenti direttamente.",
+  "termosContratoCorpo6": "Il Piano Free sblocca tutte le funzioni Premium per un massimo di 10 (dieci) giorni al mese, con i restanti giorni soggetti ai limiti del piano gratuito. Il Piano Premium ha il costo mostrato nell'app al momento dell'abbonamento, addebitato mensilmente, con accesso illimitato a tutte le funzioni dell'app. Gli abbonamenti al Piano Premium e le ricariche del portafoglio crediti sono elaborati esclusivamente tramite le piattaforme Google Play Store e Apple App Store, soggetti alle rispettive politiche di fatturazione, rimborso e tutela del consumatore di tali piattaforme — RMF Global non riceve né elabora pagamenti direttamente.",
   "termosContratoTitulo7": "7. Cancellazione e rimborso",
   "termosContratoCorpo7": "In caso di cancellazione del Piano Premium entro i primi 15 (quindici) giorni dalla sottoscrizione, l'utente riceve indietro il 50% (cinquanta per cento) dell'importo pagato, senza burocrazia, nel rispetto delle politiche di rimborso di Google Play Store o Apple App Store, a seconda della piattaforma utilizzata per l'abbonamento.",
   "termosContratoTitulo8": "8. Assistenza Clienti (SAC)",
@@ -520,7 +537,7 @@
   "premiumCancelarConfirmBotao": "Annulla Premium",
   "premiumCanceladoSnackbar": "Piano Premium annullato. Ora sei nel Piano Free.",
   "premiumAssinarBotaoComPreco": "Abbonati a Premium — {preco}",
-  "premiumModalNotaRodape": "* L'invio aggiuntivo via WhatsApp è una funzione opzionale attivabile nella pagina \"Impostazioni\" e ha un costo di 0,10 USD a messaggio.",
+  "premiumModalNotaRodape": "* L'invio aggiuntivo via WhatsApp è una funzione opzionale attivabile nella pagina \"Impostazioni\" e consuma 1 credito dal Portafoglio per messaggio.",
   "premiumCancelarBotaoModal": "Annulla Piano Premium",
   "familiaEtiquetaPadrao": "Allarme di routine",
   "familiaDiasNuncaLabel": "Mai",

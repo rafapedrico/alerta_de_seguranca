@@ -1,15 +1,19 @@
 /**
- * Verificação server-side das compras consumíveis da Carteira em USD
- * (recargas de $1/$5/$10) — Google Play apenas, não há projeto iOS neste
- * repositório.
+ * Verificação server-side das compras consumíveis da Carteira de
+ * Créditos (pacotes de 10/50/100 envios) — Google Play apenas, não há
+ * projeto iOS neste repositório.
+ *
+ * IMPORTANTE: os créditos são UNIDADES DE DISPARO (1 crédito = 1 envio
+ * de WhatsApp de contingência), NUNCA moeda financeira — não há
+ * conversão de câmbio nem casas decimais em nenhum ponto deste fluxo.
  *
  * FAIL-CLOSED por design: ao contrário do gateway de WhatsApp
  * (`smsGateway.js`), que degrada graciosamente (loga e segue) quando as
  * credenciais não estão configuradas, aqui a ausência de credenciais ou
  * qualquer falha de verificação REJEITA a compra — o erro seguro é "não
- * dar saldo de graça", nunca o oposto. O cliente nunca credita saldo
- * otimisticamente; só `saldoUsd` confirmado por esta function conta (ver
- * `firestore.rules`, que bloqueia escrita direta desse campo).
+ * dar créditos de graça", nunca o oposto. O cliente nunca credita saldo
+ * otimisticamente; só `creditosDisponiveis` confirmado por esta function
+ * conta (ver `firestore.rules`, que bloqueia escrita direta desse campo).
  */
 
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
@@ -29,11 +33,17 @@ const googlePlayServiceAccountJson = defineSecret("GOOGLE_PLAY_SERVICE_ACCOUNT_J
 // aqui também.
 const PACOTE_ANDROID = "com.example.security_check_app";
 
-// productId (Play Console) -> valor em USD creditado na Carteira.
+// productId (Play Console) -> quantidade de CRÉDITOS (unidades de
+// disparo, nunca valor monetário) creditados na Carteira. Os ids de
+// produto em si (herdados da fase em que a Carteira era em USD) NÃO
+// foram renomeados de propósito — são exatamente os productId já
+// configurados no Play Console; renomeá-los aqui sem atualizar o Play
+// Console quebraria a compra. Só a quantidade de créditos concedida por
+// cada um mudou de conceito (era valor em USD, agora é nº de envios).
 const PRODUTOS_CREDITO = Object.freeze({
-  credito_usd_1: 1,
-  credito_usd_5: 5,
-  credito_usd_10: 10,
+  credito_usd_1: 10,
+  credito_usd_5: 50,
+  credito_usd_10: 100,
 });
 
 /**
@@ -124,9 +134,9 @@ exports.confirmarCompraCredito = onCall(
       }
 
       const {produtoId, purchaseToken} = request.data || {};
-      const valorUsd = PRODUTOS_CREDITO[produtoId];
+      const quantidadeCreditos = PRODUTOS_CREDITO[produtoId];
 
-      if (!valorUsd || !purchaseToken) {
+      if (!quantidadeCreditos || !purchaseToken) {
         throw new HttpsError("invalid-argument", "produtoId ou purchaseToken inválidos.");
       }
 
@@ -141,17 +151,17 @@ exports.confirmarCompraCredito = onCall(
         );
       }
 
-      const resultado = await creditarSaldo(uid, valorUsd, produtoId, purchaseToken);
+      const resultado = await creditarSaldo(uid, quantidadeCreditos, produtoId, purchaseToken);
       if (!resultado.sucesso) {
         throw new HttpsError(
-            "already-exists", `Não foi possível creditar o saldo (${resultado.motivo}).`,
+            "already-exists", `Não foi possível creditar os créditos (${resultado.motivo}).`,
         );
       }
 
       logger.info(
-          `[comprasService] $${valorUsd} USD creditado(s) para o usuário ${uid} ` +
+          `[comprasService] ${quantidadeCreditos} crédito(s) creditado(s) para o usuário ${uid} ` +
           `(produto: ${produtoId}).`,
       );
-      return {sucesso: true, valorUsd};
+      return {sucesso: true, quantidadeCreditos};
     },
 );
