@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!-- Splash screen nativa exibida entre o toque no ícone e o primeiro
+     frame do Flutter. Fundo AMOLED escuro (ver @color/launch_background,
+     values/colors.xml) em vez do branco padrão do template — evita o
+     "flash" de tela branca reportado pelo usuário.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+     Propositalmente SEM logo aqui: o arquivo-fonte do ícone
+     (assets/images/app_icon.png, mesma arte usada em
+     drawable-*dpi/ic_launcher_foreground.png) tem transparência
+     "gravada" como um xadrez cinza nos cantos em vez de alfa real —
+     mascarar isso corretamente exige um recorte circular (`ClipOval`),
+     algo que um <bitmap> estático de layer-list não faz de forma
+     confiável entre versões do Android. A identidade visual completa
+     (logo recortado em círculo + spinner) fica a cargo da splash do
+     PRÓPRIO Flutter (ver `_ConteudoSplashDeMarca` em `lib/main.dart`),
+     que assume esta MESMA cor de fundo — não há nenhum "flash" entre
+     as duas camadas, só a splash nativa fica sem o logo. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>

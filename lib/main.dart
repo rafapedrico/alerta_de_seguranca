@@ -36,9 +36,54 @@ import 'widgets/pin_dialog.dart';
 const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
 
-void main() async {
+// ================================================================
+// ARQUITETURA DE COLD START — LAZY LOADING ESTRITO EM 3 ETAPAS
+// (reescrita completa a pedido explícito do usuário: a versão anterior,
+// mesmo já adiando os serviços nativos pesados para depois do runApp(),
+// ainda tinha WallpaperService/FontScaleService/LocaleService + 2
+// leituras de disco `await`adas ANTES do runApp() — medido ~7s de cold
+// start em debug. Meta: ZERO `await` antes do runApp()).
+//
+// ETAPA 1 (main, abaixo): só ensureInitialized() + 2 checagens 100%
+// SÍNCRONAS de rota (sem I/O, não são `await` — decidem qual widget é
+// o primeiro frame) + runApp() imediato.
+//
+// ETAPA 2 (_inicializarFirebaseEAuth): disparada (sem `await`) logo
+// após o runApp() — SÓ Firebase core + FirebaseAuth, o mínimo para os
+// botões de login funcionarem. Nada de FCM/heartbeat/wallet aqui.
+//
+// ETAPA 3 (iniciarServicosPosLoginOuDashboard, chamada por
+// HomeScreen.initState — ver home_screen.dart): TODOS os serviços
+// nativos pesados (Alarme, Notificação, VolumeSos, RetryUpload,
+// PlanoLimite, WalletService, BackgroundLocationHeartbeat, FCM,
+// AlarmManager) só sobem depois que o usuário efetivamente loga e
+// chega no dashboard — nunca antes, nem em paralelo com o cold start.
+//
+// TRADE-OFF DE SEGURANÇA DELIBERADO (pedido explícito do usuário,
+// ETAPA 3): como a Opção A força logout a cada cold start normal, o
+// Foreground Service nativo do botão físico (VolumeSosService) e o
+// AlarmeService de rotina só reativam DEPOIS do próximo login — ou
+// seja, entre um cold start normal e o usuário efetivamente logar de
+// novo, o botão físico de SOS e os alarmes de rotina ficam inativos.
+// Isso é uma mudança de comportamento real (antes, esses serviços
+// religavam em paralelo com QUALQUER cold start, sem depender de
+// login) — ver relato ao usuário.
+// ================================================================
+
+/// Guarda para [iniciarServicosPosLoginOuDashboard] disparar UMA ÚNICA
+/// vez por sessão do engine, mesmo que HomeScreen seja desmontada/
+/// remontada (troca de aba, deep-link, etc.).
+bool _servicosPosLoginJaIniciados = false;
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ETAPA 1 — checagens 100% SÍNCRONAS (leitura de memória já resolvida
+  // pelo binding, sem I/O nenhum): NÃO são `await`, custam
+  // microssegundos, e são essenciais para decidir o primeiro frame.
+  // Removê-las faria a LoginScreen (com campos de texto) desenhar por
+  // cima da lockscreen no SOS físico — bug de segurança já corrigido
+  // antes — ou atrasaria a AlarmeDisparadoScreen.
   final bool coldStartViaSosFisico =
       WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
           _rotaInicialSosFisico;
@@ -47,13 +92,79 @@ void main() async {
       WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
           _rotaInicialRotinaAlarme;
 
+  // Síncrono, idempotente, sem I/O — ver encryption_service.dart (só
+  // deriva a chave em memória; os demais serviços chamam de novo
+  // sozinhos caso ainda não tenha rodado).
   EncryptionService().initialize();
 
-  // Camada extra de resiliência na nuvem (Firebase/Firestore): protegida
-  // por try/catch e NUNCA bloqueia o cold start do app — se o Firebase
-  // falhar ao inicializar (sem rede, projeto mal configurado, etc.), o
-  // app continua 100% funcional com SQLite local, alarmes nativos e SMS
-  // direto do aparelho, que não dependem do Firebase.
+  // Dispara (chama, SEM `await`) a inicialização de Firebase+Auth —
+  // isso já executa o corpo síncrono da função até o primeiro `await`
+  // interno, mas retorna a Future imediatamente sem bloquear main().
+  // Capturada aqui para repassar para a SplashGate/callback abaixo, que
+  // usam essa Future para saber quando é seguro liberar o login (SOS
+  // físico) ou trocar a splash pela LoginScreen de verdade (cold start
+  // normal) — sem isso, um usuário/disparo rápido poderia agir antes do
+  // Firebase estar pronto.
+  final Future<void> futuroFirebaseEAuth =
+      _inicializarFirebaseEAuth(coldStartViaSosFisico: coldStartViaSosFisico);
+
+  // ETAPA 1, fim: primeiro frame disparado imediatamente — ZERO
+  // `await` entre ensureInitialized() e este runApp().
+  runApp(SecurityCheckApp(
+    abertoViaAlarmeRotina: coldStartViaRotinaAlarme,
+    abertoViaSosFisico: coldStartViaSosFisico,
+    futuroFirebaseEAuth: futuroFirebaseEAuth,
+  ));
+
+  // A partir daqui, tudo roda EM PARALELO com o primeiro frame já na
+  // tela — nada abaixo bloqueia ou atrasa o runApp() acima.
+
+  if (coldStartViaSosFisico) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint(
+          '🚨 [main] SOS Físico via Lockscreen: aguardando Firebase+Auth antes de disparar P1->P2.');
+      // Só aguarda AQUI (depois do primeiro frame, tela preta já
+      // visível) — nunca antes do runApp(). O disparo em si precisa do
+      // Firebase pronto para usar Push/WhatsApp/link real da foto (ver
+      // política de sessão em [_inicializarFirebaseEAuth]).
+      futuroFirebaseEAuth.then((_) {
+        _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
+      });
+    });
+  }
+
+  if (coldStartViaRotinaAlarme) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint(
+          '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da AlarmeDisparadoScreen.');
+      navigateToAlarmeDisparado();
+    });
+  }
+
+  // Wallpaper/fonte/idioma persistidos: puramente visuais (o
+  // MaterialApp já nasce com os valores padrão dos ValueNotifiers e
+  // reconstrói reativamente assim que estes carregarem) — nunca
+  // precisam bloquear o primeiro frame. Fire-and-forget.
+  unawaited(_inicializarPreferenciasVisuais());
+}
+
+/// Wallpaper, escala de fonte e idioma persistidos — só afetam
+/// aparência (ver comentário em [main]), nunca bloqueiam o cold start.
+Future<void> _inicializarPreferenciasVisuais() async {
+  await WallpaperService.inicializar();
+  await FontScaleService.inicializar();
+  await LocaleService.inicializar();
+}
+
+/// ETAPA 2: o MÍNIMO de Firebase necessário para os botões de login
+/// funcionarem — só `Firebase.initializeApp()` + a política de sessão
+/// (Opção A). Nada de FCM/heartbeat/wallet aqui (ver ETAPA 3,
+/// [iniciarServicosPosLoginOuDashboard]). Chamada sem `await` logo após
+/// o runApp() em [main] — nunca antes. Protegida por try/catch e NUNCA
+/// lança exceção: se o Firebase falhar ao inicializar (sem rede,
+/// projeto mal configurado, etc.), o app continua funcional para login
+/// local/SMS, que não dependem dele.
+Future<void> _inicializarFirebaseEAuth({required bool coldStartViaSosFisico}) async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('☁️ [Firebase] Inicializado com sucesso.');
@@ -66,8 +177,7 @@ void main() async {
     // `emailVerified`) volta a ser exigido a cada abertura normal.
     //
     // EXCEÇÃO DELIBERADA (bug real corrigido): cold start via SOS FÍSICO
-    // (`coldStartViaSosFisico`, ver `LockscreenCameraActivity`) NUNCA
-    // exibe nenhuma tela de login/conta — a UI vai direto para
+    // NUNCA exibe nenhuma tela de login/conta — a UI vai direto para
     // `_TelaPretaAguardandoSos` (tela preta, zero dado de usuário) e
     // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
     // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
@@ -81,38 +191,42 @@ void main() async {
     if (!coldStartViaSosFisico) {
       await FirebaseAuthService().logout();
     }
-
-    // Registra o handler de background do FCM e pede a permissão de
-    // notificação — CORREÇÃO: isso não depende de sessão autenticada
-    // (diferente da sincronização do token, que precisa de `uid` e roda
-    // em `FcmService().inicializar()` após cada login, ver
-    // `login_screen.dart`), então deve armar aqui, incondicionalmente a
-    // cada cold start, e não ficar refém do usuário completar o login
-    // primeiro. Fire-and-forget: nunca atrasa o cold start.
-    FcmService().registrarInfraestrutura();
-
-    // Camada A MAIS de resiliência na nuvem (monitoramento agendado, ver
-    // `BackgroundLocationHeartbeatService`): inicia o ciclo de heartbeat
-    // de localização (a cada 5 min, só quando faltar ≤2h para algum
-    // alarme de rotina ativo). Síncrono e não-bloqueante — nunca atrasa
-    // o cold start nem interfere no alarme local. Sem sessão ativa logo
-    // após o logout forçado acima, o serviço aguarda o próximo login
-    // real para voltar a sincronizar com a nuvem.
-    BackgroundLocationHeartbeatService().iniciar();
-
-    // Escuta o stream de compras (in_app_purchase) desde o cold start —
-    // necessário para não perder a confirmação de uma recarga que
-    // terminou de processar enquanto o app estava fechado/em segundo
-    // plano (ver WalletService).
-    WalletService();
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
         'apenas com os recursos locais): $e');
   }
+}
 
-  await WallpaperService.inicializar();
-  await FontScaleService.inicializar();
-  await LocaleService.inicializar();
+/// ETAPA 3 (pedido explícito do usuário): TODOS os serviços nativos
+/// pesados — Alarme de rotina, canais de notificação, Foreground
+/// Service do botão físico, fila de retry offline, FCM, heartbeat de
+/// localização, carteira de créditos e limites do plano — só sobem
+/// DEPOIS que o usuário chega no dashboard (chamada em
+/// `HomeScreen.initState()`, ver home_screen.dart), nunca antes/em
+/// paralelo com o cold start. Guardada por [_servicosPosLoginJaIniciados]
+/// para nunca rodar duas vezes na mesma sessão do engine.
+///
+/// TRADE-OFF DE SEGURANÇA: ver nota completa no cabeçalho deste
+/// arquivo — entre um cold start normal (que sempre força logout, ver
+/// Opção A) e o usuário logar de novo, o botão físico de SOS e os
+/// alarmes de rotina ficam inativos, já que dependem deste bloco.
+Future<void> iniciarServicosPosLoginOuDashboard() async {
+  if (_servicosPosLoginJaIniciados) return;
+  _servicosPosLoginJaIniciados = true;
+
+  debugPrint('🚀 [main] Login/Dashboard alcançado — iniciando serviços nativos em segundo plano.');
+
+  // Registra o handler de background do FCM e pede a permissão de
+  // notificação — token sync (que precisa de `uid`) continua separado,
+  // em `FcmService().inicializar()`, chamado direto por login_screen.dart.
+  FcmService().registrarInfraestrutura();
+
+  // Heartbeat de localização (a cada 5 min, só quando faltar ≤2h para
+  // algum alarme de rotina ativo) e listener de compras (in_app_purchase)
+  // para não perder confirmação de recarga.
+  BackgroundLocationHeartbeatService().iniciar();
+  WalletService();
+
   await DatabaseHelper().resetarSessaoAuditoria();
   await AlarmeService.inicializar();
   await NotificacaoService.inicializar();
@@ -123,8 +237,7 @@ void main() async {
   // o alarme periódico de retry (precisa do AndroidAlarmManager já
   // inicializado por AlarmeService.inicializar() acima) e tenta drenar a
   // fila imediatamente — cobre o caso comum de o app ser reaberto depois
-  // que a conectividade voltou. Fire-and-forget: nunca atrasa o cold
-  // start.
+  // que a conectividade voltou.
   RetryUploadService().iniciar();
 
   VolumeSosService().aoDispararSos.listen((_) {
@@ -140,42 +253,6 @@ void main() async {
   });
 
   _testarConectividadeInicialComBackend();
-
-  final bool aguardandoConfirmacaoPin =
-      await DatabaseHelper().isAguardandoConfirmacaoPin();
-
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.reload();
-  final bool alarmeDisparandoNoDisco =
-      prefs.getBool('alarme_disparando_no_momento') ?? false;
-
-  final bool abertoViaAlarmeRotinaFinal =
-      coldStartViaRotinaAlarme || alarmeDisparandoNoDisco;
-
-  debugPrint(
-      '✈️ [main] Alarme tocando verificado via Disco: $alarmeDisparandoNoDisco');
-
-  runApp(SecurityCheckApp(
-    aguardandoConfirmacaoPin: aguardandoConfirmacaoPin,
-    abertoViaAlarmeRotina: abertoViaAlarmeRotinaFinal,
-    abertoViaSosFisico: coldStartViaSosFisico,
-  ));
-
-  if (coldStartViaSosFisico) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-          '🚨 [main] SOS Físico via Lockscreen: disparando sequência unificada P1->P2.');
-      _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
-    });
-  }
-
-  if (coldStartViaRotinaAlarme) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-          '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da AlarmeDisparadoScreen.');
-      navigateToAlarmeDisparado();
-    });
-  }
 }
 
 /// Dispara P1 (localização imediata, deduplicada entre engines — ver
@@ -242,13 +319,18 @@ Future<void> _testarConectividadeInicialComBackend() async {
 }
 
 class SecurityCheckApp extends StatefulWidget {
-  final bool aguardandoConfirmacaoPin;
   final bool abertoViaAlarmeRotina;
   final bool abertoViaSosFisico;
 
+  /// Future da inicialização de Firebase+Auth em voo (ver [main],
+  /// ETAPA 2) — repassada para a [_SplashGate] (cold start normal) e
+  /// aguardada antes do disparo do SOS físico, para saber quando é
+  /// seguro liberar o login/o disparo de verdade.
+  final Future<void> futuroFirebaseEAuth;
+
   const SecurityCheckApp({
     super.key,
-    required this.aguardandoConfirmacaoPin,
+    required this.futuroFirebaseEAuth,
     this.abertoViaAlarmeRotina = false,
     this.abertoViaSosFisico = false,
   });
@@ -365,10 +447,19 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// [TelaInicialComPossivelDialogoPin] através da navegação explícita
   /// feita por [LoginScreen] após um login real com `emailVerified ==
   /// true` (ver [LoginScreen._fazerLogin]).
+  ///
+  /// No cold start NORMAL, a LoginScreen não aparece direto: primeiro
+  /// vem a [_SplashGate] (mesmo fundo escuro da splash nativa do
+  /// Android, ver `launch_background.xml`, com o logo do app e um
+  /// spinner discreto) — cobre visualmente o tempo da inicialização de
+  /// Firebase/Auth adiada para depois do primeiro frame (ver [main]) e
+  /// só troca para a LoginScreen de verdade quando ela terminar,
+  /// evitando um usuário rápido conseguir tocar em "Entrar" antes do
+  /// Firebase estar pronto.
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
-    return const LoginScreen();
+    return _SplashGate(aguardar: widget.futuroFirebaseEAuth);
   }
 
   @override
@@ -497,5 +588,106 @@ class _TelaPretaAguardandoSos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(backgroundColor: Colors.black);
+  }
+}
+
+/// Cor de fundo AMOLED escura compartilhada pela splash nativa do
+/// Android (ver `android/app/.../drawable/launch_background.xml` e
+/// `values/colors.xml`, `@color/launch_background`), pela [_SplashGate]
+/// e pelo restante do app (mesmo tom usado no ícone do launcher e em
+/// `home_screen.dart`) — garante zero "flash" de cor entre o toque no
+/// ícone e o primeiro frame do Flutter.
+const Color _corSplashDeMarca = Color(0xFF12131C);
+
+/// Gate puramente visual exibido como a rota inicial do app (dentro do
+/// `home:` do MaterialApp — nunca via Navigator, então não interfere em
+/// nenhuma navegação por nome já existente) no cold start NORMAL.
+/// Mostra a identidade visual do app (logo + spinner discreto) sobre o
+/// MESMO fundo escuro da splash nativa, cobrindo visualmente o tempo da
+/// inicialização de Firebase/Auth que [main] adia para depois do
+/// primeiro frame — e só troca para a [LoginScreen] de verdade quando
+/// ela realmente termina, para que nunca seja possível tocar em
+/// "Entrar" antes do Firebase estar pronto.
+class _SplashGate extends StatefulWidget {
+  const _SplashGate({required this.aguardar});
+
+  /// Future de [_inicializarFirebaseEAuth] já em voo (ver [main]).
+  final Future<void> aguardar;
+
+  @override
+  State<_SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<_SplashGate> {
+  bool _pronto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _aguardarProntidao();
+  }
+
+  Future<void> _aguardarProntidao() async {
+    // Duração mínima só para a marca não "piscar" instantaneamente em
+    // reaberturas muito rápidas (engine já aquecido) — a splash some
+    // com o que demorar mais entre essa duração mínima e o término real
+    // da inicialização de Firebase/Auth.
+    await Future.wait<void>([
+      Future<void>.delayed(const Duration(milliseconds: 700)),
+      widget.aguardar,
+    ]);
+    if (mounted) setState(() => _pronto = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      child: _pronto ? const LoginScreen() : const _ConteudoSplashDeMarca(),
+    );
+  }
+}
+
+/// Conteúdo visual da splash de marca: logo do app (mesma arte do ícone
+/// do launcher) e um spinner discreto — nada de texto/campo interativo,
+/// só identidade visual + indicação de carregamento em andamento.
+class _ConteudoSplashDeMarca extends StatelessWidget {
+  const _ConteudoSplashDeMarca();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: const ValueKey('splash_de_marca'),
+      backgroundColor: _corSplashDeMarca,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ClipOval: o arquivo-fonte do ícone (assets/images/app_icon.png)
+            // tem transparência "gravada" como um xadrez cinza nos 4 cantos
+            // em vez de alfa real (defeito pré-existente do asset) — o
+            // recorte circular remove exatamente essa área quadriculada,
+            // sobrando só o emblema redondo do logo.
+            ClipOval(
+              child: Image.asset(
+                'assets/images/app_icon.png',
+                width: 112,
+                height: 112,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 40),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4C7040)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
