@@ -58,14 +58,29 @@ void main() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('☁️ [Firebase] Inicializado com sucesso.');
 
-    // POLÍTICA DE SEGURANÇA (Opção A): todo cold start encerra qualquer
-    // sessão do Firebase Auth persistida no disco — o app NUNCA deve
-    // abrir direto na Home usando uma sessão antiga, mesmo que o
-    // dispositivo/emulador já tivesse um login válido de uma execução
-    // anterior. Login (com a barreira de `emailVerified`) volta a ser
-    // exigido a cada abertura. Feito o mais cedo possível, antes de
-    // qualquer serviço abaixo que dependa de `FirebaseAuthService().uidAtual`.
-    await FirebaseAuthService().logout();
+    // POLÍTICA DE SEGURANÇA (Opção A): todo cold start NORMAL (usuário
+    // abrindo o app pelo ícone) encerra qualquer sessão do Firebase Auth
+    // persistida no disco — o app NUNCA deve abrir direto na Home usando
+    // uma sessão antiga, mesmo que o dispositivo/emulador já tivesse um
+    // login válido de uma execução anterior. Login (com a barreira de
+    // `emailVerified`) volta a ser exigido a cada abertura normal.
+    //
+    // EXCEÇÃO DELIBERADA (bug real corrigido): cold start via SOS FÍSICO
+    // (`coldStartViaSosFisico`, ver `LockscreenCameraActivity`) NUNCA
+    // exibe nenhuma tela de login/conta — a UI vai direto para
+    // `_TelaPretaAguardandoSos` (tela preta, zero dado de usuário) e
+    // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
+    // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
+    // sequer rodar, forçando SEMPRE o SMS de fallback sem link real da
+    // foto e desativando Push/WhatsApp — justamente no cenário mais
+    // crítico (app fechado, botão físico). Como nenhuma UI de conta é
+    // exibida nesse fluxo, preservar a sessão aqui mantém a MESMA
+    // garantia de segurança da Opção A (nunca mostrar dados de conta sem
+    // reautenticação) e permite que o SOS físico dispare com todos os
+    // canais (SMS com link real + Push + WhatsApp), mesmo 100% a frio.
+    if (!coldStartViaSosFisico) {
+      await FirebaseAuthService().logout();
+    }
 
     // Registra o handler de background do FCM e pede a permissão de
     // notificação — CORREÇÃO: isso não depende de sessão autenticada

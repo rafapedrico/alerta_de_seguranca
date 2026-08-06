@@ -9,10 +9,18 @@ import 'package:flutter/foundation.dart';
 /// bypass de autenticação deve existir neste serviço.
 ///
 /// POLÍTICA DE SEGURANÇA (Opção A): sessões do Firebase Auth NUNCA
-/// sobrevivem a um cold start — `main()` chama [logout] incondicionalmente
-/// logo após inicializar o Firebase, antes de `runApp`, para que o app
-/// sempre reabra na `LoginScreen` e exija credenciais de novo (ver
-/// `_telaInicial` em `main.dart`).
+/// sobrevivem a um cold start NORMAL — `main()` chama [logout] logo após
+/// inicializar o Firebase, antes de `runApp`, para que o app sempre
+/// reabra na `LoginScreen` e exija credenciais de novo (ver
+/// `_telaInicial` em `main.dart`). EXCEÇÃO deliberada: um cold start via
+/// SOS físico (botão de Volume+ com o app fechado, ver
+/// `LockscreenCameraActivity`/`main.dart`) NÃO chama [logout] — esse
+/// fluxo nunca exibe nenhuma UI de conta (só a câmera), então preservar
+/// a sessão não expõe nada a quem estiver com o aparelho, e é o que
+/// permite o SOS físico disparar com Push/WhatsApp/link real da foto
+/// mesmo 100% a frio (sem essa exceção, `uidAtual` ficava sempre `null`
+/// nesse cenário, e o SOS físico caía sempre no SMS de fallback sem
+/// link real).
 ///
 /// Toda a arquitetura híbrida de alertas (carteira em USD, vínculo
 /// telefone/fcmToken, regras do Firestore) depende de um `uid` real: é
