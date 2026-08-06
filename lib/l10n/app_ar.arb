@@ -388,8 +388,16 @@
   "premiumBadge": "مميز",
   "protejaQuemVoceAma": "احمِ من تحب",
   "mudeParaPremium": "الترقية إلى الخطة المميزة",
-  "precoMensal": "11.99 ريال",
-  "porMes": "/شهريًا",
+  "premiumPrecoGenerico": "اشترك في بريميوم",
+  "premiumAssinarBotaoGenerico": "الاشتراك في بريميوم",
+  "premiumPrecoMensalComValor": "{preco}/شهريًا",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "عرض المزيد",
   "alarmeRotinaAtivoDescricao": "المنبه الروتيني نشط.\nأكّد سلامتك لإيقافه مؤقتًا.",
   "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال دقيقتين وإلا سيتم إرسال تنبيه طوارئ.",

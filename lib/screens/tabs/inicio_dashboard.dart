@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/database_helper.dart';
 import '../../services/locale_service.dart';
+import '../../services/premium_price_service.dart';
 import '../faq_screen.dart';
 import '../termos_privacidade_screen.dart';
 
@@ -167,14 +168,30 @@ class InicioDashboard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _CartaoPlano(
-                    titulo: l10n.planoPremiumTitulo,
-                    preco: '${l10n.precoMensal}${l10n.porMes}',
-                    descricao: l10n.dashboardPlanoPremiumDescricao,
-                    corPrincipal: _corDestaquePremium,
-                    destaque: true,
-                    selo: l10n.premiumBadge,
-                    onTap: () => _abrirModalPremium(context),
+                  // Preço 100% dinâmico, consultado direto da loja
+                  // (Google Play Billing/App Store — ver
+                  // PremiumPriceService), na moeda local da conta do
+                  // usuário. Enquanto a consulta assíncrona está em
+                  // andamento (ou se a loja/produto não estiverem
+                  // disponíveis), mostra um texto genérico SEM valor —
+                  // nunca um preço fixo/hardcoded.
+                  child: FutureBuilder<String?>(
+                    future: PremiumPriceService().obterPrecoFormatado(),
+                    builder: (context, snapshot) {
+                      final precoLoja = snapshot.data;
+                      final preco = precoLoja != null
+                          ? l10n.premiumPrecoMensalComValor(precoLoja)
+                          : l10n.premiumPrecoGenerico;
+                      return _CartaoPlano(
+                        titulo: l10n.planoPremiumTitulo,
+                        preco: preco,
+                        descricao: l10n.dashboardPlanoPremiumDescricao,
+                        corPrincipal: _corDestaquePremium,
+                        destaque: true,
+                        selo: l10n.premiumBadge,
+                        onTap: () => _abrirModalPremium(context),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -234,6 +251,11 @@ class InicioDashboard extends StatelessWidget {
   Future<void> _abrirModalPremium(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final bool premiumAtivo = await _possuiPlanoPremiumAtivo();
+    // Reaproveita o mesmo cache do PremiumPriceService (a consulta já
+    // deve ter sido feita pelo FutureBuilder do card, ver
+    // _buildSecaoPlanos) — mesmo texto/valor genérico de fallback caso a
+    // loja/produto não estejam disponíveis.
+    final String? precoLoja = await PremiumPriceService().obterPrecoFormatado();
     if (!context.mounted) return;
     showDialog(
       context: context,
@@ -251,8 +273,9 @@ class InicioDashboard extends StatelessWidget {
           l10n.beneficioTempoEspera,
           l10n.beneficioSuporteTecnico,
         ],
-        botaoPrincipalTexto:
-            l10n.premiumAssinarBotaoComPreco('${l10n.precoMensal}${l10n.porMes}'),
+        botaoPrincipalTexto: precoLoja != null
+            ? l10n.premiumAssinarBotaoComPreco(precoLoja)
+            : l10n.premiumAssinarBotaoGenerico,
         onBotaoPrincipal: () {
           Navigator.of(ctx).pop();
           _abrirPlayStore();

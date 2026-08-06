@@ -388,8 +388,16 @@
   "premiumBadge": "प्रीमियम",
   "protejaQuemVoceAma": "अपने प्रियजनों की रक्षा करें",
   "mudeParaPremium": "प्रीमियम योजना में बदलें",
-  "precoMensal": "₹11.99",
-  "porMes": "/माह",
+  "premiumPrecoGenerico": "प्रीमियम की सदस्यता लें",
+  "premiumAssinarBotaoGenerico": "प्रीमियम सदस्यता लें",
+  "premiumPrecoMensalComValor": "{preco}/माह",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "और देखें",
   "alarmeRotinaAtivoDescricao": "नियमित अलार्म सक्रिय है।\nरोकने के लिए अपनी सुरक्षा की पुष्टि करें।",
   "alarmeRotinaFaseFinalDescricao": "आखिरी मौका! अलार्म फिर से बजा है।\n2 मिनट के भीतर अपना पिन दर्ज करें, नहीं तो एक आपातकालीन अलर्ट भेजा जाएगा।",

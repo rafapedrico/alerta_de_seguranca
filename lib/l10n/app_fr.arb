@@ -388,8 +388,16 @@
   "premiumBadge": "Premium",
   "protejaQuemVoceAma": "Protégez ceux que vous aimez",
   "mudeParaPremium": "Passer au forfait Premium",
-  "precoMensal": "11,99 €",
-  "porMes": "/mois",
+  "premiumPrecoGenerico": "Abonnez-vous à Premium",
+  "premiumAssinarBotaoGenerico": "S'abonner à Premium",
+  "premiumPrecoMensalComValor": "{preco}/mois",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Voir plus",
   "alarmeRotinaAtivoDescricao": "Alarme de routine active.\nConfirmez votre sécurité pour la suspendre.",
   "alarmeRotinaFaseFinalDescricao": "DERNIÈRE CHANCE ! L'alarme a sonné à nouveau.\nSaisissez votre code PIN dans les 2 minutes ou une alerte d'urgence sera envoyée.",

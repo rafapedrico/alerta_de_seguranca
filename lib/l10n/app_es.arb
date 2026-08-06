@@ -388,8 +388,16 @@
   "premiumBadge": "Premium",
   "protejaQuemVoceAma": "Protege a quien amas",
   "mudeParaPremium": "Cambia al Plan Premium",
-  "precoMensal": "$11,99",
-  "porMes": "/mes",
+  "premiumPrecoGenerico": "Suscríbete a Premium",
+  "premiumAssinarBotaoGenerico": "Suscribirse a Premium",
+  "premiumPrecoMensalComValor": "{preco}/mes",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Ver más",
   "alarmeRotinaAtivoDescricao": "Alarma de rutina activa.\nConfirma que estás a salvo para pausarla.",
   "alarmeRotinaFaseFinalDescricao": "¡ÚLTIMA OPORTUNIDAD! La alarma sonó de nuevo.\nIngresa tu PIN en 2 minutos o se enviará una alerta de emergencia.",

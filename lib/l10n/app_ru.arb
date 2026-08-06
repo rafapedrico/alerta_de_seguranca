@@ -388,8 +388,16 @@
   "premiumBadge": "Премиум",
   "protejaQuemVoceAma": "Защитите тех, кого любите",
   "mudeParaPremium": "Перейти на Премиум-план",
-  "precoMensal": "11,99 R$",
-  "porMes": "/мес",
+  "premiumPrecoGenerico": "Оформите Premium",
+  "premiumAssinarBotaoGenerico": "Оформить Premium",
+  "premiumPrecoMensalComValor": "{preco}/мес",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Узнать больше",
   "alarmeRotinaAtivoDescricao": "Регулярный будильник активен.\nПодтвердите вашу безопасность, чтобы приостановить его.",
   "alarmeRotinaFaseFinalDescricao": "ПОСЛЕДНИЙ ШАНС! Будильник прозвенел снова.\nВведите PIN-код в течение 2 минут, иначе будет отправлено экстренное оповещение.",

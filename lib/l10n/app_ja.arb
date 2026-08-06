@@ -388,8 +388,16 @@
   "premiumBadge": "プレミアム",
   "protejaQuemVoceAma": "大切な人を守る",
   "mudeParaPremium": "プレミアムプランに切り替える",
-  "precoMensal": "11.99レアル",
-  "porMes": "/月",
+  "premiumPrecoGenerico": "プレミアムに登録",
+  "premiumAssinarBotaoGenerico": "プレミアムに登録する",
+  "premiumPrecoMensalComValor": "{preco}/月",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "もっと見る",
   "alarmeRotinaAtivoDescricao": "定期アラームが有効です。\n一時停止するには安全確認をしてください。",
   "alarmeRotinaFaseFinalDescricao": "最終チャンス！アラームが再び鳴りました。\n2分以内にPINを入力してください。入力がない場合、緊急アラートが送信されます。",

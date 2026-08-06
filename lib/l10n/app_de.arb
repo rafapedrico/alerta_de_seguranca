@@ -388,8 +388,16 @@
   "premiumBadge": "Premium",
   "protejaQuemVoceAma": "Beschütze, wen du liebst",
   "mudeParaPremium": "Zum Premium-Plan wechseln",
-  "precoMensal": "11,99 €",
-  "porMes": "/Monat",
+  "premiumPrecoGenerico": "Premium abonnieren",
+  "premiumAssinarBotaoGenerico": "Premium abonnieren",
+  "premiumPrecoMensalComValor": "{preco}/Monat",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Mehr erfahren",
   "alarmeRotinaAtivoDescricao": "Routinealarm aktiv.\nBestätige deine Sicherheit, um zu pausieren.",
   "alarmeRotinaFaseFinalDescricao": "LETZTE CHANCE! Der Alarm hat erneut geklingelt.\nGib deine PIN innerhalb von 2 Minuten ein, sonst wird ein Notfallalarm gesendet.",
