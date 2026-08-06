@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 Solicitud expirada",
   "notifMonitExpiradoCorpo": "Tu solicitud de ubicación a {nome} expiró sin respuesta.",
   "notifMonitContatoGenerico": "un contacto",
-  "notifCheckinCanceladoCorpo": "Alarma cancelada."
+  "notifCheckinCanceladoCorpo": "Alarma cancelada.",
+  "splashFrase1": "GUARDIÃO X\nSIEMPRE\nA TU LADO",
+  "splashFrase2": "GUARDIÃO X\nTU SEGURIDAD\nES NUESTRO OBJETIVO",
+  "splashFrase3": "GUARDIÃO X\nTU PROTECTOR\nPERSONAL",
+  "splashFrase4": "GUARDIÃO X\nPROTEGER\nES NUESTRO OBJETIVO",
+  "splashFrase5": "ESTÁ PROTEGIDO\nCON TU\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nPARA TODOS LOS MOMENTOS",
+  "loginSocialDivisor": "o inicia sesión con",
+  "loginSocialGoogleTooltip": "Iniciar sesión con Google",
+  "loginSocialFacebookTooltip": "Iniciar sesión con Facebook",
+  "loginSocialAppleTooltip": "Iniciar sesión con Apple",
+  "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión."
 }

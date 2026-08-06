@@ -2,4 +2,13 @@
 <resources>
     <!-- Nome exibido embaixo do ícone do app no launcher do Android. -->
     <string name="app_name">Guardião-X</string>
+
+    <!-- Login social com Facebook (ver lib/services/social_auth_service.dart)
+         — PLACEHOLDERS. Substitua pelos valores REAIS do seu app cadastrado
+         em developers.facebook.com (Configurações > Básico) antes de
+         publicar: sem um App ID/Client Token válidos, o botão "Entrar com
+         Facebook" abre o diálogo mas falha a autenticação. -->
+    <string name="facebook_app_id">000000000000000</string>
+    <string name="fb_login_protocol_scheme">fb000000000000000</string>
+    <string name="facebook_client_token">SUBSTITUA_PELO_CLIENT_TOKEN_REAL</string>
 </resources>

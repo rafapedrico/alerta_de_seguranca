@@ -591,22 +591,49 @@ class _TelaPretaAguardandoSos extends StatelessWidget {
   }
 }
 
-/// Cor de fundo AMOLED escura compartilhada pela splash nativa do
-/// Android (ver `android/app/.../drawable/launch_background.xml` e
-/// `values/colors.xml`, `@color/launch_background`), pela [_SplashGate]
-/// e pelo restante do app (mesmo tom usado no ícone do launcher e em
-/// `home_screen.dart`) — garante zero "flash" de cor entre o toque no
-/// ícone e o primeiro frame do Flutter.
-const Color _corSplashDeMarca = Color(0xFF12131C);
+/// Cor de fundo preta pura compartilhada pela splash nativa do Android
+/// (ver `android/app/.../drawable/launch_background.xml` e
+/// `values/colors.xml`, `@color/launch_background`) e pela
+/// [_ConteudoSplashAnimada] — garante zero "flash" de cor entre o
+/// toque no ícone e o primeiro frame do Flutter.
+const Color _corSplashDeMarca = Colors.black;
+
+/// Duração TOTAL orçada para a splash cinematográfica (digitação +
+/// pausa + saída + crossfade para a LoginScreen) — pedido explícito do
+/// usuário: "duração total restrita de 4 segundos". Ver
+/// [_ConteudoSplashAnimada] para como o tempo interno é dividido.
+const Duration _duracaoTotalSplash = Duration(milliseconds: 3700);
+const Duration _duracaoCrossfadeParaLogin = Duration(milliseconds: 300);
+
+/// Chave do SharedPreferences que guarda o ÍNDICE (0-5) da PRÓXIMA
+/// frase de marca a exibir na splash — persiste entre aberturas do app
+/// para que as 6 frases apareçam em loop sequencial (1→2→…→6→1…), uma
+/// por abertura, em vez de repetir/sortear (ver [_SplashGateState]).
+const String _prefsChaveIndiceFraseSplash = 'splash_frase_indice_proxima';
+
+/// As 6 frases de marca (uma por abertura, em loop) exibidas na splash
+/// cinematográfica — ver `lib/l10n/app_*.arb` (`splashFrase1..6`).
+/// Cada frase é dividida em linhas por "\n"; a linha cujo conteúdo
+/// (normalizado) é exatamente "GUARDIÃO X" fica FIXA na tela durante a
+/// animação de saída, as demais deslizam para cima e desaparecem — ver
+/// [_ConteudoSplashAnimada._ehLinhaDaMarca].
+List<String> _frasesSplash(AppLocalizations l10n) => <String>[
+      l10n.splashFrase1,
+      l10n.splashFrase2,
+      l10n.splashFrase3,
+      l10n.splashFrase4,
+      l10n.splashFrase5,
+      l10n.splashFrase6,
+    ];
 
 /// Gate puramente visual exibido como a rota inicial do app (dentro do
 /// `home:` do MaterialApp — nunca via Navigator, então não interfere em
 /// nenhuma navegação por nome já existente) no cold start NORMAL.
-/// Mostra a identidade visual do app (logo + spinner discreto) sobre o
-/// MESMO fundo escuro da splash nativa, cobrindo visualmente o tempo da
-/// inicialização de Firebase/Auth que [main] adia para depois do
-/// primeiro frame — e só troca para a [LoginScreen] de verdade quando
-/// ela realmente termina, para que nunca seja possível tocar em
+/// Mostra a splash cinematográfica de marca ([_ConteudoSplashAnimada])
+/// sobre o MESMO fundo preto da splash nativa, cobrindo visualmente o
+/// tempo da inicialização de Firebase/Auth que [main] adia para depois
+/// do primeiro frame — e só troca para a [LoginScreen] de verdade
+/// quando ela realmente termina, para que nunca seja possível tocar em
 /// "Entrar" antes do Firebase estar pronto.
 class _SplashGate extends StatefulWidget {
   const _SplashGate({required this.aguardar});
@@ -621,19 +648,43 @@ class _SplashGate extends StatefulWidget {
 class _SplashGateState extends State<_SplashGate> {
   bool _pronto = false;
 
+  /// Índice (0-5) da frase a exibir nesta abertura — só fica não-nulo
+  /// depois da leitura (rápida, mas assíncrona) do SharedPreferences,
+  /// para nunca trocar a frase NO MEIO da animação de digitação (ver
+  /// [_carregarIndiceFrase]).
+  int? _indiceFrase;
+
   @override
   void initState() {
     super.initState();
+    _carregarIndiceFrase();
     _aguardarProntidao();
   }
 
+  Future<void> _carregarIndiceFrase() async {
+    int indiceSorteado = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      indiceSorteado = (prefs.getInt(_prefsChaveIndiceFraseSplash) ?? 0) % 6;
+      // Fire-and-forget: já grava o índice da PRÓXIMA abertura — não
+      // precisa ser aguardado, e não deve atrasar a splash atual.
+      unawaited(
+        prefs.setInt(_prefsChaveIndiceFraseSplash, (indiceSorteado + 1) % 6),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao ler índice da frase de splash: $e');
+    }
+    if (mounted) setState(() => _indiceFrase = indiceSorteado);
+  }
+
   Future<void> _aguardarProntidao() async {
-    // Duração mínima só para a marca não "piscar" instantaneamente em
-    // reaberturas muito rápidas (engine já aquecido) — a splash some
-    // com o que demorar mais entre essa duração mínima e o término real
-    // da inicialização de Firebase/Auth.
+    // Orçamento fixo de 3.7s (+ 300ms de crossfade = ~4s no total) para
+    // a splash cinematográfica — a tela some com o que demorar mais
+    // entre esse orçamento e o término real da inicialização de
+    // Firebase/Auth (na prática, quase sempre o orçamento fixo, já que
+    // Firebase+Auth costuma terminar bem antes).
     await Future.wait<void>([
-      Future<void>.delayed(const Duration(milliseconds: 700)),
+      Future<void>.delayed(_duracaoTotalSplash),
       widget.aguardar,
     ]);
     if (mounted) setState(() => _pronto = true);
@@ -642,51 +693,223 @@ class _SplashGateState extends State<_SplashGate> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      child: _pronto ? const LoginScreen() : const _ConteudoSplashDeMarca(),
+      duration: _duracaoCrossfadeParaLogin,
+      child: _pronto
+          ? const LoginScreen()
+          : (_indiceFrase == null
+              // Placeholder preto (idêntico ao fundo da splash nativa
+              // E da splash animada) só pelos poucos milissegundos da
+              // leitura assíncrona do índice da frase — invisível na
+              // prática, sem nenhum "flash" de cor.
+              ? const ColoredBox(
+                  key: ValueKey('splash_preta_aguardando_indice'),
+                  color: _corSplashDeMarca,
+                )
+              : _ConteudoSplashAnimada(
+                  key: ValueKey('splash_de_marca_$_indiceFrase'),
+                  indiceFrase: _indiceFrase!,
+                )),
     );
   }
 }
 
-/// Conteúdo visual da splash de marca: logo do app (mesma arte do ícone
-/// do launcher) e um spinner discreto — nada de texto/campo interativo,
-/// só identidade visual + indicação de carregamento em andamento.
-class _ConteudoSplashDeMarca extends StatelessWidget {
-  const _ConteudoSplashDeMarca();
+/// Splash cinematográfica de marca: a frase do índice sorteado (ver
+/// [_frasesSplash]) é digitada letra por letra, linha por linha
+/// ("efeito máquina de escrever"); ao terminar, uma breve pausa e então
+/// a animação de saída — a linha "GUARDIÃO X" fica FIXA na tela e as
+/// demais deslizam para cima enquanto desaparecem (fade out). Fundo
+/// preto puro, texto em negrito verde neon com efeito de brilho/glow.
+class _ConteudoSplashAnimada extends StatefulWidget {
+  const _ConteudoSplashAnimada({super.key, required this.indiceFrase});
+
+  final int indiceFrase;
+
+  @override
+  State<_ConteudoSplashAnimada> createState() =>
+      _ConteudoSplashAnimadaState();
+}
+
+class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
+    with TickerProviderStateMixin {
+  static const Color _verdeNeon = Color(0xFF39FF14);
+
+  // Orçamento interno (soma ≈ 3.2s), com folga proposital dentro dos
+  // 3.7s de [_duracaoTotalSplash] para a linha "GUARDIÃO X" ficar
+  // sozinha e estática na tela por um instante antes do crossfade
+  // final para a LoginScreen (total geral, incluindo os 300ms de
+  // crossfade, fica em ~4s).
+  static const Duration _duracaoDigitacao = Duration(milliseconds: 2100);
+  static const Duration _duracaoPausaPosDigitacao =
+      Duration(milliseconds: 300);
+  static const Duration _duracaoSaida = Duration(milliseconds: 800);
+
+  late final AnimationController _digitacaoController;
+  late final AnimationController _saidaController;
+  late final Animation<double> _curvaSaida;
+
+  List<String> _linhas = const <String>[];
+  int _totalCaracteres = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _digitacaoController = AnimationController(
+      vsync: this,
+      duration: _duracaoDigitacao,
+    );
+    _saidaController = AnimationController(
+      vsync: this,
+      duration: _duracaoSaida,
+    );
+    _curvaSaida = CurvedAnimation(
+      parent: _saidaController,
+      curve: Curves.easeInCubic,
+    );
+    _iniciarSequenciaDeAnimacao();
+  }
+
+  Future<void> _iniciarSequenciaDeAnimacao() async {
+    await _digitacaoController.forward();
+    if (!mounted) return;
+    await Future<void>.delayed(_duracaoPausaPosDigitacao);
+    if (!mounted) return;
+    await _saidaController.forward();
+  }
+
+  @override
+  void dispose() {
+    _digitacaoController.dispose();
+    _saidaController.dispose();
+    super.dispose();
+  }
+
+  /// A marca "GUARDIÃO X" fica fixa na tela durante a saída — as demais
+  /// linhas da frase é que sobem/desaparecem (ver classe doc).
+  bool _ehLinhaDaMarca(String linha) {
+    final String normalizada = linha.trim().toUpperCase();
+    return normalizada == 'GUARDIÃO X' || normalizada == 'GUARDIÃO-X';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final frases = _frasesSplash(l10n);
+    final frase = frases[widget.indiceFrase % frases.length];
+    _linhas = frase.split('\n');
+    _totalCaracteres =
+        _linhas.fold<int>(0, (soma, linha) => soma + linha.length);
+
     return Scaffold(
-      key: const ValueKey('splash_de_marca'),
       backgroundColor: _corSplashDeMarca,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ClipOval: o arquivo-fonte do ícone (assets/images/app_icon.png)
-            // tem transparência "gravada" como um xadrez cinza nos 4 cantos
-            // em vez de alfa real (defeito pré-existente do asset) — o
-            // recorte circular remove exatamente essa área quadriculada,
-            // sobrando só o emblema redondo do logo.
-            ClipOval(
-              child: Image.asset(
-                'assets/images/app_icon.png',
-                width: 112,
-                height: 112,
-                fit: BoxFit.cover,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: SizedBox(
+              width: double.infinity,
+              child: AnimatedBuilder(
+                animation: Listenable.merge(
+                  <Listenable>[_digitacaoController, _saidaController],
+                ),
+                builder: (context, _) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _construirLinhas(context),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 40),
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4C7040)),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  List<Widget> _construirLinhas(BuildContext context) {
+    final double valorDigitacao = _digitacaoController.value;
+    final int caracteresVisiveis =
+        (_totalCaracteres * valorDigitacao).round();
+
+    // Tamanho-base responsivo: proporcional à largura da tela, com
+    // limites para não "apertar" em telas pequenas nem sobrar espaço
+    // excessivo em telas grandes/tablets — o FittedBox abaixo ainda
+    // encolhe por linha se, mesmo assim, algum texto não couber.
+    final double larguraTela = MediaQuery.of(context).size.width;
+    final double fonteMarca = (larguraTela * 0.135).clamp(30.0, 52.0);
+    final double fonteDemais = fonteMarca * 0.6;
+
+    int acumulado = 0;
+    final widgets = <Widget>[];
+    for (final linha in _linhas) {
+      final int inicioLinha = acumulado;
+      acumulado += linha.length;
+      final int visivelNaLinha =
+          (caracteresVisiveis - inicioLinha).clamp(0, linha.length);
+      final String textoParcial = linha.substring(0, visivelNaLinha);
+      final bool aindaDigitandoEstaLinha =
+          visivelNaLinha > 0 && visivelNaLinha < linha.length;
+
+      final bool fixa = _ehLinhaDaMarca(linha);
+      final double progressoSaida = fixa ? 0.0 : _curvaSaida.value;
+
+      widgets.add(
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: fixa ? 10 : 6),
+          child: Opacity(
+            opacity: (1.0 - progressoSaida).clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, -36 * progressoSaida),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: _TextoNeon(
+                  texto: textoParcial + (aindaDigitandoEstaLinha ? '▏' : ''),
+                  fontSize: fixa ? fonteMarca : fonteDemais,
+                  cor: _verdeNeon,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return widgets;
+  }
+}
+
+/// Texto em negrito, verde neon, com efeito de brilho/glow (várias
+/// sombras verdes empilhadas com raios de desfoque crescentes) — usado
+/// nas linhas da [_ConteudoSplashAnimada].
+class _TextoNeon extends StatelessWidget {
+  const _TextoNeon({
+    required this.texto,
+    required this.fontSize,
+    required this.cor,
+  });
+
+  final String texto;
+  final double fontSize;
+  final Color cor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      texto,
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      softWrap: false,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.4,
+        height: 1.15,
+        color: cor,
+        shadows: <Shadow>[
+          Shadow(color: cor, blurRadius: 6),
+          Shadow(color: cor, blurRadius: 16),
+          Shadow(color: cor.withOpacity(0.85), blurRadius: 30),
+          Shadow(color: cor.withOpacity(0.55), blurRadius: 52),
+        ],
       ),
     );
   }

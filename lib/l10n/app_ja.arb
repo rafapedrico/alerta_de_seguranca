@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 リクエストが期限切れになりました",
   "notifMonitExpiradoCorpo": "{nome}への位置情報リクエストは応答がないまま期限切れになりました。",
   "notifMonitContatoGenerico": "連絡先の一人",
-  "notifCheckinCanceladoCorpo": "アラームがキャンセルされました。"
+  "notifCheckinCanceladoCorpo": "アラームがキャンセルされました。",
+  "splashFrase1": "GUARDIÃO X\nいつも\nあなたのそばに",
+  "splashFrase2": "GUARDIÃO X\nあなたの安全\nそれが私たちの使命",
+  "splashFrase3": "GUARDIÃO X\nあなただけの\n守護者",
+  "splashFrase4": "GUARDIÃO X\n守ること\nそれが私たちの使命",
+  "splashFrase5": "守られてください\nあなたの\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nいつでもそばに",
+  "loginSocialDivisor": "または次でログイン",
+  "loginSocialGoogleTooltip": "Googleでログイン",
+  "loginSocialFacebookTooltip": "Facebookでログイン",
+  "loginSocialAppleTooltip": "Appleでログイン",
+  "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。"
 }

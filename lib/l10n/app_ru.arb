@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 Срок запроса истёк",
   "notifMonitExpiradoCorpo": "Ваш запрос местоположения к {nome} истёк без ответа.",
   "notifMonitContatoGenerico": "контакт",
-  "notifCheckinCanceladoCorpo": "Будильник отменён."
+  "notifCheckinCanceladoCorpo": "Будильник отменён.",
+  "splashFrase1": "GUARDIÃO X\nВСЕГДА\nРЯДОМ С ВАМИ",
+  "splashFrase2": "GUARDIÃO X\nВАША БЕЗОПАСНОСТЬ\nНАША ЦЕЛЬ",
+  "splashFrase3": "GUARDIÃO X\nВАШ ЛИЧНЫЙ\nЗАЩИТНИК",
+  "splashFrase4": "GUARDIÃO X\nЗАЩИЩАТЬ\nНАША ЦЕЛЬ",
+  "splashFrase5": "БУДЬТЕ ЗАЩИЩЕНЫ\nС ВАШИМ\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nНА ВСЕ СЛУЧАИ ЖИЗНИ",
+  "loginSocialDivisor": "или войдите через",
+  "loginSocialGoogleTooltip": "Войти через Google",
+  "loginSocialFacebookTooltip": "Войти через Facebook",
+  "loginSocialAppleTooltip": "Войти через Apple",
+  "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа."
 }

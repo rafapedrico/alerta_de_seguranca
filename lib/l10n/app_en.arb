@@ -682,5 +682,16 @@
   "notifMonitExpiradoTitulo": "📍 Request expired",
   "notifMonitExpiradoCorpo": "Your location request to {nome} expired without a response.",
   "notifMonitContatoGenerico": "a contact",
-  "notifCheckinCanceladoCorpo": "Alarm canceled."
+  "notifCheckinCanceladoCorpo": "Alarm canceled.",
+  "splashFrase1": "GUARDIÃO X\nALWAYS\nBY YOUR SIDE",
+  "splashFrase2": "GUARDIÃO X\nYOUR SAFETY\nIS OUR GOAL",
+  "splashFrase3": "GUARDIÃO X\nYOUR PERSONAL\nPROTECTOR",
+  "splashFrase4": "GUARDIÃO X\nPROTECTING\nIS OUR GOAL",
+  "splashFrase5": "BE PROTECTED\nWITH YOUR\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nFOR EVERY MOMENT",
+  "loginSocialDivisor": "or sign in with",
+  "loginSocialGoogleTooltip": "Sign in with Google",
+  "loginSocialFacebookTooltip": "Sign in with Facebook",
+  "loginSocialAppleTooltip": "Sign in with Apple",
+  "loginSocialContaExistente": "An account with this email already exists using a different sign-in method."
 }

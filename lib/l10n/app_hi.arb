@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 अनुरोध समाप्त",
   "notifMonitExpiradoCorpo": "{nome} को भेजा गया आपका स्थान अनुरोध बिना उत्तर के समाप्त हो गया।",
   "notifMonitContatoGenerico": "एक संपर्क",
-  "notifCheckinCanceladoCorpo": "अलार्म रद्द किया गया।"
+  "notifCheckinCanceladoCorpo": "अलार्म रद्द किया गया।",
+  "splashFrase1": "GUARDIÃO X\nहमेशा\nआपके साथ",
+  "splashFrase2": "GUARDIÃO X\nआपकी सुरक्षा\nहमारा लक्ष्य है",
+  "splashFrase3": "GUARDIÃO X\nआपका व्यक्तिगत\nरक्षक",
+  "splashFrase4": "GUARDIÃO X\nसुरक्षा करना\nहमारा लक्ष्य है",
+  "splashFrase5": "सुरक्षित रहें\nअपने\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nहर पल के लिए",
+  "loginSocialDivisor": "या इसके साथ साइन इन करें",
+  "loginSocialGoogleTooltip": "Google से साइन इन करें",
+  "loginSocialFacebookTooltip": "Facebook से साइन इन करें",
+  "loginSocialAppleTooltip": "Apple से साइन इन करें",
+  "loginSocialContaExistente": "इस ईमेल के साथ पहले से ही किसी अन्य साइन-इन विधि का उपयोग करने वाला खाता मौजूद है।"
 }

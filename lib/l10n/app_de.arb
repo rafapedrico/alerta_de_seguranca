@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 Anfrage abgelaufen",
   "notifMonitExpiradoCorpo": "Ihre Standortanfrage an {nome} ist ohne Antwort abgelaufen.",
   "notifMonitContatoGenerico": "ein Kontakt",
-  "notifCheckinCanceladoCorpo": "Alarm abgebrochen."
+  "notifCheckinCanceladoCorpo": "Alarm abgebrochen.",
+  "splashFrase1": "GUARDIÃO X\nIMMER\nAN IHRER SEITE",
+  "splashFrase2": "GUARDIÃO X\nIHRE SICHERHEIT\nIST UNSER ZIEL",
+  "splashFrase3": "GUARDIÃO X\nIHR PERSÖNLICHER\nBESCHÜTZER",
+  "splashFrase4": "GUARDIÃO X\nSCHÜTZEN\nIST UNSER ZIEL",
+  "splashFrase5": "SEIEN SIE GESCHÜTZT\nMIT IHREM\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nFÜR JEDEN MOMENT",
+  "loginSocialDivisor": "oder anmelden mit",
+  "loginSocialGoogleTooltip": "Mit Google anmelden",
+  "loginSocialFacebookTooltip": "Mit Facebook anmelden",
+  "loginSocialAppleTooltip": "Mit Apple anmelden",
+  "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode."
 }

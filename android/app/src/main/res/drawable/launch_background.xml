@@ -12,9 +12,10 @@
      algo que um <bitmap> estático de layer-list não faz de forma
      confiável entre versões do Android. A identidade visual completa
      (logo recortado em círculo + spinner) fica a cargo da splash do
-     PRÓPRIO Flutter (ver `_ConteudoSplashDeMarca` em `lib/main.dart`),
-     que assume esta MESMA cor de fundo — não há nenhum "flash" entre
-     as duas camadas, só a splash nativa fica sem o logo. -->
+     PRÓPRIO Flutter (ver `_ConteudoSplashAnimada` em `lib/main.dart`,
+     frase de marca animada em verde neon), que assume esta MESMA cor
+     de fundo — não há nenhum "flash" entre as duas camadas, só a
+     splash nativa fica sem o texto animado. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background" />
 </layer-list>

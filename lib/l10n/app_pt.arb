@@ -947,5 +947,16 @@
     }
   },
   "notifMonitContatoGenerico": "um contato",
-  "notifCheckinCanceladoCorpo": "Alarme cancelado."
+  "notifCheckinCanceladoCorpo": "Alarme cancelado.",
+  "splashFrase1": "GUARDIÃO X\nSEMPRE\nAO SEU LADO",
+  "splashFrase2": "GUARDIÃO X\nA SUA SEGURANÇA\nÉ O NOSSO OBJETIVO",
+  "splashFrase3": "GUARDIÃO X\nSEU PROTETOR\nPESSOAL",
+  "splashFrase4": "GUARDIÃO X\nPROTEGER\nÉ O NOSSO OBJETIVO",
+  "splashFrase5": "ESTEJA PROTEGIDO\nCOM O SEU\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nPARA TODOS OS MOMENTOS",
+  "loginSocialDivisor": "ou entre com",
+  "loginSocialGoogleTooltip": "Entrar com Google",
+  "loginSocialFacebookTooltip": "Entrar com Facebook",
+  "loginSocialAppleTooltip": "Entrar com Apple",
+  "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login."
 }

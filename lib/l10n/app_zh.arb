@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 请求已过期",
   "notifMonitExpiradoCorpo": "您向{nome}发出的位置请求已过期且无响应。",
   "notifMonitContatoGenerico": "一位联系人",
-  "notifCheckinCanceladoCorpo": "闹钟已取消。"
+  "notifCheckinCanceladoCorpo": "闹钟已取消。",
+  "splashFrase1": "GUARDIÃO X\n始终\n陪伴在您身边",
+  "splashFrase2": "GUARDIÃO X\n您的安全\n是我们的目标",
+  "splashFrase3": "GUARDIÃO X\n您的私人\n守护者",
+  "splashFrase4": "GUARDIÃO X\n保护您\n是我们的目标",
+  "splashFrase5": "受到保护\n有您的\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\n陪伴每一刻",
+  "loginSocialDivisor": "或使用以下方式登录",
+  "loginSocialGoogleTooltip": "使用 Google 登录",
+  "loginSocialFacebookTooltip": "使用 Facebook 登录",
+  "loginSocialAppleTooltip": "使用 Apple 登录",
+  "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。"
 }

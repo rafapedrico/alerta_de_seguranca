@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#12131C</color>
-    <!-- Fundo da splash screen nativa (LaunchTheme) — mesmo tom AMOLED
-         escuro do ícone do app e das telas internas (ver
-         home_screen.dart), para eliminar o "flash" branco do
-         android:color/white padrão do template Flutter durante o cold
-         start e manter a identidade visual do app do primeiro pixel
-         desenhado em diante. -->
-    <color name="launch_background">#12131C</color>
+    <!-- Fundo da splash screen nativa (LaunchTheme) — PRETO PURO
+         (#000000), igual ao fundo da splash cinematográfica em Flutter
+         (ver `_ConteudoSplashAnimada` em `lib/main.dart`, texto verde
+         neon com efeito glow sobre fundo preto). Eliminar o "flash"
+         branco do android:color/white padrão do template Flutter
+         durante o cold start E qualquer flash de cor entre a splash
+         nativa e a camada Flutter, que agora precisam ser IDÊNTICAS. -->
+    <color name="launch_background">#000000</color>
 </resources>

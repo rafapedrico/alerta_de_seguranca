@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 انتهت صلاحية الطلب",
   "notifMonitExpiradoCorpo": "انتهت صلاحية طلب الموقع الذي أرسلته إلى {nome} دون رد.",
   "notifMonitContatoGenerico": "أحد جهات الاتصال",
-  "notifCheckinCanceladoCorpo": "تم إلغاء المنبه."
+  "notifCheckinCanceladoCorpo": "تم إلغاء المنبه.",
+  "splashFrase1": "GUARDIÃO X\nدائمًا\nإلى جانبك",
+  "splashFrase2": "GUARDIÃO X\nأمانك\nهو هدفنا",
+  "splashFrase3": "GUARDIÃO X\nحاميك\nالشخصي",
+  "splashFrase4": "GUARDIÃO X\nالحماية\nهي هدفنا",
+  "splashFrase5": "كن محميًا\nمع\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nلكل لحظة",
+  "loginSocialDivisor": "أو سجّل الدخول باستخدام",
+  "loginSocialGoogleTooltip": "تسجيل الدخول عبر Google",
+  "loginSocialFacebookTooltip": "تسجيل الدخول عبر Facebook",
+  "loginSocialAppleTooltip": "تسجيل الدخول عبر Apple",
+  "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة."
 }

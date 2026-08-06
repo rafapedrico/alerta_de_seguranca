@@ -664,5 +664,16 @@
   "notifMonitExpiradoTitulo": "📍 Richiesta scaduta",
   "notifMonitExpiradoCorpo": "La tua richiesta di posizione a {nome} è scaduta senza risposta.",
   "notifMonitContatoGenerico": "un contatto",
-  "notifCheckinCanceladoCorpo": "Allarme annullato."
+  "notifCheckinCanceladoCorpo": "Allarme annullato.",
+  "splashFrase1": "GUARDIÃO X\nSEMPRE\nAL TUO FIANCO",
+  "splashFrase2": "GUARDIÃO X\nLA TUA SICUREZZA\nÈ IL NOSTRO OBIETTIVO",
+  "splashFrase3": "GUARDIÃO X\nIL TUO PROTETTORE\nPERSONALE",
+  "splashFrase4": "GUARDIÃO X\nPROTEGGERE\nÈ IL NOSTRO OBIETTIVO",
+  "splashFrase5": "SII PROTETTO\nCON IL TUO\nGUARDIÃO X",
+  "splashFrase6": "GUARDIÃO X\nPER OGNI MOMENTO",
+  "loginSocialDivisor": "oppure accedi con",
+  "loginSocialGoogleTooltip": "Accedi con Google",
+  "loginSocialFacebookTooltip": "Accedi con Facebook",
+  "loginSocialAppleTooltip": "Accedi con Apple",
+  "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso."
 }
