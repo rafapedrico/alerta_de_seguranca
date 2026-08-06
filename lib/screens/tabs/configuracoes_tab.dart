@@ -11,6 +11,7 @@ import '../../services/alarme_sonoro_service.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/battery_optimization_service.dart';
 import '../../services/firebase_sync_service.dart';
 import '../../services/sms_permission_service.dart';
 import '../../utils/telefone_utils.dart';
@@ -53,6 +54,12 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   bool _deviceAdminAtivo = false;
   bool _carregandoDeviceAdmin = true;
 
+  // Isenção de otimização de bateria (ver BatteryOptimizationService) —
+  // mesmo padrão de silêncio do card de Device Admin acima: só aparece
+  // enquanto a isenção AINDA NÃO está concedida.
+  bool _bateriaIsenta = false;
+  bool _carregandoBateria = true;
+
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
 
@@ -86,6 +93,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     _carregarConfiguracaoAlarmeSonoro();
     _carregarConfiguracaoIdioma();
     _carregarStatusDeviceAdmin();
+    _carregarStatusBateria();
   }
 
   @override
@@ -96,6 +104,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     // esse resultado, então basta reconsultar o status.
     if (state == AppLifecycleState.resumed) {
       _carregarStatusDeviceAdmin();
+      _carregarStatusBateria();
     }
   }
 
@@ -105,6 +114,16 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
       setState(() {
         _deviceAdminAtivo = ativo;
         _carregandoDeviceAdmin = false;
+      });
+    }
+  }
+
+  Future<void> _carregarStatusBateria() async {
+    final isento = await BatteryOptimizationService().estaIsento();
+    if (mounted) {
+      setState(() {
+        _bateriaIsenta = isento;
+        _carregandoBateria = false;
       });
     }
   }
@@ -1000,6 +1019,7 @@ Future<void> _selecionarSom(int? numero) async {
         ),
 
         _buildCartaoDeviceAdmin(),
+        _buildCartaoOtimizacaoBateria(),
 
         const Divider(),
 
@@ -1512,6 +1532,55 @@ Future<void> _selecionarSom(int? numero) async {
             TextButton(
               onPressed: () => DeviceAdminService().solicitarAtivacao(),
               child: Text(AppLocalizations.of(context)!.deviceAdminBotaoAtivar),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Cartão de consentimento para a isenção de otimização de bateria
+  /// (ver BatteryOptimizationService) — mesmo padrão de silêncio do
+  /// cartão de Device Admin acima: só é renderizado enquanto a isenção
+  /// NÃO está concedida.
+  Widget _buildCartaoOtimizacaoBateria() {
+    if (_carregandoBateria || _bateriaIsenta) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.battery_charging_full, color: Colors.black45),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.batteriaOtimizacaoTitulo,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppLocalizations.of(context)!.batteriaOtimizacaoDescricaoInativo,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => BatteryOptimizationService()
+                  .solicitarComExplicacao(context)
+                  .then((_) => _carregarStatusBateria()),
+              child: Text(AppLocalizations.of(context)!.batteriaOtimizacaoBotaoAtivar),
             ),
           ],
         ),

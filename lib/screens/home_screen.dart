@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../services/alertas_recebidos_service.dart';
+import '../services/battery_optimization_service.dart';
 import '../services/sms_permission_service.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
@@ -54,13 +55,17 @@ class _HomeScreenState extends State<HomeScreen> {
     // enquanto o app estava fechado/em segundo plano.
     AlertasRecebidosService.atualizarContagem();
 
-    // Checklist de permissões do onboarding: SEND_SMS/READ_PHONE_STATE
-    // (ver SmsPermissionService) nunca tinham nenhum ponto de
-    // solicitação em runtime no app inteiro — verificado/perguntado uma
-    // única vez por instalação, logo na primeira entrada na Home (pós
-    // post-frame, já com o BuildContext totalmente montado).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) SmsPermissionService().verificarNoOnboarding(context);
+    // Checklist de permissões do onboarding — uma única vez por
+    // instalação, logo na primeira entrada na Home (pós post-frame, já
+    // com o BuildContext totalmente montado). Encadeado (não paralelo)
+    // de propósito: nunca empilha dois diálogos de permissão ao mesmo
+    // tempo — SMS/READ_PHONE_STATE primeiro (ver SmsPermissionService),
+    // isenção de bateria depois (ver BatteryOptimizationService).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await SmsPermissionService().verificarNoOnboarding(context);
+      if (!mounted) return;
+      await BatteryOptimizationService().verificarNoOnboarding(context);
     });
   }
 

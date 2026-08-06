@@ -29,9 +29,13 @@
 
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
 
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Isenção de otimização de bateria/Doze agressivo do fabricante —
+         ver BatteryOptimizationService. Só a permissão de PEDIR a
+         isenção (abre a tela nativa de confirmação); a concessão em si
+         é sempre uma decisão explícita do usuário. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <application
         android:label="@string/app_name"
@@ -164,6 +168,22 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Monitoramento do botao fisico de SOS de seguranca pessoal"/>
         </service>
+
+        <!-- Reinicia o VolumeSosService após reboot/atualização do app —
+             sem isso, o monitoramento do botão físico só voltava a rodar
+             depois que o usuário abrisse o app manualmente pelo menos
+             uma vez (ver VolumeSosBootReceiver). -->
+        <receiver
+            android:name=".VolumeSosBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
 
         <!-- Alarme de rotina: caminho 100% nativo (bypassa Doze), acorda
              o aparelho e garante o disparo mesmo com a tela bloqueada. -->
