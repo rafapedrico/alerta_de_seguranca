@@ -48,9 +48,10 @@ const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
 // SÍNCRONAS de rota (sem I/O, não são `await` — decidem qual widget é
 // o primeiro frame) + runApp() imediato.
 //
-// ETAPA 2 (_inicializarFirebaseEAuth): disparada (sem `await`) logo
-// após o runApp() — SÓ Firebase core + FirebaseAuth, o mínimo para os
-// botões de login funcionarem. Nada de FCM/heartbeat/wallet aqui.
+// ETAPA 2 (_iniciarFirebaseEAuth): disparada (sem `await`) logo após o
+// runApp() — SÓ Firebase core + FirebaseAuth, o mínimo para os botões
+// de login funcionarem. Nada de FCM/heartbeat/wallet aqui. Devolve dois
+// futuros (core rápido vs. completo com logout) — ver a função.
 //
 // ETAPA 3 (iniciarServicosPosLoginOuDashboard, chamada por
 // HomeScreen.initState — ver home_screen.dart): TODOS os serviços
@@ -97,23 +98,37 @@ void main() {
   // sozinhos caso ainda não tenha rodado).
   EncryptionService().initialize();
 
-  // Dispara (chama, SEM `await`) a inicialização de Firebase+Auth —
-  // isso já executa o corpo síncrono da função até o primeiro `await`
+  // Dispara (chama, SEM `await`) a inicialização de Firebase+Auth — isso
+  // já executa o corpo síncrono da função até o primeiro `await`
   // interno, mas retorna a Future imediatamente sem bloquear main().
-  // Capturada aqui para repassar para a SplashGate/callback abaixo, que
-  // usam essa Future para saber quando é seguro liberar o login (SOS
-  // físico) ou trocar a splash pela LoginScreen de verdade (cold start
-  // normal) — sem isso, um usuário/disparo rápido poderia agir antes do
-  // Firebase estar pronto.
-  final Future<void> futuroFirebaseEAuth =
-      _inicializarFirebaseEAuth(coldStartViaSosFisico: coldStartViaSosFisico);
+  //
+  // MEDIDO no dispositivo físico (2026-08-06): `Firebase.initializeApp()`
+  // sozinho pode levar 4s+ (I/O real do SDK nativo). Descoberta chave:
+  // mesmo SEM nenhum `await` esperando por ele, esse trabalho nativo
+  // compete pela MESMA UI thread usada pelos frames da splash animada —
+  // rodar em paralelo com a animação a deixava visivelmente mais lenta
+  // mesmo sem nenhum código Dart "esperando". Por isso, no cold start
+  // NORMAL (nenhuma das duas flags abaixo), o disparo do Firebase é
+  // ADIADO para depois da animação da splash terminar (ver
+  // [_SplashGateState._aguardarProntidao]) — a splash roda inteira sem
+  // nenhum trabalho pesado competindo, e o Firebase só liga junto com a
+  // LoginScreen, aproveitando o tempo que o usuário leva pra digitar
+  // e-mail/senha.
+  //
+  // Já os fluxos de SOS físico e rotina de alarme (abaixo) NÃO têm
+  // nenhuma animação para proteger — disparam o Firebase imediatamente,
+  // como antes.
+  Future<void>? futuroFirebaseEAuthImediato;
+  if (coldStartViaSosFisico || coldStartViaRotinaAlarme) {
+    futuroFirebaseEAuthImediato =
+        _iniciarFirebaseEAuth(coldStartViaSosFisico: coldStartViaSosFisico);
+  }
 
   // ETAPA 1, fim: primeiro frame disparado imediatamente — ZERO
   // `await` entre ensureInitialized() e este runApp().
   runApp(SecurityCheckApp(
     abertoViaAlarmeRotina: coldStartViaRotinaAlarme,
     abertoViaSosFisico: coldStartViaSosFisico,
-    futuroFirebaseEAuth: futuroFirebaseEAuth,
   ));
 
   // A partir daqui, tudo roda EM PARALELO com o primeiro frame já na
@@ -126,8 +141,8 @@ void main() {
       // Só aguarda AQUI (depois do primeiro frame, tela preta já
       // visível) — nunca antes do runApp(). O disparo em si precisa do
       // Firebase pronto para usar Push/WhatsApp/link real da foto (ver
-      // política de sessão em [_inicializarFirebaseEAuth]).
-      futuroFirebaseEAuth.then((_) {
+      // política de sessão em [_iniciarFirebaseEAuth]).
+      futuroFirebaseEAuthImediato!.then((_) {
         _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
       });
     });
@@ -160,40 +175,68 @@ Future<void> _inicializarPreferenciasVisuais() async {
 /// funcionarem — só `Firebase.initializeApp()` + a política de sessão
 /// (Opção A). Nada de FCM/heartbeat/wallet aqui (ver ETAPA 3,
 /// [iniciarServicosPosLoginOuDashboard]). Chamada sem `await` logo após
-/// o runApp() em [main] — nunca antes. Protegida por try/catch e NUNCA
-/// lança exceção: se o Firebase falhar ao inicializar (sem rede,
-/// projeto mal configurado, etc.), o app continua funcional para login
-/// local/SMS, que não dependem dele.
-Future<void> _inicializarFirebaseEAuth({required bool coldStartViaSosFisico}) async {
+/// o runApp() em [main] — nunca antes.
+///
+/// NINGUÉM na UI aguarda este futuro completo para trocar a splash pela
+/// LoginScreen (pedido explícito do usuário, 2026-08-06 — MEDIDO no
+/// dispositivo físico: `Firebase.initializeApp()` sozinho pode levar 4s+,
+/// I/O real do SDK nativo, e o `logout()` da política de sessão abaixo
+/// pode somar mais alguns segundos quando já existe uma sessão real
+/// logada; nenhum dos dois é algo que dá pra acelerar reorganizando
+/// `await`s no Dart). [_SplashGate] só espera a animação terminar (ver
+/// [_ConteudoSplashAnimadaState]) — Firebase termina de inicializar 100%
+/// em segundo plano, aproveitando o tempo que o usuário leva pra digitar
+/// e-mail/senha antes de tocar em "Entrar". Só o SOS físico em [main]
+/// continua aguardando este futuro por completo, já que esse fluxo
+/// precisa da sessão 100% resolvida antes de disparar.
+///
+/// Não bloquear a LoginScreen no Firebase/`logout()` é seguro: a tela
+/// não lê nem exibe nenhum dado da sessão anterior (só um formulário
+/// estático), e qualquer novo login (`signInWithEmailAndPassword` ou
+/// social) sempre substitui a sessão antiga no SDK, independente deste
+/// futuro já ter resolvido ou não — a garantia real da Opção A (nunca
+/// abrir direto na Home com sessão persistida) não depende deste timing.
+/// Se o usuário tocar em "Entrar" antes do Firebase estar pronto, o
+/// `catch` genérico já existente em [LoginScreen] mostra a mensagem de
+/// erro padrão, sem crash — caso raro, dado o tempo normal de digitação.
+///
+/// Protegida por try/catch e NUNCA lança exceção: se o Firebase falhar
+/// ao inicializar (sem rede, projeto mal configurado, etc.), o app
+/// continua funcional para login local/SMS, que não dependem dele.
+Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('☁️ [Firebase] Inicializado com sucesso.');
+  } catch (e) {
+    debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
+        'apenas com os recursos locais): $e');
+  }
 
-    // POLÍTICA DE SEGURANÇA (Opção A): todo cold start NORMAL (usuário
-    // abrindo o app pelo ícone) encerra qualquer sessão do Firebase Auth
-    // persistida no disco — o app NUNCA deve abrir direto na Home usando
-    // uma sessão antiga, mesmo que o dispositivo/emulador já tivesse um
-    // login válido de uma execução anterior. Login (com a barreira de
-    // `emailVerified`) volta a ser exigido a cada abertura normal.
-    //
-    // EXCEÇÃO DELIBERADA (bug real corrigido): cold start via SOS FÍSICO
-    // NUNCA exibe nenhuma tela de login/conta — a UI vai direto para
-    // `_TelaPretaAguardandoSos` (tela preta, zero dado de usuário) e
-    // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
-    // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
-    // sequer rodar, forçando SEMPRE o SMS de fallback sem link real da
-    // foto e desativando Push/WhatsApp — justamente no cenário mais
-    // crítico (app fechado, botão físico). Como nenhuma UI de conta é
-    // exibida nesse fluxo, preservar a sessão aqui mantém a MESMA
-    // garantia de segurança da Opção A (nunca mostrar dados de conta sem
-    // reautenticação) e permite que o SOS físico dispare com todos os
-    // canais (SMS com link real + Push + WhatsApp), mesmo 100% a frio.
+  // POLÍTICA DE SEGURANÇA (Opção A): todo cold start NORMAL (usuário
+  // abrindo o app pelo ícone) encerra qualquer sessão do Firebase Auth
+  // persistida no disco — o app NUNCA deve abrir direto na Home usando
+  // uma sessão antiga, mesmo que o dispositivo/emulador já tivesse um
+  // login válido de uma execução anterior. Login (com a barreira de
+  // `emailVerified`) volta a ser exigido a cada abertura normal.
+  //
+  // EXCEÇÃO DELIBERADA (bug real corrigido): cold start via SOS FÍSICO
+  // NUNCA exibe nenhuma tela de login/conta — a UI vai direto para
+  // `_TelaPretaAguardandoSos` (tela preta, zero dado de usuário) e
+  // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
+  // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
+  // sequer rodar, forçando SEMPRE o SMS de fallback sem link real da
+  // foto e desativando Push/WhatsApp — justamente no cenário mais
+  // crítico (app fechado, botão físico). Como nenhuma UI de conta é
+  // exibida nesse fluxo, preservar a sessão aqui mantém a MESMA
+  // garantia de segurança da Opção A (nunca mostrar dados de conta sem
+  // reautenticação) e permite que o SOS físico dispare com todos os
+  // canais (SMS com link real + Push + WhatsApp), mesmo 100% a frio.
+  try {
     if (!coldStartViaSosFisico) {
       await FirebaseAuthService().logout();
     }
   } catch (e) {
-    debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
-        'apenas com os recursos locais): $e');
+    debugPrint('⚠️ [Firebase] Falha ao aplicar política de sessão: $e');
   }
 }
 
@@ -322,15 +365,8 @@ class SecurityCheckApp extends StatefulWidget {
   final bool abertoViaAlarmeRotina;
   final bool abertoViaSosFisico;
 
-  /// Future da inicialização de Firebase+Auth em voo (ver [main],
-  /// ETAPA 2) — repassada para a [_SplashGate] (cold start normal) e
-  /// aguardada antes do disparo do SOS físico, para saber quando é
-  /// seguro liberar o login/o disparo de verdade.
-  final Future<void> futuroFirebaseEAuth;
-
   const SecurityCheckApp({
     super.key,
-    required this.futuroFirebaseEAuth,
     this.abertoViaAlarmeRotina = false,
     this.abertoViaSosFisico = false,
   });
@@ -346,7 +382,17 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   void initState() {
     super.initState();
     _alarmeAtivoNotifier = ValueNotifier<bool>(widget.abertoViaAlarmeRotina);
-    _monitorarMudancasNoDisco();
+    // Adiado (pedido explícito do usuário, 2026-08-06): este monitor só
+    // importa para detectar um alarme de rotina disparando enquanto o
+    // app JÁ está em uso (empurra a AlarmeDisparadoScreen por cima da
+    // tela atual) — não é necessário durante o cold start/splash/login.
+    // Rodar `SharedPreferences.reload()` (I/O de disco) a cada 1s desde
+    // o primeiro frame competia com o boot do engine bem na janela mais
+    // sensível. Atraso curto e fixo (em vez de acoplar à splash) porque
+    // este widget não tem visibilidade de quando ela termina.
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) _monitorarMudancasNoDisco();
+    });
   }
 
   bool _travaProcessandoAbertura = false;
@@ -441,25 +487,25 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// POLÍTICA DE SEGURANÇA (Opção A): fora desses casos especiais de
   /// emergência, SEMPRE mostra a LoginScreen — o app nunca pula direto
   /// para dentro do fluxo principal com base numa sessão persistida do
-  /// Firebase Auth. Isso é garantido em duas camadas: `main()` já força
-  /// `FirebaseAuthService().logout()` a cada cold start antes de chamar
-  /// `runApp`, e esta função nem chega a checar sessão — só entra em
-  /// [TelaInicialComPossivelDialogoPin] através da navegação explícita
+  /// Firebase Auth. Isso é garantido em duas camadas: `main()` já dispara
+  /// `FirebaseAuthService().logout()` (via [_iniciarFirebaseEAuth]) logo
+  /// no cold start, e esta função nem chega a checar sessão — só entra
+  /// em [TelaInicialComPossivelDialogoPin] através da navegação explícita
   /// feita por [LoginScreen] após um login real com `emailVerified ==
   /// true` (ver [LoginScreen._fazerLogin]).
   ///
   /// No cold start NORMAL, a LoginScreen não aparece direto: primeiro
   /// vem a [_SplashGate] (mesmo fundo escuro da splash nativa do
-  /// Android, ver `launch_background.xml`, com o logo do app e um
-  /// spinner discreto) — cobre visualmente o tempo da inicialização de
-  /// Firebase/Auth adiada para depois do primeiro frame (ver [main]) e
-  /// só troca para a LoginScreen de verdade quando ela terminar,
-  /// evitando um usuário rápido conseguir tocar em "Entrar" antes do
-  /// Firebase estar pronto.
+  /// Android, ver `launch_background.xml`) rodando a splash cinematográfica
+  /// — troca para a LoginScreen de verdade assim que essa animação
+  /// termina de verdade E o núcleo do Firebase (rápido, só
+  /// `Firebase.initializeApp()`) estiver pronto, o que evita um usuário
+  /// rápido conseguir tocar em "Entrar" antes do Firebase estar pronto,
+  /// sem somar nenhum delay artificial por cima da animação.
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
-    return _SplashGate(aguardar: widget.futuroFirebaseEAuth);
+    return const _SplashGate();
   }
 
   @override
@@ -598,11 +644,10 @@ class _TelaPretaAguardandoSos extends StatelessWidget {
 /// toque no ícone e o primeiro frame do Flutter.
 const Color _corSplashDeMarca = Colors.black;
 
-/// Duração TOTAL orçada para a splash cinematográfica (digitação +
-/// pausa + saída + crossfade para a LoginScreen) — pedido explícito do
-/// usuário: "duração total restrita de 4 segundos". Ver
-/// [_ConteudoSplashAnimada] para como o tempo interno é dividido.
-const Duration _duracaoTotalSplash = Duration(milliseconds: 3700);
+/// Crossfade final da splash para a LoginScreen — dispara assim que a
+/// animação da [_ConteudoSplashAnimada] termina de verdade (ver
+/// [_SplashGateState._aguardarProntidao]), sem nenhum orçamento fixo
+/// adicional somado por cima.
 const Duration _duracaoCrossfadeParaLogin = Duration(milliseconds: 300);
 
 /// Chave do SharedPreferences que guarda o ÍNDICE (0-5) da PRÓXIMA
@@ -630,16 +675,19 @@ List<String> _frasesSplash(AppLocalizations l10n) => <String>[
 /// `home:` do MaterialApp — nunca via Navigator, então não interfere em
 /// nenhuma navegação por nome já existente) no cold start NORMAL.
 /// Mostra a splash cinematográfica de marca ([_ConteudoSplashAnimada])
-/// sobre o MESMO fundo preto da splash nativa, cobrindo visualmente o
-/// tempo da inicialização de Firebase/Auth que [main] adia para depois
-/// do primeiro frame — e só troca para a [LoginScreen] de verdade
-/// quando ela realmente termina, para que nunca seja possível tocar em
-/// "Entrar" antes do Firebase estar pronto.
+/// sobre o MESMO fundo preto da splash nativa, e troca para a
+/// [LoginScreen] assim que a animação termina de verdade (ver
+/// [_aguardarProntidao]), sem nenhum delay extra acumulado por cima.
+///
+/// NÃO espera o Firebase ([main]/[_iniciarFirebaseEAuth]) de propósito
+/// (pedido explícito do usuário, 2026-08-06 — MEDIDO no dispositivo
+/// físico: `Firebase.initializeApp()` sozinho pode levar 4s+, e esperar
+/// por ele quase dobrava o tempo da splash). A LoginScreen é só um
+/// formulário estático (não lê nada da sessão), e o Firebase termina de
+/// inicializar em segundo plano — ver comentário completo em
+/// [_iniciarFirebaseEAuth] sobre por que isso é seguro.
 class _SplashGate extends StatefulWidget {
-  const _SplashGate({required this.aguardar});
-
-  /// Future de [_inicializarFirebaseEAuth] já em voo (ver [main]).
-  final Future<void> aguardar;
+  const _SplashGate();
 
   @override
   State<_SplashGate> createState() => _SplashGateState();
@@ -647,6 +695,13 @@ class _SplashGate extends StatefulWidget {
 
 class _SplashGateState extends State<_SplashGate> {
   bool _pronto = false;
+
+  /// Sinalizado por [_ConteudoSplashAnimada] (via `onConcluida`) assim
+  /// que a sequência real de animação (digitação + pausa + saída — ver
+  /// [_ConteudoSplashAnimadaState]) termina. É o ÚNICO gatilho de
+  /// [_aguardarProntidao] — substitui o antigo orçamento fixo de tempo,
+  /// que somava um delay artificial por cima da animação de verdade.
+  final Completer<void> _animacaoConcluidaCompleter = Completer<void>();
 
   /// Índice (0-5) da frase a exibir nesta abertura — só fica não-nulo
   /// depois da leitura (rápida, mas assíncrona) do SharedPreferences,
@@ -677,16 +732,29 @@ class _SplashGateState extends State<_SplashGate> {
     if (mounted) setState(() => _indiceFrase = indiceSorteado);
   }
 
+  void _aoAnimacaoConcluir() {
+    if (!_animacaoConcluidaCompleter.isCompleted) {
+      _animacaoConcluidaCompleter.complete();
+    }
+  }
+
   Future<void> _aguardarProntidao() async {
-    // Orçamento fixo de 3.7s (+ 300ms de crossfade = ~4s no total) para
-    // a splash cinematográfica — a tela some com o que demorar mais
-    // entre esse orçamento e o término real da inicialização de
-    // Firebase/Auth (na prática, quase sempre o orçamento fixo, já que
-    // Firebase+Auth costuma terminar bem antes).
-    await Future.wait<void>([
-      Future<void>.delayed(_duracaoTotalSplash),
-      widget.aguardar,
-    ]);
+    // Transição dispara assim que a animação de verdade terminar — ver
+    // [_animacaoConcluidaCompleter] — sem nenhum orçamento fixo de tempo
+    // adicional por cima: nenhuma alteração na digitação/pausa/saída.
+    await _animacaoConcluidaCompleter.future;
+
+    // SÓ AGORA (animação já terminou, splash saindo de tela) dispara o
+    // Firebase — ver comentário completo em [main]: rodá-lo ANTES/EM
+    // PARALELO com a animação a deixava visivelmente mais lenta, mesmo
+    // sem nenhum `await` Dart esperando por ele (compete pela mesma UI
+    // thread nativa dos frames). Fire-and-forget: a LoginScreen (que vai
+    // aparecer no próximo frame) não precisa dele pronto para renderizar,
+    // só quando o usuário efetivamente tocar em "Entrar" — ver
+    // [_iniciarFirebaseEAuth] para a explicação completa de por que isso
+    // é seguro.
+    unawaited(_iniciarFirebaseEAuth(coldStartViaSosFisico: false));
+
     if (mounted) setState(() => _pronto = true);
   }
 
@@ -708,6 +776,7 @@ class _SplashGateState extends State<_SplashGate> {
               : _ConteudoSplashAnimada(
                   key: ValueKey('splash_de_marca_$_indiceFrase'),
                   indiceFrase: _indiceFrase!,
+                  onConcluida: _aoAnimacaoConcluir,
                 )),
     );
   }
@@ -720,9 +789,19 @@ class _SplashGateState extends State<_SplashGate> {
 /// demais deslizam para cima enquanto desaparecem (fade out). Fundo
 /// preto puro, texto em negrito verde neon com efeito de brilho/glow.
 class _ConteudoSplashAnimada extends StatefulWidget {
-  const _ConteudoSplashAnimada({super.key, required this.indiceFrase});
+  const _ConteudoSplashAnimada({
+    super.key,
+    required this.indiceFrase,
+    this.onConcluida,
+  });
 
   final int indiceFrase;
+
+  /// Chamado UMA VEZ, assim que a sequência (digitação + pausa + saída)
+  /// termina de verdade — ver [_ConteudoSplashAnimadaState._iniciarSequenciaDeAnimacao].
+  /// Não altera em nada o ritmo/duração da animação em si, só notifica
+  /// quem está esperando (ver [_SplashGateState]).
+  final VoidCallback? onConcluida;
 
   @override
   State<_ConteudoSplashAnimada> createState() =>
@@ -733,11 +812,13 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
     with TickerProviderStateMixin {
   static const Color _verdeNeon = Color(0xFF39FF14);
 
-  // Orçamento interno (soma ≈ 3.2s), com folga proposital dentro dos
-  // 3.7s de [_duracaoTotalSplash] para a linha "GUARDIÃO X" ficar
-  // sozinha e estática na tela por um instante antes do crossfade
-  // final para a LoginScreen (total geral, incluindo os 300ms de
-  // crossfade, fica em ~4s).
+  // Timings da animação em si — INTOCADOS a pedido explícito do usuário
+  // (2026-08-06): a velocidade de digitação e o restante do efeito devem
+  // continuar exatamente como estão. A splash agora transiciona para a
+  // LoginScreen assim que esta sequência termina de verdade (ver
+  // [_SplashGateState._aguardarProntidao]), sem nenhum orçamento fixo
+  // adicional somado por cima — soma ≈ 3.2s (2.1s digitando + 0.3s de
+  // pausa com "GUARDIÃO X" sozinha na tela + 0.8s de saída).
   static const Duration _duracaoDigitacao = Duration(milliseconds: 2100);
   static const Duration _duracaoPausaPosDigitacao =
       Duration(milliseconds: 300);
@@ -774,6 +855,9 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
     await Future<void>.delayed(_duracaoPausaPosDigitacao);
     if (!mounted) return;
     await _saidaController.forward();
+    // Sequência de verdade terminou — libera a troca para a LoginScreen
+    // (ver [_SplashGateState]) imediatamente, sem esperas extras.
+    widget.onConcluida?.call();
   }
 
   @override
@@ -893,9 +977,8 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
   }
 }
 
-/// Texto em negrito, verde neon, com efeito de brilho/glow (várias
-/// sombras verdes empilhadas com raios de desfoque crescentes) — usado
-/// nas linhas da [_ConteudoSplashAnimada].
+/// Texto em negrito, verde sólido e nítido (sem sombra/glow) — usado nas
+/// linhas da [_ConteudoSplashAnimada].
 class _TextoNeon extends StatelessWidget {
   const _TextoNeon({
     required this.texto,
@@ -920,12 +1003,6 @@ class _TextoNeon extends StatelessWidget {
         letterSpacing: 1.4,
         height: 1.15,
         color: cor,
-        shadows: <Shadow>[
-          Shadow(color: cor, blurRadius: 6),
-          Shadow(color: cor, blurRadius: 16),
-          Shadow(color: cor.withOpacity(0.85), blurRadius: 30),
-          Shadow(color: cor.withOpacity(0.55), blurRadius: 52),
-        ],
       ),
     );
   }
