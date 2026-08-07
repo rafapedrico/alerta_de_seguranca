@@ -852,6 +852,29 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
 
       final bool fixa = _ehLinhaDaMarca(linha);
       final double progressoSaida = fixa ? 0.0 : _curvaSaida.value;
+      final double fonteLinha = fixa ? fonteMarca : fonteDemais;
+      final String textoExibido =
+          textoParcial + (aindaDigitandoEstaLinha ? '▏' : '');
+
+      // FittedBox com um filho de largura intrínseca ZERO (Text('')) faz o
+      // Flutter estourar 'width > 0.0': is not true dentro de
+      // BoxFit.scaleDown (assert só ativo em modo debug — por isso passou
+      // despercebido testando só builds release) — acontece exatamente no
+      // instante em que uma linha ainda não começou a "digitar" (nenhum
+      // caractere nem cursor visível ainda). Nesse caso, reserva a MESMA
+      // altura da linha com um SizedBox simples (sem FittedBox) em vez de
+      // tentar ajustar-a-caber um texto vazio — evita tanto o crash quanto
+      // um "pulo" de layout no instante em que a 1ª letra aparece.
+      final Widget conteudoLinha = textoExibido.isEmpty
+          ? SizedBox(height: fonteLinha * 1.15)
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              child: _TextoNeon(
+                texto: textoExibido,
+                fontSize: fonteLinha,
+                cor: _verdeNeon,
+              ),
+            );
 
       widgets.add(
         Padding(
@@ -860,14 +883,7 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
             opacity: (1.0 - progressoSaida).clamp(0.0, 1.0),
             child: Transform.translate(
               offset: Offset(0, -36 * progressoSaida),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: _TextoNeon(
-                  texto: textoParcial + (aindaDigitandoEstaLinha ? '▏' : ''),
-                  fontSize: fixa ? fonteMarca : fonteDemais,
-                  cor: _verdeNeon,
-                ),
-              ),
+              child: conteudoLinha,
             ),
           ),
         ),
