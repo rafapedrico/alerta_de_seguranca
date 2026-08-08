@@ -68,12 +68,26 @@ const MENSAGEM_FALLBACK =
  * configurar `trust proxy` no Express interno — mais simples e explícito
  * fixar `https` aqui, já que Functions v2 nunca serve tráfego HTTP puro.
  *
+ * CORREÇÃO DE BUG REAL: o proxy do Cloud Functions v2 remove o segmento
+ * do nome da função do path antes de encaminhar a requisição pro
+ * container — `req.originalUrl` chega como "/" mesmo quando a Twilio
+ * bateu de verdade em ".../whatsappWebhook". Isso fazia a URL usada aqui
+ * nunca bater com a URL que a Twilio assinou, e TODA requisição legítima
+ * era rejeitada como "assinatura inválida" (403) antes de chegar perto da
+ * IA. Por isso reconstruímos o path com o nome da função (via
+ * `FUNCTION_TARGET`, variável de ambiente setada pelo runtime do
+ * Functions v2 com o nome exato do `exports.<nome>`) em vez de confiar
+ * cru em `req.originalUrl` quando ele vier vazio/raiz.
+ *
  * @param {import("express").Request} req
  * @return {string}
  */
 function montarUrlPublica(req) {
   const host = req.get("host");
-  return `https://${host}${req.originalUrl}`;
+  const nomeFuncao = process.env.FUNCTION_TARGET || "whatsappWebhook";
+  const path = req.originalUrl && req.originalUrl !== "/" ?
+      req.originalUrl : `/${nomeFuncao}`;
+  return `https://${host}${path}`;
 }
 
 /**
