@@ -31,8 +31,14 @@
 const {defineSecret} = require("firebase-functions/params");
 const {parsePhoneNumberFromString} = require("libphonenumber-js");
 const logger = require("firebase-functions/logger");
+const {TEMPLATES_WHATSAPP} = require("./whatsappTemplates");
 
 const twilioAccountSid = defineSecret("TWILIO_ACCOUNT_SID");
+// Exportado individualmente (além de dentro de [TWILIO_SECRETS]) porque
+// `whatsappWebhook.js` precisa dele sozinho para validar a assinatura das
+// requisições inbound da Twilio — `defineSecret` é idempotente por nome,
+// mas reaproveitar a mesma instância evita declarar o mesmo secret duas
+// vezes em módulos diferentes.
 const twilioAuthToken = defineSecret("TWILIO_AUTH_TOKEN");
 const twilioFromNumber = defineSecret("TWILIO_FROM_NUMBER");
 
@@ -43,10 +49,9 @@ const TWILIO_SECRETS = [twilioAccountSid, twilioAuthToken, twilioFromNumber];
 
 // Content SID do template "alerta_guardiao" ("Alerta Guardião-X: {{1}}"),
 // aprovado pela Meta/Twilio para envio de mensagens de negócio fora da
-// janela de 24h. Não é credencial (não precisa de Secret Manager), mas
-// fica isolado aqui — junto do restante da configuração Twilio — para
-// que uma eventual troca de template não exija mexer nos chamadores.
-const CONTENT_SID_ALERTA = "HXccd14dd3758f94be24ab3ea1c162362b";
+// janela de 24h — ver `whatsappTemplates.js` para o registro completo de
+// templates (inclusive os ainda pendentes de aprovação).
+const CONTENT_SID_ALERTA = TEMPLATES_WHATSAPP.ALERTA_EMERGENCIA;
 
 /**
  * Região usada como fallback SOMENTE quando [telefone] não contém
@@ -170,4 +175,5 @@ module.exports = {
   enviarSmsParaTelefones,
   normalizarTelefoneE164,
   TWILIO_SECRETS,
+  twilioAuthToken,
 };

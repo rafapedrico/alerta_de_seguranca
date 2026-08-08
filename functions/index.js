@@ -235,3 +235,10 @@ exports.definirBloqueioSolicitante =
 // resposta (ver monitoramentoExpiracaoMonitor.js).
 exports.monitorarExpiracaoMonitoramento =
   require("./monitoramentoExpiracaoMonitor").monitorarExpiracaoMonitoramento;
+
+// Suporte via WhatsApp (ver whatsappWebhook.js): webhook HTTP inbound
+// (assinatura Twilio validada) que aciona o atendimento automático via
+// IA (whatsappSuporteIA.js) e responde em texto livre dentro da janela
+// de 24h de conversa ativa. Templates pré-aprovados para envio ATIVO
+// (fora da janela) ficam mapeados em whatsappTemplates.js.
+exports.whatsappWebhook = require("./whatsappWebhook").whatsappWebhook;

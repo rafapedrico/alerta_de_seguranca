@@ -67,6 +67,49 @@ firebase functions:secrets:set TWILIO_FROM_NUMBER
 Sem essas credenciais configuradas, o envio degrada graciosamente para um
 aviso de log (não quebra o restante do pipeline).
 
+## Suporte via WhatsApp com IA (`whatsappWebhook.js`)
+
+Webhook HTTP (`whatsappWebhook`, `onRequest`) para o número de suporte —
+separado do número usado nos alertas de emergência acima:
+
+1. **Inbound**: Twilio faz POST a cada mensagem recebida. A assinatura
+   (`X-Twilio-Signature`) é validada contra `TWILIO_AUTH_TOKEN` antes de
+   qualquer outra coisa — requisição sem assinatura válida recebe `403`
+   e não chega a tocar em Firestore nem a gastar uma chamada de IA.
+2. A conversa é persistida em `suporte_whatsapp/{telefone}/mensagens`
+   (histórico usado como contexto nas próximas chamadas de IA) e
+   `suporte_whatsapp/{telefone}` guarda o estado da janela de 24h
+   (`janela24hAbertaAte`) e uma flag `precisaAtencaoHumana` quando a
+   mensagem contém indício de emergência real (ver
+   `pareceEmergenciaReal` em `whatsappSuporteIA.js`) — este webhook NÃO
+   substitui o pipeline real de SOS do app.
+3. A resposta é gerada pela Claude Messages API (Anthropic, ver
+   `whatsappSuporteIA.js`) com um prompt de sistema com as regras, o
+   escopo e a FAQ do Guardião X, e devolvida via TwiML (`<Message>`) —
+   texto livre funciona aqui porque é sempre uma resposta DENTRO da
+   janela de 24h. Sem `ANTHROPIC_API_KEY` configurada (ou em caso de
+   erro na chamada), cai num texto de fallback fixo.
+
+Configuração necessária:
+
+```bash
+firebase functions:secrets:set ANTHROPIC_API_KEY
+```
+
+E, no Console da Twilio: Messaging → Senders → [seu remetente WhatsApp] →
+"When a message comes in" → URL pública de `whatsappWebhook` (após o
+primeiro deploy), método `HTTP POST`.
+
+### Templates pré-aprovados (`whatsappTemplates.js`)
+
+Registro único dos Content SIDs aprovados pela Meta/Twilio, exigidos para
+qualquer envio ATIVO (iniciado pelo negócio) fora da janela de 24h —
+texto livre nesse caso falha com o erro Twilio 63016. Hoje mapeia
+`ALERTA_EMERGENCIA` (já em uso pelo pipeline de alertas) e reserva as
+chaves `BOAS_VINDAS`/`SUPORTE_REABERTURA_JANELA` para quando os
+respectivos templates forem criados e aprovados no Twilio Content
+Template Builder.
+
 ## Pré-requisitos para deploy
 
 1. **Plano Blaze (pay-as-you-go)** no projeto `guardiaox` — necessário
