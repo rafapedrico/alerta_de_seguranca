@@ -18,12 +18,13 @@ class InicioDashboard extends StatelessWidget {
   const InicioDashboard({super.key});
 
   static const String _site = 'https://www.guardiaox.com.br';
-  // Número oficial de contato do WhatsApp (atualizado em 2026-08-07) —
+  // Número oficial de contato do WhatsApp (atualizado em 2026-08-08) —
   // formato de exibição com código do país (+1, EUA/Canadá) para
   // leitura humana, e formato só-dígitos (sem "+", espaços ou símbolos)
-  // exigido pelo link direto `wa.me`.
-  static const String _whatsappNumero = '+1 236 900 3001';
-  static const String _whatsappUrl = 'https://wa.me/12369003001';
+  // exigido pelo link direto `wa.me`, com mensagem pré-preenchida.
+  static const String _whatsappNumero = '+1 581 709 5728';
+  static const String _whatsappUrl =
+      'https://wa.me/15817095728?text=Olá!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Guardião-X';
 
   // Pacote Android real ainda não publicado (usa o id placeholder do
   // template do projeto) — usado só para montar o link da Play Store.

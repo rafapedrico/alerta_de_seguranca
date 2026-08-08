@@ -20,7 +20,7 @@
  *
  *   firebase functions:secrets:set TWILIO_ACCOUNT_SID
  *   firebase functions:secrets:set TWILIO_AUTH_TOKEN
- *   firebase functions:secrets:set TWILIO_FROM_NUMBER   (ex: whatsapp:+12369003001)
+ *   firebase functions:secrets:set TWILIO_FROM_NUMBER   (ex: whatsapp:+15817095728)
  *
  * Cada função que precisar enviar mensagens deve declarar
  * `secrets: TWILIO_SECRETS` nas suas opções (ver uso em
