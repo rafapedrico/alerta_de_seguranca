@@ -125,7 +125,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
         actions: [
           IconButton(
             tooltip: l10n.carteiraLimparHistoricoBotao,
-            icon: const Icon(Icons.delete_sweep_outlined),
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 28),
             onPressed: _confirmarLimparHistorico,
           ),
         ],

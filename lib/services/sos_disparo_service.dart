@@ -110,8 +110,20 @@ class SosDisparoService {
 
     await PlanoLimiteService().incrementarAlertaUsado();
 
-    final String? uid = FirebaseAuthService().uidAtual;
-
+    // CORREÇÃO DE REGRESSÃO (bug real, 2026-08-07): a versão anterior
+    // fazia `await FirebaseAuthService().aguardarUidPronto()` AQUI, ANTES
+    // de entrar no Foreground Service abaixo — ou seja, ANTES do SMS
+    // (canal 1, que nunca deveria depender de sessão) sequer começar a
+    // ser montado. Como [aguardarUidPronto] pode levar até 5s no pior
+    // caso, isso deixava o processo até 5s SEM a proteção do Foreground
+    // Service nativo — tempo mais que suficiente para o Android matar o
+    // processo (tela bloqueada, Doze) antes de QUALQUER coisa ser
+    // enviada, "quebrando" o botão físico por completo. Agora: entra no
+    // Foreground Service e dispara o SMS IMEDIATAMENTE, e só resolve o
+    // uid (com espera, se necessário) DENTRO de [_dispararLocalizacaoViaNuvem],
+    // em paralelo ao SMS via `Future.wait` — nunca bloqueando/atrasando
+    // o canal 1.
+    //
     // JANELA CRÍTICA: do início do envio até aqui embaixo, um Foreground
     // Service nativo (ver SosDispatchNativeService) mantém o PROCESSO do
     // app vivo — sem isso, o SMS/upload em voo seria perdido caso o
@@ -120,29 +132,32 @@ class SosDisparoService {
     // botão de pânico). Nunca depende da Activity/engine continuar em
     // primeiro plano.
     await SosDispatchNativeService().executarComServicoAtivo(() async {
-      // Canal 1 (SEMPRE, independente de sessão): SMS nativo, direto do
+      // Canal 1 (SEMPRE, independente de sessão, disparado NA HORA — sem
+      // nenhum `await` antes dele nesta função): SMS nativo, direto do
       // aparelho — ver EmergencyAlertService.dispararSosComDuplaLocalizacao.
       // Roda numa child Future totalmente independente da nuvem: uma
       // falha/demora na chamada de rede abaixo NUNCA atrasa ou cancela o
       // SMS, que não depende de internet nenhuma (rádio GSM puro).
       final smsFuture = _emergencyAlertService.dispararSosComDuplaLocalizacao();
 
-      // Canais 2+3 (App-para-App + WhatsApp): só quando há sessão
-      // autenticada — ver documentação da classe.
-      Future<void> nuvemFuture = Future.value();
-      if (uid != null) {
-        debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 ($origem) também via Push+WhatsApp.');
-        nuvemFuture = _dispararLocalizacaoViaNuvem(origem: origem);
-      } else {
-        debugPrint(
-            '📵 [SosDisparoService] Sem sessão autenticada — P1 ($origem) só via SMS (canal oficial único).');
-      }
+      // Canais 2+3 (App-para-App + WhatsApp): rodam em PARALELO ao SMS
+      // acima — a eventual espera pela sessão (ver
+      // FirebaseAuthService.aguardarUidPronto) acontece só aqui dentro,
+      // nunca atrasando o canal 1.
+      final nuvemFuture = _dispararLocalizacaoViaNuvem(origem: origem);
 
       await Future.wait([smsFuture, nuvemFuture]);
     });
   }
 
   Future<void> _dispararLocalizacaoViaNuvem({required String origem}) async {
+    final String? uid = await FirebaseAuthService().aguardarUidPronto();
+    if (uid == null) {
+      debugPrint(
+          '📵 [SosDisparoService] Sem sessão autenticada — P1 só via SMS (canal oficial único).');
+      return;
+    }
+    debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 também via Push+WhatsApp.');
     final Position? posicao = await _obterPosicaoRapida();
     await FirebaseSyncService().dispararAlertaSosFisico(
       latitude: posicao?.latitude,
@@ -166,13 +181,21 @@ class SosDisparoService {
       debugPrint('⚠️ [SosDisparoService] Erro no contador de fotos: $e');
     }
 
-    final String? uid = FirebaseAuthService().uidAtual;
     String? fotoUrl;
 
     // Mesma janela crítica do P1 (ver executarP1LocalizacaoImediata):
     // Foreground Service nativo ativo durante todo o upload/SMS, para
     // que uma morte do processo no meio do envio não perca o trabalho.
+    //
+    // CORREÇÃO DE REGRESSÃO (mesmo bug do P1, 2026-08-07): [aguardarUidPronto]
+    // (ver documentação completa em [executarP1LocalizacaoImediata]) DEVE
+    // ser chamado DENTRO deste bloco protegido pelo Foreground Service,
+    // nunca antes — chamá-lo antes deixava o processo até 5s sem essa
+    // proteção, arriscando ser morto pelo Android (tela bloqueada, Doze)
+    // antes até do SMS de fallback (que nem depende de sessão) ser
+    // enviado.
     await SosDispatchNativeService().executarComServicoAtivo(() async {
+      final String? uid = await FirebaseAuthService().aguardarUidPronto();
       if (uid != null) {
         try {
           fotoUrl = await _uploadFotoParaStorage(foto, uid);

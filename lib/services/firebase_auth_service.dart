@@ -43,6 +43,41 @@ class FirebaseAuthService {
   /// entre `LoginScreen` e o fluxo principal do app.
   Stream<User?> get mudancasDeEstado => _auth.authStateChanges();
 
+  /// Resolve o `uid` com segurança contra a corrida de restauração da
+  /// sessão: `currentUser`/[uidAtual] é uma leitura SÍNCRONA do SDK, mas
+  /// logo após `Firebase.initializeApp()` (caso de um engine recém-criado,
+  /// ver `LockscreenCameraActivity`/`RotinaCheckinAlarmActivity`), o SDK
+  /// ainda pode estar restaurando de forma ASSÍNCRONA, em segundo plano, a
+  /// sessão persistida em disco — nesses primeiros instantes,
+  /// `currentUser` pode retornar `null` mesmo havendo uma sessão válida
+  /// salva, fazendo o chamador concluir (incorretamente) "sem sessão" e
+  /// cair num fallback sem nuvem/link real (bug real observado no SOS via
+  /// botão físico: a foto — P2, que roda alguns segundos DEPOIS do
+  /// disparo inicial — às vezes usava o SMS de fallback com link falso).
+  ///
+  /// Caminho rápido: se [uidAtual] já está disponível, devolve na hora,
+  /// sem nenhuma espera (não atrasa o caso comum, imensa maioria das
+  /// chamadas). Só quando `null`, aguarda a primeira emissão de
+  /// [mudancasDeEstado] (o SDK garante emitir assim que a restauração
+  /// termina, com o usuário real OU `null` se de fato não há sessão) —
+  /// com um teto de tempo para nunca travar um fluxo de emergência
+  /// esperando indefinidamente por uma sessão que genuinamente não existe.
+  Future<String?> aguardarUidPronto({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final String? imediato = uidAtual;
+    if (imediato != null) return imediato;
+
+    try {
+      final User? usuario = await mudancasDeEstado.first.timeout(timeout);
+      return usuario?.uid;
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseAuthService] Timeout/erro aguardando restauração da sessão — seguindo com uidAtual atual ($uidAtual): $e');
+      return uidAtual;
+    }
+  }
+
   /// Cria a conta com e-mail/senha. Lança [FirebaseAuthException] em caso
   /// de falha (e-mail já em uso, senha fraca, etc.) — quem chama deve
   /// tratar e exibir a mensagem adequada.
