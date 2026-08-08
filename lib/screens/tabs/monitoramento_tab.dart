@@ -129,6 +129,15 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
+          // `scrollable: true` (embrulha title+content num SingleChildScrollView
+          // interno do próprio AlertDialog) — sem isso, com a fonte do
+          // sistema aumentada os 2 campos + botão "+ Adicionar Contato da
+          // Agenda" (+ eventual texto de erro) ultrapassavam a altura do
+          // diálogo, e a área de `actions` ("Cancelar"/"Salvar Contato")
+          // era desenhada por cima do conteúdo, encobrindo o botão da
+          // agenda. Com fonte padrão o comportamento visual é idêntico —
+          // só passa a rolar internamente quando não couber.
+          scrollable: true,
           title: Text(l10n.monitoramentoAdicionarContato),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -157,16 +166,34 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
                 ),
               ),
               const SizedBox(height: 12),
+              // Composto manualmente (em vez de TextButton.icon) porque o
+              // Row interno do TextButton.icon não dá nenhuma flexibilidade
+              // ao label — com a fonte do sistema bem aumentada, o texto
+              // "+ Adicionar Contato da Agenda" estourava a largura do
+              // diálogo (RenderFlex overflow) em vez de quebrar linha. O
+              // Flexible aqui permite quebrar em 2 linhas quando não couber.
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
+                child: TextButton(
                   onPressed: () => _importarContatoDaAgenda(
                     nomeController: nomeController,
                     telefoneController: telefoneController,
                   ),
-                  icon: const Icon(Icons.contact_phone_outlined, size: 18),
-                  label: Text(l10n.adicionarContatoAgenda),
                   style: TextButton.styleFrom(foregroundColor: _corDestaque),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.contact_phone_outlined, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          l10n.adicionarContatoAgenda,
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (erroValidacao != null) ...[
@@ -648,7 +675,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
               const SizedBox(height: 4),
               _linhaStatus(
                 icone: bloqueado ? Icons.block : Icons.check_circle,
-                cor: bloqueado ? Colors.grey.shade700 : Colors.green.shade700,
+                cor: bloqueado ? Colors.red.shade700 : Colors.green.shade700,
                 texto: bloqueado
                     ? l10n.monitoramentoIndicadorBloqueado
                     : l10n.monitoramentoIndicadorLiberado,

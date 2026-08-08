@@ -1,5 +1,6 @@
 {
   "@@locale": "pt",
+  "marcaGuardiaoX": "Guardião-X",
   "appTituloConfiguracoes": "Configurações",
   "campoEmailLabel": "E-mail",
   "campoEmailObrigatorio": "Informe seu e-mail",
@@ -86,6 +87,19 @@
   "carteiraCompraFalhaVerificacao": "Não foi possível confirmar a compra. Tente novamente.",
   "carteiraCompraErro": "Não foi possível concluir a compra.",
   "carteiraLojaIndisponivel": "Loja indisponível no momento.",
+  "carteiraLimparHistoricoBotao": "Limpar Histórico",
+  "carteiraLimparHistoricoConfirmarTitulo": "Limpar histórico?",
+  "carteiraLimparHistoricoConfirmarConteudo": "Os registros de recarga e uso serão removidos desta lista neste aparelho. Esta ação não pode ser desfeita.",
+  "carteiraDescricaoDescontoWhatsapp": "Envio de contingência via WhatsApp para {nome}",
+  "@carteiraDescricaoDescontoWhatsapp": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "carteiraDescricaoRecarga": "Compra de pacote de créditos",
+  "carteiraContatoGenerico": "contato",
   "ouEntreCom": "ou entre com",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -397,7 +411,6 @@
   "beneficioModoFamilia": "Modo família com despertador para o agendamento semanal ou diário com check-in de confirmação de segurança com envio antecipado de localização para o banco de dados do Guardião-X para garantir que o familiar receba o alerta de emergência no horário e dia programado caso o check-in não seja confirmado.",
   "beneficioTresCamadas": "Até três camadas de proteção para garantir a chegada dos alertas de emergência com a localização e fotos. (Aplicativo, SMS e WhatsApp opcional).",
   "beneficioTempoEspera": "Tempo de espera para alterações e visualizações de dados críticos.",
-  "beneficioSuporteTecnico": "Suporte técnico exclusivo Premium.",
   "agoraNao": "Agora não",
   "assinarPreco": "Assinar R$ 9,90/mês",
   "planoPremiumAtivado": "🎉 Plano Premium ativado!",
@@ -435,7 +448,7 @@
   "premiumAssinarBotaoGenerico": "Assinar Premium",
   "verMais": "Ver mais",
   "alarmeRotinaAtivoDescricao": "Alarme de rotina ativo.\nConfirme sua segurança para pausar.",
-  "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 2 minutos ou um alerta de emergência será enviado.",
+  "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 60 segundos ou um alerta de emergência será enviado.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Alerta de emergência enviado!\nSua localização e a mensagem foram enviadas para a nuvem e para os contatos cadastrados.",
   "desligarAlarmeBotao": "DESLIGAR ALARME",
   "fecharConfirmacaoBotao": "FECHAR",
@@ -724,7 +737,7 @@
     }
   },
   "historicoCheckinRotinaUltimaChanceTitulo": "Check-in de rotina — última chance",
-  "historicoCheckinRotinaUltimaChanceDescricao": "O tempo de tolerância expirou sem confirmação. O alarme está tocando novamente com um prazo final de 2 minutos antes do alerta de emergência ser disparado.",
+  "historicoCheckinRotinaUltimaChanceDescricao": "O tempo de tolerância expirou sem confirmação. O alarme está tocando novamente com um prazo final de 60 segundos antes do alerta de emergência ser disparado.",
   "historicoAlertaEmergenciaRotinaTitulo": "Alerta de emergência disparado (rotina)",
   "historicoAlertaEmergenciaTitulo": "Alerta de emergência disparado",
   "historicoAlertaEmergenciaDescricao": "SMS de emergência enviado para os contatos cadastrados. Localização: {localizacao}",
@@ -872,8 +885,24 @@
   "somNome8": "Alarme Industrial",
   "somNome9": "Sirene Policial",
   "somNome10": "Toque Silencioso",
-  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o check-in de rotina não foi confirmado dentro do prazo final de 2 minutos, mesmo após o tempo de tolerância já ter expirado.",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o check-in de rotina não foi confirmado dentro do prazo final de 60 segundos, mesmo após o tempo de tolerância já ter expirado.",
+  "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: o PIN foi digitado incorretamente 3 vezes seguidas ao tentar confirmar o check-in do alarme de rotina.",
+  "@historicoCheckinRotinaPinIncorretoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "@historicoCheckinRotinaFalhaMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaFechamentoForcadoMotivo": "{etiqueta}: o aplicativo foi fechado à força enquanto o alarme de rotina ainda tocava, sem confirmação do check-in.",
+  "@historicoCheckinRotinaFechamentoForcadoMotivo": {
     "placeholders": {
       "etiqueta": {
         "type": "String"

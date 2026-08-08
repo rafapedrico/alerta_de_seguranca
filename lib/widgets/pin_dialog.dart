@@ -34,7 +34,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 /// (padrão: 2 — o contador é resetado automaticamente após acionar o
 /// callback, e também sempre que o PIN correto for digitado). Chamadores
 /// que precisem de um disparo já na PRIMEIRA tentativa errada (ex: a
-/// janela final de 2 minutos do alarme de rotina da Família, onde não há
+/// janela final de 60 segundos do alarme de rotina da Família, onde não há
 /// mais margem para uma segunda chance) podem passar
 /// `limiteErrosConsecutivos: 1`. A interface NUNCA reflete esse gatilho —
 /// a mensagem de erro exibida é sempre a mesma ("PIN incorreto. Tente

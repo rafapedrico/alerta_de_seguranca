@@ -21,7 +21,7 @@ const MethodChannel _canalRotinaAlarme =
 
 /// Chave (SharedPreferences) que sinaliza ao lado Dart em primeiro plano
 /// ([AlarmeDisparadoScreen]) que o alarme de rotina ENTROU na "janela
-/// final" de 2 minutos (tolerância já expirada, segunda e última chance
+/// final" de 60 segundos (tolerância já expirada, segunda e última chance
 /// antes do alerta de emergência ser disparado de verdade). Como o
 /// callback headless do `android_alarm_manager_plus` roda em um isolate
 /// completamente separado do isolate da UI em primeiro plano, esta é a
@@ -82,6 +82,23 @@ const String chaveAlarmeEmergenciaDisparada = 'alarme_emergencia_disparada';
 /// `true` na resolução DEFINITIVA — nunca antes.
 const String chaveAlarmeFluxoResolvido = 'alarme_fluxo_resolvido';
 
+/// Chave (SharedPreferences) sinalizando que o app foi fechado à força
+/// (gesto de "jogar para cima"/force close nos Recentes) ENQUANTO o
+/// alarme de rotina ainda tocava sem confirmação — especificação do
+/// usuário (2026-08-07, item 4): esse gesto deve disparar o alerta de
+/// emergência IMEDIATAMENTE, em vez de simplesmente reabrir a tela e
+/// continuar tocando como antes.
+///
+/// Gravada pelo lado NATIVO (`RotinaAlarmWakeService.onTaskRemoved`, ver
+/// `RotinaAlarmFluxoState.marcarFechamentoForcado`) num arquivo de
+/// SharedPreferences 100% nativo — NÃO o `FlutterSharedPreferences` que
+/// esta chave Dart normalmente usaria, já que não há nenhum engine
+/// Flutter vivo no exato momento do `onTaskRemoved` para escrever nele.
+/// [AlarmeDisparadoScreen] consome o sinal assim que seu próprio engine
+/// (re)inicia, via o método nativo `consumirFechamentoForcado` (que já
+/// limpa a flag nativa ao ler, evitando reprocessar no próximo ciclo).
+const String chaveAlarmeFechamentoForcado = 'alarme_fechamento_forcado';
+
 class RotinaAlarmeService {
   RotinaAlarmeService._internal();
   static final RotinaAlarmeService _instance = RotinaAlarmeService._internal();
@@ -91,12 +108,19 @@ class RotinaAlarmeService {
   static const int _offsetIdTolerancia = 30000;
   static const int _offsetIdJanelaFinal = 40000;
 
-  /// Duração da janela final (última chance) após a tolerância expirar:
-  /// o alarme toca novamente, exibe o teclado de PIN diretamente (sem
-  /// exigir novo toque no botão) com este limite estrito, e QUALQUER
-  /// falha (PIN incorreto ou tempo esgotado) dispara o alerta de
-  /// emergência imediatamente.
-  static const Duration duracaoJanelaFinal = Duration(minutes: 2);
+  /// Duração da janela final (última chance) após a tolerância expirar —
+  /// especificação do usuário (2026-08-07): tempo TOTAL de toque =
+  /// tolerância cadastrada + 60 segundos adicionais. O alarme toca
+  /// novamente, exibe o teclado de PIN diretamente (sem exigir novo
+  /// toque no botão) com este limite estrito, e QUALQUER falha (3ª
+  /// tentativa de PIN incorreta ou tempo esgotado) dispara o alerta de
+  /// emergência imediatamente. Este MESMO valor também é usado para
+  /// calcular `prazoFinalDisparo` (ver [BackgroundLocationHeartbeatService]/
+  /// `AlarmeAgendadoModel`), o prazo que a Cloud Function agendada
+  /// (`functions/scheduledAlarmMonitor.js`) usa como rede de segurança
+  /// caso o aparelho fique sem bateria/internet — mudar aqui já ajusta
+  /// os dois lados automaticamente, sem precisar mexer na function.
+  static const Duration duracaoJanelaFinal = Duration(seconds: 60);
 
   static int _idCheckin(int idAlarme) => _offsetIdCheckin + idAlarme;
   static int _idTolerancia(int idAlarme) => _offsetIdTolerancia + idAlarme;
@@ -349,7 +373,7 @@ class RotinaAlarmeService {
 
   /// Limpa as flags em disco usadas para sinalizar (entre o isolate
   /// headless e a UI em primeiro plano) que o alarme está tocando e/ou na
-  /// janela final de 2 minutos. Chamado sempre que o alarme é
+  /// janela final de 60 segundos. Chamado sempre que o alarme é
   /// cancelado/pausado/confirmado, para nunca deixar
   /// [AlarmeDisparadoScreen] "preso" numa fase antiga.
   static Future<void> _limparFlagsDeFaseFinal() async {
@@ -407,6 +431,24 @@ class RotinaAlarmeService {
     debugPrint('▶️ Alarme de rotina #$idAlarme reativado pelo usuário.');
   }
 
+  /// Consome (lê E limpa, atomicamente, do lado nativo) a flag de
+  /// "fechamento forçado" gravada por `RotinaAlarmWakeService.onTaskRemoved`
+  /// — ver documentação completa em [chaveAlarmeFechamentoForcado]. `true`
+  /// significa que esta abertura da tela do alarme aconteceu porque o
+  /// usuário arrastou o app para fora dos Recentes enquanto ele ainda
+  /// tocava sem confirmação; `false` (inclusive em caso de erro) é o
+  /// caminho normal (disparo/reabertura por qualquer outro motivo).
+  static Future<bool> consumirFechamentoForcado() async {
+    try {
+      final resultado =
+          await _canalRotinaAlarme.invokeMethod<bool>('consumirFechamentoForcado');
+      return resultado ?? false;
+    } catch (e) {
+      debugPrint('⚠️ Falha ao consultar fechamento forçado: $e');
+      return false;
+    }
+  }
+
   static Future<void> iniciarTelaAlarmeNativa(int idAlarme) async {
     try {
       await _canalRotinaAlarme.invokeMethod('iniciarTelaAlarme', {
@@ -420,7 +462,7 @@ class RotinaAlarmeService {
   /// Reinicia o som NATIVO (Kotlin/MediaPlayer) em loop, SOMENTE se já
   /// houver uma `RotinaCheckinAlarmActivity` viva e registrada no
   /// momento da chamada — usado como reforço, na transição para a
-  /// JANELA FINAL de 2 minutos, quando a tolerância expira sem
+  /// JANELA FINAL de 60 segundos, quando a tolerância expira sem
   /// confirmação (ver [AlarmeDisparadoScreen._entrarNaFaseFinal]).
   ///
   /// Propositalmente NÃO lança nenhuma Activity/tela nova: se o app
@@ -479,7 +521,7 @@ class RotinaAlarmeService {
     unawaited(AlarmeAgendadoCloudService().marcarConfirmadoSeguro(idAlarme.toString()));
 
     // 1. Limpa os timers pendentes locais de SMS e notificação — inclui
-    // a janela final de 2 minutos, caso o PIN correto tenha sido
+    // a janela final de 60 segundos, caso o PIN correto tenha sido
     // confirmado dentro dela.
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
@@ -708,7 +750,7 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 /// dispararia o alerta imediatamente por conta própria).
 ///
 /// NÃO dispara mais o alerta de emergência diretamente: em vez disso,
-/// concede uma ÚLTIMA CHANCE de 2 minutos — o alarme toca novamente, a
+/// concede uma ÚLTIMA CHANCE de 60 segundos — o alarme toca novamente, a
 /// tela volta ao primeiro plano já com o teclado de PIN aberto
 /// (diretamente, sem exigir novo toque no botão) e QUALQUER falha nesse
 /// prazo (PIN incorreto ou tempo esgotado) aciona
@@ -721,7 +763,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
 
   debugPrint(
       '🔔 [HEADLESS] Tolerância do check-in de rotina #$idAlarme expirada — '
-      'concedendo janela final de 2 minutos antes do alerta de emergência.');
+      'concedendo janela final de 60 segundos antes do alerta de emergência.');
 
   try {
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
@@ -764,7 +806,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
   // efetivamente re-toca o som nativo e o som Dart assim que detecta a
   // fase final, com no máximo ~1s de atraso.
 
-  // Agenda o disparo REAL de emergência para daqui a 2 minutos, caso o
+  // Agenda o disparo REAL de emergência para daqui a 60 segundos, caso o
   // PIN correto não seja confirmado antes disso — ver
   // [RotinaAlarmeService.confirmarCheckinRotina], que cancela este alarme
   // também.
@@ -784,7 +826,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
   }
 }
 
-/// Disparado quando a JANELA FINAL de 2 minutos (ver
+/// Disparado quando a JANELA FINAL de 60 segundos (ver
 /// [_callbackToleranciaExpirada]) expira sem que o PIN correto tenha sido
 /// confirmado. Este é o disparo REAL e definitivo do alerta de
 /// emergência — não há mais nenhuma chance depois deste ponto.

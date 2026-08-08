@@ -25,8 +25,10 @@ const Duration janelaRegistro48h = Duration(hours: 48);
 const Duration janelaLocalizacao2h = Duration(hours: 2);
 
 /// Intervalo entre cada ciclo do heartbeat (registro de 48h +,
-/// opcionalmente, localização de 2h).
-const Duration intervaloHeartbeat = Duration(minutes: 2);
+/// opcionalmente, localização de 2h) — 1 minuto por especificação do
+/// usuário (2026-08-07, item 7: "a cada 1 minuto" dentro da janela de
+/// 120 minutos antes do horário agendado). Antes era 2 minutos.
+const Duration intervaloHeartbeat = Duration(minutes: 1);
 
 /// Serviço em segundo plano, TOTALMENTE independente do alarme local
 /// (`android_alarm_manager_plus` + `RotinaAlarmeService`), com DUAS

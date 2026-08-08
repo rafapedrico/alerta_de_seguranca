@@ -166,6 +166,14 @@ class RotinaAlarmPlugin : FlutterPlugin {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao cancelar alarme nativo: ${e.message}", null)
                         }
                     }
+                    "consumirFechamentoForcado" -> {
+                        try {
+                            val fechadoAFor = RotinaAlarmFluxoState.consumirFechamentoForcado(context)
+                            result.success(fechadoAFor)
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao consultar fechamento forçado: ${e.message}", null)
+                        }
+                    }
                     "pararServicoForeground" -> {
                         try {
                             RotinaAlarmWakeService.parar(context)

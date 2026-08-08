@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_auth_service.dart';
 
@@ -87,7 +88,10 @@ class WalletService {
     });
   }
 
-  /// Histórico de recargas e descontos (mais recente primeiro).
+  /// Histórico de recargas e descontos (mais recente primeiro). Devolve
+  /// TODOS os registros dos últimos 50 — o corte de "Limpar Histórico"
+  /// (ver [obterCorteHistoricoLocalMs]) é aplicado pela UI, não aqui, já
+  /// que este stream é a fonte bruta de dados do Firestore.
   Stream<List<Map<String, dynamic>>> historicoStream() {
     final doc = _documentoUsuario;
     if (!_firebaseDisponivel || doc == null) return Stream.value(const []);
@@ -97,6 +101,42 @@ class WalletService {
         .limit(50)
         .snapshots()
         .map((snap) => snap.docs.map((d) => d.data()).toList());
+  }
+
+  String _chaveCorteHistoricoLocal(String uid) =>
+      'carteira_historico_local_oculto_ate_$uid';
+
+  /// "Limpar Histórico" da Carteira — IMPORTANTE, decisão deliberada:
+  /// isto NÃO apaga nada no Firestore. `historicoCreditos` é protegido
+  /// por `allow write: if false` em `firestore.rules` de propósito
+  /// (comentário lá: "evitando saldo/histórico fraudulento") — é o
+  /// extrato de auditoria de créditos comprados/gastos, e o cliente
+  /// nunca deve poder apagá-lo de verdade, nem via regra nem via Cloud
+  /// Function, sob risco de esconder evidência de uma compra/desconto
+  /// em caso de disputa (reembolso na loja, suporte, etc.).
+  ///
+  /// Em vez disso, grava LOCALMENTE (SharedPreferences, por uid) o
+  /// instante em que o usuário pediu pra limpar; [obterCorteHistoricoLocalMs]
+  /// devolve esse corte para a UI (`CarteiraScreen`) filtrar a lista
+  /// exibida, escondendo (só NESTE aparelho) tudo criado até esse
+  /// momento — reinstalar o app ou logar em outro aparelho volta a
+  /// mostrar o histórico completo, exatamente como o texto do diálogo de
+  /// confirmação informa ao usuário.
+  Future<void> limparHistoricoLocal() async {
+    final uid = FirebaseAuthService().uidAtual;
+    if (uid == null) return;
+    final agoraMs = DateTime.now().millisecondsSinceEpoch;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_chaveCorteHistoricoLocal(uid), agoraMs);
+  }
+
+  /// Instante (epoch ms) do último "Limpar Histórico" local do usuário
+  /// atual, ou `0` se nunca limpou — ver [limparHistoricoLocal].
+  Future<int> obterCorteHistoricoLocalMs() async {
+    final uid = FirebaseAuthService().uidAtual;
+    if (uid == null) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_chaveCorteHistoricoLocal(uid)) ?? 0;
   }
 
   /// Inicia a compra do pacote de créditos [produtoId] via Google Play.

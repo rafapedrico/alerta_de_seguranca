@@ -22,10 +22,23 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
   StreamSubscription<String>? _statusSub;
   bool _comprando = false;
 
+  /// Corte (epoch ms) do último "Limpar Histórico" local — ver
+  /// [WalletService.limparHistoricoLocal]. `0` até carregar de verdade
+  /// (não esconde nada nesse meio-tempo), carregado uma vez em
+  /// [initState] e atualizado na hora (sem esperar o Firestore) quando o
+  /// usuário confirma a limpeza.
+  int _corteHistoricoMs = 0;
+
   @override
   void initState() {
     super.initState();
     _statusSub = _wallet.statusCompra.listen(_aoReceberStatusCompra);
+    _carregarCorteHistorico();
+  }
+
+  Future<void> _carregarCorteHistorico() async {
+    final corte = await _wallet.obterCorteHistoricoLocalMs();
+    if (mounted) setState(() => _corteHistoricoMs = corte);
   }
 
   @override
@@ -71,11 +84,52 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
     await _wallet.comprarCredito(produtoId);
   }
 
+  /// Mesmo padrão de diálogo de confirmação da aba "Histórico" (ver
+  /// `historico_tab.dart`, `_confirmarLimparHistoricoAtual`) — mas o
+  /// texto aqui é deliberadamente diferente: só esconde a lista NESTE
+  /// aparelho (ver [WalletService.limparHistoricoLocal] pro motivo de
+  /// nunca apagar de verdade o extrato de créditos).
+  void _confirmarLimparHistorico() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.carteiraLimparHistoricoConfirmarTitulo),
+        content: Text(l10n.carteiraLimparHistoricoConfirmarConteudo, softWrap: true),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancelar),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _wallet.limparHistoricoLocal();
+              final corte = await _wallet.obterCorteHistoricoLocalMs();
+              if (mounted) setState(() => _corteHistoricoMs = corte);
+            },
+            child: Text(l10n.carteiraLimparHistoricoBotao),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.carteiraTitulo)),
+      appBar: AppBar(
+        title: Text(l10n.carteiraTitulo),
+        actions: [
+          IconButton(
+            tooltip: l10n.carteiraLimparHistoricoBotao,
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: _confirmarLimparHistorico,
+          ),
+        ],
+      ),
       body: StreamBuilder<int>(
         stream: _wallet.saldoStream(),
         initialData: 0,
@@ -202,7 +256,19 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _wallet.historicoStream(),
       builder: (context, snapshot) {
-        final itens = snapshot.data ?? const [];
+        // Corte de "Limpar Histórico" aplicado aqui, na UI (ver
+        // WalletService.historicoStream — o stream em si sempre traz os
+        // dados brutos do Firestore, nunca filtrados): esconde só NESTE
+        // aparelho os itens criados até o corte local, sem apagar nada
+        // no servidor.
+        final todosItens = snapshot.data ?? const [];
+        final itens = _corteHistoricoMs == 0
+            ? todosItens
+            : todosItens.where((item) {
+                final criadoEm = item['criadoEm'];
+                if (criadoEm is! Timestamp) return true;
+                return criadoEm.millisecondsSinceEpoch > _corteHistoricoMs;
+              }).toList();
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
@@ -228,7 +294,7 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
   Widget _buildItemHistorico(AppLocalizations l10n, Map<String, dynamic> item) {
     final tipo = item['tipo'] as String? ?? '';
     final quantidade = (item['quantidadeCreditos'] as num?)?.toInt() ?? 0;
-    final descricao = item['descricao'] as String? ?? '';
+    final descricao = _descricaoLocalizada(l10n, item, tipo);
     final criadoEm = item['criadoEm'];
     final data = criadoEm is Timestamp ? criadoEm.toDate() : null;
     final isRecarga = tipo == 'recarga';
@@ -262,6 +328,35 @@ class _CarteiraScreenState extends State<CarteiraScreen> {
         ),
       ),
     );
+  }
+
+  /// O campo `descricao` gravado pela Cloud Function (ver
+  /// `functions/walletService.js`, `debitarSaldo`/`creditarSaldo`) é
+  /// sempre texto FIXO em português — Cloud Functions não sabem o idioma
+  /// selecionado no app (sem `BuildContext` nem acesso ao l10n do
+  /// cliente, mesmo problema de SMS/notificação, ver
+  /// `services/notificacao_service.dart`). Por isso o campo cru NUNCA é
+  /// exibido: a descrição é reconstruída aqui, no idioma atual, a partir
+  /// só dos campos estruturados que a função já grava (`tipo`, `contato`
+  /// para desconto de WhatsApp) — sem precisar de nenhuma mudança no
+  /// backend.
+  String _descricaoLocalizada(
+    AppLocalizations l10n,
+    Map<String, dynamic> item,
+    String tipo,
+  ) {
+    if (tipo == 'desconto') {
+      final contato = item['contato'] as Map<String, dynamic>?;
+      final nome = (contato?['nome'] as String?)?.trim();
+      final telefone = (contato?['telefone'] as String?)?.trim();
+      final identificador = (nome != null && nome.isNotEmpty)
+          ? nome
+          : (telefone != null && telefone.isNotEmpty)
+              ? telefone
+              : l10n.carteiraContatoGenerico;
+      return l10n.carteiraDescricaoDescontoWhatsapp(identificador);
+    }
+    return l10n.carteiraDescricaoRecarga;
   }
 
   String _formatarData(DateTime data) {

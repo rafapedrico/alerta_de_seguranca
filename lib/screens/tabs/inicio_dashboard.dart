@@ -105,12 +105,12 @@ class InicioDashboard extends StatelessWidget {
               LocaleService.imagemLoginPadrao,
               width: double.infinity,
               fit: BoxFit.fitWidth,
-              errorBuilder: (context, error, stackTrace) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
+              errorBuilder: (context, error, stackTrace) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
                 child: Center(
                   child: Text(
-                    'Guardião-X',
-                    style: TextStyle(
+                    AppLocalizations.of(context)!.marcaGuardiaoX,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -271,7 +271,6 @@ class InicioDashboard extends StatelessWidget {
           l10n.beneficioModoFamilia,
           l10n.beneficioTresCamadas,
           l10n.beneficioTempoEspera,
-          l10n.beneficioSuporteTecnico,
         ],
         botaoPrincipalTexto: precoLoja != null
             ? l10n.premiumAssinarBotaoComPreco(precoLoja)

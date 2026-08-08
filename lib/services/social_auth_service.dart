@@ -26,11 +26,23 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 ///   app cadastrado no Firebase Console (Project Settings > app Android
 ///   "guardiaox") — sem isso o Google devolve `DEVELOPER_ERROR` mesmo com
 ///   o código 100% correto.
-/// - **Facebook**: precisa de um Facebook App ID + Client Token reais
-///   (ver `android/app/src/main/res/values/strings.xml`, chaves
-///   `facebook_app_id`/`facebook_client_token` — hoje só placeholders) e
-///   do pacote + hash de assinatura deste app cadastrados em
-///   developers.facebook.com.
+/// - **Facebook**: App ID + Client Token reais já preenchidos em
+///   2026-08-07 (ver `android/app/src/main/res/values/strings.xml`, chaves
+///   `facebook_app_id`/`facebook_client_token` — app "Guardião-X" em
+///   developers.facebook.com). Ainda faltam 2 passos manuais fora do
+///   código, ambos exigindo login em conta/console de terceiros:
+///   1. Cadastrar o pacote (`com.example.security_check_app`) + o key
+///      hash da assinatura deste app em developers.facebook.com >
+///      Configurações > Básico > plataforma Android. Key hash do
+///      keystore de DEBUG atual: `/u/eOdSKbTsSmyrjqJ2iQEf3McY=` (gerar de
+///      novo se o keystore de debug mudar; hash de RELEASE é outro,
+///      precisa ser adicionado à parte antes de publicar).
+///   2. Habilitar o provedor "Facebook" no Firebase Console (Authentication
+///      > Sign-in method) informando o App ID e o **App Secret** (não é o
+///      Client Token — fica em developers.facebook.com > Configurações >
+///      Básico > "Chave secreta do aplicativo", exige reautenticação para
+///      revelar). Sem isso o Firebase rejeita a credencial do Facebook
+///      mesmo com o app Android 100% configurado.
 /// - **Apple**: "Sign in with Apple" exige Apple Developer Program (pago)
 ///   + um Services ID + um domínio/endpoint de redirect verificado — ver
 ///   [_appleWebAuthOptions] abaixo (hoje só placeholders). Sem isso o

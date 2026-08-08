@@ -867,11 +867,19 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
     super.dispose();
   }
 
-  /// A marca "GUARDIÃO X" fica fixa na tela durante a saída — as demais
-  /// linhas da frase é que sobem/desaparecem (ver classe doc).
-  bool _ehLinhaDaMarca(String linha) {
-    final String normalizada = linha.trim().toUpperCase();
-    return normalizada == 'GUARDIÃO X' || normalizada == 'GUARDIÃO-X';
+  /// A linha que corresponde à marca (ver [AppLocalizations.marcaGuardiaoX])
+  /// fica fixa na tela durante a saída — as demais linhas da frase é que
+  /// sobem/desaparecem (ver classe doc). Comparação resiliente a espaço
+  /// vs. hífen (as frases da splash escrevem "GUARDIAN X", o resto do
+  /// app usa "Guardian-X") e a maiúsculas/minúsculas — nunca mais um
+  /// literal fixo em português, já que a marca agora é traduzida por
+  /// idioma (ver `lib/l10n/app_*.arb`, chave `marcaGuardiaoX`). Custo
+  /// igual ao da comparação anterior (duas normalizações de string por
+  /// linha, por frame) — não introduz nenhum trabalho a mais no boot.
+  bool _ehLinhaDaMarca(String linha, String marcaLocalizada) {
+    String normalizar(String texto) =>
+        texto.trim().toUpperCase().replaceAll(RegExp(r'[-\s]+'), ' ');
+    return normalizar(linha) == normalizar(marcaLocalizada);
   }
 
   @override
@@ -914,6 +922,7 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
     final double valorDigitacao = _digitacaoController.value;
     final int caracteresVisiveis =
         (_totalCaracteres * valorDigitacao).round();
+    final String marcaLocalizada = AppLocalizations.of(context)!.marcaGuardiaoX;
 
     // Tamanho-base responsivo: proporcional à largura da tela, com
     // limites para não "apertar" em telas pequenas nem sobrar espaço
@@ -934,7 +943,7 @@ class _ConteudoSplashAnimadaState extends State<_ConteudoSplashAnimada>
       final bool aindaDigitandoEstaLinha =
           visivelNaLinha > 0 && visivelNaLinha < linha.length;
 
-      final bool fixa = _ehLinhaDaMarca(linha);
+      final bool fixa = _ehLinhaDaMarca(linha, marcaLocalizada);
       final double progressoSaida = fixa ? 0.0 : _curvaSaida.value;
       final double fonteLinha = fixa ? fonteMarca : fonteDemais;
       final String textoExibido =

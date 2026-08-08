@@ -4,11 +4,10 @@
     <string name="app_name">Guardião-X</string>
 
     <!-- Login social com Facebook (ver lib/services/social_auth_service.dart)
-         — PLACEHOLDERS. Substitua pelos valores REAIS do seu app cadastrado
-         em developers.facebook.com (Configurações > Básico) antes de
-         publicar: sem um App ID/Client Token válidos, o botão "Entrar com
-         Facebook" abre o diálogo mas falha a autenticação. -->
-    <string name="facebook_app_id">000000000000000</string>
-    <string name="fb_login_protocol_scheme">fb000000000000000</string>
-    <string name="facebook_client_token">SUBSTITUA_PELO_CLIENT_TOKEN_REAL</string>
+         — valores reais do app "Guardião-X" cadastrado em
+         developers.facebook.com (Configurações > Básico), preenchidos em
+         2026-08-07. -->
+    <string name="facebook_app_id">1053780267051671</string>
+    <string name="fb_login_protocol_scheme">fb1053780267051671</string>
+    <string name="facebook_client_token">32cdc22743159f24dadae84b30af82ca</string>
 </resources>

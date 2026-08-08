@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/alarme_rotina.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
 import '../services/emergency_alert_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/l10n_headless_service.dart';
 import '../services/location_service.dart';
 import '../widgets/pin_dialog.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -29,7 +31,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   bool _souDuplicada = false;
 
   // ==========================================================
-  // FASE FINAL (última chance, 2 minutos, após a tolerância expirar)
+  // FASE FINAL (última chance, 60 segundos, após a tolerância expirar)
   // ==========================================================
   // Sinalizada em disco (SharedPreferences) pelo callback headless
   // [_callbackToleranciaExpirada] em rotina_alarme_service.dart, que roda
@@ -107,6 +109,51 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     // "monitoramento ativo" já usada pelo cronômetro da aba Segurança.
     // Interrompido em dispose() assim que o alarme for desarmado/fechado.
     LocationService().iniciarCicloDeAtualizacao();
+
+    // PRIORIDADE MÁXIMA (item 4 — fechamento forçado): checa ANTES de
+    // qualquer outra coisa (som, polling normal) se esta reabertura da
+    // tela aconteceu porque o usuário arrastou o app para fora dos
+    // Recentes enquanto o alarme ainda tocava (ver
+    // `RotinaAlarmWakeService.onTaskRemoved`/[RotinaAlarmeService.
+    // consumirFechamentoForcado]). Se for o caso, dispara o alerta
+    // imediatamente em vez de seguir o fluxo normal — por isso este
+    // `await` bloqueia o resto do initState (é uma checagem local,
+    // rapidíssima, e queremos decidir isso antes de tocar qualquer som).
+    _verificarFechamentoForcadoEEntaoIniciar();
+  }
+
+  /// Ver comentário em [initState]. Se NÃO foi fechamento forçado, segue
+  /// o fluxo normal exatamente como antes (polling de sinalização +
+  /// tocar o som customizado).
+  Future<void> _verificarFechamentoForcadoEEntaoIniciar() async {
+    final bool fechamentoForcado = await RotinaAlarmeService.consumirFechamentoForcado();
+    if (!mounted || _fluxoEncerrado) return;
+
+    if (fechamentoForcado) {
+      debugPrint('🚨 [FECHAMENTO FORÇADO] App foi fechado enquanto o alarme '
+          'de rotina ainda tocava sem confirmação — disparando alerta '
+          'imediatamente, sem retomar o toque normal.');
+      _idAlarmeAtual ??= await _resolverIdAlarmeMaisRecente();
+      String? motivo;
+      try {
+        final l10n = await L10nHeadlessService.obter();
+        Map<String, dynamic>? dados;
+        if (_idAlarmeAtual != null) {
+          dados = await DatabaseHelper().buscarAlarmePorId(_idAlarmeAtual!);
+        }
+        final etiqueta = dados != null
+            ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
+            : l10n.familiaEtiquetaPadrao;
+        motivo = l10n.historicoCheckinRotinaFechamentoForcadoMotivo(etiqueta);
+      } catch (e) {
+        debugPrint('⚠️ Falha ao montar motivo de fechamento forçado: $e');
+      }
+      await _dispararAlertaDeFalhaDeDesarme(
+        motivo: motivo,
+        mostrarConfirmacaoEFechar: true,
+      );
+      return;
+    }
 
     // Verifica imediatamente se este disparo já nasceu na fase final (ou
     // com o alerta real já disparado — ex: a tela foi recriada após ter
@@ -311,7 +358,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   /// o som (Dart, garantido + nativo, melhor esforço), fecha o diálogo
   /// de PIN "normal" se ainda estiver aberto (não faz sentido mantê-lo,
   /// com o limite de 2 erros, por baixo do novo) e abre diretamente o
-  /// diálogo estrito de 2 minutos, sem exigir novo toque em "Interromper
+  /// diálogo estrito de 60 segundos, sem exigir novo toque em "Interromper
   /// Alarme".
   Future<void> _entrarNaFaseFinal() async {
     if (_faseFinal) return;
@@ -394,7 +441,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   /// Ponto ÚNICO de abertura do teclado de PIN — usado tanto pelo toque
   /// no botão "Interromper Alarme" (fase inicial: limite de 2 erros
   /// consecutivos, sem prazo duro) quanto pela transição automática para
-  /// a janela final (limite de 1 erro + 2 minutos de prazo duro, ver
+  /// a janela final (limite de 1 erro + 60 segundos de prazo duro, ver
   /// [_entrarNaFaseFinal]). Consolida a resolução do alarme mais recente,
   /// a busca do PIN esperado e o fluxo de confirmação/erro/expiração.
   Future<void> _abrirTecladoPin() async {
@@ -454,9 +501,9 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
 
       // Calcula o tempo REALMENTE restante até o alarme nativo de
       // emergência da janela final disparar (ver [_deadlineEpochMs]), em
-      // vez de sempre começar do zero em 2 minutos — garante que o
-      // cronômetro visual reflita com precisão o prazo real, mesmo com o
-      // pequeno atraso do polling que detectou a fase final.
+      // vez de sempre começar do zero — garante que o cronômetro visual
+      // reflita com precisão o prazo real, mesmo com o pequeno atraso do
+      // polling que detectou a fase final.
       int segundosLimiteDuro = RotinaAlarmeService.duracaoJanelaFinal.inSeconds;
       if (ehFaseFinal && _deadlineEpochMs != null) {
         final restanteMs = _deadlineEpochMs! - DateTime.now().millisecondsSinceEpoch;
@@ -466,6 +513,21 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
             );
       }
 
+      // Etiqueta do alarme para as mensagens de motivo abaixo (l10n) —
+      // mesmo texto usado pelo callback headless equivalente
+      // ([_callbackJanelaFinalExpirada] em rotina_alarme_service.dart).
+      final l10nDialogo = AppLocalizations.of(context)!;
+      String etiquetaAlarme = l10nDialogo.familiaEtiquetaPadrao;
+      try {
+        if (idAlarme != null) {
+          final dadosAlarme = await DatabaseHelper().buscarAlarmePorId(idAlarme);
+          if (dadosAlarme != null) {
+            etiquetaAlarme = AlarmeRotina.fromMap(dadosAlarme).etiquetaExibida(l10nDialogo);
+          }
+        }
+      } catch (_) {}
+      if (!mounted) return;
+
       bool pinConfirmadoComSucesso = false;
 
       _dialogoPinAberto = true;
@@ -473,27 +535,22 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
         context: context,
         pinEsperado: pinReal,
         segundosTolerancia: null,
-        // Fase inicial: mantém o comportamento histórico (2 erros
-        // consecutivos disparam o alerta, sem prazo duro, SEM mostrar
-        // confirmação — mantém o disfarce de segurança). Fase final:
-        // ZERO margem — 1 único erro já dispara, há um prazo duro de até
-        // 2 minutos exibido ao vivo, e a falha AGORA é transparente
-        // (para o som, fecha o teclado e mostra confirmação).
-        limiteErrosConsecutivos: ehFaseFinal ? 1 : 2,
+        // UNIFICADO (especificação do usuário, 2026-08-07, item 3): 3
+        // tentativas de PIN incorreto SEMPRE disparam o alerta de
+        // imediato — sem disfarce, sem diferença entre fase inicial e
+        // fase final (tolerância vs. os 60s adicionais). As 2 primeiras
+        // tentativas erradas só mostram "PIN incorreto" e mantêm o
+        // alarme tocando normalmente; a 3ª desliga o alarme e dispara o
+        // alerta na hora.
+        limiteErrosConsecutivos: 3,
         segundosLimiteDuro: ehFaseFinal ? segundosLimiteDuro : null,
         aoAtingirLimiteDeErros: () => _dispararAlertaDeFalhaDeDesarme(
-          motivo: ehFaseFinal
-              ? 'O PIN foi digitado incorretamente ao tentar confirmar o '
-                  'check-in do alarme de rotina, mesmo após o tempo de '
-                  'tolerância já ter expirado.'
-              : null,
-          mostrarConfirmacaoEFechar: ehFaseFinal,
+          motivo: l10nDialogo.historicoCheckinRotinaPinIncorretoMotivo(etiquetaAlarme),
+          mostrarConfirmacaoEFechar: true,
         ),
         aoExpirarTempoLimite: ehFaseFinal
             ? () => _dispararAlertaDeFalhaDeDesarme(
-                  motivo: 'O check-in do alarme de rotina não foi confirmado '
-                      'dentro do prazo final de 2 minutos, mesmo após o '
-                      'tempo de tolerância já ter expirado.',
+                  motivo: l10nDialogo.historicoCheckinRotinaFalhaMotivo(etiquetaAlarme),
                   mostrarConfirmacaoEFechar: true,
                 )
             : null,
