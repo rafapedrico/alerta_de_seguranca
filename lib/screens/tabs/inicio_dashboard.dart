@@ -38,9 +38,7 @@ class InicioDashboard extends StatelessWidget {
   static Future<void> _abrirUrl(String url) async {
     try {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('⚠️ [InicioDashboard] Falha ao abrir URL "$url": $e');
     }
