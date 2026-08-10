@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "Esto enviará inmediatamente un SMS de emergencia y una alerta a tus contactos registrados, con tu ubicación actual. ¿Deseas continuar?",
   "segurancaConfirmarSosBotao": "Confirmar SOS",
   "segurancaSosDisparado": "🚨 ¡SOS activado! Contactos de emergencia notificados.",
+  "segurancaAlertaEnviadoTitulo": "Alerta enviada",
+  "segurancaAlertaEnviadoConteudo": "Se ha enviado un mensaje con la ubicación a los números registrados.",
   "segurancaTituloSecaoTempo": "Cuánto tiempo falta para que llegue",
   "segurancaServidorVerificando": "Verificando servidor...",
   "segurancaServidorOnline": "Servidor En línea",

@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "这将立即向您登记的联系人发送紧急短信和警报，并附上您的当前位置。是否继续？",
   "segurancaConfirmarSosBotao": "确认SOS",
   "segurancaSosDisparado": "🚨 SOS已触发！紧急联系人已收到通知。",
+  "segurancaAlertaEnviadoTitulo": "警报已发送",
+  "segurancaAlertaEnviadoConteudo": "包含位置信息的消息已发送至已注册的号码。",
   "segurancaTituloSecaoTempo": "我还有多久到达",
   "segurancaServidorVerificando": "正在检查服务器...",
   "segurancaServidorOnline": "服务器在线",

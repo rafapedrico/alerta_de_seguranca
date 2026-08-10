@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "इससे आपके पंजीकृत संपर्कों को तुरंत एक आपातकालीन SMS और अलर्ट भेजा जाएगा, जिसमें आपकी वर्तमान स्थिति होगी। क्या आप जारी रखना चाहते हैं?",
   "segurancaConfirmarSosBotao": "SOS की पुष्टि करें",
   "segurancaSosDisparado": "🚨 SOS सक्रिय किया गया! आपातकालीन संपर्कों को सूचित कर दिया गया है।",
+  "segurancaAlertaEnviadoTitulo": "अलर्ट भेजा गया",
+  "segurancaAlertaEnviadoConteudo": "पंजीकृत नंबरों पर स्थान के साथ एक संदेश भेजा गया है।",
   "segurancaTituloSecaoTempo": "मुझे पहुंचने में कितना समय लगेगा",
   "segurancaServidorVerificando": "सर्वर की जांच हो रही है...",
   "segurancaServidorOnline": "सर्वर ऑनलाइन",

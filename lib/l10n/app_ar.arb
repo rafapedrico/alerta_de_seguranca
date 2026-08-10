@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "سيؤدي هذا إلى إرسال رسالة نصية طارئة وتنبيه فورًا إلى جهات الاتصال المسجلة مع موقعك الحالي. هل تريد المتابعة؟",
   "segurancaConfirmarSosBotao": "تأكيد نداء الاستغاثة",
   "segurancaSosDisparado": "🚨 تم إطلاق نداء الاستغاثة! تم إخطار جهات الاتصال الطارئة.",
+  "segurancaAlertaEnviadoTitulo": "تم إرسال التنبيه",
+  "segurancaAlertaEnviadoConteudo": "تم إرسال رسالة تحتوي على الموقع إلى الأرقام المسجلة.",
   "segurancaTituloSecaoTempo": "كم من الوقت حتى أصل",
   "segurancaServidorVerificando": "جارٍ التحقق من الخادم...",
   "segurancaServidorOnline": "الخادم متصل",

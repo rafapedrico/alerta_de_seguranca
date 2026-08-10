@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "Cela enverra immédiatement un SMS d'urgence et une alerte à vos contacts enregistrés, avec votre position actuelle. Voulez-vous continuer ?",
   "segurancaConfirmarSosBotao": "Confirmer le SOS",
   "segurancaSosDisparado": "🚨 SOS déclenché ! Contacts d'urgence notifiés.",
+  "segurancaAlertaEnviadoTitulo": "Alerte envoyée",
+  "segurancaAlertaEnviadoConteudo": "Un message avec la localisation a été envoyé aux numéros enregistrés.",
   "segurancaTituloSecaoTempo": "Dans combien de temps j'arriverai",
   "segurancaServidorVerificando": "Vérification du serveur...",
   "segurancaServidorOnline": "Serveur en ligne",

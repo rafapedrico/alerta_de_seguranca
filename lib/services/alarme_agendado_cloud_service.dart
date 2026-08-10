@@ -72,6 +72,30 @@ class AlarmeAgendadoCloudService {
     }
   }
 
+  /// Reinicia o documento do alarme como um NOVO ciclo PENDENTE —
+  /// necessário para ids FIXOS e reaproveitados entre ciclos (ex: o
+  /// cronômetro de check-in da aba Segurança, ver
+  /// `BackgroundLocationHeartbeatService.idAlarmeCheckinSeguranca`), cujo
+  /// documento de um ciclo ANTERIOR já finalizado (CONFIRMADO_SEGURA ou
+  /// ALERTA_DISPARADO) senão ficaria "preso" nesse status para sempre.
+  /// Diferente de [registrarAlarmeAgendado] (que deliberadamente
+  /// PRESERVA o status já gravado — correto para heartbeats dentro do
+  /// MESMO ciclo), este método sobrescreve o documento inteiro, sempre
+  /// que um novo ciclo de monitoramento está começando.
+  Future<void> reiniciarCicloComoPendente(AlarmeAgendadoModel modelo) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documento(modelo.idAlarme)
+          .set(modelo.toFirestore())
+          .timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [AlarmeAgendadoCloudService] Ciclo #${modelo.idAlarme} reiniciado como PENDENTE.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [AlarmeAgendadoCloudService] Falha ao reiniciar ciclo #${modelo.idAlarme}: $e');
+    }
+  }
+
   /// Marca o alarme como CONFIRMADO_SEGURA — chamado assim que o PIN
   /// correto é digitado (ver
   /// `RotinaAlarmeService.confirmarCheckinRotina`), avisando a nuvem que

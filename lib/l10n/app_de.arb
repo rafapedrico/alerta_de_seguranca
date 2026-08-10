@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "Dadurch wird sofort eine Notfall-SMS und ein Alarm an deine registrierten Kontakte mit deinem aktuellen Standort gesendet. Möchtest du fortfahren?",
   "segurancaConfirmarSosBotao": "SOS bestätigen",
   "segurancaSosDisparado": "🚨 SOS ausgelöst! Notfallkontakte benachrichtigt.",
+  "segurancaAlertaEnviadoTitulo": "Alarm gesendet",
+  "segurancaAlertaEnviadoConteudo": "Eine Nachricht mit dem Standort wurde an die registrierten Nummern gesendet.",
   "segurancaTituloSecaoTempo": "Wie lange bis ich ankomme",
   "segurancaServidorVerificando": "Server wird überprüft...",
   "segurancaServidorOnline": "Server Online",

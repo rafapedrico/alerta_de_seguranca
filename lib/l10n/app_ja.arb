@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "これにより、現在地を含む緊急SMSとアラートが登録済みの連絡先にすぐに送信されます。続行しますか？",
   "segurancaConfirmarSosBotao": "SOSを確認",
   "segurancaSosDisparado": "🚨 SOSが発動されました！緊急連絡先に通知されました。",
+  "segurancaAlertaEnviadoTitulo": "アラートを送信しました",
+  "segurancaAlertaEnviadoConteudo": "登録された番号に位置情報を含むメッセージが送信されました。",
   "segurancaTituloSecaoTempo": "到着までの時間",
   "segurancaServidorVerificando": "サーバーを確認中...",
   "segurancaServidorOnline": "サーバーオンライン",

@@ -143,6 +143,8 @@
   "segurancaConfirmarSosConteudo": "Это немедленно отправит экстренное SMS и оповещение вашим зарегистрированным контактам с вашим текущим местоположением. Продолжить?",
   "segurancaConfirmarSosBotao": "Подтвердить SOS",
   "segurancaSosDisparado": "🚨 SOS отправлен! Экстренные контакты оповещены.",
+  "segurancaAlertaEnviadoTitulo": "Оповещение отправлено",
+  "segurancaAlertaEnviadoConteudo": "Сообщение с местоположением отправлено на зарегистрированные номера.",
   "segurancaTituloSecaoTempo": "Через сколько я прибуду",
   "segurancaServidorVerificando": "Проверка сервера...",
   "segurancaServidorOnline": "Сервер в сети",
