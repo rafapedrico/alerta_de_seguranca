@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS déclenché ! Contacts d'urgence notifiés.",
   "segurancaAlertaEnviadoTitulo": "Alerte envoyée",
   "segurancaAlertaEnviadoConteudo": "Un message avec la localisation a été envoyé aux numéros enregistrés.",
+  "cronometroAtivoDescricao": "Minuteur de sécurité déclenché.\nEntrez votre mot de passe pour désarmer.",
+  "historicoCronometroFalhaMotivo": "le minuteur de sécurité n'a pas été désarmé dans les 180 secondes de tolérance après le déclenchement.",
+  "historicoCronometroPinIncorretoMotivo": "le code PIN a été saisi incorrectement 3 fois de suite en essayant de désarmer le minuteur de sécurité.",
+  "historicoCronometroFechamentoForcadoMotivo": "l'application a été fermée de force alors que le minuteur de sécurité sonnait encore, sans confirmation du désarmement.",
   "segurancaTituloSecaoTempo": "Dans combien de temps j'arriverai",
   "segurancaServidorVerificando": "Vérification du serveur...",
   "segurancaServidorOnline": "Serveur en ligne",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta} : l'alarme de routine a été ignorée (glissée vers le haut) sans confirmation du code PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Check-in de Routine",
   "notifCanalCheckinDescricao": "Rappels de check-in de sécurité pour les alarmes de routine enregistrées.",
   "notifCanalAlertaRecebidoNome": "Alerte d'Urgence Reçue",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Réponses aux demandes de partage de localisation envoyées depuis l'onglet Suivi.",
   "notifCanalSolicitacaoMonitoramentoNome": "Demande de Localisation Reçue",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Alerte prioritaire lorsqu'un proche demande à voir votre position en temps réel — nécessite Accepter ou Refuser.",
+  "notifCanalAlertaEnviadoNome": "Confirmation d'alerte envoyée",
+  "notifCanalAlertaEnviadoDescricao": "Confirme qu'une alerte d'urgence avec localisation a été envoyée aux contacts enregistrés.",
+  "notifDescarteAlertaEnviadoTitulo": "Alerte envoyée",
+  "notifDescarteAlertaEnviadoCorpo": "Le message d'alerte avec votre position a été envoyé aux contacts enregistrés.",
   "notifCheckinCorpo": "Appuyez pour annuler l'alarme.",
   "notifAlarmeSegurancaTitulo": "Alarme de Sécurité",
   "notifAlarmeSegurancaCorpo": "Confirmez votre sécurité ou mettez l'alarme en pause !",

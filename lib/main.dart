@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_navigator.dart';
 import 'firebase_options.dart';
 import 'screens/alarme_disparado_screen.dart';
+import 'screens/cronometro_disparado_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/alarme_service.dart';
@@ -35,6 +36,7 @@ import 'widgets/pin_dialog.dart';
 
 const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
+const String _rotaInicialCronometroAlarme = '/cronometro_alarme_confirmacao';
 
 // ================================================================
 // ARQUITETURA DE COLD START — LAZY LOADING ESTRITO EM 3 ETAPAS
@@ -93,6 +95,10 @@ void main() {
       WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
           _rotaInicialRotinaAlarme;
 
+  final bool coldStartViaCronometroAlarme =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
+          _rotaInicialCronometroAlarme;
+
   // Síncrono, idempotente, sem I/O — ver encryption_service.dart (só
   // deriva a chave em memória; os demais serviços chamam de novo
   // sozinhos caso ainda não tenha rodado).
@@ -119,7 +125,9 @@ void main() {
   // nenhuma animação para proteger — disparam o Firebase imediatamente,
   // como antes.
   Future<void>? futuroFirebaseEAuthImediato;
-  if (coldStartViaSosFisico || coldStartViaRotinaAlarme) {
+  if (coldStartViaSosFisico ||
+      coldStartViaRotinaAlarme ||
+      coldStartViaCronometroAlarme) {
     futuroFirebaseEAuthImediato =
         _iniciarFirebaseEAuth(coldStartViaSosFisico: coldStartViaSosFisico);
   }
@@ -128,6 +136,7 @@ void main() {
   // `await` entre ensureInitialized() e este runApp().
   runApp(SecurityCheckApp(
     abertoViaAlarmeRotina: coldStartViaRotinaAlarme,
+    abertoViaCronometroAlarme: coldStartViaCronometroAlarme,
     abertoViaSosFisico: coldStartViaSosFisico,
   ));
 
@@ -153,6 +162,14 @@ void main() {
       debugPrint(
           '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da AlarmeDisparadoScreen.');
       navigateToAlarmeDisparado();
+    });
+  }
+
+  if (coldStartViaCronometroAlarme) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint(
+          '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da CronometroDisparadoScreen.');
+      navigateToCronometroDisparado();
     });
   }
 
@@ -335,6 +352,24 @@ void navigateToAlarmeDisparado() {
   }
 }
 
+/// Redireciona a navegação para a CronometroDisparadoScreen — mesmo
+/// padrão de [navigateToAlarmeDisparado].
+void navigateToCronometroDisparado() {
+  try {
+    final state = appNavigatorKey.currentState;
+    if (state != null) {
+      state.push(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: '/cronometro_disparado'),
+          builder: (context) => const CronometroDisparadoScreen(),
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint('⚠️ Falha ao navegar para CronometroDisparadoScreen: $e');
+  }
+}
+
 Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
   try {
     debugPrint(
@@ -363,11 +398,13 @@ Future<void> _testarConectividadeInicialComBackend() async {
 
 class SecurityCheckApp extends StatefulWidget {
   final bool abertoViaAlarmeRotina;
+  final bool abertoViaCronometroAlarme;
   final bool abertoViaSosFisico;
 
   const SecurityCheckApp({
     super.key,
     this.abertoViaAlarmeRotina = false,
+    this.abertoViaCronometroAlarme = false,
     this.abertoViaSosFisico = false,
   });
 
@@ -504,6 +541,9 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   /// sem somar nenhum delay artificial por cima da animação.
   Widget _telaInicial() {
     if (widget.abertoViaAlarmeRotina) return const AlarmeDisparadoScreen();
+    if (widget.abertoViaCronometroAlarme) {
+      return const CronometroDisparadoScreen();
+    }
     if (widget.abertoViaSosFisico) return const _TelaPretaAguardandoSos();
     return const _SplashGate();
   }

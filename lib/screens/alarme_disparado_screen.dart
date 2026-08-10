@@ -11,6 +11,7 @@ import '../services/emergency_alert_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/l10n_headless_service.dart';
 import '../services/location_service.dart';
+import '../services/notificacao_service.dart';
 import '../widgets/pin_dialog.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -554,6 +555,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
                   mostrarConfirmacaoEFechar: true,
                 )
             : null,
+        aoDescartarPorArraste: _descartarPorArraste,
         aoConfirmarPinCorreto: () async {
           pinConfirmadoComSucesso = true;
           _dialogoPinAberto = false;
@@ -687,6 +689,122 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
 
     if (mostrarConfirmacaoEFechar) {
       await _finalizarComConfirmacao();
+    }
+  }
+
+  /// Aciona quando o usuário arrasta/joga o botão azul OU o teclado de
+  /// PIN para cima (gesto de DESCARTE, distinto do gesto de sistema
+  /// "tirar o app dos Recentes" já tratado por `onTaskRemoved` —
+  /// especificação do usuário). Ligado tanto ao [GestureDetector] da fase
+  /// "alarme ativo" no [build] quanto ao parâmetro
+  /// `aoDescartarPorArraste` passado a [exibirDialogoPin] em
+  /// [_abrirTecladoPin] (fase inicial e fase final).
+  ///
+  /// DIFERENTE de [_dispararAlertaDeFalhaDeDesarme] (PIN incorreto/tempo
+  /// esgotado): naqueles casos a tela mostra uma confirmação FIXA até o
+  /// usuário fechá-la. Aqui a exigência é o oposto — o controle da
+  /// tela/sistema precisa voltar 100% ao Android IMEDIATAMENTE (o botão e
+  /// o teclado somem, sem tentar redesenhar nada por cima do bloqueio) —
+  /// por isso a ORDEM das etapas é: 1) para o som, 2) fecha a
+  /// Activity/devolve o controle ao Android, e SÓ DEPOIS 3) dispara o
+  /// alerta com localização e 4) confirma o envio via uma NOTIFICAÇÃO do
+  /// sistema (ver [NotificacaoService.exibirNotificacaoAlertaEnviado]) —
+  /// não há mais nenhuma UI do app na tela para mostrar um diálogo
+  /// in-app neste ponto.
+  Future<void> _descartarPorArraste() async {
+    if (_alertaJaProcessado) return;
+    _alertaJaProcessado = true;
+    _fluxoEncerrado = true;
+    _pollFaseFinalTimer?.cancel();
+
+    // 1. Para o som imediatamente — nativo + Dart.
+    try {
+      const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
+      await canalNativo.invokeMethod('pararAlarme');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar som nativo ao descartar por arraste: $e');
+    }
+    try {
+      await _player.stop();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar player Dart ao descartar por arraste: $e');
+    }
+
+    unawaited(RotinaAlarmeService.pararServicoForeground());
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
+      // Sinaliza a QUALQUER outra instância desta tela (engine/isolate
+      // separado, ver documentação de [chaveAlarmeFluxoResolvido]) que o
+      // fluxo já foi resolvido aqui.
+      await prefs.setBool(chaveAlarmeFluxoResolvido, true);
+    } catch (_) {}
+
+    // 2. Devolve o controle 100% ao Android — a tela (botão/teclado) some
+    // AGORA, antes até do alerta ser efetivamente disparado.
+    if (mounted) {
+      if (widget.veioDoForeground) {
+        _fecharCaminhoTelaLigada(context);
+      } else {
+        await _fecharCaminhoTelaDesligada(context);
+      }
+    }
+
+    // 3. Dispara o alerta com localização (mesmo par de chamadas usado em
+    // [_dispararAlertaDeFalhaDeDesarme]) — cancela a janela final nativa
+    // primeiro, para que ela não dispare de novo (duplicando o alerta)
+    // alguns instantes depois.
+    if (_idAlarmeAtual != null) {
+      unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+    }
+
+    String? motivo;
+    String? eventoId;
+    try {
+      final l10n = await L10nHeadlessService.obter();
+      _idAlarmeAtual ??= await _resolverIdAlarmeMaisRecente();
+      Map<String, dynamic>? dados;
+      if (_idAlarmeAtual != null) {
+        dados = await DatabaseHelper().buscarAlarmePorId(_idAlarmeAtual!);
+      }
+      final etiqueta = dados != null
+          ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
+          : l10n.familiaEtiquetaPadrao;
+      motivo = l10n.historicoCheckinRotinaDescartadoPorArrasteMotivo(etiqueta);
+      final ultimoDisparoEpoch = dados?['ultimo_disparo_epoch'] as int?;
+      if (_idAlarmeAtual != null && ultimoDisparoEpoch != null) {
+        eventoId = 'rotina_${_idAlarmeAtual}_$ultimoDisparoEpoch';
+      }
+    } catch (e) {
+      debugPrint('⚠️ Falha ao montar motivo de descarte por arraste: $e');
+    }
+
+    try {
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem (descarte): $e');
+    }
+    try {
+      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar alerta de descarte por arraste: $e');
+    }
+
+    // 4. Confirmação de envio — via notificação do sistema, já que a
+    // tela do app não existe mais neste ponto (ver documentação do
+    // método).
+    try {
+      await NotificacaoService.exibirNotificacaoAlertaEnviado();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao exibir notificação de confirmação de descarte: $e');
     }
   }
 
@@ -896,19 +1014,41 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       ),
     );
 
-    // Gesto de deslizar para cima: só encerra a tela de confirmação
-    // (pós-alerta) — nas fases anteriores (alarme ativo / fase final) o
-    // fechamento continua exclusivo do fluxo de PIN, sem alteração.
-    if (!_alertaDisparado) return tela;
+    // Gesto de deslizar para cima:
+    // - Na tela de confirmação (pós-alerta): fecha a tela normalmente
+    //   (comportamento antigo, inalterado).
+    // - Na fase "alarme ativo" (botão azul, ANTES de abrir o teclado de
+    //   PIN): aciona o gesto de DESCARTE (ver [_descartarPorArraste]) —
+    //   especificação do usuário: arrastar o botão para cima sem digitar
+    //   o PIN é tratado como uma falha de confirmação, igual à 3ª
+    //   tentativa errada.
+    // - Durante a fase final/teclado de PIN aberto: o gesto é capturado
+    //   DENTRO do próprio diálogo (ver `pin_dialog.dart`,
+    //   `aoDescartarPorArraste`), não aqui.
+    if (_alertaDisparado) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragEnd: (details) {
+          if (details.velocity.pixelsPerSecond.dy < -250) {
+            _fecharTelaConfirmacao();
+          }
+        },
+        child: tela,
+      );
+    }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragEnd: (details) {
-        if (details.velocity.pixelsPerSecond.dy < -250) {
-          _fecharTelaConfirmacao();
-        }
-      },
-      child: tela,
-    );
+    if (!_faseFinal) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragEnd: (details) {
+          if (details.velocity.pixelsPerSecond.dy < -250) {
+            _descartarPorArraste();
+          }
+        },
+        child: tela,
+      );
+    }
+
+    return tela;
   }
 }

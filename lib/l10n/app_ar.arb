@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 تم إطلاق نداء الاستغاثة! تم إخطار جهات الاتصال الطارئة.",
   "segurancaAlertaEnviadoTitulo": "تم إرسال التنبيه",
   "segurancaAlertaEnviadoConteudo": "تم إرسال رسالة تحتوي على الموقع إلى الأرقام المسجلة.",
+  "cronometroAtivoDescricao": "تم تشغيل مؤقت الأمان.\nأدخل كلمة المرور لإلغاء التفعيل.",
+  "historicoCronometroFalhaMotivo": "لم يتم إلغاء تفعيل مؤقت الأمان خلال 180 ثانية من فترة السماح بعد التشغيل.",
+  "historicoCronometroPinIncorretoMotivo": "تم إدخال رمز PIN بشكل غير صحيح 3 مرات متتالية أثناء محاولة إلغاء تفعيل مؤقت الأمان.",
+  "historicoCronometroFechamentoForcadoMotivo": "تم إغلاق التطبيق بالقوة بينما كان مؤقت الأمان لا يزال يرن، دون تأكيد إلغاء التفعيل.",
   "segurancaTituloSecaoTempo": "كم من الوقت حتى أصل",
   "segurancaServidorVerificando": "جارٍ التحقق من الخادم...",
   "segurancaServidorOnline": "الخادم متصل",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: تم تجاهل منبه الروتين (بالسحب لأعلى) دون تأكيد رمز PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "تسجيل الوصول الروتيني",
   "notifCanalCheckinDescricao": "تذكيرات تسجيل الوصول الأمني لمنبهات الروتين المسجلة.",
   "notifCanalAlertaRecebidoNome": "تنبيه طوارئ مستلم",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "ردود على طلبات مشاركة الموقع المرسلة من تبويب المراقبة.",
   "notifCanalSolicitacaoMonitoramentoNome": "طلب موقع مستلم",
   "notifCanalSolicitacaoMonitoramentoDescricao": "تنبيه ذو أولوية عندما يطلب أحد أفراد العائلة رؤية موقعك الفوري — يتطلب قبول أو رفض.",
+  "notifCanalAlertaEnviadoNome": "تأكيد إرسال التنبيه",
+  "notifCanalAlertaEnviadoDescricao": "يؤكد أن تنبيه الطوارئ مع الموقع قد أُرسل إلى جهات الاتصال المسجلة.",
+  "notifDescarteAlertaEnviadoTitulo": "تم إرسال التنبيه",
+  "notifDescarteAlertaEnviadoCorpo": "تم إرسال رسالة التنبيه مع موقعك إلى جهات الاتصال المسجلة.",
   "notifCheckinCorpo": "اضغط لإلغاء المنبه.",
   "notifAlarmeSegurancaTitulo": "منبه الأمان",
   "notifAlarmeSegurancaCorpo": "أكد سلامتك أو أوقف المنبه مؤقتًا!",

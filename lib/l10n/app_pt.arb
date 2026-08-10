@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS disparado! Contatos de emergência notificados.",
   "segurancaAlertaEnviadoTitulo": "Alerta enviado",
   "segurancaAlertaEnviadoConteudo": "Mensagem com a localização foi enviada para os números cadastrados.",
+  "cronometroAtivoDescricao": "Cronômetro de segurança disparado.\nDigite sua senha para desarmar.",
+  "historicoCronometroFalhaMotivo": "o cronômetro de segurança não foi desarmado dentro dos 180 segundos de tolerância após o disparo.",
+  "historicoCronometroPinIncorretoMotivo": "o PIN foi digitado incorretamente 3 vezes seguidas ao tentar desarmar o cronômetro de segurança.",
+  "historicoCronometroFechamentoForcadoMotivo": "o aplicativo foi fechado à força enquanto o cronômetro de segurança ainda tocava, sem confirmação do desarme.",
   "segurancaTituloSecaoTempo": "Daqui quanto tempo vou chegar",
   "segurancaServidorVerificando": "Verificando servidor...",
   "segurancaServidorOnline": "Servidor Online",
@@ -911,6 +915,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: o alarme de rotina foi descartado (arrastado para cima) sem confirmação do PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Check-in de Rotina",
   "notifCanalCheckinDescricao": "Lembretes de check-in de segurança dos alarmes de rotina cadastrados.",
   "notifCanalAlertaRecebidoNome": "Alerta de Emergência Recebido",
@@ -919,6 +931,10 @@
   "notifCanalMonitoramentoDescricao": "Respostas a solicitações de compartilhamento de localização enviadas pela aba Monitoramento.",
   "notifCanalSolicitacaoMonitoramentoNome": "Solicitação de Localização Recebida",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Alerta prioritário quando um familiar solicita ver sua localização em tempo real — exige Aceitar ou Recusar.",
+  "notifCanalAlertaEnviadoNome": "Confirmação de Alerta Enviado",
+  "notifCanalAlertaEnviadoDescricao": "Confirma que um alerta de emergência com localização foi enviado para os contatos cadastrados.",
+  "notifDescarteAlertaEnviadoTitulo": "Alerta enviado",
+  "notifDescarteAlertaEnviadoCorpo": "A mensagem de alerta com sua localização foi enviada para os contatos cadastrados.",
   "notifCheckinCorpo": "Toque para cancelar o alarme.",
   "notifAlarmeSegurancaTitulo": "Alarme de Segurança",
   "notifAlarmeSegurancaCorpo": "Confirme sua segurança ou pause o alarme!",

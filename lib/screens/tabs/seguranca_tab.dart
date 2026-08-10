@@ -376,15 +376,38 @@ class _SegurancaTabState extends State<SegurancaTab> {
           _segundosRestantes--;
         });
       } else {
-        // Regra de negócio 3 (Término sem ação do usuário): o tempo
-        // chegou ao fim sem desarme — dispara o alerta IMEDIATAMENTE,
-        // sem qualquer tolerância extra (fecha o diálogo de PIN se o
-        // usuário estiver no meio de uma tentativa, ver
-        // [_dispararUmaVezSeNecessario]).
-        _cancelarTimerPrincipal();
-        _dispararUmaVezSeNecessario();
+        // Reespecificação do usuário (2026-08-10, Parte 3): o tempo
+        // chegou ao fim — a partir daqui, quem conduz o fluxo real é a
+        // tela dedicada [CronometroDisparadoScreen], aberta pelo alarme
+        // NATIVO agendado em [AlarmeService.agendarAlarmeEmergencia] para
+        // este MESMO instante (som + teclado de PIN com 180 segundos de
+        // tolerância, 3 tentativas). Este Timer visual só encerra a
+        // contagem local — NUNCA MAIS dispara o alerta diretamente (antes
+        // disparava aqui, sem nenhuma chance de PIN).
+        _finalizarTimerLocalAoZerar();
       }
     });
+  }
+
+  /// Encerra apenas o Timer visual e o loop LOCAL de localização desta
+  /// tela (par do `iniciarCicloDeAtualizacao()` feito em [_iniciarTimer])
+  /// quando o cronômetro chega a zero — a partir daqui,
+  /// [CronometroDisparadoScreen] assume seu PRÓPRIO par
+  /// iniciar/parar de rastreamento pela duração da janela de 180s.
+  /// Propositalmente NÃO chama [_pararTimer]/[BackgroundLocationHeartbeatService.cancelarCheckinAtivo]:
+  /// o heartbeat de nuvem (dead man's switch) e o alarme nativo continuam
+  /// intactos até o fluxo ser realmente resolvido (PIN correto ou alerta
+  /// disparado), dentro da nova tela.
+  void _finalizarTimerLocalAoZerar() {
+    _cancelarTimerPrincipal();
+    _fecharDialogoPinSeAberto();
+    _locationService.pararCicloDeAtualizacao();
+    if (mounted) {
+      setState(() {
+        _isTimerAtivo = false;
+        _segundosRestantes = 0;
+      });
+    }
   }
 
   void _pararTimer() {
@@ -480,8 +503,16 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// por try/catch para que qualquer falha (GPS, SMS, banco) jamais trave
   /// a interface do usuário ou dispare novamente em loop.
   ///
-  /// Regra de negócio 7 (restrições obrigatórias): NENHUM som de alarme é
-  /// tocado e a CÂMERA nunca é acionada em nenhum ponto deste fluxo.
+  /// Regra de negócio 7 (restrições obrigatórias): a CÂMERA nunca é
+  /// acionada em nenhum ponto deste fluxo. NOTA (reespecificação do
+  /// usuário, 2026-08-10): a restrição original também proibia qualquer
+  /// som de alarme — isso foi revertido DE PROPÓSITO, mas só para o novo
+  /// fluxo "ao zerar" (ver [CronometroDisparadoScreen], que toca o alarme
+  /// e abre o teclado de PIN por até 180s). Este método específico
+  /// (disparo por 3ª tentativa de PIN errada durante uma tentativa
+  /// MANUAL de desarme, ANTES do cronômetro zerar) continua sem tocar
+  /// nenhum som — regra histórica preservada aqui, não pedida para
+  /// mudar.
   Future<void> _executarDisparoDeEmergencia() async {
     _mostrarAlertaMensagemEnviada();
     try {

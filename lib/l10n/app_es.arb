@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 ¡SOS activado! Contactos de emergencia notificados.",
   "segurancaAlertaEnviadoTitulo": "Alerta enviada",
   "segurancaAlertaEnviadoConteudo": "Se ha enviado un mensaje con la ubicación a los números registrados.",
+  "cronometroAtivoDescricao": "Cronómetro de seguridad activado.\nIngresa tu contraseña para desarmar.",
+  "historicoCronometroFalhaMotivo": "el cronómetro de seguridad no se desarmó dentro de los 180 segundos de tolerancia tras activarse.",
+  "historicoCronometroPinIncorretoMotivo": "el PIN se ingresó incorrectamente 3 veces seguidas al intentar desarmar el cronómetro de seguridad.",
+  "historicoCronometroFechamentoForcadoMotivo": "la aplicación se cerró a la fuerza mientras el cronómetro de seguridad seguía sonando, sin confirmación del desarme.",
   "segurancaTituloSecaoTempo": "Cuánto tiempo falta para que llegue",
   "segurancaServidorVerificando": "Verificando servidor...",
   "segurancaServidorOnline": "Servidor En línea",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: la alarma de rutina se descartó (deslizada hacia arriba) sin confirmación del PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Check-in de Rutina",
   "notifCanalCheckinDescricao": "Recordatorios de check-in de seguridad de las alarmas de rutina registradas.",
   "notifCanalAlertaRecebidoNome": "Alerta de Emergencia Recibida",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Respuestas a solicitudes de uso compartido de ubicación enviadas desde la pestaña Monitoreo.",
   "notifCanalSolicitacaoMonitoramentoNome": "Solicitud de Ubicación Recibida",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Alerta prioritaria cuando un familiar solicita ver tu ubicación en tiempo real: requiere Aceptar o Rechazar.",
+  "notifCanalAlertaEnviadoNome": "Confirmación de Alerta Enviada",
+  "notifCanalAlertaEnviadoDescricao": "Confirma que se envió una alerta de emergencia con ubicación a los contactos registrados.",
+  "notifDescarteAlertaEnviadoTitulo": "Alerta enviada",
+  "notifDescarteAlertaEnviadoCorpo": "El mensaje de alerta con tu ubicación fue enviado a los contactos registrados.",
   "notifCheckinCorpo": "Toca para cancelar la alarma.",
   "notifAlarmeSegurancaTitulo": "Alarma de Seguridad",
   "notifAlarmeSegurancaCorpo": "¡Confirma tu seguridad o pausa la alarma!",

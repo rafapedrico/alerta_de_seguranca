@@ -84,6 +84,21 @@ class NotificacaoService {
   static String canalSolicitacaoMonitoramentoDescricao =
       'Alerta prioritário quando um familiar solicita ver sua localização em tempo real — exige Aceitar ou Recusar.';
 
+  /// Canal Android dedicado à confirmação de envio exibida DEPOIS do
+  /// gesto de descarte (arrastar o botão azul/teclado de PIN para cima —
+  /// ver `AlarmeDisparadoScreen._descartarPorArraste`): como a
+  /// especificação exige que a tela/Activity do alarme feche IMEDIATAMENTE
+  /// (controle 100% devolvido ao Android) assim que o gesto é detectado,
+  /// não há mais nenhuma UI do app na tela para mostrar um diálogo
+  /// in-app — a confirmação "mensagem enviada" precisa ser uma
+  /// notificação do sistema. Importância baixa e sem som/vibração
+  /// (o alarme já foi silenciado por este mesmo fluxo): é só uma
+  /// confirmação informativa, não um novo alarme.
+  static const String canalAlertaEnviadoId = 'alerta_enviado_confirmacao';
+  static String canalAlertaEnviadoNome = 'Confirmação de Alerta Enviado';
+  static String canalAlertaEnviadoDescricao =
+      'Confirma que um alerta de emergência com localização foi enviado para os contatos cadastrados.';
+
   /// Carrega os nomes/descrições dos 4 canais Android no idioma
   /// atualmente selecionado pelo usuário (ver [L10nHeadlessService]),
   /// chamado uma única vez no início de [inicializar] — antes da criação
@@ -100,6 +115,8 @@ class NotificacaoService {
       canalSolicitacaoMonitoramentoNome = l10n.notifCanalSolicitacaoMonitoramentoNome;
       canalSolicitacaoMonitoramentoDescricao =
           l10n.notifCanalSolicitacaoMonitoramentoDescricao;
+      canalAlertaEnviadoNome = l10n.notifCanalAlertaEnviadoNome;
+      canalAlertaEnviadoDescricao = l10n.notifCanalAlertaEnviadoDescricao;
     } catch (e) {
       debugPrint('⚠️ [NotificacaoService] Falha ao localizar nomes de canais: $e');
     }
@@ -309,6 +326,13 @@ class NotificacaoService {
       description: canalSolicitacaoMonitoramentoDescricao,
       importance: Importance.max,
     );
+    final canalAlertaEnviado = AndroidNotificationChannel(
+      canalAlertaEnviadoId,
+      canalAlertaEnviadoNome,
+      description: canalAlertaEnviadoDescricao,
+      importance: Importance.low,
+      playSound: false,
+    );
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
@@ -330,6 +354,7 @@ class NotificacaoService {
     await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
     await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
     await implementacaoAndroid?.createNotificationChannel(canalSolicitacaoMonitoramento);
+    await implementacaoAndroid?.createNotificationChannel(canalAlertaEnviado);
 
     // A partir do Android 14/15+, `USE_FULL_SCREEN_INTENT` deixou de ser
     // concedida automaticamente para apps sem função de chamada/alarme — sem
@@ -622,6 +647,41 @@ class NotificacaoService {
       corpo,
       details,
       payload: payload,
+    );
+  }
+
+  /// Exibe a notificação de confirmação "alerta enviado" — usada
+  /// especificamente pelo gesto de descarte do Alarme de Rotina (arrastar
+  /// o botão azul/teclado de PIN para cima, ver
+  /// `AlarmeDisparadoScreen._descartarPorArraste`), o único caso em que o
+  /// app precisa devolver a tela 100% ao Android ANTES de conseguir
+  /// mostrar qualquer confirmação — por isso vira uma notificação do
+  /// sistema, em vez do diálogo/tela cheia in-app usado nos demais
+  /// disparos (3ª tentativa de PIN incorreta, tempo esgotado etc., que já
+  /// mostram a própria tela verde de confirmação sem precisar disto).
+  static Future<void> exibirNotificacaoAlertaEnviado() async {
+    await inicializar();
+    final l10n = await L10nHeadlessService.obter();
+
+    final androidDetails = AndroidNotificationDetails(
+      canalAlertaEnviadoId,
+      canalAlertaEnviadoNome,
+      channelDescription: canalAlertaEnviadoDescricao,
+      importance: Importance.low,
+      priority: Priority.low,
+      autoCancel: true,
+      playSound: false,
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+
+    await _plugin.show(
+      // Id fixo e estável: não há necessidade de múltiplas notificações
+      // deste tipo simultâneas — uma nova sempre substitui a anterior.
+      70000,
+      l10n.notifDescarteAlertaEnviadoTitulo,
+      l10n.notifDescarteAlertaEnviadoCorpo,
+      details,
     );
   }
 

@@ -72,7 +72,9 @@ class RotinaAlarmPlugin : FlutterPlugin {
                     "iniciarTelaAlarme" -> {
                         try {
                             val idAlarme = (call.argument<Int>("idAlarme")) ?: -1
-                            iniciarTelaAlarme(context, idAlarme)
+                            val tipoAlarme = call.argument<String>("tipoAlarme")
+                                ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+                            iniciarTelaAlarme(context, idAlarme, tipoAlarme)
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao iniciar tela de alarme: ${e.message}", null)
@@ -151,7 +153,9 @@ class RotinaAlarmPlugin : FlutterPlugin {
                         try {
                             val idAlarme = (call.argument<Int>("idAlarme")) ?: -1
                             val epochMillis = (call.argument<Number>("epochMillis"))?.toLong() ?: -1L
-                            val agendado = agendarAlarmeNativo(context, idAlarme, epochMillis)
+                            val tipoAlarme = call.argument<String>("tipoAlarme")
+                                ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+                            val agendado = agendarAlarmeNativo(context, idAlarme, epochMillis, tipoAlarme)
                             result.success(agendado)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao agendar alarme nativo: ${e.message}", null)
@@ -168,7 +172,8 @@ class RotinaAlarmPlugin : FlutterPlugin {
                     }
                     "consumirFechamentoForcado" -> {
                         try {
-                            val fechadoAFor = RotinaAlarmFluxoState.consumirFechamentoForcado(context)
+                            val tipoEsperado = call.argument<String>("tipoAlarme")
+                            val fechadoAFor = RotinaAlarmFluxoState.consumirFechamentoForcado(context, tipoEsperado)
                             result.success(fechadoAFor)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao consultar fechamento forçado: ${e.message}", null)
@@ -266,13 +271,17 @@ class RotinaAlarmPlugin : FlutterPlugin {
         }
     }
 
-    private fun iniciarTelaAlarme(context: Context, idAlarme: Int) {
+    private fun iniciarTelaAlarme(
+        context: Context,
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ) {
         // Marca o fluxo como "em andamento" para [RotinaAlarmWakeService]
         // saber (via [RotinaAlarmFluxoState], persistido nativamente)
         // que deve reabrir esta tela caso o usuário desbloqueie o
         // aparelho ou arraste o app para fora dos Recentes antes do PIN
         // correto ser digitado.
-        RotinaAlarmFluxoState.marcarEmAndamento(context, idAlarme)
+        RotinaAlarmFluxoState.marcarEmAndamento(context, idAlarme, tipoAlarme)
         val intent = Intent(context, RotinaCheckinAlarmActivity::class.java).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -280,13 +289,19 @@ class RotinaAlarmPlugin : FlutterPlugin {
                     Intent.FLAG_ACTIVITY_SINGLE_TOP,
             )
             putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+            putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
         }
         context.startActivity(intent)
     }
 
-    private fun criarPendingIntentNativo(context: Context, idAlarme: Int): PendingIntent {
+    private fun criarPendingIntentNativo(
+        context: Context,
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ): PendingIntent {
         val intent = Intent(context, RotinaAlarmNativeReceiver::class.java).apply {
             putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+            putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
@@ -306,7 +321,12 @@ class RotinaAlarmPlugin : FlutterPlugin {
      * revogada pelo usuário (Android 12+/S) — nesse caso, o alarme Dart
      * "normal" ainda tenta funcionar por conta própria.
      */
-    private fun agendarAlarmeNativo(context: Context, idAlarme: Int, epochMillis: Long): Boolean {
+    private fun agendarAlarmeNativo(
+        context: Context,
+        idAlarme: Int,
+        epochMillis: Long,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ): Boolean {
         if (idAlarme < 0 || epochMillis <= 0L) return false
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -314,7 +334,7 @@ class RotinaAlarmPlugin : FlutterPlugin {
             return false
         }
 
-        val pendingIntent = criarPendingIntentNativo(context, idAlarme)
+        val pendingIntent = criarPendingIntentNativo(context, idAlarme, tipoAlarme)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, epochMillis, pendingIntent)
         } else {

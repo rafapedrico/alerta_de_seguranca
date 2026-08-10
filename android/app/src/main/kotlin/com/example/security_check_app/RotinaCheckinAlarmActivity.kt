@@ -150,11 +150,26 @@ class RotinaCheckinAlarmActivity : MainActivity() {
      * Repassa ao Flutter, através da rota inicial padrão do
      * `FlutterActivity` (`window.setInitialRoute`/`getInitialRoute`),
      * o sinal de que este cold start específico deve ir DIRETO para a
-     * tela de confirmação de check-in de rotina (com o botão "Pausar
-     * Alarme"). Ver `main.dart` (`_lerRotaInicialRotinaAlarme`).
+     * tela de confirmação do alarme disparado. Ver `main.dart`.
+     *
+     * GENERALIZAÇÃO (Cronômetro Regressivo, aba Segurança): esta Activity
+     * — antes exclusiva do Alarme de Rotina — passou a ser COMPARTILHADA
+     * pelos dois fluxos, reaproveitando toda a infraestrutura nativa já
+     * validada (Keyguard, Doze, fechamento forçado, reabertura ao
+     * desbloquear — ver [RotinaAlarmWakeService]/[RotinaAlarmPlugin]), em
+     * vez de duplicar uma segunda Activity/Service/Receiver do zero. O
+     * extra [EXTRA_TIPO_ALARME] (lido do próprio `intent`, com
+     * [TIPO_ALARME_ROTINA] como padrão — nenhuma mudança de comportamento
+     * para chamadores antigos que não o enviam) decide qual rota inicial
+     * o lado Dart recebe; o restante da Activity (flags de janela, ciclo
+     * de vida) permanece 100% genérico entre os dois tipos.
      */
     override fun getInitialRoute(): String {
-        return ROTA_INICIAL_ROTINA_ALARME
+        return if (tipoAlarmeDoIntent(intent) == TIPO_ALARME_CRONOMETRO) {
+            ROTA_INICIAL_CRONOMETRO_ALARME
+        } else {
+            ROTA_INICIAL_ROTINA_ALARME
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -190,9 +205,29 @@ class RotinaCheckinAlarmActivity : MainActivity() {
          */
         const val ROTA_INICIAL_ROTINA_ALARME = "/rotina_alarme_confirmacao"
 
-        /** Chave do extra inteiro (id do alarme de rotina) enviado
-         * junto com o [Intent] que abre esta Activity. */
+        /**
+         * Rota inicial equivalente para o Cronômetro Regressivo da aba
+         * Segurança — ver comentário de [getInitialRoute]/[EXTRA_TIPO_ALARME].
+         * Lida no lado Dart (`main.dart`) para navegar direto para
+         * `CronometroDisparadoScreen`.
+         */
+        const val ROTA_INICIAL_CRONOMETRO_ALARME = "/cronometro_alarme_confirmacao"
+
+        /** Chave do extra inteiro (id do alarme de rotina, ou o id
+         * sentinel reservado do Cronômetro — ver `AlarmeService.kt`/
+         * `alarme_service.dart`) enviado junto com o [Intent] que abre
+         * esta Activity. */
         const val EXTRA_ID_ALARME = "id_alarme_rotina"
+
+        /**
+         * Chave do extra de string que identifica qual fluxo disparou
+         * esta Activity: [TIPO_ALARME_ROTINA] (padrão, retrocompatível
+         * com todo código antigo que não envia este extra) ou
+         * [TIPO_ALARME_CRONOMETRO].
+         */
+        const val EXTRA_TIPO_ALARME = "tipo_alarme"
+        const val TIPO_ALARME_ROTINA = "rotina"
+        const val TIPO_ALARME_CRONOMETRO = "cronometro"
 
         /** Extrai o id do alarme de rotina do [intent] recebido, ou
          * `null` se ausente/inválido. */
@@ -200,6 +235,12 @@ class RotinaCheckinAlarmActivity : MainActivity() {
             if (intent == null || !intent.hasExtra(EXTRA_ID_ALARME)) return null
             val valor = intent.getIntExtra(EXTRA_ID_ALARME, -1)
             return if (valor >= 0) valor else null
+        }
+
+        /** Extrai o tipo de alarme do [intent] recebido — [TIPO_ALARME_ROTINA]
+         * quando ausente (retrocompatibilidade total). */
+        fun tipoAlarmeDoIntent(intent: Intent?): String {
+            return intent?.getStringExtra(EXTRA_TIPO_ALARME) ?: TIPO_ALARME_ROTINA
         }
     }
 }

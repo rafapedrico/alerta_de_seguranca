@@ -33,9 +33,11 @@ class RotinaAlarmNativeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val idAlarme = intent.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)
         if (idAlarme < 0) return
+        val tipoAlarme = RotinaCheckinAlarmActivity.tipoAlarmeDoIntent(intent)
 
         val serviceIntent = Intent(context, RotinaAlarmWakeService::class.java).apply {
             putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+            putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
         }
 
         try {

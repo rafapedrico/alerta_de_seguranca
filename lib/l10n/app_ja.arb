@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOSが発動されました！緊急連絡先に通知されました。",
   "segurancaAlertaEnviadoTitulo": "アラートを送信しました",
   "segurancaAlertaEnviadoConteudo": "登録された番号に位置情報を含むメッセージが送信されました。",
+  "cronometroAtivoDescricao": "セキュリティカウントダウンタイマーが作動しました。\n解除するにはパスワードを入力してください。",
+  "historicoCronometroFalhaMotivo": "作動後180秒の猶予時間内にセキュリティカウントダウンタイマーが解除されませんでした。",
+  "historicoCronometroPinIncorretoMotivo": "セキュリティカウントダウンタイマーの解除を試みる際にPINが3回連続で間違って入力されました。",
+  "historicoCronometroFechamentoForcadoMotivo": "セキュリティカウントダウンタイマーがまだ鳴っている間にアプリが強制終了され、解除の確認が行われませんでした。",
   "segurancaTituloSecaoTempo": "到着までの時間",
   "segurancaServidorVerificando": "サーバーを確認中...",
   "segurancaServidorOnline": "サーバーオンライン",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}：定期アラームがPINの確認なしに(上にスワイプして)解除されました。",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "定期チェックイン",
   "notifCanalCheckinDescricao": "登録済みの定期アラームに関する安全チェックインのリマインダー。",
   "notifCanalAlertaRecebidoNome": "受信した緊急アラート",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "「モニタリング」タブから送信された位置情報共有リクエストへの返信。",
   "notifCanalSolicitacaoMonitoramentoNome": "受信した位置情報リクエスト",
   "notifCanalSolicitacaoMonitoramentoDescricao": "家族があなたのリアルタイム位置情報を見ようとリクエストした際の優先アラート — 承認または拒否が必要です。",
+  "notifCanalAlertaEnviadoNome": "アラート送信確認",
+  "notifCanalAlertaEnviadoDescricao": "位置情報付きの緊急アラートが登録済みの連絡先に送信されたことを確認します。",
+  "notifDescarteAlertaEnviadoTitulo": "アラートを送信しました",
+  "notifDescarteAlertaEnviadoCorpo": "位置情報付きのアラートメッセージが登録済みの連絡先に送信されました。",
   "notifCheckinCorpo": "タップしてアラームをキャンセル。",
   "notifAlarmeSegurancaTitulo": "セキュリティアラーム",
   "notifAlarmeSegurancaCorpo": "安全を確認するか、アラームを一時停止してください！",

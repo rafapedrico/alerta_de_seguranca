@@ -67,6 +67,7 @@ Future<void> exibirDialogoPin({
   Future<void> Function()? aoExpirarTempoLimite,
   bool mostrarBotaoCancelar = false,
   VoidCallback? aoCancelar,
+  Future<void> Function()? aoDescartarPorArraste,
 }) {
   return showDialog<void>(
     context: context,
@@ -82,6 +83,7 @@ Future<void> exibirDialogoPin({
         aoExpirarTempoLimite: aoExpirarTempoLimite,
         mostrarBotaoCancelar: mostrarBotaoCancelar,
         aoCancelar: aoCancelar,
+        aoDescartarPorArraste: aoDescartarPorArraste,
       );
     },
   );
@@ -99,6 +101,7 @@ class PinDialogContent extends StatefulWidget {
     this.aoExpirarTempoLimite,
     this.mostrarBotaoCancelar = false,
     this.aoCancelar,
+    this.aoDescartarPorArraste,
   });
 
   final String? pinEsperado;
@@ -141,6 +144,22 @@ class PinDialogContent extends StatefulWidget {
   /// encarrega de fechar (`Navigator.pop`) antes de chamar este
   /// callback.
   final VoidCallback? aoCancelar;
+
+  /// Callback OPCIONAL, acionado quando o usuário arrasta/joga o próprio
+  /// diálogo (teclado de PIN) para cima com velocidade suficiente (mesmo
+  /// limiar usado na tela de confirmação do Alarme de Rotina — ver
+  /// `alarme_disparado_screen.dart`) — gesto de DESCARTE, distinto do
+  /// gesto de sistema "tirar o app dos Recentes". Especificação do
+  /// usuário: só o Alarme de Rotina usa isto (`null` em todos os demais
+  /// chamadores, inclusive o Cronômetro da Segurança), então por padrão
+  /// (`null`) este widget não ganha NENHUM gesto novo — comportamento
+  /// 100% preservado para quem não passar este parâmetro. Quando
+  /// informado, o próprio diálogo se fecha (`Navigator.pop`) e cancela o
+  /// timer do limite duro ANTES de chamar o callback — toda a lógica real
+  /// (parar som, devolver a tela ao Android, disparar o alerta) fica a
+  /// cargo de quem fornece o callback, igual ao padrão já usado em
+  /// [aoAtingirLimiteDeErros]/[aoExpirarTempoLimite].
+  final Future<void> Function()? aoDescartarPorArraste;
 
   @override
   State<PinDialogContent> createState() => _PinDialogContentState();
@@ -209,6 +228,23 @@ class _PinDialogContentState extends State<PinDialogContent> {
         await widget.aoExpirarTempoLimite!.call();
       } catch (_) {}
     }
+  }
+
+  /// Aciona [widget.aoDescartarPorArraste] (se informado) — ver
+  /// documentação completa no parâmetro. Fecha o diálogo e cancela o
+  /// timer do limite duro ANTES de chamar o callback, mesmo padrão de
+  /// [_acionarLimiteDuroExpirado]/`_verificarPin`. Protegido contra
+  /// disparo duplo (ex: o usuário conseguir arrastar de novo antes do
+  /// `pop` concluir).
+  bool _descarteJaAcionado = false;
+  void _descartarPorArraste() {
+    if (widget.aoDescartarPorArraste == null || _descarteJaAcionado) return;
+    _descarteJaAcionado = true;
+    _timerLimiteDuro?.cancel();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    unawaited(widget.aoDescartarPorArraste!.call());
   }
 
   void _pressionarTecla(String caractere) {
@@ -286,7 +322,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
         _segundosRestantesLimiteDuro ?? widget.segundosTolerancia;
     final bool exibirContagem = segundosParaExibir != null;
 
-    return Dialog(
+    final Widget dialogo = Dialog(
       backgroundColor: const Color(0xFF1A1A1A),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -370,6 +406,24 @@ class _PinDialogContentState extends State<PinDialogContent> {
           ],
         ),
       ),
+    );
+
+    // Gesto de descarte (arrastar para cima) — só anexado quando o
+    // chamador informa [widget.aoDescartarPorArraste] (opt-in, ver
+    // documentação do parâmetro); nos demais casos o diálogo continua
+    // exatamente como antes, sem nenhum GestureDetector extra. Mesmo
+    // limiar de velocidade já validado na tela de confirmação do Alarme
+    // de Rotina (`alarme_disparado_screen.dart`).
+    if (widget.aoDescartarPorArraste == null) return dialogo;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: (details) {
+        if (details.velocity.pixelsPerSecond.dy < -250) {
+          _descartarPorArraste();
+        }
+      },
+      child: dialogo,
     );
   }
 

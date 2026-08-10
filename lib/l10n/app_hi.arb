@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS सक्रिय किया गया! आपातकालीन संपर्कों को सूचित कर दिया गया है।",
   "segurancaAlertaEnviadoTitulo": "अलर्ट भेजा गया",
   "segurancaAlertaEnviadoConteudo": "पंजीकृत नंबरों पर स्थान के साथ एक संदेश भेजा गया है।",
+  "cronometroAtivoDescricao": "सुरक्षा काउंटडाउन टाइमर बज उठा।\nनिष्क्रिय करने के लिए अपना पासवर्ड दर्ज करें।",
+  "historicoCronometroFalhaMotivo": "ट्रिगर होने के बाद 180 सेकंड की छूट अवधि के भीतर सुरक्षा काउंटडाउन टाइमर को निष्क्रिय नहीं किया गया।",
+  "historicoCronometroPinIncorretoMotivo": "सुरक्षा काउंटडाउन टाइमर को निष्क्रिय करने का प्रयास करते समय पिन लगातार 3 बार गलत दर्ज किया गया।",
+  "historicoCronometroFechamentoForcadoMotivo": "सुरक्षा काउंटडाउन टाइमर अभी भी बज रहा था, तभी ऐप को निष्क्रिय करने की पुष्टि किए बिना जबरन बंद कर दिया गया।",
   "segurancaTituloSecaoTempo": "मुझे पहुंचने में कितना समय लगेगा",
   "segurancaServidorVerificando": "सर्वर की जांच हो रही है...",
   "segurancaServidorOnline": "सर्वर ऑनलाइन",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: नियमित अलार्म को पिन की पुष्टि किए बिना खारिज कर दिया गया (ऊपर स्वाइप करके)।",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "नियमित चेक-इन",
   "notifCanalCheckinDescricao": "पंजीकृत नियमित अलार्म के लिए सुरक्षा चेक-इन रिमाइंडर।",
   "notifCanalAlertaRecebidoNome": "प्राप्त आपातकालीन अलर्ट",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "मॉनिटरिंग टैब से भेजे गए स्थान-साझाकरण अनुरोधों के उत्तर।",
   "notifCanalSolicitacaoMonitoramentoNome": "प्राप्त स्थान अनुरोध",
   "notifCanalSolicitacaoMonitoramentoDescricao": "जब कोई परिवार का सदस्य आपका वास्तविक समय का स्थान देखने का अनुरोध करता है तो प्राथमिकता अलर्ट — स्वीकार या अस्वीकार आवश्यक है।",
+  "notifCanalAlertaEnviadoNome": "अलर्ट भेजे जाने की पुष्टि",
+  "notifCanalAlertaEnviadoDescricao": "पुष्टि करता है कि स्थान सहित आपातकालीन अलर्ट पंजीकृत संपर्कों को भेज दिया गया है।",
+  "notifDescarteAlertaEnviadoTitulo": "अलर्ट भेज दिया गया",
+  "notifDescarteAlertaEnviadoCorpo": "आपके स्थान सहित अलर्ट संदेश पंजीकृत संपर्कों को भेज दिया गया।",
   "notifCheckinCorpo": "अलार्म रद्द करने के लिए टैप करें।",
   "notifAlarmeSegurancaTitulo": "सुरक्षा अलार्म",
   "notifAlarmeSegurancaCorpo": "अपनी सुरक्षा की पुष्टि करें या अलार्म रोकें!",

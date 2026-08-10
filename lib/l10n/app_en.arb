@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS triggered! Emergency contacts notified.",
   "segurancaAlertaEnviadoTitulo": "Alert sent",
   "segurancaAlertaEnviadoConteudo": "A message with your location has been sent to the registered numbers.",
+  "cronometroAtivoDescricao": "Security countdown timer triggered.\nEnter your password to disarm.",
+  "historicoCronometroFalhaMotivo": "the security countdown timer was not disarmed within the 180-second tolerance window after triggering.",
+  "historicoCronometroPinIncorretoMotivo": "the PIN was entered incorrectly 3 times in a row while trying to disarm the security countdown timer.",
+  "historicoCronometroFechamentoForcadoMotivo": "the app was force-closed while the security countdown timer was still ringing, without disarm confirmation.",
   "segurancaTituloSecaoTempo": "How long until I arrive",
   "segurancaServidorVerificando": "Checking server...",
   "segurancaServidorOnline": "Server Online",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: the routine alarm was dismissed (swiped away) without PIN confirmation.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Routine Check-in",
   "notifCanalCheckinDescricao": "Security check-in reminders for the registered routine alarms.",
   "notifCanalAlertaRecebidoNome": "Emergency Alert Received",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Responses to location-sharing requests sent from the Monitoring tab.",
   "notifCanalSolicitacaoMonitoramentoNome": "Location Request Received",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Priority alert when a family member requests to see your real-time location — requires Accept or Decline.",
+  "notifCanalAlertaEnviadoNome": "Alert Sent Confirmation",
+  "notifCanalAlertaEnviadoDescricao": "Confirms that an emergency alert with location was sent to the registered contacts.",
+  "notifDescarteAlertaEnviadoTitulo": "Alert sent",
+  "notifDescarteAlertaEnviadoCorpo": "The alert message with your location was sent to the registered contacts.",
   "notifCheckinCorpo": "Tap to cancel the alarm.",
   "notifAlarmeSegurancaTitulo": "Security Alarm",
   "notifAlarmeSegurancaCorpo": "Confirm you're safe or pause the alarm!",

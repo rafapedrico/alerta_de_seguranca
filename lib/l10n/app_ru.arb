@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS отправлен! Экстренные контакты оповещены.",
   "segurancaAlertaEnviadoTitulo": "Оповещение отправлено",
   "segurancaAlertaEnviadoConteudo": "Сообщение с местоположением отправлено на зарегистрированные номера.",
+  "cronometroAtivoDescricao": "Сработал таймер безопасности.\nВведите пароль, чтобы отключить.",
+  "historicoCronometroFalhaMotivo": "таймер безопасности не был отключён в течение 180 секунд допустимого времени после срабатывания.",
+  "historicoCronometroPinIncorretoMotivo": "PIN-код был введён неверно 3 раза подряд при попытке отключить таймер безопасности.",
+  "historicoCronometroFechamentoForcadoMotivo": "приложение было принудительно закрыто, пока таймер безопасности ещё звонил, без подтверждения отключения.",
   "segurancaTituloSecaoTempo": "Через сколько я прибуду",
   "segurancaServidorVerificando": "Проверка сервера...",
   "segurancaServidorOnline": "Сервер в сети",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: плановый будильник был отклонён (смахиванием вверх) без подтверждения PIN-кода.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Плановая проверка",
   "notifCanalCheckinDescricao": "Напоминания о проверке безопасности для зарегистрированных плановых будильников.",
   "notifCanalAlertaRecebidoNome": "Получено экстренное оповещение",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Ответы на запросы совместного доступа к местоположению, отправленные со вкладки «Мониторинг».",
   "notifCanalSolicitacaoMonitoramentoNome": "Получен запрос местоположения",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Приоритетное оповещение, когда член семьи запрашивает ваше местоположение в реальном времени — требуется Принять или Отклонить.",
+  "notifCanalAlertaEnviadoNome": "Подтверждение отправки оповещения",
+  "notifCanalAlertaEnviadoDescricao": "Подтверждает, что оповещение о чрезвычайной ситуации с местоположением было отправлено зарегистрированным контактам.",
+  "notifDescarteAlertaEnviadoTitulo": "Оповещение отправлено",
+  "notifDescarteAlertaEnviadoCorpo": "Сообщение оповещения с вашим местоположением было отправлено зарегистрированным контактам.",
   "notifCheckinCorpo": "Нажмите, чтобы отменить будильник.",
   "notifAlarmeSegurancaTitulo": "Сигнал безопасности",
   "notifAlarmeSegurancaCorpo": "Подтвердите безопасность или приостановите будильник!",

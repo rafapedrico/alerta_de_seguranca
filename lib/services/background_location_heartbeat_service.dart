@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/alarme_agendado_model.dart';
 import 'alarme_agendado_cloud_service.dart';
+import 'alarme_service.dart';
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 import 'location_service.dart';
@@ -197,8 +198,15 @@ class BackgroundLocationHeartbeatService {
 
       // Cronômetro de check-in ATIVO da aba Segurança (ver
       // [registrarCheckinAtivo]), se houver — mesma janela de registro
-      // (48h) e de localização (2h) usada pelos alarmes de rotina, porém
-      // com [prazoFinal] == [proximoDisparo] (sem tolerância extra).
+      // (48h) e de localização (2h) usada pelos alarmes de rotina.
+      // [prazoFinal] = [checkinDisparo] + 180s (reespecificação do
+      // usuário, 2026-08-10): ao zerar, o Cronômetro concede uma
+      // tolerância sonora de 180 segundos com o teclado de PIN aberto
+      // (ver `AlarmeService.duracaoJanelaFinalCronometro`/
+      // `cronometro_disparado_screen.dart`) antes de qualquer alerta real
+      // ser disparado — o mesmo prazo usado por
+      // `functions/scheduledAlarmMonitor.js` como rede de segurança
+      // offline precisa refletir esse fim real, não mais o zero puro.
       final checkinDisparo = _checkinDataHoraDisparoAtiva;
       if (checkinDisparo != null) {
         final faltam = checkinDisparo.difference(agora);
@@ -206,7 +214,8 @@ class BackgroundLocationHeartbeatService {
           candidatos.add((
             idAlarme: idAlarmeCheckinSeguranca,
             proximoDisparo: checkinDisparo,
-            prazoFinal: checkinDisparo,
+            prazoFinal:
+                checkinDisparo.add(AlarmeService.duracaoJanelaFinalCronometro),
             dentroDaJanelaDeLocalizacao: faltam <= janelaLocalizacao2h,
             etiqueta: 'Check-in de Segurança',
             contextoPersonalizado: _checkinContextoAtivo,

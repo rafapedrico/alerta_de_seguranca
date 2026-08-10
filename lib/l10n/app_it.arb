@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS attivato! Contatti di emergenza avvisati.",
   "segurancaAlertaEnviadoTitulo": "Allerta inviata",
   "segurancaAlertaEnviadoConteudo": "Un messaggio con la posizione è stato inviato ai numeri registrati.",
+  "cronometroAtivoDescricao": "Timer di sicurezza scattato.\nInserisci la tua password per disattivare.",
+  "historicoCronometroFalhaMotivo": "il timer di sicurezza non è stato disattivato entro i 180 secondi di tolleranza dopo l'attivazione.",
+  "historicoCronometroPinIncorretoMotivo": "il PIN è stato inserito in modo errato 3 volte di seguito nel tentativo di disattivare il timer di sicurezza.",
+  "historicoCronometroFechamentoForcadoMotivo": "l'app è stata chiusa forzatamente mentre il timer di sicurezza stava ancora suonando, senza conferma della disattivazione.",
   "segurancaTituloSecaoTempo": "Tra quanto arriverò",
   "segurancaServidorVerificando": "Verifica del server...",
   "segurancaServidorOnline": "Server Online",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: l'allarme di routine è stato ignorato (trascinato verso l'alto) senza conferma del PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Check-in di Routine",
   "notifCanalCheckinDescricao": "Promemoria di check-in di sicurezza per gli allarmi di routine registrati.",
   "notifCanalAlertaRecebidoNome": "Avviso di Emergenza Ricevuto",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Risposte alle richieste di condivisione della posizione inviate dalla scheda Monitoraggio.",
   "notifCanalSolicitacaoMonitoramentoNome": "Richiesta di Posizione Ricevuta",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Avviso prioritario quando un familiare richiede di vedere la tua posizione in tempo reale — richiede Accetta o Rifiuta.",
+  "notifCanalAlertaEnviadoNome": "Conferma di avviso inviato",
+  "notifCanalAlertaEnviadoDescricao": "Conferma che un avviso di emergenza con la posizione è stato inviato ai contatti registrati.",
+  "notifDescarteAlertaEnviadoTitulo": "Avviso inviato",
+  "notifDescarteAlertaEnviadoCorpo": "Il messaggio di avviso con la tua posizione è stato inviato ai contatti registrati.",
   "notifCheckinCorpo": "Tocca per annullare l'allarme.",
   "notifAlarmeSegurancaTitulo": "Allarme di Sicurezza",
   "notifAlarmeSegurancaCorpo": "Conferma la tua sicurezza o metti in pausa l'allarme!",

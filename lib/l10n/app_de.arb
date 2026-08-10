@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS ausgelöst! Notfallkontakte benachrichtigt.",
   "segurancaAlertaEnviadoTitulo": "Alarm gesendet",
   "segurancaAlertaEnviadoConteudo": "Eine Nachricht mit dem Standort wurde an die registrierten Nummern gesendet.",
+  "cronometroAtivoDescricao": "Sicherheits-Countdown ausgelöst.\nGeben Sie Ihr Passwort ein, um zu entschärfen.",
+  "historicoCronometroFalhaMotivo": "der Sicherheits-Countdown wurde nicht innerhalb der 180-sekündigen Toleranzfrist nach der Auslösung entschärft.",
+  "historicoCronometroPinIncorretoMotivo": "die PIN wurde beim Versuch, den Sicherheits-Countdown zu entschärfen, 3 Mal hintereinander falsch eingegeben.",
+  "historicoCronometroFechamentoForcadoMotivo": "die App wurde zwangsweise geschlossen, während der Sicherheits-Countdown noch klingelte, ohne Bestätigung der Entschärfung.",
   "segurancaTituloSecaoTempo": "Wie lange bis ich ankomme",
   "segurancaServidorVerificando": "Server wird überprüft...",
   "segurancaServidorOnline": "Server Online",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: Der Routine-Alarm wurde verworfen (nach oben gewischt) ohne PIN-Bestätigung.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "Routine-Check-in",
   "notifCanalCheckinDescricao": "Erinnerungen an Sicherheits-Check-ins für die registrierten Routinealarme.",
   "notifCanalAlertaRecebidoNome": "Notfallalarm Empfangen",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "Antworten auf Standortfreigabeanfragen, die im Tab „Überwachung“ gesendet wurden.",
   "notifCanalSolicitacaoMonitoramentoNome": "Standortanfrage Empfangen",
   "notifCanalSolicitacaoMonitoramentoDescricao": "Prioritätsalarm, wenn ein Familienmitglied Ihren Echtzeit-Standort sehen möchte — erfordert Annehmen oder Ablehnen.",
+  "notifCanalAlertaEnviadoNome": "Bestätigung: Alarm gesendet",
+  "notifCanalAlertaEnviadoDescricao": "Bestätigt, dass ein Notfallalarm mit Standort an die registrierten Kontakte gesendet wurde.",
+  "notifDescarteAlertaEnviadoTitulo": "Alarm gesendet",
+  "notifDescarteAlertaEnviadoCorpo": "Die Alarmnachricht mit Ihrem Standort wurde an die registrierten Kontakte gesendet.",
   "notifCheckinCorpo": "Tippen, um den Alarm abzubrechen.",
   "notifAlarmeSegurancaTitulo": "Sicherheitsalarm",
   "notifAlarmeSegurancaCorpo": "Bestätigen Sie Ihre Sicherheit oder pausieren Sie den Alarm!",

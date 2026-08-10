@@ -438,10 +438,18 @@ class RotinaAlarmeService {
   /// usuário arrastou o app para fora dos Recentes enquanto ele ainda
   /// tocava sem confirmação; `false` (inclusive em caso de erro) é o
   /// caminho normal (disparo/reabertura por qualquer outro motivo).
-  static Future<bool> consumirFechamentoForcado() async {
+  /// [tipoAlarme] opcional: quando informado (ex: `'cronometro'`, ver
+  /// `CronometroDisparadoScreen`), só consome a flag se o tipo do alarme
+  /// atualmente em andamento no lado nativo bater — ver documentação
+  /// completa em `RotinaAlarmFluxoState.consumirFechamentoForcado` (Kotlin).
+  /// `null` (padrão, usado pelo Alarme de Rotina) preserva o
+  /// comportamento histórico: consome incondicionalmente.
+  static Future<bool> consumirFechamentoForcado({String? tipoAlarme}) async {
     try {
-      final resultado =
-          await _canalRotinaAlarme.invokeMethod<bool>('consumirFechamentoForcado');
+      final resultado = await _canalRotinaAlarme.invokeMethod<bool>(
+        'consumirFechamentoForcado',
+        {'tipoAlarme': tipoAlarme},
+      );
       return resultado ?? false;
     } catch (e) {
       debugPrint('⚠️ Falha ao consultar fechamento forçado: $e');

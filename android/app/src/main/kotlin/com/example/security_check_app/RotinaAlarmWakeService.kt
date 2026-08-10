@@ -93,20 +93,29 @@ class RotinaAlarmWakeService : Service() {
             // reabrir uma tela de alarme já encerrado por qualquer
             // desbloqueio/tela-ligada subsequente e não relacionado.
             if (emAndamento) {
-                iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+                iniciarTelaDoAlarme(
+                    RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
+                    RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
+                )
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)}")
+        val tipoAlarme = intent?.getStringExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME)
+            ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+        Log.d(
+            TAG,
+            "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)} " +
+                "tipoAlarme=$tipoAlarme",
+        )
         iniciarEmForeground()
         adquirirWakeLock()
         registrarReceiverDeDesbloqueio()
 
         idAlarmeAtual = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
-        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual)
-        iniciarTelaDoAlarme(idAlarmeAtual)
+        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual, tipoAlarme)
+        iniciarTelaDoAlarme(idAlarmeAtual, tipoAlarme)
 
         // START_NOT_STICKY: não faz sentido o Android recriar este Service
         // sozinho sem o extra do idAlarme — o próprio alarme nativo (ou o
@@ -137,7 +146,10 @@ class RotinaAlarmWakeService : Service() {
                 val aindaEmAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
                 Log.d(TAG, "onTaskRemoved (delayed 500ms): aindaEmAndamento=$aindaEmAndamento")
                 if (aindaEmAndamento) {
-                    iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+                    iniciarTelaDoAlarme(
+                        RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
+                        RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
+                    )
                 }
             }, 500L)
         }
@@ -175,8 +187,11 @@ class RotinaAlarmWakeService : Service() {
         }
     }
 
-    private fun iniciarTelaDoAlarme(idAlarme: Int) {
-        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme")
+    private fun iniciarTelaDoAlarme(
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ) {
+        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
         try {
             val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
                 addFlags(
@@ -185,6 +200,7 @@ class RotinaAlarmWakeService : Service() {
                         Intent.FLAG_ACTIVITY_SINGLE_TOP,
                 )
                 putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
             }
             startActivity(intent)
         } catch (e: Exception) {
@@ -329,15 +345,41 @@ object RotinaAlarmFluxoState {
     private const val CHAVE_ID_ALARME = "id_alarme_atual"
     private const val CHAVE_FECHAMENTO_FORCADO = "fechamento_forcado"
 
-    fun marcarEmAndamento(context: Context, idAlarme: Int) {
+    /**
+     * Tipo do alarme atualmente em andamento — [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA]
+     * (padrão, retrocompatível) ou [RotinaCheckinAlarmActivity.TIPO_ALARME_CRONOMETRO].
+     * Generalização que permite este MESMO estado nativo (e o restante da
+     * infraestrutura de [RotinaAlarmWakeService]) ser compartilhado pelo
+     * Cronômetro Regressivo da aba Segurança, sem duplicar nenhuma classe.
+     */
+    private const val CHAVE_TIPO_ALARME = "tipo_alarme_atual"
+
+    fun marcarEmAndamento(
+        context: Context,
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ) {
         try {
-            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme")
+            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(CHAVE_EM_ANDAMENTO, true)
                 .putInt(CHAVE_ID_ALARME, idAlarme)
+                .putString(CHAVE_TIPO_ALARME, tipoAlarme)
                 .apply()
         } catch (_: Exception) {
+        }
+    }
+
+    /** Tipo do alarme atualmente em andamento (ver [CHAVE_TIPO_ALARME]) —
+     * [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA] se ausente/erro. */
+    fun tipoAlarmeAtual(context: Context): String {
+        return try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(CHAVE_TIPO_ALARME, RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA)
+                ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+        } catch (_: Exception) {
+            RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
         }
     }
 
@@ -394,9 +436,20 @@ object RotinaAlarmFluxoState {
      * processado uma única vez, mesmo que a tela seja recriada depois
      * por outro motivo (ex: desbloqueio de tela) antes do fluxo terminar.
      */
-    fun consumirFechamentoForcado(context: Context): Boolean {
+    /**
+     * [tipoEsperado]: só consome (lê E limpa) a flag se o tipo do alarme
+     * ATUALMENTE em andamento (ver [tipoAlarmeAtual]) bater com o
+     * chamador — evita que uma instância de [RotinaCheckinAlarmActivity]
+     * do Alarme de Rotina consuma por engano um fechamento forçado que
+     * era, na verdade, do Cronômetro (ou vice-versa), no raro caso dos
+     * dois estarem ativos ao mesmo tempo. Retrocompatível: chamadores que
+     * não informam [tipoEsperado] (`null`) continuam consumindo a flag
+     * incondicionalmente, como antes.
+     */
+    fun consumirFechamentoForcado(context: Context, tipoEsperado: String? = null): Boolean {
         return try {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (tipoEsperado != null && tipoAlarmeAtual(context) != tipoEsperado) return false
             val valor = prefs.getBoolean(CHAVE_FECHAMENTO_FORCADO, false)
             if (valor) {
                 prefs.edit().putBoolean(CHAVE_FECHAMENTO_FORCADO, false).apply()

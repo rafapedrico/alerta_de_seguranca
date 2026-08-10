@@ -145,6 +145,10 @@
   "segurancaSosDisparado": "🚨 SOS已触发！紧急联系人已收到通知。",
   "segurancaAlertaEnviadoTitulo": "警报已发送",
   "segurancaAlertaEnviadoConteudo": "包含位置信息的消息已发送至已注册的号码。",
+  "cronometroAtivoDescricao": "安全倒计时器已触发。\n请输入密码以解除。",
+  "historicoCronometroFalhaMotivo": "触发后未在180秒宽限期内解除安全倒计时器。",
+  "historicoCronometroPinIncorretoMotivo": "尝试解除安全倒计时器时,PIN连续3次输入错误。",
+  "historicoCronometroFechamentoForcadoMotivo": "安全倒计时器仍在响铃时应用被强制关闭,未确认解除。",
   "segurancaTituloSecaoTempo": "我还有多久到达",
   "segurancaServidorVerificando": "正在检查服务器...",
   "segurancaServidorOnline": "服务器在线",
@@ -688,6 +692,14 @@
       }
     }
   },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}：常规闹钟在未确认PIN的情况下被划走(向上滑动)忽略。",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
   "notifCanalCheckinNome": "常规签到",
   "notifCanalCheckinDescricao": "已登记常规闹钟的安全签到提醒。",
   "notifCanalAlertaRecebidoNome": "收到的紧急警报",
@@ -696,6 +708,10 @@
   "notifCanalMonitoramentoDescricao": "“监控”标签页发送的位置共享请求的回复。",
   "notifCanalSolicitacaoMonitoramentoNome": "收到的位置请求",
   "notifCanalSolicitacaoMonitoramentoDescricao": "当家庭成员请求查看您的实时位置时的优先警报 — 需要接受或拒绝。",
+  "notifCanalAlertaEnviadoNome": "警报发送确认",
+  "notifCanalAlertaEnviadoDescricao": "确认已将带位置信息的紧急警报发送给已登记的联系人。",
+  "notifDescarteAlertaEnviadoTitulo": "警报已发送",
+  "notifDescarteAlertaEnviadoCorpo": "包含您位置信息的警报消息已发送给已登记的联系人。",
   "notifCheckinCorpo": "点击以取消闹钟。",
   "notifAlarmeSegurancaTitulo": "安全闹钟",
   "notifAlarmeSegurancaCorpo": "确认您的安全或暂停闹钟！",
