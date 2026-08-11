@@ -55,7 +55,14 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 /// se fecha sozinho por causa disso — continua aberto e funcional,
 /// aceitando o PIN correto mesmo depois do tempo esgotado — apenas o
 /// callback de expiração é dado como responsável por qualquer ação real
-/// (ex: disparar um alerta de emergência).
+/// (ex: disparar um alerta de emergência). Por ser um limite de
+/// SEGURANÇA, o botão/gesto Voltar do sistema Android também fica
+/// bloqueado enquanto ele estiver ativo (diferente do comportamento
+/// padrão sem [segundosLimiteDuro], onde Voltar fecha o diálogo
+/// normalmente — ver `familia_tab.dart`): sem isso, Voltar cancelava o
+/// [Timer] interno da contagem (`dispose()`) sem nunca acionar
+/// [aoExpirarTempoLimite], deixando o alarme tocando indefinidamente sem
+/// jamais disparar o alerta.
 Future<void> exibirDialogoPin({
   required BuildContext context,
   required String? pinEsperado,
@@ -414,16 +421,42 @@ class _PinDialogContentState extends State<PinDialogContent> {
     // exatamente como antes, sem nenhum GestureDetector extra. Mesmo
     // limiar de velocidade já validado na tela de confirmação do Alarme
     // de Rotina (`alarme_disparado_screen.dart`).
-    if (widget.aoDescartarPorArraste == null) return dialogo;
+    final Widget resultado = widget.aoDescartarPorArraste == null
+        ? dialogo
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragEnd: (details) {
+              if (details.velocity.pixelsPerSecond.dy < -250) {
+                _descartarPorArraste();
+              }
+            },
+            child: dialogo,
+          );
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragEnd: (details) {
-        if (details.velocity.pixelsPerSecond.dy < -250) {
-          _descartarPorArraste();
-        }
-      },
-      child: dialogo,
+    // CORREÇÃO (bug real reportado 2026-08-11): quando há um limite DURO
+    // de tempo ([widget.segundosLimiteDuro] != null — Cronômetro
+    // Regressivo e fase final do Alarme de Rotina), o botão/gesto de
+    // VOLTAR do sistema Android conseguia fechar este diálogo mesmo com
+    // `barrierDismissible: false` (que só bloqueia toque FORA do
+    // diálogo, nunca o botão/gesto Voltar). Como o `dispose()` deste
+    // State cancela [_timerLimiteDuro] junto, isso apagava silenciosamente
+    // a contagem regressiva de segurança: o app só reagia tocando o som
+    // de novo (ver `CronometroDisparadoScreen._abrirTecladoPin`), sem
+    // jamais dispatar o alerta de emergência, persistir o histórico ou
+    // exibir a confirmação de envio — o cronômetro de 180s simplesmente
+    // travava tocando som para sempre. Bloquear o Voltar do sistema
+    // exclusivamente quando existe esse limite duro fecha a brecha sem
+    // afetar os demais chamadores (ex: `FamiliaTab`/`SegurancaTab`, que
+    // não usam [segundosLimiteDuro] e continuam permitindo Voltar como
+    // cancelamento, documentado em `familia_tab.dart`), nem os fechamentos
+    // programáticos já existentes (PIN correto, alerta já disparado,
+    // gesto de arraste) — todos usam `Navigator.pop()` diretamente, que
+    // [PopScope] com `canPop: false` NUNCA intercepta.
+    if (widget.segundosLimiteDuro == null) return resultado;
+
+    return PopScope(
+      canPop: false,
+      child: resultado,
     );
   }
 
