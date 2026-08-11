@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Войти через Google",
   "loginSocialFacebookTooltip": "Войти через Facebook",
   "loginSocialAppleTooltip": "Войти через Apple",
+  "loginLimparSessaoBotao": "Очистить сеанс входа",
+  "loginLimparSessaoConfirmacao": "Сеанс социального входа очищен. Попробуйте войти снова.",
   "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа."
 }

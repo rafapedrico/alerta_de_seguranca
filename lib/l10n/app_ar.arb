@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "تسجيل الدخول عبر Google",
   "loginSocialFacebookTooltip": "تسجيل الدخول عبر Facebook",
   "loginSocialAppleTooltip": "تسجيل الدخول عبر Apple",
+  "loginLimparSessaoBotao": "مسح جلسة الدخول",
+  "loginLimparSessaoConfirmacao": "تم مسح جلسة الدخول الاجتماعي. حاول تسجيل الدخول مرة أخرى.",
   "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة."
 }

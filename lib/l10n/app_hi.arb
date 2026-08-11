@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Google से साइन इन करें",
   "loginSocialFacebookTooltip": "Facebook से साइन इन करें",
   "loginSocialAppleTooltip": "Apple से साइन इन करें",
+  "loginLimparSessaoBotao": "लॉगिन सत्र साफ़ करें",
+  "loginLimparSessaoConfirmacao": "सोशल लॉगिन सत्र साफ़ हो गया। फिर से लॉगिन करने का प्रयास करें।",
   "loginSocialContaExistente": "इस ईमेल के साथ पहले से ही किसी अन्य साइन-इन विधि का उपयोग करने वाला खाता मौजूद है।"
 }

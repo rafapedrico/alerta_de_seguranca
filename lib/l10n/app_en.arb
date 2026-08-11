@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Sign in with Google",
   "loginSocialFacebookTooltip": "Sign in with Facebook",
   "loginSocialAppleTooltip": "Sign in with Apple",
+  "loginLimparSessaoBotao": "Clear login session",
+  "loginLimparSessaoConfirmacao": "Social login session cleared. Try signing in again.",
   "loginSocialContaExistente": "An account with this email already exists using a different sign-in method."
 }

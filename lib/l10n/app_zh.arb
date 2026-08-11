@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "使用 Google 登录",
   "loginSocialFacebookTooltip": "使用 Facebook 登录",
   "loginSocialAppleTooltip": "使用 Apple 登录",
+  "loginLimparSessaoBotao": "清除登录会话",
+  "loginLimparSessaoConfirmacao": "社交登录会话已清除,请重新尝试登录。",
   "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。"
 }

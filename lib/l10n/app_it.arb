@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Accedi con Google",
   "loginSocialFacebookTooltip": "Accedi con Facebook",
   "loginSocialAppleTooltip": "Accedi con Apple",
+  "loginLimparSessaoBotao": "Cancella sessione di accesso",
+  "loginLimparSessaoConfirmacao": "Sessione di accesso social cancellata. Prova ad accedere di nuovo.",
   "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso."
 }

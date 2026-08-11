@@ -1005,5 +1005,7 @@
   "loginSocialGoogleTooltip": "Entrar com Google",
   "loginSocialFacebookTooltip": "Entrar com Facebook",
   "loginSocialAppleTooltip": "Entrar com Apple",
+  "loginLimparSessaoBotao": "Limpar sessão de login",
+  "loginLimparSessaoConfirmacao": "Sessão de login social limpa. Tente entrar novamente.",
   "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login."
 }

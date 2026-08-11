@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Iniciar sesión con Google",
   "loginSocialFacebookTooltip": "Iniciar sesión con Facebook",
   "loginSocialAppleTooltip": "Iniciar sesión con Apple",
+  "loginLimparSessaoBotao": "Borrar sesión de inicio",
+  "loginLimparSessaoConfirmacao": "Sesión de inicio social borrada. Intenta iniciar sesión de nuevo.",
   "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión."
 }

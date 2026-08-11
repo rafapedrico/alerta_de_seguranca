@@ -369,7 +369,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildDivisorLoginSocial(),
                   const SizedBox(height: 20),
                   _buildBotoesLoginSocial(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  _buildBotaoLimparSessao(),
+                  const SizedBox(height: 12),
                   _buildLinkCadastro(),
                 ],
               ),
@@ -541,6 +543,36 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Botão utilitário de diagnóstico/teste — pedido do usuário
+  /// (2026-08-10) para conseguir testar o login social do zero sem
+  /// reaproveitar uma conta já em cache no aparelho (ver
+  /// [SocialAuthService.encerrarSessoesSociais]). Deliberadamente
+  /// discreto (texto pequeno, cinza) por não ser um botão de fluxo normal
+  /// — só uma ferramenta de teste/depuração.
+  Widget _buildBotaoLimparSessao() {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _autenticando ? null : _limparSessaoDeLoginSocial,
+        icon: const Icon(Icons.logout, size: 16, color: Colors.white38),
+        label: Text(
+          AppLocalizations.of(context)!.loginLimparSessaoBotao,
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _limparSessaoDeLoginSocial() async {
+    await SocialAuthService().encerrarSessoesSociais();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.loginLimparSessaoConfirmacao),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 

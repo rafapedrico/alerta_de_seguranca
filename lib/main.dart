@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
@@ -227,6 +229,32 @@ Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async 
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
         'apenas com os recursos locais): $e');
+  }
+
+  // CORREÇÃO (bug real diagnosticado em teste, 2026-08-10 — login
+  // travando indefinidamente, sem erro nenhum, tanto e-mail/senha quanto
+  // social): sem NENHUM provedor de App Check ativado, o interceptor de
+  // rede que o próprio SDK (firebase_auth/firebase_core) injeta em toda
+  // chamada ficava tentando obter um token de um provedor inexistente e
+  // nunca completava a chamada — nem sucesso, nem exceção, só um
+  // `Future` pendurado para sempre (confirmado via logcat: o log do
+  // próprio SDK "Error getting App Check token; using placeholder token
+  // instead" aparecia, mas a chamada JAMAIS retornava depois disso).
+  // `AndroidProvider.debug` gera um token de depuração local válido só
+  // para este aparelho/instalação — em builds de release, usa
+  // `playIntegrity` (o provedor real de produção, exige o app assinado e
+  // publicado/testado via Play Integrity API). Nunca lança exceção: se a
+  // ativação falhar por qualquer motivo, o app segue exatamente como
+  // antes (não piora nada).
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider:
+          kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+    );
+    debugPrint('☁️ [Firebase] App Check ativado com sucesso '
+        '(${kDebugMode ? "debug" : "playIntegrity"}).');
+  } catch (e) {
+    debugPrint('⚠️ [Firebase] Falha ao ativar App Check: $e');
   }
 
   // POLÍTICA DE SEGURANÇA (Opção A): todo cold start NORMAL (usuário

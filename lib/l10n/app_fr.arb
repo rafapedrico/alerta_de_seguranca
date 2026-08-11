@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Se connecter avec Google",
   "loginSocialFacebookTooltip": "Se connecter avec Facebook",
   "loginSocialAppleTooltip": "Se connecter avec Apple",
+  "loginLimparSessaoBotao": "Effacer la session de connexion",
+  "loginLimparSessaoConfirmacao": "Session de connexion sociale effacée. Essayez de vous reconnecter.",
   "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion."
 }

@@ -57,17 +57,93 @@ class SocialAuthService {
   // ================================================================
   // GOOGLE
   // ================================================================
-  Future<UserCredential?> signInWithGoogle() async {
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) return null; // Cancelado pelo usuário
 
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-    final OAuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    return _auth.signInWithCredential(credential);
+  /// `true` assim que [GoogleSignIn.instance.initialize] for chamado com
+  /// sucesso pela primeira vez — a API 7.x exige essa chamada ANTES de
+  /// qualquer outro método da instância singleton, e chamá-la de novo a
+  /// cada tentativa de login seria redundante (a própria instância já é
+  /// reaproveitada entre chamadas).
+  bool _googleSignInInicializado = false;
+
+  /// Client ID OAuth do tipo "Web" (client_type 3) do projeto Firebase
+  /// "guardiaox" — ver `android/app/google-services.json`. CORREÇÃO
+  /// (bug real diagnosticado em teste, 2026-08-10): diferente da API
+  /// 6.x (que resolvia isso sozinha a partir do google-services.json),
+  /// a 7.x EXIGE esse valor explicitamente em Android
+  /// (`GoogleSignInExceptionCode.clientConfigurationError: serverClientId
+  /// must be provided on Android` — erro real observado em teste). Tem
+  /// que ser o client ID do tipo Web (não o Android), pois é a
+  /// audiência que o Firebase espera ao validar o idToken em
+  /// `GoogleAuthProvider.credential`.
+  static const String _googleServerClientId =
+      '555863351772-vrlhh2c4kv0a1ci7eu34i36rq5jro327.apps.googleusercontent.com';
+
+  /// CORREÇÃO (bug real diagnosticado em teste, 2026-08-10 — login com
+  /// Google travando indefinidamente, sem erro nenhum): migrado da API
+  /// "clássica" (`GoogleSignIn().signIn()`, removida/descontinuada em
+  /// runtime pelo próprio Play Services) para a API 7.x baseada em
+  /// Credential Manager — instância singleton (`GoogleSignIn.instance`),
+  /// `initialize()` obrigatório antes de qualquer chamada, e
+  /// `authenticate()` no lugar de `signIn()`. Autenticação (identidade,
+  /// `idToken`) e autorização (`accessToken`/escopos, via
+  /// `authorizationClient`) agora são passos SEPARADOS — o Firebase só
+  /// precisa do `idToken` para `GoogleAuthProvider.credential` (mesmo
+  /// padrão da documentação oficial do FlutterFire).
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      if (!_googleSignInInicializado) {
+        await GoogleSignIn.instance.initialize(serverClientId: _googleServerClientId);
+        _googleSignInInicializado = true;
+      }
+
+      final GoogleSignInAccount googleUser =
+          await GoogleSignIn.instance.authenticate();
+      final GoogleSignInAuthentication googleAuth =
+          googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+      return await _auth.signInWithCredential(credential);
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return null; // Cancelado pelo usuário
+      }
+      rethrow;
+    }
+  }
+
+  // ================================================================
+  // UTILITÁRIO DE DIAGNÓSTICO/TESTE
+  // ================================================================
+
+  /// Encerra qualquer sessão/cache LOCAL de login social (Google +
+  /// Firebase) — usado pelo botão de diagnóstico da [LoginScreen] (pedido
+  /// do usuário, 2026-08-10, para poder testar o login do zero sem
+  /// reaproveitar uma conta/sessão já em cache no aparelho).
+  ///
+  /// [GoogleSignIn.disconnect] é mais completo que [GoogleSignIn.signOut]:
+  /// além de encerrar a sessão, REVOGA o acesso concedido e limpa por
+  /// completo a conta lembrada localmente pelo plugin — sem isso, o
+  /// próximo toque no botão do Google pode pular direto para a MESMA
+  /// conta de antes (sign-in silencioso) em vez de mostrar o seletor de
+  /// contas de novo. Best-effort: nunca lança exceção (cada etapa é
+  /// independente e protegida, mesmo que a conta já esteja desconectada).
+  Future<void> encerrarSessoesSociais() async {
+    try {
+      if (!_googleSignInInicializado) {
+        await GoogleSignIn.instance.initialize(serverClientId: _googleServerClientId);
+        _googleSignInInicializado = true;
+      }
+    } catch (_) {}
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+    try {
+      await GoogleSignIn.instance.disconnect();
+    } catch (_) {}
+    try {
+      await _auth.signOut();
+    } catch (_) {}
   }
 
   // ================================================================

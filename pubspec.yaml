@@ -32,13 +32,38 @@ dependencies:
   firebase_auth: ^4.16.0
   firebase_messaging: ^14.9.4
   cloud_functions: ^4.7.6
+  # CORREÇÃO (bug real diagnosticado em teste, 2026-08-10): login
+  # travando indefinidamente, sem erro, tanto e-mail/senha quanto
+  # social. Sem NENHUM provedor de App Check ativado, o interceptor de
+  # rede que o próprio SDK (firebase_auth/firebase_core) injeta em toda
+  # chamada ficava tentando obter um token de um provedor inexistente e
+  # nunca completava a chamada — nem sucesso, nem exceção, só um
+  # `Future` pendurado para sempre (confirmado via logcat: o log do
+  # próprio SDK "Error getting App Check token; using placeholder token
+  # instead" aparecia, mas a chamada JAMAIS retornava depois disso).
+  # Versão 0.2.x é a faixa compatível com firebase_core ^2.32.0 (ver
+  # lib/main.dart, `_iniciarFirebaseEAuth`, para a ativação).
+  firebase_app_check: ^0.2.1+22
 
-  # Login social (ver lib/services/social_auth_service.dart) — versões
-  # travadas na major mais recente ainda compatível com firebase_auth
-  # ^4.16.0 (subir pra firebase_auth 6.x seria uma migração maior, fora do
-  # escopo deste recurso; `flutter pub outdated` mostra as versões mais
-  # novas incompatíveis).
-  google_sign_in: ^6.2.2
+  # google_sign_in ^7.x — CORREÇÃO (mesmo bug real acima): a 6.2.2 usa a
+  # API "clássica" (legacy) do Google, que o próprio SDK nativo já
+  # acusa como descontinuada em runtime ("Please migrate to the
+  # Credential Manager APIs") — na prática, travava indefinidamente
+  # após obter o token nativo com sucesso, sem nunca completar nem
+  # lançar exceção do lado Dart (confirmado via logcat: só o Google
+  # especificamente, e-mail/senha e Facebook — mesmo caminho de
+  # Firebase Auth — continuaram funcionando normalmente). A 7.x
+  # reescreve a API por completo (singleton `GoogleSignIn.instance`,
+  # `initialize()` obrigatório antes de qualquer outra chamada,
+  # `authenticate()` no lugar de `signIn()`) — ver
+  # `social_auth_service.dart`.
+  google_sign_in: ^7.2.0
+
+  # Login social Facebook/Apple (ver lib/services/social_auth_service.dart)
+  # — versões travadas na major mais recente ainda compatível com
+  # firebase_auth ^4.16.0 (subir pra firebase_auth 6.x seria uma migração
+  # maior, fora do escopo deste recurso; `flutter pub outdated` mostra as
+  # versões mais novas incompatíveis).
   flutter_facebook_auth: ^7.1.0
   sign_in_with_apple: ^7.0.1
 

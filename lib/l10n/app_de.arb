@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Mit Google anmelden",
   "loginSocialFacebookTooltip": "Mit Facebook anmelden",
   "loginSocialAppleTooltip": "Mit Apple anmelden",
+  "loginLimparSessaoBotao": "Anmeldesitzung löschen",
+  "loginLimparSessaoConfirmacao": "Soziale Anmeldesitzung gelöscht. Versuchen Sie es erneut.",
   "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode."
 }

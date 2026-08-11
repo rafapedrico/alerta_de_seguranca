@@ -740,5 +740,7 @@
   "loginSocialGoogleTooltip": "Googleでログイン",
   "loginSocialFacebookTooltip": "Facebookでログイン",
   "loginSocialAppleTooltip": "Appleでログイン",
+  "loginLimparSessaoBotao": "ログインセッションをクリア",
+  "loginLimparSessaoConfirmacao": "ソーシャルログインセッションをクリアしました。もう一度ログインしてください。",
   "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。"
 }

@@ -40,7 +40,7 @@ android {
         // a lib usa APIs indisponíveis abaixo do Android 6.0 (API 23) e o
         // merge do manifest falha sem isso. Único efeito colateral: o app
         // deixa de instalar em Android 5.0/5.1 (API 21-22).
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         // Fixado em 35 para acompanhar o compileSdk acima.
         targetSdk = 35
 
