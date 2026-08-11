@@ -1,7 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Representa um som disponível para o Alerta Sonoro Customizável,

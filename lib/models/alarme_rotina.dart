@@ -1,4 +1,4 @@
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 
 /// Modelo de dados de um Alarme de Rotina, usado pela aba Família no
 /// gerenciador de múltiplos alarmes (estilo despertador do iPhone).

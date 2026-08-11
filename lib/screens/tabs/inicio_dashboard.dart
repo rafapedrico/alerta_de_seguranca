@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -448,7 +448,7 @@ class InicioDashboard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 elevation: 0,
               ),
-              icon: const Icon(FontAwesomeIcons.whatsapp, size: 22),
+              icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 22),
               label: const Text(
                 _whatsappNumero,
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),

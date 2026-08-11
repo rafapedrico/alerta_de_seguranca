@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/monitoramento_service.dart';

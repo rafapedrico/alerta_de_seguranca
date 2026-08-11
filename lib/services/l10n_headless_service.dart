@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart' show Locale;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 
 import 'locale_service.dart';
 import 'localization_service.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 
 /// Tela jurídica dedicada, com o Contrato de Consentimento do Usuário e a
 /// Política de Privacidade do aplicativo Guardião-X, operado pela RMF

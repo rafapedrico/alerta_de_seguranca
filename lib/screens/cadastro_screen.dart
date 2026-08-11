@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../utils/telefone_utils.dart';

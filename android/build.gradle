@@ -13,6 +13,40 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// CORREÇÃO (build quebrado após atualização do Flutter/AGP/Gradle,
+// 2026-08-10): alguns plugins de terceiros mais antigos (ex:
+// flutter_facebook_auth, audioplayers_android) ainda declaram
+// sourceCompatibility Java 8 nos PRÓPRIOS módulos, enquanto o app raiz
+// (ver android/app/build.gradle) usa Java 17 — Gradle rejeita essa
+// mistura ("Inconsistent JVM-target compatibility"). Força TODOS os
+// módulos (inclusive os dos plugins) a usar o mesmo alvo Java 17, sem
+// precisar editar cada plugin individualmente.
+//
+// `afterEvaluate` (em vez de `plugins.withId`, que roda CEDO DEMAIS —
+// antes do próprio build.gradle do módulo aplicar seu compileOptions
+// Java 8, que então sobrescrevia o nosso) garante que este ajuste rode
+// por ÚLTIMO, depois de tudo que o módulo já configurou sozinho.
+// Excluir ":app" evita "Cannot run Project.afterEvaluate(Closure) when
+// the project is already evaluated" — ":app" já é forçado a avaliar
+// cedo pelo `evaluationDependsOn(":app")" acima, e de qualquer forma já
+// define seu próprio Java 17 diretamente em android/app/build.gradle.
+subprojects { subproject ->
+    if (subproject.name == "app") return
+    subproject.afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.library")) {
+            subproject.android.compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

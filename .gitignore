@@ -35,6 +35,15 @@ web/build/
 # strings ainda não traduzidas) — não é código-fonte.
 untranslated_messages.json
 
+# Código gerado pelo flutter gen-l10n (ver l10n.yaml/pubspec.yaml
+# `generate: true`) — a partir do Flutter 3.44+, que removeu o suporte
+# ao "pacote sintético" flutter_gen, esses arquivos passaram a ser
+# escritos direto em lib/l10n/ em vez de .dart_tool/ (que já era
+# ignorado). Continuam sendo gerados automaticamente a cada
+# `flutter pub get`/build — nunca precisam ser versionados.
+lib/l10n/app_localizations.dart
+lib/l10n/app_localizations_*.dart
+
 # Firebase Cloud Functions
 functions/node_modules/
 functions/lib/

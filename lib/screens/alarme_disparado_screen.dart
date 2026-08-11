@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/alarme_rotina.dart';
 import '../services/rotina_alarme_service.dart';

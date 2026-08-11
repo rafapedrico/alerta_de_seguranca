@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';

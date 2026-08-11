@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Serviço central para persistência e leitura do fator de escala de

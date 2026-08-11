@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import '../main.dart' show iniciarServicosPosLoginOuDashboard;
 import '../services/alertas_recebidos_service.dart';
 import '../services/battery_optimization_service.dart';
