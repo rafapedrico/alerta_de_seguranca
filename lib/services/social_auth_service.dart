@@ -89,15 +89,32 @@ class SocialAuthService {
   /// `authorizationClient`) agora são passos SEPARADOS — o Firebase só
   /// precisa do `idToken` para `GoogleAuthProvider.credential` (mesmo
   /// padrão da documentação oficial do FlutterFire).
+  ///
+  /// SEGUNDO BUG REAL (2026-08-11, aparelho Android 9/API 28 mais
+  /// antigo — "moto g7 play"): mesmo a API 7.x/Credential Manager pode
+  /// ficar PENDURADA para sempre em `authenticate()` (nem sucesso, nem
+  /// exceção) quando o Google Play Services do aparelho está
+  /// desatualizado/não suporta bem o Credential Manager — o botão fica
+  /// girando indefinidamente, EXATAMENTE o mesmo sintoma do bug original
+  /// de App Check (ver `main.dart`), só que num ponto diferente do
+  /// fluxo. `.timeout(...)` aqui NÃO conserta o Credential Manager do
+  /// aparelho (isso é uma limitação de SO/Play Services fora do
+  /// controle deste app), mas garante que o usuário sempre receba um
+  /// erro claro (capturado pelo `catch` genérico de
+  /// [LoginScreen._fazerLoginSocial]) em vez de um spinner infinito sem
+  /// nenhum feedback.
   Future<UserCredential?> signInWithGoogle() async {
     try {
       if (!_googleSignInInicializado) {
-        await GoogleSignIn.instance.initialize(serverClientId: _googleServerClientId);
+        await GoogleSignIn.instance
+            .initialize(serverClientId: _googleServerClientId)
+            .timeout(const Duration(seconds: 15));
         _googleSignInInicializado = true;
       }
 
-      final GoogleSignInAccount googleUser =
-          await GoogleSignIn.instance.authenticate();
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+          .authenticate()
+          .timeout(const Duration(seconds: 45));
       final GoogleSignInAuthentication googleAuth =
           googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
