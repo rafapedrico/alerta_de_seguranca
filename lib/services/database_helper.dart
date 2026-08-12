@@ -399,9 +399,12 @@ class DatabaseHelper {
     // 'contatos_emergencia' — chave por contato ("Notificar via WhatsApp
     // ($0.10 USD)", ver ConfiguracoesTab) da arquitetura híbrida de
     // alertas: só contatos com esta flag ligada podem gerar cobrança de
-    // WhatsApp de contingência (ver functions/transbordoWhatsappMonitor.js).
-    // Desligado por padrão (0), preservando o saldo do usuário até que ele
-    // ative explicitamente cada contato.
+    // WhatsApp de contingência.
+    // COLUNA MORTA DESDE 2026-08-11: removida toda a integração de
+    // WhatsApp/Twilio (a pedido do usuário) — 'whatsapp_habilitado'
+    // permanece fisicamente na tabela (mesma convenção das demais
+    // migrações deste arquivo, nunca DROP/RENAME COLUMN), mas não é mais
+    // lida nem gravada pelo app.
     if (oldVersion < 14) {
       try {
         await db.execute(
@@ -432,14 +435,15 @@ class DatabaseHelper {
     // Migration from v15 to v16: substitui o campo morto 'forcando_whatsapp'
     // (nunca lido por nenhuma lógica de envio — resquício de uma versão
     // anterior à arquitetura híbrida de alertas) pela chave GLOBAL real
-    // "Enviar também via WhatsApp" (ver [UserConfig]/ConfiguracoesTab):
-    // quando ligada, o alerta passa a ser enviado de forma SIMULTÂNEA
-    // (App + WhatsApp) para os contatos habilitados, em vez de aguardar o
-    // transbordo de 60s (ver functions/alertaHibridoService.js). A coluna
-    // antiga 'forcando_whatsapp' permanece fisicamente na tabela — mesma
-    // convenção das demais migrações deste arquivo, que nunca fazem DROP/
-    // RENAME COLUMN por segurança de compatibilidade entre versões do
-    // SQLite nos aparelhos — mas não é mais lida nem gravada pelo app.
+    // "Enviar também via WhatsApp" (ver [UserConfig]/ConfiguracoesTab). A
+    // coluna antiga 'forcando_whatsapp' permanece fisicamente na tabela —
+    // mesma convenção das demais migrações deste arquivo, que nunca fazem
+    // DROP/RENAME COLUMN por segurança de compatibilidade entre versões
+    // do SQLite nos aparelhos.
+    // COLUNA TAMBÉM MORTA DESDE 2026-08-11: removida toda a integração de
+    // WhatsApp/Twilio (a pedido do usuário) — 'enviar_whatsapp_simultaneo'
+    // segue a mesma convenção acima (permanece na tabela, não é mais
+    // lida nem gravada pelo app).
     if (oldVersion < 16) {
       try {
         await db.execute(
@@ -660,40 +664,6 @@ class DatabaseHelper {
   Future<int> deletarContatoEmergencia(int id) async {
     final db = await database;
     return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
-  }
-
-  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
-  /// envio) para este contato específico — ver Switch "Notificar via
-  /// WhatsApp" em ConfiguracoesTab. Refletido no Firestore por
-  /// [FirebaseSyncService.sincronizarContatosEmergencia] e consumido pela
-  /// Cloud Function de transbordo (functions/transbordoWhatsappMonitor.js)
-  /// para decidir se pode cobrar do saldo do usuário.
-  Future<int> atualizarWhatsappHabilitado(int id, bool habilitado) async {
-    final db = await database;
-    return await db.update(
-      'contatos_emergencia',
-      {'whatsapp_habilitado': habilitado ? 1 : 0},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp" (ver
-  /// ConfiguracoesTab) — distinta do switch por contato "Notificar via
-  /// WhatsApp" ([atualizarWhatsappHabilitado] acima). Quando ligada, o
-  /// alerta é enviado de forma SIMULTÂNEA (App + WhatsApp) para cada
-  /// contato com "Notificar via WhatsApp" ativo e saldo suficiente na
-  /// Carteira, em vez de aguardar os 60s normais de transbordo (ver
-  /// functions/transbordoWhatsappMonitor.js). Refletida no Firestore por
-  /// [FirebaseSyncService.atualizarEnviarWhatsappSimultaneo].
-  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
-    final config = await getUserConfig();
-    if (config == null) return;
-    final id = config['id'] as int;
-    await updateUserConfig({
-      'id': id,
-      'enviar_whatsapp_simultaneo': ativo ? 1 : 0,
-    });
   }
 
   /// Marca um contato de emergência como "exclusão pendente", iniciando a
