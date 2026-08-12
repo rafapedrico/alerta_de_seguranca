@@ -653,10 +653,19 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   /// polegar para os dois lados) com hit-area PRÓPRIA, restrita a este
   /// bloco — ao contrário de um `Dismissible` cobrindo o card inteiro
   /// (tentativa anterior), nunca interfere com o resto do card (nome,
-  /// telefone, botões de editar/excluir, o outro switch). Arrastar/tocar
-  /// para a DIREITA bloqueia (cinza, `bloqueado: true`); para a ESQUERDA
-  /// desbloqueia (verde, `bloqueado: false`) — mesmo mapeamento visual
-  /// padrão de um `Switch` (ligado = polegar à direita).
+  /// telefone, botões de editar/excluir, o outro switch).
+  ///
+  /// CORREÇÃO DE INVERSÃO (bug real reportado, 2026-08-11): o `Switch`
+  /// exibia `value: bloqueado` diretamente — ligado (polegar à direita)
+  /// == BLOQUEADO. Isso ficava "ao contrário do esperado": o usuário
+  /// espera que ligar/"ativar" o controle signifique PERMITIR (estado
+  /// positivo), não bloquear. Agora o `Switch` representa `permitido`
+  /// (`!bloqueado`) — ligado (verde) = permite solicitações; desligado
+  /// (vermelho) = bloqueado — e o `onChanged` converte de volta
+  /// (`bloquear: !valor`) antes de chamar
+  /// [_alternarBloqueioComConfirmacao], que continua recebendo/tratando
+  /// exclusivamente o significado "bloquear", sem nenhuma outra mudança
+  /// de comportamento.
   Widget _construirControleBloqueio(
     Map<String, dynamic> contato,
     bool bloqueado,
@@ -684,12 +693,12 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
           ),
         ),
         Switch(
-          value: bloqueado,
-          activeColor: Colors.grey.shade600,
-          activeTrackColor: Colors.grey.shade300,
-          inactiveThumbColor: Colors.green.shade600,
-          inactiveTrackColor: Colors.green.shade100,
-          onChanged: (valor) => _alternarBloqueioComConfirmacao(contato, valor),
+          value: !bloqueado,
+          activeColor: Colors.green.shade600,
+          activeTrackColor: Colors.green.shade100,
+          inactiveThumbColor: Colors.red.shade600,
+          inactiveTrackColor: Colors.red.shade100,
+          onChanged: (valor) => _alternarBloqueioComConfirmacao(contato, !valor),
         ),
       ],
     );
@@ -941,13 +950,25 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       ),
       subtitle: Text(
         rotuloStatus,
+        // CORREÇÃO (pedido do usuário, 2026-08-11): rótulo "Bloqueado"
+        // usava cinza — sem destaque nenhum de urgência/restrição.
+        // Agora vermelho quando bloqueado, mesma cor verde de sempre
+        // quando aprovado.
         style: TextStyle(
           fontSize: 12,
-          color: compartilhando ? Colors.green.shade700 : Colors.grey.shade600,
+          color: compartilhando ? Colors.green.shade700 : Colors.red.shade700,
           fontWeight: FontWeight.w600,
         ),
       ),
-      activeColor: _corDestaque,
+      // Cores padrão dos switches da aba Monitoramento (pedido do
+      // usuário, 2026-08-11): verde quando ativado (permitido/
+      // compartilhando), vermelho quando desativado (bloqueado) — antes
+      // o estado desligado caía no cinza padrão do Material por falta de
+      // `inactiveThumbColor`/`inactiveTrackColor` explícitos.
+      activeColor: Colors.green.shade600,
+      activeTrackColor: Colors.green.shade100,
+      inactiveThumbColor: Colors.red.shade600,
+      inactiveTrackColor: Colors.red.shade100,
       value: compartilhando,
       onChanged: (valor) => _alternarPermissaoCompartilhar(contato, valor),
     );
