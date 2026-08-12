@@ -71,7 +71,7 @@ class _ItemHistorico {
   bool get ehFoto => fotoUrl != null && fotoUrl!.isNotEmpty;
 }
 
-class _HistoricoTabState extends State<HistoricoTab> {
+class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   static const String _categoriaRecebido = 'alerta_recebido';
@@ -138,14 +138,42 @@ class _HistoricoTabState extends State<HistoricoTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _carregarHistorico();
     _atualizarStatusAuditoria();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tickerAuditoria?.cancel();
     super.dispose();
+  }
+
+  /// CORREÇÃO DE BUG REAL (2026-08-12): esta aba fica MONTADA O TEMPO
+  /// TODO dentro do `IndexedStack` da `HomeScreen` — `initState()` (e,
+  /// portanto, [_carregarHistorico]/[_atualizarStatusAuditoria]) só roda
+  /// UMA VEZ, logo no login, muito antes de qualquer alerta de emergência
+  /// acontecer. Quando o Cronômetro dispara um alerta com o app já em
+  /// primeiro plano, a tela nativa dedicada (`RotinaCheckinAlarmActivity`,
+  /// engine PRÓPRIO — ver `cronometro_disparado_screen.dart`) abre POR
+  /// CIMA da `MainActivity` já em uso, sem nunca desmontar/recriar este
+  /// widget — ao fechar a confirmação e voltar para trás, esta aba
+  /// reaparecia com os dados de ANTES do alerta (novo evento de histórico
+  /// já salvo no SQLite, mas invisível até o usuário reabrir o app do
+  /// zero). `WidgetsBindingObserver` reflete corretamente essa transição:
+  /// a `MainActivity` recebe `onPause`/`onResume` do Android sempre que
+  /// outra Activity é empilhada por cima dela e depois finalizada — o
+  /// mesmo sinal que cobre o caso mais comum de app minimizado/reaberto.
+  /// Recarrega os DOIS conjuntos de dados desta tela (histórico normal +
+  /// status/eventos do cofre de Auditoria) sempre que o app volta ao
+  /// primeiro plano.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _carregarHistorico();
+      _atualizarStatusAuditoria();
+    }
   }
 
   Future<void> _atualizarStatusAuditoria() async {

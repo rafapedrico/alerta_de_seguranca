@@ -329,15 +329,52 @@ class _PinDialogContentState extends State<PinDialogContent> {
         _segundosRestantesLimiteDuro ?? widget.segundosTolerancia;
     final bool exibirContagem = segundosParaExibir != null;
 
+    // CORREÇÃO DE BUG REAL (2026-08-12): o teclado numérico usava um
+    // `SizedBox` de tamanho FIXO (260x260), mas o `GridView` de 4 linhas
+    // dentro dele (3 colunas, `childAspectRatio: 1.3`) precisa, para uma
+    // LARGURA de 260, de ~278 de altura — 18px A MAIS do que a caixa
+    // reservava. Resultado: a última linha (dígito "0" + apagar) ficava
+    // cortada/sobreposta ao texto de erro vermelho logo acima, em
+    // QUALQUER aparelho (não era uma questão de tela pequena — o cálculo
+    // já estava incorreto para o valor fixo escolhido). Corrigido
+    // calculando a altura do teclado A PARTIR da largura real (nunca o
+    // contrário) — sempre exatamente do tamanho que o GridView realmente
+    // ocupa, sem sobra nem corte. A LARGURA, por sua vez, agora é
+    // responsiva ao tamanho da tela (`MediaQuery`) em vez de um valor
+    // fixo, para telas pequenas (compactas) ou grandes (tablets) do
+    // Guardião X sempre caberem confortavelmente.
+    final Size tamanhoTela = MediaQuery.sizeOf(context);
+    const int colunasTeclado = 3;
+    const int linhasTeclado = 4;
+    const double espacamentoTeclado = 12;
+    const double aspectRatioTeclado = 1.3;
+    // 75% da largura da tela, nunca menor que 220 (aparelhos bem
+    // compactos) nem maior que 300 (tablets — evita um teclado
+    // desproporcionalmente gigante).
+    final double larguraTeclado =
+        (tamanhoTela.width * 0.75).clamp(220.0, 300.0);
+    final double larguraCelula = (larguraTeclado -
+            espacamentoTeclado * (colunasTeclado - 1)) /
+        colunasTeclado;
+    final double alturaCelula = larguraCelula / aspectRatioTeclado;
+    final double alturaTeclado = alturaCelula * linhasTeclado +
+        espacamentoTeclado * (linhasTeclado - 1);
+
     final Widget dialogo = Dialog(
       backgroundColor: const Color(0xFF1A1A1A),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: ConstrainedBox(
+        // Teto de altura total do diálogo (85% da tela): em telas muito
+        // baixas (aparelhos pequenos, modo split-screen, fonte do
+        // sistema aumentada) o conteúdo agora ROLA em vez de estourar/
+        // cortar — ver `SingleChildScrollView` logo abaixo.
+        constraints: BoxConstraints(maxHeight: tamanhoTela.height * 0.85),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             const Icon(Icons.lock_outline, color: Colors.white70, size: 40),
             const SizedBox(height: 10),
             Text(
@@ -392,7 +429,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
                   : null,
             ),
             const SizedBox(height: 8),
-            _buildTecladoPIN(),
+            _buildTecladoPIN(largura: larguraTeclado, altura: alturaTeclado),
             if (widget.mostrarBotaoCancelar) ...[
               const SizedBox(height: 8),
               TextButton(
@@ -412,6 +449,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
             ],
           ],
         ),
+      ),
       ),
     );
 
@@ -480,10 +518,15 @@ class _PinDialogContentState extends State<PinDialogContent> {
     );
   }
 
-  Widget _buildTecladoPIN() {
+  /// [largura]/[altura] agora vêm sempre calculados por [build] a partir
+  /// do tamanho real da tela (ver comentário lá) — nunca mais um valor
+  /// fixo — garantindo que a última linha do teclado (dígito "0" +
+  /// apagar) nunca seja cortada, em nenhum aparelho/modelo de tela onde
+  /// o Guardião X esteja instalado.
+  Widget _buildTecladoPIN({required double largura, required double altura}) {
     return SizedBox(
-      width: 260,
-      height: 260,
+      width: largura,
+      height: altura,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

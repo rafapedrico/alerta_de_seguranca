@@ -1,8 +1,10 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
+import '../screens/cronometro_disparado_screen.dart' show chaveCronometroFluxoResolvido;
 
 /// Mesmo canal nativo já usado pelo Alarme de Rotina (`RotinaAlarmPlugin.kt`)
 /// — reaproveitado aqui, com o extra `tipoAlarme: 'cronometro'`, em vez de
@@ -90,6 +92,32 @@ class AlarmeService {
       contexto: contexto,
       timestampExpiracao: timestampExpiracao,
     );
+
+    // BUG REAL CONFIRMADO (2026-08-12): diferente de
+    // `chaveAlarmeFluxoResolvido` (Alarme de Rotina), que é resetada a
+    // cada novo disparo dentro do próprio callback headless
+    // (`_callbackCheckinRotina`, ver `rotina_alarme_service.dart`),
+    // `chaveCronometroFluxoResolvido` NUNCA era resetada em lugar nenhum
+    // — o Cronômetro não tem um callback Dart equivalente (ver
+    // documentação da classe acima: propositalmente não há alarme Dart
+    // headless em paralelo aqui). Resultado: assim que UM ciclo do
+    // Cronômetro terminava (PIN certo OU alerta disparado), a flag
+    // ficava gravada em `true` PARA SEMPRE. No PRÓXIMO ciclo,
+    // `CronometroDisparadoScreen._iniciarPollingDeFluxoResolvido` lia
+    // esse `true` residual do ciclo ANTERIOR já no primeiro tick
+    // (~1s) e se autoencerrava imediatamente — parando o som e fechando
+    // o teclado de PIN antes do usuário conseguir digitar nada. Sintoma
+    // real reportado: "o teclado surge por menos de 1 segundo e é
+    // destruído/fechado imediatamente". Resetar aqui, no início de CADA
+    // novo ciclo (chamado por `SegurancaTab._iniciarTimer` sempre que o
+    // cronômetro é armado), garante que a flag só reflita o ciclo atual.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(chaveCronometroFluxoResolvido);
+    } catch (e) {
+      debugPrint(
+          '⚠️ Falha ao resetar chaveCronometroFluxoResolvido no novo ciclo: $e');
+    }
 
     try {
       await _canalRotinaAlarme.invokeMethod('agendarAlarmeNativo', {

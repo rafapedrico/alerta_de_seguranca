@@ -380,10 +380,32 @@ class _CronometroDisparadoScreenState
     _pollFluxoResolvidoTimer?.cancel();
 
     // 1. Para o som — nativo + Dart.
+    //
+    // BUG REAL CONFIRMADO (2026-08-12): 'pararAlarme' (diferente de
+    // 'silenciarSomSemFechar') NÃO só para o som — ele também chama
+    // `fecharActivityAtiva()` no lado nativo (`RotinaAlarmPlugin.kt`),
+    // que força `activity.finish()` na `RotinaCheckinAlarmActivity`
+    // AGORA MESMO, destruindo esta tela/engine ANTES do SMS, do
+    // histórico e da confirmação visual sequentes sequer rodarem. O
+    // disparo em si (nuvem + SMS + histórico, mais abaixo) roda
+    // normalmente mesmo assim — nenhum desses passos depende de
+    // `context`/`mounted` — mas o `setState(() { _alertaDisparado =
+    // true; })` no passo 4 é silenciosamente pulado (`if (mounted)`)
+    // porque a Activity já não existe mais, e a confirmação de envio
+    // nunca chega a aparecer na tela. Sintoma real reportado: "o som
+    // parou certinho, mas faltou a janela avisando que a mensagem foi
+    // enviada". 'silenciarSomSemFechar' é exatamente o método nativo já
+    // existente para este cenário — usado pelo Alarme de Rotina para
+    // silenciar o som SEM fechar a Activity enquanto o teclado de PIN
+    // ainda está em uso (ver documentação em `RotinaAlarmPlugin.kt`) — e
+    // aqui a tela de confirmação também precisa da Activity viva. Quem
+    // efetivamente finaliza a Activity agora é [_fecharTela] (via
+    // `SystemNavigator.pop`), só quando o usuário tocar em "Fechar"/
+    // arrastar para cima, depois da confirmação já ter sido exibida.
     try {
       const canalNativo =
           MethodChannel('com.example.security_check_app/rotina_alarme');
-      await canalNativo.invokeMethod('pararAlarme');
+      await canalNativo.invokeMethod('silenciarSomSemFechar');
     } catch (e) {
       debugPrint('⚠️ Falha ao parar som nativo ao disparar alerta: $e');
     }
