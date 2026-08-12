@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodChannel
@@ -47,10 +48,29 @@ class SmsSender : FlutterPlugin {
                         val telefones = call.argument<List<String>>("telefones") ?: emptyList()
                         val mensagem = call.argument<String>("mensagem") ?: ""
 
-                        enviar(binding.applicationContext, telefones, mensagem)
+                        val enviados = enviar(binding.applicationContext, telefones, mensagem)
 
-                        result.success(true)
+                        // CORREÇÃO DE BUG REAL (2026-08-11): antes, uma falha em
+                        // QUALQUER telefone da lista (número malformado, chip sem
+                        // sinal etc.) lançava e abortava o `for` inteiro dentro de
+                        // [enviar] — os contatos seguintes da lista, mesmo com
+                        // números perfeitamente válidos, nunca chegavam a ser
+                        // tentados. Agora [enviar] isola cada tentativa e retorna
+                        // quantos realmente saíram; só reporta erro ao lado Dart
+                        // (`EmergencyAlertService._enviarSms`, que já trata isso
+                        // sem travar o Histórico) quando NENHUM dos contatos foi
+                        // enviado com sucesso.
+                        if (enviados == 0 && telefones.isNotEmpty()) {
+                            result.error(
+                                "SMS_ERROR",
+                                "Falha ao enviar SMS nativo para todos os ${telefones.size} contato(s).",
+                                null,
+                            )
+                        } else {
+                            result.success(true)
+                        }
                     } catch (e: Exception) {
+                        Log.e(TAG, "Falha inesperada ao processar enviarSms", e)
                         result.error("SMS_ERROR", "Falha ao enviar SMS nativo: ${e.message}", null)
                     }
                 } else {
@@ -66,6 +86,8 @@ class SmsSender : FlutterPlugin {
     }
 
     companion object {
+        private const val TAG = "SmsSender"
+
         /** Nome do MethodChannel usado tanto pela Activity quanto pelo engine headless. */
         const val CHANNEL = "com.example.security_check_app/sms"
 
@@ -74,17 +96,35 @@ class SmsSender : FlutterPlugin {
          * automaticamente em múltiplas partes caso exceda o limite de
          * caracteres de um único SMS.
          *
-         * @throws Exception em caso de falha no envio (permissão ausente,
-         * SmsManager indisponível, etc.), propagada para quem chamou tratar.
+         * CORREÇÃO DE BUG REAL (2026-08-11): cada tentativa é isolada em seu
+         * próprio try/catch — antes, uma exceção em UM telefone (número
+         * malformado, chip sem sinal/serviço, etc.) escapava do `for` e
+         * abortava o restante da lista, deixando os demais contatos de
+         * emergência SEM SMS mesmo com números perfeitamente válidos. Nunca
+         * lança exceção: erros por telefone só são logados (`Log.e`,
+         * visíveis via `adb logcat -s SmsSender`) para diagnóstico.
+         *
+         * @return quantos telefones tiveram o envio efetivamente tentado com
+         * sucesso (sem exceção) — 0 se todos falharem, usado pelo chamador
+         * para decidir se reporta erro ao lado Dart.
          */
-        fun enviar(context: Context, telefones: List<String>, mensagem: String) {
+        fun enviar(context: Context, telefones: List<String>, mensagem: String): Int {
             val smsManager = resolverSmsManagerAtivo(context)
+            var enviados = 0
 
             for (telefone in telefones) {
                 if (telefone.isBlank()) continue
-                val partes = smsManager.divideMessage(mensagem)
-                smsManager.sendMultipartTextMessage(telefone, null, partes, null, null)
+                try {
+                    val partes = smsManager.divideMessage(mensagem)
+                    smsManager.sendMultipartTextMessage(telefone, null, partes, null, null)
+                    enviados++
+                    Log.i(TAG, "SMS enfileirado com sucesso para o rádio (destinatário oculto do log).")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Falha ao enviar SMS para um dos contatos — demais contatos da lista seguem tentados normalmente.", e)
+                }
             }
+
+            return enviados
         }
 
         /**
