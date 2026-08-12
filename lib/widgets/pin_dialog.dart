@@ -443,7 +443,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
     // a contagem regressiva de segurança: o app só reagia tocando o som
     // de novo (ver `CronometroDisparadoScreen._abrirTecladoPin`), sem
     // jamais dispatar o alerta de emergência, persistir o histórico ou
-    // exibir a confirmação de envio — o cronômetro de 180s simplesmente
+    // exibir a confirmação de envio — o cronômetro de 60s simplesmente
     // travava tocando som para sempre. Bloquear o Voltar do sistema
     // exclusivamente quando existe esse limite duro fecha a brecha sem
     // afetar os demais chamadores (ex: `FamiliaTab`/`SegurancaTab`, que

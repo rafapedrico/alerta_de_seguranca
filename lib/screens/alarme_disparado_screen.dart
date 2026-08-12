@@ -31,6 +31,24 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   static bool _instanciaGraficaAberta = false;
   bool _souDuplicada = false;
 
+  /// Instante em que [_instanciaGraficaAberta] foi marcada `true` pela
+  /// última vez — ver documentação completa em
+  /// [_tempoMaximoInstanciaTravada]/mesmo mecanismo de autorrecuperação
+  /// já aplicado em `CronometroDisparadoScreen`.
+  static DateTime? _instanciaAbertaDesde;
+
+  /// CORREÇÃO DE BUG REAL (2026-08-11): mesmo bug/correção do Cronômetro
+  /// (ver `cronometro_disparado_screen.dart`) — [_instanciaGraficaAberta]
+  /// é estático e só é zerado em [dispose]; se uma instância anterior
+  /// morrer sem passar por lá (processo morto, reinstalação durante
+  /// testes, etc.), fica travada em `true` para sempre e todo alarme de
+  /// rotina seguinte se autodestrói imediatamente, sem tocar o som nem
+  /// abrir o teclado. Nenhum ciclo real do Alarme de Rotina (tolerância +
+  /// janela final de 60s) dura mais que isto — passado esse tempo, trata
+  /// a flag como travada por uma instância morta, não uma duplicata
+  /// legítima.
+  static const Duration _tempoMaximoInstanciaTravada = Duration(minutes: 10);
+
   // ==========================================================
   // FASE FINAL (última chance, 60 segundos, após a tolerância expirar)
   // ==========================================================
@@ -93,6 +111,17 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   void initState() {
     super.initState();
 
+    final DateTime? desde = _instanciaAbertaDesde;
+    final bool travadaHaMuitoTempo = _instanciaGraficaAberta &&
+        desde != null &&
+        DateTime.now().difference(desde) > _tempoMaximoInstanciaTravada;
+    if (travadaHaMuitoTempo) {
+      debugPrint('🛡️ [SINTONIA] Flag de instância única travada há mais de '
+          '${_tempoMaximoInstanciaTravada.inMinutes}min (instância anterior '
+          'morreu sem dispose) — tratando como nova instância legítima.');
+      _instanciaGraficaAberta = false;
+    }
+
     if (_instanciaGraficaAberta) {
       _souDuplicada = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,6 +132,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     }
 
     _instanciaGraficaAberta = true;
+    _instanciaAbertaDesde = DateTime.now();
 
     // Camada extra de resiliência (Firebase): enquanto esta tela estiver
     // aberta (alarme de rotina disparado, aguardando confirmação de PIN),
@@ -173,6 +203,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   void dispose() {
     if (!_souDuplicada) {
       _instanciaGraficaAberta = false;
+      _instanciaAbertaDesde = null;
       // Encerra o ciclo de localização iniciado em initState() — mantém o
       // par iniciar/parar 1:1 exigido pela contagem de referências do
       // LocationService (ver [LocationService.pararCicloDeAtualizacao]).

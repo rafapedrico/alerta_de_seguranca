@@ -32,7 +32,6 @@ import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
 import 'services/sos_disparo_service.dart';
 import 'services/volume_sos_service.dart';
-import 'services/wallet_service.dart';
 import 'services/wallpaper_service.dart';
 import 'widgets/pin_dialog.dart';
 
@@ -54,15 +53,15 @@ const String _rotaInicialCronometroAlarme = '/cronometro_alarme_confirmacao';
 //
 // ETAPA 2 (_iniciarFirebaseEAuth): disparada (sem `await`) logo após o
 // runApp() — SÓ Firebase core + FirebaseAuth, o mínimo para os botões
-// de login funcionarem. Nada de FCM/heartbeat/wallet aqui. Devolve dois
+// de login funcionarem. Nada de FCM/heartbeat aqui. Devolve dois
 // futuros (core rápido vs. completo com logout) — ver a função.
 //
 // ETAPA 3 (iniciarServicosPosLoginOuDashboard, chamada por
 // HomeScreen.initState — ver home_screen.dart): TODOS os serviços
 // nativos pesados (Alarme, Notificação, VolumeSos, RetryUpload,
-// PlanoLimite, WalletService, BackgroundLocationHeartbeat, FCM,
-// AlarmManager) só sobem depois que o usuário efetivamente loga e
-// chega no dashboard — nunca antes, nem em paralelo com o cold start.
+// PlanoLimite, BackgroundLocationHeartbeat, FCM, AlarmManager) só sobem
+// depois que o usuário efetivamente loga e chega no dashboard — nunca
+// antes, nem em paralelo com o cold start.
 //
 // TRADE-OFF DE SEGURANÇA DELIBERADO (pedido explícito do usuário,
 // ETAPA 3): como a Opção A força logout a cada cold start normal, o
@@ -151,29 +150,32 @@ void main() {
           '🚨 [main] SOS Físico via Lockscreen: aguardando Firebase+Auth antes de disparar P1->P2.');
       // Só aguarda AQUI (depois do primeiro frame, tela preta já
       // visível) — nunca antes do runApp(). O disparo em si precisa do
-      // Firebase pronto para usar Push/WhatsApp/link real da foto (ver
-      // política de sessão em [_iniciarFirebaseEAuth]).
+      // Firebase pronto para usar Push/link real da foto (ver política
+      // de sessão em [_iniciarFirebaseEAuth]).
       futuroFirebaseEAuthImediato!.then((_) {
         _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
       });
     });
   }
 
-  if (coldStartViaRotinaAlarme) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-          '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da AlarmeDisparadoScreen.');
-      navigateToAlarmeDisparado();
-    });
-  }
-
-  if (coldStartViaCronometroAlarme) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-          '🚨 [main] PRIORIDADE MÁXIMA: Forçando abertura da CronometroDisparadoScreen.');
-      navigateToCronometroDisparado();
-    });
-  }
+  // CORREÇÃO DE BUG REAL (2026-08-11): `coldStartViaRotinaAlarme`/
+  // `coldStartViaCronometroAlarme` JÁ fazem `_telaInicial()` (usada pelo
+  // `onGenerateRoute` do MaterialApp, ver [build] abaixo, para o
+  // `defaultRouteName` especial do cold start) devolver
+  // `AlarmeDisparadoScreen()`/`CronometroDisparadoScreen()` diretamente
+  // como a PRÓPRIA tela inicial — ver [_telaInicial]. Havia AQUI, antes,
+  // um `navigateToAlarmeDisparado()`/`navigateToCronometroDisparado()`
+  // redundante que EMPILHAVA uma SEGUNDA instância da mesma tela por
+  // cima da primeira (mesmo Navigator/engine, sem precisar de nenhuma
+  // corrida entre dois engines): a segunda instância se autodetectava
+  // como duplicata e se autorremovia (`Navigator.pop()`), mas como o
+  // `pop()` remove sempre o TOPO da pilha — não necessariamente "a si
+  // mesma" — na prática acabava fechando também o diálogo de PIN que a
+  // PRIMEIRA instância tinha acabado de abrir por cima dela, no
+  // instante exato em que ele deveria abrir. Sintoma real reportado: "o
+  // som/teclado ameaçam aparecer, mas são interrompidos imediatamente,
+  // sem chance de digitar a senha". Removido — `_telaInicial()` sozinha
+  // já é suficiente e correta para o cold start.
 
   // Wallpaper/fonte/idioma persistidos: puramente visuais (o
   // MaterialApp já nasce com os valores padrão dos ValueNotifiers e
@@ -192,7 +194,7 @@ Future<void> _inicializarPreferenciasVisuais() async {
 
 /// ETAPA 2: o MÍNIMO de Firebase necessário para os botões de login
 /// funcionarem — só `Firebase.initializeApp()` + a política de sessão
-/// (Opção A). Nada de FCM/heartbeat/wallet aqui (ver ETAPA 3,
+/// (Opção A). Nada de FCM/heartbeat aqui (ver ETAPA 3,
 /// [iniciarServicosPosLoginOuDashboard]). Chamada sem `await` logo após
 /// o runApp() em [main] — nunca antes.
 ///
@@ -270,12 +272,12 @@ Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async 
   // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
   // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
   // sequer rodar, forçando SEMPRE o SMS de fallback sem link real da
-  // foto e desativando Push/WhatsApp — justamente no cenário mais
-  // crítico (app fechado, botão físico). Como nenhuma UI de conta é
-  // exibida nesse fluxo, preservar a sessão aqui mantém a MESMA
-  // garantia de segurança da Opção A (nunca mostrar dados de conta sem
-  // reautenticação) e permite que o SOS físico dispare com todos os
-  // canais (SMS com link real + Push + WhatsApp), mesmo 100% a frio.
+  // foto e desativando o Push — justamente no cenário mais crítico (app
+  // fechado, botão físico). Como nenhuma UI de conta é exibida nesse
+  // fluxo, preservar a sessão aqui mantém a MESMA garantia de segurança
+  // da Opção A (nunca mostrar dados de conta sem reautenticação) e
+  // permite que o SOS físico dispare com todos os canais (SMS com link
+  // real + Push), mesmo 100% a frio.
   try {
     if (!coldStartViaSosFisico) {
       await FirebaseAuthService().logout();
@@ -288,8 +290,8 @@ Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async 
 /// ETAPA 3 (pedido explícito do usuário): TODOS os serviços nativos
 /// pesados — Alarme de rotina, canais de notificação, Foreground
 /// Service do botão físico, fila de retry offline, FCM, heartbeat de
-/// localização, carteira de créditos e limites do plano — só sobem
-/// DEPOIS que o usuário chega no dashboard (chamada em
+/// localização e limites do plano — só sobem DEPOIS que o usuário
+/// chega no dashboard (chamada em
 /// `HomeScreen.initState()`, ver home_screen.dart), nunca antes/em
 /// paralelo com o cold start. Guardada por [_servicosPosLoginJaIniciados]
 /// para nunca rodar duas vezes na mesma sessão do engine.
@@ -310,10 +312,8 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   FcmService().registrarInfraestrutura();
 
   // Heartbeat de localização (a cada 5 min, só quando faltar ≤2h para
-  // algum alarme de rotina ativo) e listener de compras (in_app_purchase)
-  // para não perder confirmação de recarga.
+  // algum alarme de rotina ativo).
   BackgroundLocationHeartbeatService().iniciar();
-  WalletService();
 
   await DatabaseHelper().resetarSessaoAuditoria();
   await AlarmeService.inicializar();
@@ -604,7 +604,44 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
                   child: child!,
                 );
               },
-              home: _telaInicial(),
+              // CORREÇÃO DE BUG REAL (2026-08-11) — CAUSA RAIZ VERDADEIRA:
+              // com `initialRoute` ausente, o `Navigator` resolve a rota
+              // inicial a partir de `defaultRouteName` (a rota especial
+              // de cold start, ex: "/cronometro_alarme_confirmacao")
+              // através do algoritmo PADRÃO
+              // `Navigator.defaultGenerateInitialRoutes`: para QUALQUER
+              // nome de rota que comece com "/", esse algoritmo gera uma
+              // PILHA de rotas — uma para "/" e OUTRA para o nome
+              // completo —, chamando `onGenerateRoute` UMA VEZ PARA CADA
+              // uma. Como o `onGenerateRoute` abaixo ignorava
+              // completamente `settings.name` (sempre devolvia
+              // `_telaInicial()`, não importa qual fosse a rota), as DUAS
+              // chamadas geravam a MESMA tela — `AlarmeDisparadoScreen`/
+              // `CronometroDisparadoScreen` — DUAS VEZES empilhadas. A
+              // segunda instância se autodetectava como duplicata (ver
+              // `_instanciaGraficaAberta` em `alarme_disparado_screen.dart`/
+              // `cronometro_disparado_screen.dart`) e se autorremovia via
+              // `Navigator.pop()` — que, por remover sempre o TOPO da
+              // pilha (não necessariamente "a si mesma"), acabava
+              // fechando também o diálogo de PIN que a PRIMEIRA instância
+              // tinha acabado de abrir por cima dela, no instante exato
+              // em que ele deveria abrir. Sintoma real reportado: "o
+              // som/teclado ameaçam aparecer, mas são interrompidos
+              // imediatamente" — confirmado no log (mesma thread/engine,
+              // "tela duplicada" seguido, sequencialmente, de uma segunda
+              // tentativa bem-sucedida). `onGenerateInitialRoutes` abaixo
+              // SUBSTITUI por completo esse algoritmo padrão de
+              // segmentação, garantindo EXATAMENTE uma única rota inicial
+              // — nunca uma pilha — não importa quantos "/" o nome da
+              // rota especial de cold start contenha.
+              onGenerateInitialRoutes: (initialRouteName) {
+                return [
+                  MaterialPageRoute(
+                    builder: (_) => _telaInicial(),
+                    settings: RouteSettings(name: initialRouteName),
+                  ),
+                ];
+              },
               onGenerateRoute: (settings) {
                 return MaterialPageRoute(
                   builder: (_) => _telaInicial(),

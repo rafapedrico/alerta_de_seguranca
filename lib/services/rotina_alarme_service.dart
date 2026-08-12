@@ -935,6 +935,22 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     debugPrint('⚠️ [HEADLESS] Falha durante o disparo de emergência de rotina: $e');
   }
 
+  // CORREÇÃO (pedido do usuário, 2026-08-11): este callback é o único
+  // caminho de disparo que pode rodar SEM nenhuma tela do app visível
+  // (isolate headless do `android_alarm_manager_plus` — diferente de
+  // [AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme]/
+  // [_descartarPorArraste], que sempre têm a Activity nativa aberta ou
+  // mostram a notificação do sistema). Sem esta chamada, o usuário só
+  // ficava sabendo que o alerta foi enviado se reabrisse o app depois —
+  // agora a mesma notificação do sistema usada no gesto de arraste (ver
+  // [NotificacaoService.exibirNotificacaoAlertaEnviado]) confirma o
+  // envio imediatamente, mesmo com o app 100% fechado.
+  try {
+    await NotificacaoService.exibirNotificacaoAlertaEnviado();
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao exibir notificação de confirmação: $e');
+  }
+
   try {
     await DatabaseHelper().marcarAguardandoConfirmacaoPin();
   } catch (e) {

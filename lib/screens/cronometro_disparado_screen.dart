@@ -31,18 +31,18 @@ import '../widgets/pin_dialog.dart';
 const String chaveCronometroFluxoResolvido = 'cronometro_fluxo_resolvido';
 
 /// Tela dedicada exibida quando o Cronômetro Regressivo da aba Segurança
-/// ZERA — reespecificação do usuário (2026-08-10, Parte 3): toca o som do
-/// alarme e abre o teclado de PIN imediatamente, com até 180 segundos de
-/// tolerância (`AlarmeService.duracaoJanelaFinalCronometro`) e 3
-/// tentativas de PIN. PIN correto (1ª ou 2ª tentativa) cancela tudo sem
-/// enviar nada; a 3ª tentativa incorreta OU os 180s se esgotando disparam
-/// o alerta de emergência com localização e mostram a confirmação de
-/// envio na tela.
+/// ZERA — reespecificação do usuário (2026-08-10, Parte 3; tolerância
+/// ajustada de 180s para 60s em 2026-08-11): toca o som do alarme e abre
+/// o teclado de PIN imediatamente, com até 60 segundos de tolerância
+/// (`AlarmeService.duracaoJanelaFinalCronometro`) e 3 tentativas de PIN.
+/// PIN correto (1ª ou 2ª tentativa) cancela tudo sem enviar nada; a 3ª
+/// tentativa incorreta OU os 60s se esgotando disparam o alerta de
+/// emergência com localização e mostram a confirmação de envio na tela.
 ///
 /// ARQUITETURA: versão de FASE ÚNICA de [AlarmeDisparadoScreen] (Alarme
 /// de Rotina) — mais simples, pois não há uma fase de "tolerância" prévia
 /// e aberta (o próprio tempo escolhido pelo usuário no picker já cumpre
-/// esse papel): assim que esta tela abre, o teclado de PIN de 180s já é
+/// esse papel): assim que esta tela abre, o teclado de PIN de 60s já é
 /// exibido diretamente, sem uma fase de "botão azul" anterior. Reaproveita
 /// a MESMA infraestrutura nativa (Activity/Service/Receiver — ver
 /// `RotinaAlarmPlugin.kt`, extra `tipoAlarme: 'cronometro'`), o mesmo
@@ -66,6 +66,30 @@ class _CronometroDisparadoScreenState
   static bool _instanciaGraficaAberta = false;
   bool _souDuplicada = false;
 
+  /// Instante em que [_instanciaGraficaAberta] foi marcada `true` pela
+  /// última vez — usado para detectar e SE AUTORRECUPERAR de uma flag
+  /// travada (ver [_instanciaGraficaAberta]).
+  static DateTime? _instanciaAbertaDesde;
+
+  /// CORREÇÃO DE BUG REAL (2026-08-11): [_instanciaGraficaAberta] é um
+  /// booleano ESTÁTICO (sobrevive entre disparos enquanto o mesmo engine
+  /// nativo estiver vivo — ver `RotinaCheckinAlarmActivity`, reaberta via
+  /// `onNewIntent`/`FLAG_ACTIVITY_SINGLE_TOP` sem recriar o engine). Se
+  /// UMA instância anterior for encerrada de forma anormal (processo
+  /// morto pelo Android, app forçado a fechar durante testes/instalação
+  /// de uma nova build, etc.) SEM passar por [dispose] — que é o único
+  /// lugar que zera a flag —, ela fica PRESA em `true` para sempre: todo
+  /// alarme seguinte, mesmo em um ciclo completamente novo, cai
+  /// imediatamente no ramo "tela duplicada" abaixo e se autodestrói SEM
+  /// jamais tocar o som ou abrir o teclado de PIN — sintoma real
+  /// reportado ("o teclado e o alarme ameaçam aparecer, mas são
+  /// interrompidos imediatamente"). Nenhuma sessão real de PIN (60s) dura
+  /// mais que [_tempoMaximoInstanciaTravada]; se a flag estiver marcada
+  /// há mais tempo que isso, é certeza de que está travada por uma
+  /// instância morta, não por uma duplicata legítima — trata como se
+  /// nunca tivesse sido marcada e segue o fluxo normal.
+  static const Duration _tempoMaximoInstanciaTravada = Duration(minutes: 5);
+
   bool _dialogoPinAberto = false;
   bool _alertaJaProcessado = false;
   bool _alertaDisparado = false;
@@ -77,6 +101,17 @@ class _CronometroDisparadoScreenState
   void initState() {
     super.initState();
 
+    final DateTime? desde = _instanciaAbertaDesde;
+    final bool travadaHaMuitoTempo = _instanciaGraficaAberta &&
+        desde != null &&
+        DateTime.now().difference(desde) > _tempoMaximoInstanciaTravada;
+    if (travadaHaMuitoTempo) {
+      debugPrint('🛡️ [SINTONIA] Flag de instância única travada há mais de '
+          '${_tempoMaximoInstanciaTravada.inMinutes}min (instância anterior '
+          'morreu sem dispose) — tratando como nova instância legítima.');
+      _instanciaGraficaAberta = false;
+    }
+
     if (_instanciaGraficaAberta) {
       _souDuplicada = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -87,6 +122,7 @@ class _CronometroDisparadoScreenState
       return;
     }
     _instanciaGraficaAberta = true;
+    _instanciaAbertaDesde = DateTime.now();
 
     // Mesma janela de "monitoramento ativo" já usada pelo alarme de
     // rotina — ver [LocationService.iniciarCicloDeAtualizacao].
@@ -133,6 +169,7 @@ class _CronometroDisparadoScreenState
   void dispose() {
     if (!_souDuplicada) {
       _instanciaGraficaAberta = false;
+      _instanciaAbertaDesde = null;
       LocationService().pararCicloDeAtualizacao();
     }
     _pollFluxoResolvidoTimer?.cancel();
@@ -238,7 +275,7 @@ class _CronometroDisparadoScreenState
     _fecharTela();
   }
 
-  /// Abre o teclado de PIN com o limite duro de 180 segundos e 3
+  /// Abre o teclado de PIN com o limite duro de 60 segundos e 3
   /// tentativas — ver `AlarmeService.duracaoJanelaFinalCronometro`.
   Future<void> _abrirTecladoPin() async {
     try {

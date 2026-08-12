@@ -380,7 +380,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         // chegou ao fim — a partir daqui, quem conduz o fluxo real é a
         // tela dedicada [CronometroDisparadoScreen], aberta pelo alarme
         // NATIVO agendado em [AlarmeService.agendarAlarmeEmergencia] para
-        // este MESMO instante (som + teclado de PIN com 180 segundos de
+        // este MESMO instante (som + teclado de PIN com 60 segundos de
         // tolerância, 3 tentativas). Este Timer visual só encerra a
         // contagem local — NUNCA MAIS dispara o alerta diretamente (antes
         // disparava aqui, sem nenhuma chance de PIN).
@@ -393,7 +393,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// tela (par do `iniciarCicloDeAtualizacao()` feito em [_iniciarTimer])
   /// quando o cronômetro chega a zero — a partir daqui,
   /// [CronometroDisparadoScreen] assume seu PRÓPRIO par
-  /// iniciar/parar de rastreamento pela duração da janela de 180s.
+  /// iniciar/parar de rastreamento pela duração da janela de 60s.
   /// Propositalmente NÃO chama [_pararTimer]/[BackgroundLocationHeartbeatService.cancelarCheckinAtivo]:
   /// o heartbeat de nuvem (dead man's switch) e o alarme nativo continuam
   /// intactos até o fluxo ser realmente resolvido (PIN correto ou alerta
@@ -412,6 +412,24 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
   void _pararTimer() {
     _cancelarTimerPrincipal();
+
+    // CORREÇÃO DE BUG REAL (2026-08-11): [_executarDisparoDeEmergencia]
+    // (3ª tentativa de PIN errada NUMA TENTATIVA MANUAL de desarme, ANTES
+    // do cronômetro zerar) chama [_pararTimer] mas nunca cancelava o
+    // alarme NATIVO agendado em [AlarmeService.agendarAlarmeEmergencia]
+    // — o cronômetro "ressuscitava" sozinho no horário original, minutos
+    // depois, tocando som e reabrindo o teclado de PIN de novo para um
+    // ciclo que já tinha sido resolvido (com o alerta real já enviado).
+    // Cancelar aqui é seguro mesmo no caminho de PIN correto
+    // ([_aoConfirmarPinCorreto], que já cancela antes de chegar aqui —
+    // chamada duplicada é inofensiva) e não enfraquece a regra de
+    // segurança original de [AlarmeService.cancelarAlarme] ("só cancela
+    // com o PIN correto"): nos dois casos que chegam aqui, o ciclo já
+    // está definitivamente resolvido — ou por PIN correto, ou porque o
+    // alerta de emergência JÁ foi disparado de verdade — nunca por um
+    // simples toque/abertura de tela sem prova de identidade.
+    unawaited(_alarmeService.cancelarAlarme());
+
     // O cronômetro foi parado/desarmado (por qualquer motivo): interrompe
     // o loop de atualização de localização a cada 2 minutos, já que ele
     // só deve rodar enquanto o check-in estiver ativo.
@@ -494,8 +512,8 @@ class _SegurancaTabState extends State<SegurancaTab> {
     await _executarDisparoDeEmergencia();
   }
 
-  /// Executa o disparo de emergência (SMS + Push App-para-App + WhatsApp,
-  /// se ativado/com créditos) e exibe IMEDIATAMENTE o aviso na tela (regra
+  /// Executa o disparo de emergência (SMS + Push App-para-App) e exibe
+  /// IMEDIATAMENTE o aviso na tela (regra
   /// de negócio 2/3: "Mensagem com a localização foi enviada para os
   /// números cadastrados."), sem esperar a confirmação de rede do
   /// SMS/nuvem, que roda em paralelo. Reaproveita o [EmergencyAlertService],
@@ -508,7 +526,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// usuário, 2026-08-10): a restrição original também proibia qualquer
   /// som de alarme — isso foi revertido DE PROPÓSITO, mas só para o novo
   /// fluxo "ao zerar" (ver [CronometroDisparadoScreen], que toca o alarme
-  /// e abre o teclado de PIN por até 180s). Este método específico
+  /// e abre o teclado de PIN por até 60s). Este método específico
   /// (disparo por 3ª tentativa de PIN errada durante uma tentativa
   /// MANUAL de desarme, ANTES do cronômetro zerar) continua sem tocar
   /// nenhum som — regra histórica preservada aqui, não pedida para
@@ -558,7 +576,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// VEZES CONSECUTIVAS durante uma tentativa de desarme. Regra de
   /// negócio: o cronômetro é encerrado IMEDIATAMENTE, o diálogo de PIN é
   /// fechado, o alerta na tela é exibido e o alerta de emergência
-  /// completo (Push App-para-App, SMS e WhatsApp) é disparado.
+  /// completo (Push App-para-App e SMS) é disparado.
   ///
   /// ORDEM CRÍTICA: o alerta prioritário para a nuvem (Firebase) é
   /// disparado e AGUARDADO PRIMEIRO, antes de qualquer outro
@@ -623,7 +641,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
     if (confirmou != true || !mounted) return;
 
     try {
-      // P1 (SMS + nuvem/WhatsApp) e P2 (abre a câmera) disparam EM
+      // P1 (SMS + nuvem/Push) e P2 (abre a câmera) disparam EM
       // PARALELO — P1 nunca deve atrasar o obturador (câmera física
       // ~3s: nenhuma espera de rede/GPS entre o toque e a câmera
       // abrindo). Também não exibimos mais nenhuma faixa/SnackBar de

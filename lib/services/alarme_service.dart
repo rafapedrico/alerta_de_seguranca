@@ -36,14 +36,15 @@ class AlarmeService {
   static const int idAlarmeCronometroSeguranca = 999999;
 
   /// Tolerância sonora após o cronômetro zerar — especificação do
-  /// usuário (2026-08-10): ao zerar, o alarme toca e exibe o teclado de
-  /// PIN por até 180 segundos (3 tentativas incorretas OU o tempo se
-  /// esgotando disparam o alerta de emergência com localização; qualquer
-  /// tentativa CORRETA cancela tudo, sem enviar nada). Usado tanto pela
-  /// tela `CronometroDisparadoScreen` (limite duro do teclado de PIN)
-  /// quanto pelo prazo final registrado no heartbeat de nuvem — ver
+  /// usuário (2026-08-10, ajustada para 60s em 2026-08-11): ao zerar, o
+  /// alarme toca e exibe o teclado de PIN por até 60 segundos (3
+  /// tentativas incorretas OU o tempo se esgotando disparam o alerta de
+  /// emergência com localização; qualquer tentativa CORRETA cancela
+  /// tudo, sem enviar nada). Usado tanto pela tela
+  /// `CronometroDisparadoScreen` (limite duro do teclado de PIN) quanto
+  /// pelo prazo final registrado no heartbeat de nuvem — ver
   /// `seguranca_tab.dart`/`BackgroundLocationHeartbeatService`.
-  static const Duration duracaoJanelaFinalCronometro = Duration(seconds: 180);
+  static const Duration duracaoJanelaFinalCronometro = Duration(seconds: 60);
 
   /// Deve ser chamado uma única vez, bem no início do main.dart, ANTES
   /// de runApp(), para inicializar o plugin android_alarm_manager_plus
@@ -104,10 +105,14 @@ class AlarmeService {
         '⏰ Alarme nativo do Cronômetro de Segurança agendado para ${timestampExpiracao.toIso8601String()}');
   }
 
-  /// Cancela o alarme nativo agendado. Deve ser chamado SOMENTE quando o
-  /// PIN correto for digitado com sucesso (regra de segurança: o simples
-  /// toque no botão de desarmar, ou a abertura da tela de bloqueio, NÃO
-  /// cancela o alarme nativo — apenas o PIN correto o faz).
+  /// Cancela o alarme nativo agendado. Regra de segurança original: o
+  /// simples toque no botão de desarmar, ou a abertura da tela de
+  /// bloqueio, NUNCA cancela o alarme nativo sozinho — só duas coisas o
+  /// fazem: o PIN correto sendo digitado, OU o alerta de emergência já
+  /// tendo sido realmente disparado (3ª tentativa de PIN errada/tempo
+  /// esgotado — ver `SegurancaTab._pararTimer`) — nos dois casos o ciclo
+  /// já está definitivamente resolvido, nunca por uma ação sem prova de
+  /// identidade.
   Future<void> cancelarAlarme() async {
     try {
       await _canalRotinaAlarme.invokeMethod('cancelarAlarmeNativo', {
