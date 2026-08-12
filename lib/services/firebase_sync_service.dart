@@ -83,11 +83,6 @@ class FirebaseSyncService {
   /// a Cloud Function resolve, na hora de um alerta, quais contatos de
   /// emergência têm conta no app (ver `alertaHibridoService.js`).
   ///
-  /// `creditosDisponiveis: 0` só é gravado AQUI (cadastro) — nenhum
-  /// outro ponto do app cliente deve voltar a escrever este campo
-  /// depois disso; toda alteração de saldo (unidades de disparo, NUNCA
-  /// moeda financeira) passa exclusivamente por Cloud Functions (ver
-  /// `functions/walletService.js`).
   Future<void> criarPerfilInicial({
     required String nome,
     required String email,
@@ -100,7 +95,6 @@ class FirebaseSyncService {
           'nome': nome,
           'email': email,
           'telefone': telefone,
-          'creditosDisponiveis': 0,
           'criadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -141,10 +135,7 @@ class FirebaseSyncService {
   /// (`entregueApp: true` + `status: 'entregue_dispositivo'`, redundantes
   /// de propósito para deixar o critério inequívoco para quem ler o
   /// documento), o único ponto do pipeline em que o cliente escreve
-  /// diretamente nessa coleção (ver `firestore.rules`) — é essa
-  /// confirmação que o job de transbordo
-  /// (`functions/transbordoWhatsappMonitor.js`) verifica antes de decidir
-  /// se cobra o WhatsApp de contingência para este contato.
+  /// diretamente nessa coleção (ver `firestore.rules`).
   Future<void> confirmarEntregaAlerta(String idEntrega) async {
     if (!_firebaseDisponivel) return;
     try {
@@ -197,7 +188,7 @@ class FirebaseSyncService {
     // própria (ver firestore.rules) que permite acesso a qualquer usuário
     // com permissão "aprovado" na aba Monitoramento (MonitoramentoService),
     // sem expor os demais campos privados do documento principal
-    // (creditosDisponiveis, fcmToken). Best-effort e independente da escrita acima —
+    // (fcmToken). Best-effort e independente da escrita acima —
     // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
     // pânico.
     try {
@@ -231,10 +222,6 @@ class FirebaseSyncService {
           .map((contato) => {
                 'nome': (contato['nome'] as String?) ?? '',
                 'telefone': (contato['telefone'] as String?) ?? '',
-                // Ver Switch "Notificar via WhatsApp ($0.10 USD)" em
-                // ConfiguracoesTab — só contatos com esta flag ligada
-                // podem gerar cobrança de WhatsApp de contingência.
-                'whatsappHabilitado': (contato['whatsapp_habilitado'] as int?) == 1,
               })
           .where((contato) => (contato['telefone'] as String).isNotEmpty)
           .toList();
@@ -246,28 +233,6 @@ class FirebaseSyncService {
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao sincronizar contatos de emergência: $e');
-    }
-  }
-
-  /// Grava a chave GLOBAL "Enviar também via WhatsApp" (ver
-  /// ConfiguracoesTab) em `usuarios/{uid}.enviarWhatsappSimultaneo` —
-  /// lida pela Cloud Function no momento do disparo
-  /// ([dispararAlertaHibrido] em `functions/alertaHibridoService.js`)
-  /// para decidir se o WhatsApp de contingência deve ser enviado
-  /// IMEDIATAMENTE, em paralelo ao Push FCM, em vez de aguardar os 60s
-  /// normais de transbordo (`functions/transbordoWhatsappMonitor.js`).
-  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
-    if (!_firebaseDisponivel) return;
-    try {
-      await _documentoUsuario.set(
-        {'enviarWhatsappSimultaneo': ativo},
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
-      debugPrint(
-          '☁️ [FirebaseSyncService] enviarWhatsappSimultaneo atualizado para $ativo.');
-    } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao atualizar enviarWhatsappSimultaneo: $e');
     }
   }
 
@@ -313,8 +278,8 @@ class FirebaseSyncService {
   /// Dispara o P2 da sequência unificada de SOS — a foto já foi enviada
   /// ao Firebase Storage por [SosDisparoService] antes desta chamada,
   /// [fotoUrl] é o link (com token de acesso) que a Cloud Function
-  /// repassa aos contatos de emergência via Push e WhatsApp. Requer
-  /// sessão autenticada, mesma regra de [dispararAlertaSosFisico].
+  /// repassa aos contatos de emergência via Push. Requer sessão
+  /// autenticada, mesma regra de [dispararAlertaSosFisico].
   Future<bool> dispararAlertaSosFoto({
     required String fotoUrl,
     required String origem,

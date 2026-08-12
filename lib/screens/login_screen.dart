@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // `usuarios/{uid}.contatosEmergencia`, sem depender de o usuário
       // editar algo primeiro. Sem isto, a Cloud Function de alerta
       // (`functions/index.js`) podia ler uma lista vazia/desatualizada e
-      // não disparar nem o Push nem o WhatsApp.
+      // não disparar o Push.
       if (!mounted) return;
       await _finalizarLoginComSucesso();
     } on FirebaseAuthException catch (e) {

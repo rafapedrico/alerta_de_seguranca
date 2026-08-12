@@ -28,9 +28,6 @@
   "emailVerificacaoReenvioFalhou": "Impossibile reinviare l'e-mail. Riprova più tardi.",
   "sairDaContaTitulo": "Esci",
   "sairDaContaConfirmar": "Esci",
-  "contatoWhatsappSwitchLabel": "Notifica via WhatsApp (1 credito)",
-  "whatsappSimultaneoTitulo": "Invia anche via WhatsApp",
-  "whatsappSimultaneoDescricao": "Invia l'allerta immediatamente via WhatsApp insieme al Push, senza attendere la conferma di consegna, addebitando l'importo dal Portafoglio per ogni contatto abilitato.",
   "alertaRecebidoTitulo": "Avviso di sicurezza ricevuto",
   "alertaRecebidoDe": "{nome} potrebbe essere in pericolo",
   "@alertaRecebidoDe": {
@@ -49,57 +46,6 @@
   "alertaRecebidoFalhaCompartilhar": "Impossibile condividere la foto.",
   "alertaRecebidoFotoIndisponivel": "Impossibile caricare la foto.",
   "alertaRecebidoTentarNovo": "Riprova",
-  "carteiraTitulo": "Portafoglio Crediti",
-  "carteiraMenuItem": "Portafoglio Crediti",
-  "carteiraSaldoAtual": "Saldo attuale",
-  "carteiraSaldoCreditos": "{n} Crediti",
-  "@carteiraSaldoCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraLegendaCredito": "Ogni credito = 1 invio WhatsApp di emergenza",
-  "carteiraPacoteEnvios": "Pacchetto {n} Invii",
-  "@carteiraPacoteEnvios": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraValorCreditos": "{n} crediti",
-  "@carteiraValorCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraNotaExplicativa": "Gli avvisi tramite app sono 100% gratuiti. Gli invii di emergenza via WhatsApp costano 1 credito ciascuno.",
-  "carteiraRecarregarTitulo": "Ricarica",
-  "carteiraHistoricoTitulo": "Cronologia",
-  "carteiraHistoricoVazio": "Nessun movimento ancora.",
-  "carteiraTipoRecarga": "Ricarica",
-  "carteiraTipoDesconto": "Invio WhatsApp",
-  "carteiraCompraSucesso": "Crediti aggiunti con successo!",
-  "carteiraCompraFalhaVerificacao": "Impossibile verificare l'acquisto. Riprova.",
-  "carteiraCompraErro": "Impossibile completare l'acquisto.",
-  "carteiraLojaIndisponivel": "Negozio non disponibile al momento.",
-  "carteiraLimparHistoricoBotao": "Cancella Cronologia",
-  "carteiraLimparHistoricoConfirmarTitulo": "Cancellare la cronologia?",
-  "carteiraLimparHistoricoConfirmarConteudo": "I record di ricarica e utilizzo verranno rimossi da questo elenco su questo dispositivo. Questa azione non può essere annullata.",
-  "carteiraDescricaoDescontoWhatsapp": "Invio di emergenza via WhatsApp a {nome}",
-  "@carteiraDescricaoDescontoWhatsapp": {
-    "placeholders": {
-      "nome": {
-        "type": "String"
-      }
-    }
-  },
-  "carteiraDescricaoRecarga": "Acquisto di un pacchetto di crediti",
-  "carteiraContatoGenerico": "contatto",
   "ouEntreCom": "oppure accedi con",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -146,7 +92,7 @@
   "segurancaAlertaEnviadoTitulo": "Allerta inviata",
   "segurancaAlertaEnviadoConteudo": "Un messaggio con la posizione è stato inviato ai numeri registrati.",
   "cronometroAtivoDescricao": "Timer di sicurezza scattato.\nInserisci la tua password per disattivare.",
-  "historicoCronometroFalhaMotivo": "il timer di sicurezza non è stato disattivato entro i 180 secondi di tolleranza dopo l'attivazione.",
+  "historicoCronometroFalhaMotivo": "il timer di sicurezza non è stato disattivato entro i 60 secondi di tolleranza dopo l'attivazione.",
   "historicoCronometroPinIncorretoMotivo": "il PIN è stato inserito in modo errato 3 volte di seguito nel tentativo di disattivare il timer di sicurezza.",
   "historicoCronometroFechamentoForcadoMotivo": "l'app è stata chiusa forzatamente mentre il timer di sicurezza stava ancora suonando, senza conferma della disattivazione.",
   "segurancaTituloSecaoTempo": "Tra quanto arriverò",
@@ -415,7 +361,7 @@
   "beneficioBotaoFisico": "Pulsante fisico che invia posizione e foto al database di Guardiano-X e ai telefoni registrati.",
   "beneficioModoSeguranca": "Modalità sicurezza con pulsante di panico che registra la tua posizione ogni un minuto nel database di Guardiano-X e attiva un allarme di emergenza. Questo garantisce che la tua ultima posizione venga inviata ai numeri registrati al termine del timer, anche se il tuo dispositivo è spento.",
   "beneficioModoFamilia": "Modalità famiglia con sveglia per programmazione settimanale o giornaliera e check-in di conferma di sicurezza, inviando in anticipo la posizione al database di Guardiano-X per garantire che il familiare riceva l'allarme di emergenza all'orario e giorno programmati se il check-in non viene confermato.",
-  "beneficioTresCamadas": "Fino a tre livelli di protezione per garantire l'arrivo degli allarmi di emergenza con posizione e foto. (App, SMS e WhatsApp opzionale).",
+  "beneficioTresCamadas": "Due livelli di protezione per garantire l'arrivo degli allarmi di emergenza con posizione e foto. (App e SMS).",
   "beneficioTempoEspera": "Tempo di attesa per modifiche e visualizzazione di dati critici.",
   "agoraNao": "Non ora",
   "assinarPreco": "Abbonati 9,90 €/mese",
@@ -499,7 +445,6 @@
   "dashboardPlanoPremiumDescricao": "Tocca qui e scopri i vantaggi Premium.",
   "dashboardFaqTitulo": "Domande Frequenti",
   "dashboardCentralAtendimentoTitulo": "Centro Assistenza Clienti",
-  "dashboardAvisoWhatsappCredito": "I messaggi via WhatsApp sono una funzione facoltativa e dipendono da un saldo positivo e dall'attivazione preventiva nelle Impostazioni.",
   "dashboardAvisoGarantiaCancelamento": "In caso di cancellazione del piano Premium entro i primi 15 giorni, ricevi il 50% dell'importo pagato, senza burocrazia.",
   "faqAppBarTitulo": "Domande Frequenti (FAQ)",
   "faqTooltipInicio": "Home",
@@ -517,18 +462,14 @@
   "faqResposta5": "Questa funzione del pulsante di panico ha come priorità massima la sicurezza dell'utente. Quando viene azionato il pulsante di panico fisico o quello della pagina \"Sicurezza\", viene inviato immediatamente un messaggio di allarme di emergenza contenente la posizione ai numeri registrati. In seguito, dopo l'apertura della fotocamera del dispositivo e lo scatto della foto da parte dell'utente, viene inviato un secondo messaggio di allarme di emergenza contenente la foto. Questo garantisce che la posizione raggiunga il numero registrato anche se l'utente impiega tempo o non scatta la foto.",
   "faqPergunta6": "È possibile rintracciare e seguire la posizione di un dispositivo che non ha l'app Guardiano-X installata?",
   "faqResposta6": "Non è possibile. La posizione può essere condivisa solo da app ad app e solo con il consenso e l'autorizzazione di entrambi gli utenti.",
-  "faqPergunta7": "È sicuro pagare per attivare il piano premium o depositare denaro nel portafoglio di credito?",
+  "faqPergunta7": "È sicuro pagare per attivare il piano premium?",
   "faqResposta7": "Sì, è sicuro. Nessun pagamento viene effettuato direttamente all'azienda RMF GLOBAL. Tutti i pagamenti sono elaborati direttamente sulla piattaforma Google Play Store o Apple App Store, con la garanzia totale delle piattaforme.",
-  "faqPergunta8": "Posso ritirare il denaro depositato nel portafoglio di credito?",
-  "faqResposta8": "Sì, in conformità al regolamento di Google Play Store e Apple, l'importo pagato per l'acquisto di un pacchetto di crediti può essere rimborsato all'utente. Questo rimborso viene effettuato direttamente dall'istituto finanziario e dalle piattaforme Google Play Store e Apple, seguendo la politica di protezione del consumatore di ciascun negozio — il Portafoglio Crediti di Guardiano-X non consente di prelevare/convertire i crediti in denaro, poiché sono unità di invio, non valuta.",
   "faqPergunta9": "Come avviene la condivisione degli allarmi di emergenza?",
   "faqResposta9": "Tutti i messaggi di allarme di sicurezza vengono inviati in due modi standard: da app ad app e via SMS ai numeri di cellulare registrati nella pagina \"Impostazioni\".",
-  "faqPergunta10": "Come funziona l'invio aggiuntivo di allarme di emergenza su WhatsApp?",
-  "faqResposta10": "L'invio di messaggi su WhatsApp è una forma aggiuntiva di sicurezza, costituendo il terzo livello di protezione come garanzia extra che il numero registrato abbia una garanzia in più che l'allarme di emergenza raggiunga la destinazione e venga visto dall'utente. Ogni messaggio inviato a ciascun numero WhatsApp addebita 1 credito dal Portafoglio. I messaggi WhatsApp vengono inviati solo se ci sono crediti nel portafoglio, se è attivata l'autorizzazione all'invio di messaggi WhatsApp (nella pagina Impostazioni) e se un numero di cellulare è abilitato a ricevere questi messaggi.",
   "faqPergunta11": "Come funziona il servizio di assistenza clienti?",
-  "faqResposta11": "La chat di WhatsApp è stata programmata per rispondere automaticamente alla maggior parte dei dubbi e delle richieste dell'utente. Le richieste effettuate nel menu \"Parla con un operatore fisico\" seguiranno le norme del regolamento della politica stabilita dall'azienda RMF Global, dove gli utenti del piano Premium avranno l'esclusività di questa assistenza entro un termine massimo di 48 ore.",
+  "faqResposta11": "L'assistenza clienti è fornita tramite WhatsApp — tocca il pulsante di contatto nella Schermata Iniziale per parlare direttamente con il nostro team di supporto. Le richieste effettuate nel menu \"Parla con un operatore fisico\" seguono le norme della politica stabilita dall'azienda RMF Global, dove gli utenti del piano Premium hanno l'esclusività di questa assistenza entro un termine massimo di 48 ore.",
   "faqPergunta12": "I messaggi di allarme di emergenza verranno inviati solo ai numeri registrati che hanno l'app Guardiano-X installata?",
-  "faqResposta12": "No. Consigliamo che entrambi i telefoni abbiano l'app installata, ma anche se il telefono di destinazione non ha Guardiano-X, l'allarme di emergenza viene inviato tramite SMS o WhatsApp.",
+  "faqResposta12": "No. Consigliamo che entrambi i telefoni abbiano l'app installata, ma anche se il telefono di destinazione non ha Guardiano-X, l'allarme di emergenza viene comunque inviato tramite SMS.",
   "termosAppBarTitulo": "Termini e Privacy",
   "termosTabContrato": "Contratto di Consenso",
   "termosTabPrivacidade": "Informativa sulla Privacy",
@@ -537,18 +478,18 @@
   "termosContratoCorpo1": "Il presente Contratto di Consenso disciplina l'uso dell'app Guardiano-X, sviluppata e gestita da RMF Global LTDA (\"RMF Global\"), destinata ad assistere l'utente in situazioni di emergenza personale tramite check-in di sicurezza, allarmi automatici, condivisione della posizione tra familiari e contatti fidati, e acquisizione di prove fotografiche. Guardiano-X è uno strumento di ausilio alla sicurezza personale e NON sostituisce gli enti ufficiali di emergenza (Polizia - 190, Vigili del Fuoco - 193, SAMU - 192, o i numeri di emergenza equivalenti nel tuo paese) né alcun altro servizio pubblico di emergenza. In caso di rischio immediato, l'utente deve sempre contattare prima i numeri di emergenza ufficiali.",
   "termosContratoTitulo2": "2. Consenso all'uso della posizione (GPS e posizione in background)",
   "termosContratoCorpo2": "Attivando il timer di check-in, il pulsante SOS o il monitoraggio familiare, l'utente acconsente espressamente alla raccolta e all'invio della propria posizione geografica (GPS) in tempo reale, anche in background (Background Location) quando l'app non è in uso attivo, esclusivamente per consentire l'invio e il salvataggio di allarmi preventivi e di panico ai server di Guardiano-X e ai contatti di emergenza registrati, anche automaticamente se il check-in non viene confermato entro il tempo configurato.",
-  "termosContratoTitulo3": "3. Consenso all'invio di messaggi (SMS/App/WhatsApp)",
-  "termosContratoCorpo3": "L'utente acconsente all'invio di messaggi di allarme (contenenti posizione, contesto indicato e, quando applicabile, foto) ai numeri di telefono e agli account registrati come contatti di emergenza, tramite SMS e notifica tra app. L'invio aggiuntivo tramite WhatsApp è una funzione facoltativa, che dipende da un saldo positivo nel portafoglio crediti e dall'attivazione preventiva nella pagina Impostazioni, soggetta al costo aggiuntivo indicato nell'app.",
+  "termosContratoTitulo3": "3. Consenso all'invio di messaggi (SMS/App)",
+  "termosContratoCorpo3": "L'utente acconsente all'invio di messaggi di allarme (contenenti posizione, contesto indicato e, quando applicabile, foto) ai numeri di telefono e agli account registrati come contatti di emergenza, tramite SMS e notifica tra app.",
   "termosContratoTitulo4": "4. Consenso all'uso della fotocamera e all'acquisizione di contenuti multimediali",
   "termosContratoCorpo4": "L'utente acconsente che, in determinati scenari di emergenza (fine del timer senza conferma, attivazione del pulsante di panico o tentativo di disattivazione fallito), l'app possa aprire automaticamente la fotocamera del dispositivo per acquisire una foto, da inviare come prova aggiuntiva ai contatti di emergenza registrati e salvata nel database di Guardiano-X.",
   "termosContratoTitulo5": "5. Tempi di sicurezza (periodo di carenza)",
   "termosContratoCorpo5": "Alcune azioni sensibili (cambio password/PIN, eliminazione dei contatti di emergenza, visualizzazione immediata della cronologia) sono soggette a un periodo di carenza prima di diventare effettive, con l'obiettivo di impedire che terzi non autorizzati disattivino le funzioni di sicurezza dell'utente sotto costrizione.",
   "termosContratoTitulo6": "6. Piani, prezzi e pagamenti",
-  "termosContratoCorpo6": "Il Piano Free sblocca tutte le funzioni Premium per un massimo di 10 (dieci) giorni al mese, con i restanti giorni soggetti ai limiti del piano gratuito. Il Piano Premium ha il costo mostrato nell'app al momento dell'abbonamento, addebitato mensilmente, con accesso illimitato a tutte le funzioni dell'app. Gli abbonamenti al Piano Premium e le ricariche del portafoglio crediti sono elaborati esclusivamente tramite le piattaforme Google Play Store e Apple App Store, soggetti alle rispettive politiche di fatturazione, rimborso e tutela del consumatore di tali piattaforme — RMF Global non riceve né elabora pagamenti direttamente.",
+  "termosContratoCorpo6": "Il Piano Free sblocca tutte le funzioni Premium per un massimo di 10 (dieci) giorni al mese, con i restanti giorni soggetti ai limiti del piano gratuito. Il Piano Premium ha il costo mostrato nell'app al momento dell'abbonamento, addebitato mensilmente, con accesso illimitato a tutte le funzioni dell'app. Gli abbonamenti al Piano Premium sono elaborati esclusivamente tramite le piattaforme Google Play Store e Apple App Store, soggetti alle rispettive politiche di fatturazione, rimborso e tutela del consumatore di tali piattaforme — RMF Global non riceve né elabora pagamenti direttamente.",
   "termosContratoTitulo7": "7. Cancellazione e rimborso",
   "termosContratoCorpo7": "In caso di cancellazione del Piano Premium entro i primi 15 (quindici) giorni dalla sottoscrizione, l'utente riceve indietro il 50% (cinquanta per cento) dell'importo pagato, senza burocrazia, nel rispetto delle politiche di rimborso di Google Play Store o Apple App Store, a seconda della piattaforma utilizzata per l'abbonamento.",
   "termosContratoTitulo8": "8. Assistenza Clienti (SAC)",
-  "termosContratoCorpo8": "L'assistenza clienti è gestita principalmente tramite la chat automatizzata di WhatsApp, programmata per rispondere automaticamente alla maggior parte dei dubbi e delle richieste dell'utente. Le richieste di assistenza umana seguono le regole della politica stabilita da RMF Global, con gli utenti del Piano Premium che hanno accesso esclusivo a questa assistenza umana entro un massimo di 48 (quarantotto) ore.",
+  "termosContratoCorpo8": "L'assistenza clienti è fornita tramite WhatsApp — il pulsante di contatto nella Schermata Iniziale apre una conversazione diretta con il nostro team di supporto. Le richieste di assistenza umana seguono le regole della politica stabilita da RMF Global, con gli utenti del Piano Premium che hanno accesso esclusivo a questa assistenza umana entro un massimo di 48 (quarantotto) ore.",
   "termosContratoTitulo9": "9. Consenso libero, inequivocabile e revoca",
   "termosContratoCorpo9": "Utilizzando l'app Guardiano-X e attivando le sue funzioni di sicurezza, l'utente dichiara di acconsentire in modo libero, informato e inequivocabile alla raccolta e all'uso del GPS, dei propri dati personali e di contenuti multimediali (foto) in situazioni di emergenza, come descritto in questo Contratto. L'utente può revocare questo consenso in qualsiasi momento disinstallando l'app o richiedendo la cancellazione del proprio account e dei dati associati tramite i canali di assistenza indicati nell'app, nel rispetto dei periodi di carenza di sicurezza descritti nella Sezione 5.",
   "termosPrivacidadeTitulo1": "1. Dati raccolti e finalità",
@@ -574,7 +515,6 @@
   "premiumCancelarConfirmBotao": "Annulla Premium",
   "premiumCanceladoSnackbar": "Piano Premium annullato. Ora sei nel Piano Free.",
   "premiumAssinarBotaoComPreco": "Abbonati a Premium — {preco}",
-  "premiumModalNotaRodape": "* L'invio aggiuntivo via WhatsApp è una funzione opzionale attivabile nella pagina \"Impostazioni\" e consuma 1 credito dal Portafoglio per messaggio.",
   "premiumCancelarBotaoModal": "Annulla Piano Premium",
   "familiaEtiquetaPadrao": "Allarme di routine",
   "familiaDiasNuncaLabel": "Mai",

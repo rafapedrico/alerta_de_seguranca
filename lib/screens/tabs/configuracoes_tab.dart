@@ -12,10 +12,8 @@ import '../../services/firebase_auth_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/battery_optimization_service.dart';
-import '../../services/firebase_sync_service.dart';
 import '../../services/sms_permission_service.dart';
 import '../../utils/telefone_utils.dart';
-import '../carteira_screen.dart';
 import '../login_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
@@ -359,9 +357,10 @@ Future<void> _selecionarSom(int? numero) async {
     // DDI embutido (ex: "5515981343706", sem o "+"); a limpeza antiga só
     // removia caracteres de formatação e deixava esse número "cru" no
     // banco, que o backend então prefixava com "+55" de novo (DDI
-    // duplicado, ex: "+555515981343706") — WhatsApp nunca chegava de
-    // verdade. `TelefoneUtils.normalizarE164` detecta e remove esse DDI
-    // duplicado corretamente, para qualquer país.
+    // duplicado, ex: "+555515981343706") — nem SMS nem os demais canais
+    // chegavam de verdade a esse número. `TelefoneUtils.normalizarE164`
+    // detecta e remove esse DDI duplicado corretamente, para qualquer
+    // país.
     final telefoneOriginal = contatoCompleto.phones.first.number;
     final telefoneNormalizado = TelefoneUtils.normalizarE164(telefoneOriginal);
 
@@ -418,31 +417,7 @@ Future<void> _selecionarSom(int? numero) async {
   /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
   /// como "exclusao_pendente" e continua recebendo alertas de emergência
   /// normalmente até que o prazo de 24h expire.
-  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
-  /// envio) para o contato [id] — ver arquitetura híbrida de alertas: só
-  /// dispara WhatsApp após 60s sem confirmação de entrega no app E com
-  /// esta chave ligada E saldo suficiente na Carteira.
-  Future<void> _alternarWhatsappHabilitado(int id, bool habilitado) async {
-    await _db.atualizarWhatsappHabilitado(id, habilitado);
-    await _carregarContatosEmergencia();
-    ContatosEmergenciaService.notificarAlteracao();
-  }
-
-  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp": distinta
-  /// do switch por contato "Notificar via WhatsApp" acima. Quando ativa,
-  /// e desde que haja saldo suficiente na Carteira, o alerta passa a ser
-  /// enviado de forma SIMULTÂNEA (App + WhatsApp) para os contatos com
-  /// "Notificar via WhatsApp" ligado, sem aguardar os 60s normais de
-  /// transbordo (ver functions/alertaHibridoService.js). Persistida no
-  /// SQLite local e sincronizada com o Firestore, de onde a Cloud
-  /// Function a lê no momento do disparo.
-  Future<void> _alternarEnviarWhatsappSimultaneo(bool ativo) async {
-    await _ensureUserConfig();
-    await _db.atualizarEnviarWhatsappSimultaneo(ativo);
-    await FirebaseSyncService().atualizarEnviarWhatsappSimultaneo(ativo);
-    await _loadConfig();
-  }
-
+  ///
   /// Exibe o modal de confirmação ("Apagar contato" / "Se aprovada a
   /// efetivação será concluída em 24h00") ANTES de sequer iniciar a
   /// contagem de 24h — o ícone de lixeira, sozinho, não deve mais
@@ -537,19 +512,16 @@ Future<void> _selecionarSom(int? numero) async {
   String? get _senhaPendente => _userConfig?['senha_pendente'] as String?;
 
   String? get _planoDeFundoUrl => _userConfig?['plano_de_fundo_url'] as String?;
-  bool get _enviarWhatsappSimultaneo =>
-      (_userConfig?['enviar_whatsapp_simultaneo'] as int?) == 1;
 
   Future<void> _ensureUserConfig() async {
     if (_userConfig == null) {
       final id = await _db.insertUserConfig({
         'pin_real': null,
         'tempo_padrao_timer': 15,
-        'enviar_whatsapp_simultaneo': 0,
         'tipo_plano': 'free',
         'plano_de_fundo_url': null,
       });
-      _userConfig = {'id': id, 'tipo_plano': 'free', 'enviar_whatsapp_simultaneo': 0, 'tempo_padrao_timer': 15};
+      _userConfig = {'id': id, 'tipo_plano': 'free', 'tempo_padrao_timer': 15};
     }
   }
 
@@ -1038,40 +1010,6 @@ Future<void> _selecionarSom(int? numero) async {
         ),
         const SizedBox(height: 12),
 
-        // Chave GLOBAL "Enviar também via WhatsApp" — distinta do switch
-        // por contato "Notificar via WhatsApp" (abaixo, em cada card):
-        // liga o modo de envio SIMULTÂNEO (App + WhatsApp), sem aguardar
-        // os 60s normais de transbordo, desde que haja saldo na Carteira.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Card(
-            elevation: 0,
-            color: const Color(0xFFE8F5E9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.green.shade200),
-            ),
-            child: SwitchListTile(
-              secondary: const Icon(Icons.bolt, color: Color(0xFF4C7040)),
-              title: Text(
-                AppLocalizations.of(context)!.whatsappSimultaneoTitulo,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              subtitle: Text(
-                AppLocalizations.of(context)!.whatsappSimultaneoDescricao,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              value: _enviarWhatsappSimultaneo,
-              onChanged: _alternarEnviarWhatsappSimultaneo,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
         if (_carregandoContatos)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -1105,7 +1043,6 @@ Future<void> _selecionarSom(int? numero) async {
                 final id = contato['id'] as int;
                 final nome = contato['nome'] as String? ?? AppLocalizations.of(context)!.familiaSemNome;
                 final telefone = contato['telefone'] as String? ?? '';
-                final whatsappHabilitado = (contato['whatsapp_habilitado'] as int?) == 1;
                 return Card(
                   elevation: 0,
                   color: Colors.white,
@@ -1114,10 +1051,7 @@ Future<void> _selecionarSom(int? numero) async {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                  ListTile(
+                  child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: const Color(0xFFE8F5E9),
                       child: Text(
@@ -1167,22 +1101,6 @@ Future<void> _selecionarSom(int? numero) async {
                             tooltip: AppLocalizations.of(context)!.tooltipExcluirContato,
                             onPressed: () => _confirmarEExcluirContato(id, nome),
                           ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const Icon(Icons.chat, size: 20, color: Color(0xFF4C7040)),
-                    title: Text(
-                      AppLocalizations.of(context)!.contatoWhatsappSwitchLabel,
-                      softWrap: true,
-                      overflow: TextOverflow.clip,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    value: whatsappHabilitado,
-                    onChanged: (valor) => _alternarWhatsappHabilitado(id, valor),
-                  ),
-                    ],
                   ),
                 );
               }),
@@ -1449,25 +1367,6 @@ Future<void> _selecionarSom(int? numero) async {
           ),
         const SizedBox(height: 8),
 
-
-        const Divider(),
-
-        ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.green.shade50,
-            child: Icon(Icons.account_balance_wallet, color: Colors.green.shade700),
-          ),
-          title: Text(
-            AppLocalizations.of(context)!.carteiraMenuItem,
-            softWrap: true,
-            overflow: TextOverflow.clip,
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CarteiraScreen()),
-          ),
-        ),
 
         const Divider(),
         ListTile(

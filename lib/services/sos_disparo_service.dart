@@ -20,15 +20,14 @@ import 'sos_dispatch_native_service.dart';
 /// rodando) E o botão de SOS manual da aba Segurança:
 ///
 ///   P1 (PRIORIDADE MÁXIMA) — captura localização + timestamp e despacha
-///       IMEDIATAMENTE, em PARALELO, por TRÊS canais oficiais e
+///       IMEDIATAMENTE, em PARALELO, por DOIS canais oficiais e
 ///       independentes:
 ///         1. SMS nativo direto do aparelho (`SmsManager`, sem custo,
 ///            nunca depende de conta/nuvem) — ver
 ///            [EmergencyAlertService.dispararSosComDuplaLocalizacao].
 ///         2. App-para-App (Push FCM), via `dispararAlertaHibrido` no
 ///            backend.
-///         3. WhatsApp (Twilio), também via `dispararAlertaHibrido`.
-///       Os canais 2 e 3 só disparam quando há sessão do Firebase Auth
+///       O canal 2 só dispara quando há sessão do Firebase Auth
 ///       disponível — a política de segurança "Opção A" (login
 ///       obrigatório a cada cold start, ver `FirebaseAuthService`)
 ///       desloga a sessão antes mesmo do botão físico poder ser
@@ -38,11 +37,11 @@ import 'sos_dispatch_native_service.dart';
 ///       autenticação na nuvem.
 ///   P2 — abre a câmera (UI, ver `CapturaDissuasaoService`) e, assim que
 ///       a foto for tirada, [dispararFotoCapturada] despacha os MESMOS
-///       três canais em paralelo: SMS com o link da foto + localização
-///       ([EmergencyAlertService.enviarSmsComLinkDaFoto]), Push e
-///       WhatsApp com o link da foto já enviada ao Firebase Storage.
-///       Sem sessão (ou se o upload ao Storage falhar por qualquer
-///       motivo), os canais 2/3 ficam indisponíveis e o SMS de fallback
+///       dois canais em paralelo: SMS com o link da foto + localização
+///       ([EmergencyAlertService.enviarSmsComLinkDaFoto]) e Push com o
+///       link da foto já enviada ao Firebase Storage. Sem sessão (ou se
+///       o upload ao Storage falhar por qualquer motivo), o canal 2 fica
+///       indisponível e o SMS de fallback
 ///       ([EmergencyAlertService.enviarSmsResgateFoto], sem link real)
 ///       é usado no lugar.
 ///   P3/P4 — tela vermelha travada + bloqueio nativo de tela ao deslizar
@@ -63,8 +62,8 @@ import 'sos_dispatch_native_service.dart';
 /// processo do app) como trava: só o primeiro engine a "reivindicar" a
 /// janela de alguns segundos realmente despacha o alerta; o outro
 /// detecta a reivindicação já feita e não despacha de novo — eliminando
-/// o bug real observado de custo/débito "oscilando" conforme o caminho
-/// de disparo.
+/// o bug real observado de SMS/Push duplicados conforme o caminho de
+/// disparo.
 class SosDisparoService {
   SosDisparoService._internal();
   static final SosDisparoService _instance = SosDisparoService._internal();
@@ -140,7 +139,7 @@ class SosDisparoService {
       // SMS, que não depende de internet nenhuma (rádio GSM puro).
       final smsFuture = _emergencyAlertService.dispararSosComDuplaLocalizacao();
 
-      // Canais 2+3 (App-para-App + WhatsApp): rodam em PARALELO ao SMS
+      // Canal 2 (App-para-App): roda em PARALELO ao SMS
       // acima — a eventual espera pela sessão (ver
       // FirebaseAuthService.aguardarUidPronto) acontece só aqui dentro,
       // nunca atrasando o canal 1.
@@ -157,7 +156,7 @@ class SosDisparoService {
           '📵 [SosDisparoService] Sem sessão autenticada — P1 só via SMS (canal oficial único).');
       return;
     }
-    debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 também via Push+WhatsApp.');
+    debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 também via Push.');
     final Position? posicao = await _obterPosicaoRapida();
     await FirebaseSyncService().dispararAlertaSosFisico(
       latitude: posicao?.latitude,
@@ -168,12 +167,12 @@ class SosDisparoService {
 
   /// Executa o P2 da sequência: [foto] já foi capturada pela UI
   /// ([CameraCapturaScreen]) — envia ao Firebase Storage (se houver
-  /// sessão autenticada) e, com o link em mãos, despacha os TRÊS canais
-  /// oficiais em paralelo: SMS com o link real da foto + localização,
-  /// Push e WhatsApp. Sem sessão OU se o upload falhar por qualquer
-  /// motivo (sem rede, Storage indisponível, etc.), os canais 2/3 ficam
-  /// indisponíveis e o SMS usa a mensagem de fallback (sem link real) —
-  /// a entrega de P2 nunca pode depender de um único canal funcionando.
+  /// sessão autenticada) e, com o link em mãos, despacha os DOIS canais
+  /// oficiais em paralelo: SMS com o link real da foto + localização e
+  /// Push. Sem sessão OU se o upload falhar por qualquer motivo (sem
+  /// rede, Storage indisponível, etc.), o canal 2 fica indisponível e o
+  /// SMS usa a mensagem de fallback (sem link real) — a entrega de P2
+  /// nunca pode depender de um único canal funcionando.
   Future<void> dispararFotoCapturada(XFile foto, {required String origem}) async {
     try {
       await PlanoLimiteService().incrementarFotoUsada();
@@ -227,7 +226,7 @@ class SosDisparoService {
           ? _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl!)
           : _dispararFotoViaSmsFallback();
 
-      // Canais 2+3 (App-para-App + WhatsApp): só quando o upload deu certo.
+      // Canal 2 (App-para-App): só quando o upload deu certo.
       final nuvemFuture = fotoUrl != null
           ? FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl!, origem: origem)
           : Future.value(false);

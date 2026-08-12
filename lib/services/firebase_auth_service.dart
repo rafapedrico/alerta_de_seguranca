@@ -17,15 +17,15 @@ import 'package:flutter/foundation.dart';
 /// `LockscreenCameraActivity`/`main.dart`) NÃO chama [logout] — esse
 /// fluxo nunca exibe nenhuma UI de conta (só a câmera), então preservar
 /// a sessão não expõe nada a quem estiver com o aparelho, e é o que
-/// permite o SOS físico disparar com Push/WhatsApp/link real da foto
+/// permite o SOS físico disparar com Push/link real da foto
 /// mesmo 100% a frio (sem essa exceção, `uidAtual` ficava sempre `null`
 /// nesse cenário, e o SOS físico caía sempre no SMS de fallback sem
 /// link real).
 ///
-/// Toda a arquitetura híbrida de alertas (carteira em USD, vínculo
-/// telefone/fcmToken, regras do Firestore) depende de um `uid` real: é
-/// ele que passa a identificar o documento em `usuarios/{uid}` no lugar
-/// do antigo `ApiService.usuarioIdPadrao` fixo.
+/// Toda a arquitetura híbrida de alertas (vínculo telefone/fcmToken,
+/// regras do Firestore) depende de um `uid` real: é ele que passa a
+/// identificar o documento em `usuarios/{uid}` no lugar do antigo
+/// `ApiService.usuarioIdPadrao` fixo.
 class FirebaseAuthService {
   FirebaseAuthService._internal();
   static final FirebaseAuthService _instance = FirebaseAuthService._internal();

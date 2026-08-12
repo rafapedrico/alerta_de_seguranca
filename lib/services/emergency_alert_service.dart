@@ -425,7 +425,7 @@ class EmergencyAlertService {
 
   /// Canal SMS OFICIAL do P1 da sequência unificada de SOS (ver
   /// [SosDisparoService.executarP1LocalizacaoImediata]) — enviado SEMPRE,
-  /// em paralelo aos canais de nuvem (Push/WhatsApp) quando há sessão
+  /// em paralelo ao canal de nuvem (Push) quando há sessão
   /// autenticada, e como ÚNICO canal quando não há (cold-start via
   /// lockscreen, ver política "Opção A" de `FirebaseAuthService`). Este
   /// método NUNCA é chamado diretamente por `main.dart`/
@@ -532,7 +532,7 @@ class EmergencyAlertService {
   /// [SosDisparoService.dispararFotoCapturada] exclusivamente quando não
   /// há sessão do Firebase Auth disponível — mesma regra de
   /// [dispararSosComDuplaLocalizacao]. Com sessão, a foto é enviada de
-  /// verdade via Firebase Storage + Push/WhatsApp.
+  /// verdade via Firebase Storage + Push.
   Future<void> enviarSmsResgateFoto({
     required String login,
     required String senha,
@@ -569,7 +569,7 @@ class EmergencyAlertService {
 
   /// Canal SMS OFICIAL do P2 da sequência unificada de SOS (ver
   /// [SosDisparoService.dispararFotoCapturada]) — enviado SEMPRE, em
-  /// paralelo aos canais de nuvem (Push/WhatsApp), com o link real da
+  /// paralelo ao canal de nuvem (Push), com o link real da
   /// foto ([fotoUrl], já enviada ao Firebase Storage) e a localização
   /// atual, exatamente como pedido pelo produto: "texto com a
   /// localização + link da foto do Storage". Diferente de

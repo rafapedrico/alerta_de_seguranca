@@ -57,8 +57,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // com o usuário efetivamente chegando no dashboard, é que sobem os
     // serviços nativos pesados (Alarme de rotina, notificação,
     // Foreground Service do botão físico, fila de retry, FCM,
-    // heartbeat de localização, carteira, limites do plano) — nunca
-    // durante o cold start em si. Guardada internamente para nunca
+    // heartbeat de localização, limites do plano) — nunca durante o
+    // cold start em si. Guardada internamente para nunca
     // rodar duas vezes na mesma sessão do engine (ex.: navegar para
     // fora e voltar para a Home).
     unawaited(iniciarServicosPosLoginOuDashboard());

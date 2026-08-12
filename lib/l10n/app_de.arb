@@ -28,9 +28,6 @@
   "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
   "sairDaContaTitulo": "Abmelden",
   "sairDaContaConfirmar": "Abmelden",
-  "contatoWhatsappSwitchLabel": "Über WhatsApp benachrichtigen (1 Credit)",
-  "whatsappSimultaneoTitulo": "Auch über WhatsApp senden",
-  "whatsappSimultaneoDescricao": "Sendet den Alarm sofort per WhatsApp zusammen mit der Push-Benachrichtigung, ohne auf die Zustellbestätigung zu warten, und zieht den Betrag für jeden aktivierten Kontakt von der Wallet ab.",
   "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
   "alertaRecebidoDe": "{nome} könnte in Gefahr sein",
   "@alertaRecebidoDe": {
@@ -49,57 +46,6 @@
   "alertaRecebidoFalhaCompartilhar": "Foto konnte nicht geteilt werden.",
   "alertaRecebidoFotoIndisponivel": "Foto konnte nicht geladen werden.",
   "alertaRecebidoTentarNovo": "Erneut versuchen",
-  "carteiraTitulo": "Guthaben-Wallet",
-  "carteiraMenuItem": "Guthaben-Wallet",
-  "carteiraSaldoAtual": "Aktuelles Guthaben",
-  "carteiraSaldoCreditos": "{n} Credits",
-  "@carteiraSaldoCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraLegendaCredito": "1 Credit = 1 WhatsApp-Notfallnachricht",
-  "carteiraPacoteEnvios": "Paket mit {n} Versendungen",
-  "@carteiraPacoteEnvios": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraValorCreditos": "{n} Credits",
-  "@carteiraValorCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraNotaExplicativa": "Warnungen über die App sind 100% kostenlos. WhatsApp-Notfallnachrichten kosten je 1 Credit.",
-  "carteiraRecarregarTitulo": "Aufladen",
-  "carteiraHistoricoTitulo": "Verlauf",
-  "carteiraHistoricoVazio": "Noch keine Bewegungen.",
-  "carteiraTipoRecarga": "Aufladung",
-  "carteiraTipoDesconto": "WhatsApp-Versand",
-  "carteiraCompraSucesso": "Guthaben erfolgreich hinzugefügt!",
-  "carteiraCompraFalhaVerificacao": "Kauf konnte nicht bestätigt werden. Bitte erneut versuchen.",
-  "carteiraCompraErro": "Kauf konnte nicht abgeschlossen werden.",
-  "carteiraLojaIndisponivel": "Store derzeit nicht verfügbar.",
-  "carteiraLimparHistoricoBotao": "Verlauf löschen",
-  "carteiraLimparHistoricoConfirmarTitulo": "Verlauf löschen?",
-  "carteiraLimparHistoricoConfirmarConteudo": "Aufladungen und Nutzungseinträge werden aus dieser Liste auf diesem Gerät entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-  "carteiraDescricaoDescontoWhatsapp": "WhatsApp-Notfallnachricht an {nome}",
-  "@carteiraDescricaoDescontoWhatsapp": {
-    "placeholders": {
-      "nome": {
-        "type": "String"
-      }
-    }
-  },
-  "carteiraDescricaoRecarga": "Kauf eines Credit-Pakets",
-  "carteiraContatoGenerico": "Kontakt",
   "ouEntreCom": "oder anmelden mit",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -146,7 +92,7 @@
   "segurancaAlertaEnviadoTitulo": "Alarm gesendet",
   "segurancaAlertaEnviadoConteudo": "Eine Nachricht mit dem Standort wurde an die registrierten Nummern gesendet.",
   "cronometroAtivoDescricao": "Sicherheits-Countdown ausgelöst.\nGeben Sie Ihr Passwort ein, um zu entschärfen.",
-  "historicoCronometroFalhaMotivo": "der Sicherheits-Countdown wurde nicht innerhalb der 180-sekündigen Toleranzfrist nach der Auslösung entschärft.",
+  "historicoCronometroFalhaMotivo": "der Sicherheits-Countdown wurde nicht innerhalb der 60-sekündigen Toleranzfrist nach der Auslösung entschärft.",
   "historicoCronometroPinIncorretoMotivo": "die PIN wurde beim Versuch, den Sicherheits-Countdown zu entschärfen, 3 Mal hintereinander falsch eingegeben.",
   "historicoCronometroFechamentoForcadoMotivo": "die App wurde zwangsweise geschlossen, während der Sicherheits-Countdown noch klingelte, ohne Bestätigung der Entschärfung.",
   "segurancaTituloSecaoTempo": "Wie lange bis ich ankomme",
@@ -415,7 +361,7 @@
   "beneficioBotaoFisico": "Physischer Knopf, der Standort und Foto an die Wächter-X-Datenbank und die registrierten Telefone sendet.",
   "beneficioModoSeguranca": "Sicherheitsmodus mit Panikknopf, der deinen Standort jede Minute in der Wächter-X-Datenbank speichert und einen Notfallalarm auslöst. Dies garantiert, dass dein letzter Standort bei Ablauf des Timers an die registrierten Nummern gesendet wird, selbst wenn dein Gerät ausgeschaltet ist.",
   "beneficioModoFamilia": "Familienmodus mit Wecker für wöchentliche oder tägliche Planung und Sicherheits-Check-in, bei dem der Standort vorab an die Wächter-X-Datenbank gesendet wird, damit das Familienmitglied den Notfallalarm zur geplanten Zeit und am geplanten Tag erhält, falls der Check-in nicht bestätigt wird.",
-  "beneficioTresCamadas": "Bis zu drei Schutzebenen, um die Zustellung von Notfallalarmen mit Standort und Fotos zu garantieren. (App, SMS und optional WhatsApp).",
+  "beneficioTresCamadas": "Zwei Schutzebenen, um die Zustellung von Notfallalarmen mit Standort und Fotos zu garantieren. (App und SMS).",
   "beneficioTempoEspera": "Wartezeit für Änderungen und die Anzeige kritischer Daten.",
   "agoraNao": "Jetzt nicht",
   "assinarPreco": "Abonnieren 9,90 €/Monat",
@@ -499,7 +445,6 @@
   "dashboardPlanoPremiumDescricao": "Tippe hier, um die Premium-Vorteile kennenzulernen.",
   "dashboardFaqTitulo": "Häufig gestellte Fragen",
   "dashboardCentralAtendimentoTitulo": "Kundenservice-Center",
-  "dashboardAvisoWhatsappCredito": "WhatsApp-Nachrichten sind eine optionale Funktion und hängen von einem positiven Guthaben und der vorherigen Aktivierung in den Einstellungen ab.",
   "dashboardAvisoGarantiaCancelamento": "Bei Kündigung des Premium-Plans innerhalb der ersten 15 Tage erhältst du 50 % des gezahlten Betrags zurück, ohne Aufwand.",
   "faqAppBarTitulo": "Häufig gestellte Fragen (FAQ)",
   "faqTooltipInicio": "Start",
@@ -517,18 +462,14 @@
   "faqResposta5": "Diese Panikknopf-Funktion hat die Sicherheit des Nutzers als oberste Priorität. Wird der physische Panikknopf oder der auf der Seite „Sicherheit“ ausgelöst, wird sofort eine Notfallalarm-Nachricht mit dem Standort an die registrierten Nummern gesendet. Danach, nachdem die Gerätekamera geöffnet und das Foto vom Nutzer aufgenommen wurde, wird eine zweite Notfallalarm-Nachricht mit dem Foto gesendet. So wird garantiert, dass der Standort die registrierte Nummer erreicht, selbst wenn der Nutzer zögert oder kein Foto aufnimmt.",
   "faqPergunta6": "Ist es möglich, den Standort eines Geräts zu verfolgen, auf dem die Wächter-X-App nicht installiert ist?",
   "faqResposta6": "Das ist nicht möglich. Der Standort kann nur von App zu App und nur mit Zustimmung und Erlaubnis beider Nutzer geteilt werden.",
-  "faqPergunta7": "Ist es sicher, für den Premium-Plan zu bezahlen oder Geld in die Kredit-Wallet einzuzahlen?",
+  "faqPergunta7": "Ist es sicher, für den Premium-Plan zu bezahlen?",
   "faqResposta7": "Ja, es ist sicher. Es wird keine Zahlung direkt an das Unternehmen RMF GLOBAL geleistet. Alle Zahlungen werden direkt über die Plattform Google Play Store oder Apple App Store abgewickelt, mit voller Garantie der Plattformen.",
-  "faqPergunta8": "Kann ich das in die Kredit-Wallet eingezahlte Geld zurückfordern?",
-  "faqResposta8": "Ja, gemäß den Bestimmungen von Google Play Store und Apple kann der beim Kauf eines Credit-Pakets gezahlte Betrag dem Nutzer erstattet werden. Diese Rückerstattung erfolgt direkt durch das Finanzinstitut und die Plattformen Google Play Store und Apple gemäß der Verbraucherschutzrichtlinie des jeweiligen Stores — die Wächter-X Credit-Wallet erlaubt kein Auszahlen/Umtauschen der Credits in Geld, da es sich um Versand-Einheiten handelt, keine Währung.",
   "faqPergunta9": "Wie werden Notfallalarme geteilt?",
   "faqResposta9": "Alle Sicherheitsalarm-Nachrichten werden auf zwei Standardwegen gesendet: von App zu App und per SMS an die auf der Seite „Einstellungen“ registrierten Handynummern.",
-  "faqPergunta10": "Wie funktioniert der zusätzliche Versand von Notfallalarmen an WhatsApp?",
-  "faqResposta10": "Das Senden einer Nachricht an WhatsApp ist eine zusätzliche Sicherheitsform und stellt die dritte Schutzebene dar, als zusätzliche Garantie dafür, dass die registrierte Nummer eine weitere Sicherheit hat, dass der Notfallalarm sein Ziel erreicht und vom Nutzer gesehen wird. Für jede an jede WhatsApp-Nummer gesendete Nachricht wird 1 Credit von der Wallet abgebucht. WhatsApp-Nachrichten werden nur gesendet, wenn Credits in der Wallet vorhanden sind, die Berechtigung zum Senden von WhatsApp-Nachrichten aktiviert ist (auf der Seite Einstellungen) und eine Handynummer zum Empfang dieser Nachrichten aktiviert ist.",
   "faqPergunta11": "Wie funktioniert der Kundenservice?",
-  "faqResposta11": "Der WhatsApp-Chat wurde so programmiert, dass er die meisten Fragen und Anliegen der Nutzer automatisch beantwortet. Anfragen über das Menü „Mit einem persönlichen Mitarbeiter sprechen“ folgen den Regeln der von der RMF Global festgelegten Richtlinie, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem Support innerhalb von bis zu 48 Stunden erhalten.",
+  "faqResposta11": "Der Kundenservice erfolgt über WhatsApp — tippen Sie auf die Kontakt-Schaltfläche auf dem Startbildschirm, um direkt mit unserem Support-Team zu sprechen. Anfragen über das Menü „Mit einem persönlichen Mitarbeiter sprechen“ folgen den Regeln der von der RMF Global festgelegten Richtlinie, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem Support innerhalb von bis zu 48 Stunden erhalten.",
   "faqPergunta12": "Werden Notfallalarm-Nachrichten nur an registrierte Nummern gesendet, auf denen die Wächter-X-App installiert ist?",
-  "faqResposta12": "Nein. Wir empfehlen, dass beide Telefone die App installiert haben, aber selbst wenn das Zieltelefon Wächter-X nicht hat, wird der Notfallalarm per SMS oder WhatsApp gesendet.",
+  "faqResposta12": "Nein. Wir empfehlen, dass beide Telefone die App installiert haben, aber selbst wenn das Zieltelefon Wächter-X nicht hat, wird der Notfallalarm weiterhin per SMS gesendet.",
   "termosAppBarTitulo": "Bedingungen und Datenschutz",
   "termosTabContrato": "Einwilligungsvertrag",
   "termosTabPrivacidade": "Datenschutzrichtlinie",
@@ -537,18 +478,18 @@
   "termosContratoCorpo1": "Dieser Einwilligungsvertrag regelt die Nutzung der Wächter-X-App, entwickelt und betrieben von RMF Global LTDA („RMF Global“), die den Nutzer bei persönlichen Notfällen durch Sicherheits-Check-ins, automatische Alarme, Standortfreigabe zwischen Familienmitgliedern und vertrauenswürdigen Kontakten sowie Erfassung von Fotobeweisen unterstützen soll. Wächter-X ist ein Hilfsmittel zur persönlichen Sicherheit und ersetzt NICHT die offiziellen Notdienste (Polizei - 190, Feuerwehr - 193, SAMU - 192, bzw. die entsprechenden Notrufnummern deines Landes) oder andere öffentliche Notdienste. Bei unmittelbarer Gefahr muss der Nutzer immer zuerst die offiziellen Notrufnummern kontaktieren.",
   "termosContratoTitulo2": "2. Einwilligung zur Standortnutzung (GPS und Hintergrundstandort)",
   "termosContratoCorpo2": "Durch Aktivieren des Check-in-Timers, des SOS-Knopfs oder der Familienüberwachung willigt der Nutzer ausdrücklich in die Erfassung und Übertragung seines geografischen Standorts (GPS) in Echtzeit ein, auch im Hintergrund (Background Location), wenn die App nicht aktiv genutzt wird, ausschließlich um das Senden und Speichern präventiver Alarme und Panikalarme an die Server von Wächter-X und an die registrierten Notfallkontakte zu ermöglichen, auch automatisch, falls der Check-in nicht innerhalb der eingestellten Frist bestätigt wird.",
-  "termosContratoTitulo3": "3. Einwilligung zum Versand von Nachrichten (SMS/App/WhatsApp)",
-  "termosContratoCorpo3": "Der Nutzer willigt in den Versand von Alarmnachrichten (mit Standort, angegebenem Kontext und, falls zutreffend, einem Foto) an die als Notfallkontakte registrierten Telefonnummern und Konten per SMS und App-zu-App-Benachrichtigung ein. Der zusätzliche Versand über WhatsApp ist eine optionale Funktion, die von einem positiven Guthaben in der Kredit-Wallet und der vorherigen Aktivierung auf der Seite Einstellungen abhängt und der in der App angegebenen zusätzlichen Gebühr unterliegt.",
+  "termosContratoTitulo3": "3. Einwilligung zum Versand von Nachrichten (SMS/App)",
+  "termosContratoCorpo3": "Der Nutzer willigt in den Versand von Alarmnachrichten (mit Standort, angegebenem Kontext und, falls zutreffend, einem Foto) an die als Notfallkontakte registrierten Telefonnummern und Konten per SMS und App-zu-App-Benachrichtigung ein.",
   "termosContratoTitulo4": "4. Einwilligung zur Kameranutzung und Medienerfassung",
   "termosContratoCorpo4": "Der Nutzer willigt ein, dass die App in bestimmten Notfallszenarien (Ablauf des Timers ohne Bestätigung, Auslösen des Panikknopfs oder ein fehlgeschlagener Deaktivierungsversuch) automatisch die Gerätekamera öffnen kann, um ein Foto aufzunehmen, das als zusätzlicher Beweis an die registrierten Notfallkontakte gesendet und in der Wächter-X-Datenbank gespeichert wird.",
   "termosContratoTitulo5": "5. Sicherheitsfristen (Wartezeit)",
   "termosContratoCorpo5": "Bestimmte sensible Aktionen (Änderung von Passwort/PIN, Löschen von Notfallkontakten, sofortige Anzeige des Verlaufs) unterliegen einer Wartezeit, bevor sie wirksam werden, um zu verhindern, dass unbefugte Dritte die Sicherheitsfunktionen des Nutzers unter Zwang deaktivieren.",
   "termosContratoTitulo6": "6. Pläne, Preise und Zahlungen",
-  "termosContratoCorpo6": "Der Free-Plan schaltet alle Premium-Funktionen für bis zu 10 (zehn) Tage pro Monat frei, wobei die übrigen Tage den Beschränkungen des kostenlosen Plans unterliegen. Der Premium-Plan kostet den in der App zum Zeitpunkt des Abonnements angezeigten Betrag, monatlich abgerechnet, mit unbegrenztem Zugriff auf alle Funktionen der App. Abonnements des Premium-Plans und Aufladungen der Kredit-Wallet werden ausschließlich über die Plattformen Google Play Store und Apple App Store abgewickelt, vorbehaltlich deren jeweiliger Abrechnungs-, Rückerstattungs- und Verbraucherschutzrichtlinien — RMF Global erhält oder verarbeitet keine Zahlungen direkt.",
+  "termosContratoCorpo6": "Der Free-Plan schaltet alle Premium-Funktionen für bis zu 10 (zehn) Tage pro Monat frei, wobei die übrigen Tage den Beschränkungen des kostenlosen Plans unterliegen. Der Premium-Plan kostet den in der App zum Zeitpunkt des Abonnements angezeigten Betrag, monatlich abgerechnet, mit unbegrenztem Zugriff auf alle Funktionen der App. Abonnements des Premium-Plans werden ausschließlich über die Plattformen Google Play Store und Apple App Store abgewickelt, vorbehaltlich deren jeweiliger Abrechnungs-, Rückerstattungs- und Verbraucherschutzrichtlinien — RMF Global erhält oder verarbeitet keine Zahlungen direkt.",
   "termosContratoTitulo7": "7. Kündigung und Rückerstattung",
   "termosContratoCorpo7": "Wird der Premium-Plan innerhalb der ersten 15 (fünfzehn) Tage nach Abschluss gekündigt, erhält der Nutzer ohne Aufwand 50 % (fünfzig Prozent) des gezahlten Betrags zurück, vorbehaltlich der Rückerstattungsrichtlinien des Google Play Store oder Apple App Store, je nachdem, welche Plattform für das Abonnement verwendet wurde.",
   "termosContratoTitulo8": "8. Kundenservice (SAC)",
-  "termosContratoCorpo8": "Der Kundenservice erfolgt primär über den automatisierten WhatsApp-Chat, der so programmiert ist, dass er die meisten Fragen und Anliegen der Nutzer automatisch beantwortet. Anfragen nach persönlichem Support folgen den von RMF Global festgelegten Richtlinien, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem persönlichen Support innerhalb von bis zu 48 (achtundvierzig) Stunden erhalten.",
+  "termosContratoCorpo8": "Der Kundenservice erfolgt über WhatsApp — die Kontakt-Schaltfläche auf dem Startbildschirm öffnet einen direkten Chat mit unserem Support-Team. Anfragen nach persönlichem Support folgen den von RMF Global festgelegten Richtlinien, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem persönlichen Support innerhalb von bis zu 48 (achtundvierzig) Stunden erhalten.",
   "termosContratoTitulo9": "9. Freie, eindeutige Einwilligung und Widerruf",
   "termosContratoCorpo9": "Durch die Nutzung der Wächter-X-App und die Aktivierung ihrer Sicherheitsfunktionen erklärt der Nutzer, dass er frei, informiert und eindeutig in die Erhebung und Nutzung von GPS, personenbezogenen Daten und Medien (Fotos) in Notfallsituationen einwilligt, wie in diesem Vertrag beschrieben. Der Nutzer kann diese Einwilligung jederzeit widerrufen, indem er die App deinstalliert oder die Löschung seines Kontos und der zugehörigen Daten über die in der App angegebenen Support-Kanäle beantragt, vorbehaltlich der in Abschnitt 5 beschriebenen Sicherheitswartezeiten.",
   "termosPrivacidadeTitulo1": "1. Erhobene Daten und Zweck",
@@ -574,7 +515,6 @@
   "premiumCancelarConfirmBotao": "Premium kündigen",
   "premiumCanceladoSnackbar": "Premium-Plan gekündigt. Sie befinden sich jetzt im kostenlosen Plan.",
   "premiumAssinarBotaoComPreco": "Premium abonnieren — {preco}",
-  "premiumModalNotaRodape": "* Der zusätzliche WhatsApp-Versand ist eine optionale Funktion, die auf der Seite „Einstellungen“ aktiviert werden kann und 1 Credit aus der Wallet pro Nachricht kostet.",
   "premiumCancelarBotaoModal": "Premium-Plan kündigen",
   "familiaEtiquetaPadrao": "Routinealarm",
   "familiaDiasNuncaLabel": "Nie",

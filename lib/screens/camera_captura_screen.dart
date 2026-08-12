@@ -21,7 +21,7 @@ class CameraCapturaScreen extends StatefulWidget {
 
   /// Quando informado, esta captura faz parte da sequência UNIFICADA de
   /// SOS (P1->P4, ver [SosDisparoService]) — a foto (P2) é enviada pelo
-  /// pipeline híbrido novo (Firebase Storage + Push/WhatsApp) e o gesto
+  /// pipeline híbrido novo (Firebase Storage + Push) e o gesto
   /// de deslizar (P4) tenta o bloqueio nativo de tela via
   /// [DeviceAdminService] antes de cair no fallback histórico. Quando
   /// `null` (fluxo de timeout do cronômetro de check-in, fora do escopo
@@ -258,7 +258,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
 
     if (origemUnificada != null) {
       // P2 da sequência unificada de SOS: envia a foto de verdade pelo
-      // pipeline híbrido (Firebase Storage + Push/WhatsApp), com
+      // pipeline híbrido (Firebase Storage + Push), com
       // fallback automático para SMS de texto se não houver sessão
       // autenticada (ver SosDisparoService).
       if (foto != null) {

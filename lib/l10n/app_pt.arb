@@ -28,9 +28,6 @@
   "emailVerificacaoReenvioFalhou": "Não foi possível reenviar o e-mail. Tente novamente mais tarde.",
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
-  "contatoWhatsappSwitchLabel": "Notificar via WhatsApp (1 crédito)",
-  "whatsappSimultaneoTitulo": "Enviar também via WhatsApp",
-  "whatsappSimultaneoDescricao": "Envia o alerta imediatamente por WhatsApp junto com o Push, sem esperar a confirmação de entrega, descontando o valor da Carteira para cada contato habilitado.",
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
   "alertaRecebidoDe": "{nome} pode estar em perigo",
   "@alertaRecebidoDe": {
@@ -49,57 +46,6 @@
   "alertaRecebidoFalhaCompartilhar": "Não foi possível compartilhar a foto.",
   "alertaRecebidoFotoIndisponivel": "Não foi possível carregar a foto.",
   "alertaRecebidoTentarNovo": "Tentar novamente",
-  "carteiraTitulo": "Carteira de Créditos",
-  "carteiraMenuItem": "Carteira de Créditos",
-  "carteiraSaldoAtual": "Saldo atual",
-  "carteiraSaldoCreditos": "{n} Créditos",
-  "@carteiraSaldoCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraLegendaCredito": "Cada crédito = 1 envio de WhatsApp de contingência",
-  "carteiraPacoteEnvios": "Pacote {n} Envios",
-  "@carteiraPacoteEnvios": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraValorCreditos": "{n} créditos",
-  "@carteiraValorCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraNotaExplicativa": "Alertas via App são 100% gratuitos. Envios de contingência via WhatsApp custam 1 crédito cada.",
-  "carteiraRecarregarTitulo": "Recarregar",
-  "carteiraHistoricoTitulo": "Histórico",
-  "carteiraHistoricoVazio": "Nenhuma movimentação ainda.",
-  "carteiraTipoRecarga": "Recarga",
-  "carteiraTipoDesconto": "Envio de WhatsApp",
-  "carteiraCompraSucesso": "Créditos adicionados com sucesso!",
-  "carteiraCompraFalhaVerificacao": "Não foi possível confirmar a compra. Tente novamente.",
-  "carteiraCompraErro": "Não foi possível concluir a compra.",
-  "carteiraLojaIndisponivel": "Loja indisponível no momento.",
-  "carteiraLimparHistoricoBotao": "Limpar Histórico",
-  "carteiraLimparHistoricoConfirmarTitulo": "Limpar histórico?",
-  "carteiraLimparHistoricoConfirmarConteudo": "Os registros de recarga e uso serão removidos desta lista neste aparelho. Esta ação não pode ser desfeita.",
-  "carteiraDescricaoDescontoWhatsapp": "Envio de contingência via WhatsApp para {nome}",
-  "@carteiraDescricaoDescontoWhatsapp": {
-    "placeholders": {
-      "nome": {
-        "type": "String"
-      }
-    }
-  },
-  "carteiraDescricaoRecarga": "Compra de pacote de créditos",
-  "carteiraContatoGenerico": "contato",
   "ouEntreCom": "ou entre com",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -146,7 +92,7 @@
   "segurancaAlertaEnviadoTitulo": "Alerta enviado",
   "segurancaAlertaEnviadoConteudo": "Mensagem com a localização foi enviada para os números cadastrados.",
   "cronometroAtivoDescricao": "Cronômetro de segurança disparado.\nDigite sua senha para desarmar.",
-  "historicoCronometroFalhaMotivo": "o cronômetro de segurança não foi desarmado dentro dos 180 segundos de tolerância após o disparo.",
+  "historicoCronometroFalhaMotivo": "o cronômetro de segurança não foi desarmado dentro dos 60 segundos de tolerância após o disparo.",
   "historicoCronometroPinIncorretoMotivo": "o PIN foi digitado incorretamente 3 vezes seguidas ao tentar desarmar o cronômetro de segurança.",
   "historicoCronometroFechamentoForcadoMotivo": "o aplicativo foi fechado à força enquanto o cronômetro de segurança ainda tocava, sem confirmação do desarme.",
   "segurancaTituloSecaoTempo": "Daqui quanto tempo vou chegar",
@@ -415,7 +361,7 @@
   "beneficioBotaoFisico": "Botão físico com envio de localização e foto para o banco de dados do Guardião-X e celulares cadastrados.",
   "beneficioModoSeguranca": "Modo segurança com botão de pânico com leitura de localização a cada um minuto salvo no banco de dados do Guardião-X com disparo de alerta de emergência. Isto garante que a sua última localização será enviada para os números cadastrados ao término do cronômetro mesmo que seu aparelho estiver desligado.",
   "beneficioModoFamilia": "Modo família com despertador para o agendamento semanal ou diário com check-in de confirmação de segurança com envio antecipado de localização para o banco de dados do Guardião-X para garantir que o familiar receba o alerta de emergência no horário e dia programado caso o check-in não seja confirmado.",
-  "beneficioTresCamadas": "Até três camadas de proteção para garantir a chegada dos alertas de emergência com a localização e fotos. (Aplicativo, SMS e WhatsApp opcional).",
+  "beneficioTresCamadas": "Duas camadas de proteção para garantir a chegada dos alertas de emergência com a localização e fotos. (Aplicativo e SMS).",
   "beneficioTempoEspera": "Tempo de espera para alterações e visualizações de dados críticos.",
   "agoraNao": "Agora não",
   "assinarPreco": "Assinar R$ 9,90/mês",
@@ -499,7 +445,6 @@
   "dashboardPlanoPremiumDescricao": "Clique aqui e conheça os benefícios Premium.",
   "dashboardFaqTitulo": "Perguntas Frequentes",
   "dashboardCentralAtendimentoTitulo": "Central de Atendimento ao Cliente",
-  "dashboardAvisoWhatsappCredito": "As mensagens via WhatsApp é um recurso opcional e dependem de saldo positivo e da ativação prévia em configurações.",
   "dashboardAvisoGarantiaCancelamento": "Em caso de cancelamento do plano Premium nos primeiros 15 dias, receba 50% do valor pago sem burocracia.",
   "faqAppBarTitulo": "Perguntas Frequentes (FAQ)",
   "faqTooltipInicio": "Início",
@@ -517,18 +462,14 @@
   "faqResposta5": "Esta função do botão de pânico tem como prioridade máxima a segurança do usuário. Quando o botão de pânico físico ou da página \"Segurança\" é acionado, imediatamente é enviada uma mensagem de alerta de emergência para os números cadastrados contendo a localização. Em seguida, após abrir a câmera do aparelho e a foto ser registrada pelo usuário, uma segunda mensagem de alerta de emergência é enviada contendo a foto. Isto garante que a localização chegará ao número cadastrado mesmo se o usuário demorar ou não registrar a foto.",
   "faqPergunta6": "É possível rastrear e acompanhar a localização de algum aparelho que não tenha o aplicativo Guardião-X instalado no celular?",
   "faqResposta6": "Não é possível. A localização só pode ser compartilhada de aplicativo para aplicativo e apenas com o consentimento e permissão de ambos os usuários.",
-  "faqPergunta7": "É seguro fazer o pagamento para contratar o plano premium ou depositar dinheiro na carteira de crédito?",
+  "faqPergunta7": "É seguro fazer o pagamento para contratar o plano premium?",
   "faqResposta7": "Sim, é seguro. Nenhum pagamento é efetuado direto para a empresa RMF GLOBAL. Todos os pagamentos são efetuados direto na plataforma do Google Play Store ou Apple App Store, com total garantia das plataformas.",
-  "faqPergunta8": "Posso resgatar o dinheiro depositado na carteira de crédito?",
-  "faqResposta8": "Sim, conforme regulamento do Google Play Store e Apple, o valor pago na compra de um pacote de créditos pode ser reembolsado ao usuário. Esse reembolso é feito diretamente pela instituição financeira e pelas plataformas Google Play Store e Apple, seguindo a política de proteção ao consumidor de cada loja — a Carteira de Créditos do Guardião-X não permite resgate/saque dos créditos em dinheiro, já que eles são unidades de envio, não moeda.",
   "faqPergunta9": "Como é feito o compartilhamento dos alertas de emergência?",
   "faqResposta9": "Todas as mensagens de alerta de segurança são enviadas de duas formas padrão: de aplicativo para aplicativo e por SMS para os números de celular cadastrados na página de \"Configurações\".",
-  "faqPergunta10": "Como funciona o envio adicional de alerta de emergência para o WhatsApp?",
-  "faqResposta10": "O envio de mensagem para o WhatsApp é uma forma adicional de segurança, sendo a terceira camada de proteção como garantia extra de que o número cadastrado terá uma garantia a mais de que o alerta de emergência chegará ao destino e será visualizado pelo usuário. Cada mensagem enviada para cada número de WhatsApp debita 1 crédito da Carteira. As mensagens para o WhatsApp só serão enviadas se houver créditos na carteira, se estiver ativada a autorização para o envio de mensagens para o WhatsApp (na página de Configurações) e se algum número de celular estiver ativado para receber estas mensagens.",
   "faqPergunta11": "Como funciona o serviço de atendimento ao consumidor?",
-  "faqResposta11": "O chat do WhatsApp foi programado para responder de maneira automática a maioria das dúvidas e solicitações do usuário. As solicitações feitas no menu \"Falar com o atendente físico\" seguirão as normas dos regulamentos da política estabelecida pela empresa RMF Global, onde os usuários do Plano Premium terão exclusividade a este atendimento num prazo de até 48 horas.",
+  "faqResposta11": "O atendimento ao consumidor é feito pelo WhatsApp — toque no botão de contato na Tela de Início para falar diretamente com a nossa equipe de suporte. As solicitações feitas no menu \"Falar com o atendente físico\" seguem as normas da política estabelecida pela empresa RMF Global, onde os usuários do Plano Premium têm exclusividade a este atendimento num prazo de até 48 horas.",
   "faqPergunta12": "As mensagens de alerta de emergência só serão enviadas para os números cadastrados que tiverem o aplicativo Guardião-X instalado no celular?",
-  "faqResposta12": "Não. Recomendamos que ambos os celulares tenham o aplicativo instalado, mas mesmo se o celular de destino não tiver o Guardião-X, o alerta de emergência é enviado por meio de SMS ou pelo WhatsApp.",
+  "faqResposta12": "Não. Recomendamos que ambos os celulares tenham o aplicativo instalado, mas mesmo se o celular de destino não tiver o Guardião-X, o alerta de emergência ainda é enviado por SMS.",
   "termosAppBarTitulo": "Termos e Privacidade",
   "termosTabContrato": "Contrato de Consentimento",
   "termosTabPrivacidade": "Política de Privacidade",
@@ -537,18 +478,18 @@
   "termosContratoCorpo1": "O presente Contrato de Consentimento regula o uso do aplicativo Guardião-X, desenvolvido e operado pela RMF Global LTDA (\"RMF Global\"), destinado a auxiliar o usuário em situações de emergência pessoal por meio de check-in de segurança, alertas automáticos, compartilhamento de localização entre familiares e contatos de confiança, e captura de evidências fotográficas. O Guardião-X é uma ferramenta de auxílio e apoio à segurança pessoal e NÃO substitui os órgãos oficiais de emergência (Polícia Militar - 190, Corpo de Bombeiros - 193, SAMU - 192) nem qualquer outro serviço de emergência público. Em situação de risco imediato, o usuário deve sempre acionar primeiro os números de emergência oficiais.",
   "termosContratoTitulo2": "2. Consentimento para uso de localização (GPS e Localização em Segundo Plano)",
   "termosContratoCorpo2": "Ao ativar o cronômetro de check-in, o botão de SOS, ou o monitoramento entre familiares, o usuário consente expressamente com a coleta e o envio da sua localização geográfica (GPS) em tempo real, inclusive em segundo plano (Background Location) quando o aplicativo não está em uso ativo, estritamente para viabilizar o envio e o salvamento de alertas preventivos e de pânico para os servidores do Guardião-X e para os contatos de emergência cadastrados, inclusive de forma automática caso o check-in não seja confirmado dentro do prazo configurado.",
-  "termosContratoTitulo3": "3. Consentimento para envio de mensagens (SMS/App/WhatsApp)",
-  "termosContratoCorpo3": "O usuário consente com o envio de mensagens de alerta (contendo localização, contexto informado e, quando aplicável, fotografia) para os números de telefone e contas cadastradas como contatos de emergência, por SMS e por notificação entre aplicativos. O envio adicional por WhatsApp é um recurso opcional, que depende de saldo positivo na carteira de créditos e de ativação prévia na página de Configurações, estando sujeito à cobrança adicional informada dentro do aplicativo.",
+  "termosContratoTitulo3": "3. Consentimento para envio de mensagens (SMS/App)",
+  "termosContratoCorpo3": "O usuário consente com o envio de mensagens de alerta (contendo localização, contexto informado e, quando aplicável, fotografia) para os números de telefone e contas cadastradas como contatos de emergência, por SMS e por notificação entre aplicativos.",
   "termosContratoTitulo4": "4. Consentimento para uso da câmera e captura de mídia",
   "termosContratoCorpo4": "O usuário consente que, em determinados cenários de emergência (término do cronômetro sem confirmação, acionamento do botão de pânico ou tentativa de desarme malsucedida), o aplicativo poderá abrir automaticamente a câmera do aparelho para capturar uma fotografia, a ser enviada como evidência adicional aos contatos de emergência cadastrados e salva no banco de dados do Guardião-X.",
   "termosContratoTitulo5": "5. Prazos de segurança (carência)",
   "termosContratoCorpo5": "Determinadas ações sensíveis (alteração de senha/PIN, exclusão de contatos de emergência, visualização imediata de histórico) estão sujeitas a um prazo de carência antes de serem efetivadas, com o objetivo de impedir que terceiros não autorizados desativem funções de segurança do usuário sob coação.",
   "termosContratoTitulo6": "6. Planos, preços e pagamentos",
-  "termosContratoCorpo6": "O Plano Free libera todas as funções Premium por até 10 (dez) dias a cada mês, com os demais dias sujeitos aos limites do plano gratuito. O Plano Premium tem o valor exibido no aplicativo no momento da assinatura, cobrado mensalmente, com acesso ilimitado a todas as funções do aplicativo. Assinaturas do Plano Premium e recargas da carteira de crédito são processadas exclusivamente pelas plataformas Google Play Store e Apple App Store, sujeitas às respectivas políticas de cobrança, reembolso e proteção ao consumidor dessas plataformas — a RMF Global não recebe nem processa pagamentos diretamente.",
+  "termosContratoCorpo6": "O Plano Free libera todas as funções Premium por até 10 (dez) dias a cada mês, com os demais dias sujeitos aos limites do plano gratuito. O Plano Premium tem o valor exibido no aplicativo no momento da assinatura, cobrado mensalmente, com acesso ilimitado a todas as funções do aplicativo. Assinaturas do Plano Premium são processadas exclusivamente pelas plataformas Google Play Store e Apple App Store, sujeitas às respectivas políticas de cobrança, reembolso e proteção ao consumidor dessas plataformas — a RMF Global não recebe nem processa pagamentos diretamente.",
   "termosContratoTitulo7": "7. Cancelamento e reembolso",
   "termosContratoCorpo7": "Em caso de cancelamento do Plano Premium dentro dos primeiros 15 (quinze) dias a partir da contratação, o usuário recebe de volta 50% (cinquenta por cento) do valor pago, sem burocracia, respeitadas as políticas de reembolso da Google Play Store ou da Apple App Store, conforme a plataforma utilizada na assinatura.",
   "termosContratoTitulo8": "8. Atendimento ao Consumidor (SAC)",
-  "termosContratoCorpo8": "O atendimento ao consumidor é feito primariamente pelo chat automatizado do WhatsApp, programado para responder de maneira automática a maioria das dúvidas e solicitações do usuário. Solicitações de atendimento humano seguem as normas da política estabelecida pela RMF Global, sendo que os usuários do Plano Premium têm exclusividade nesse atendimento humano em um prazo de até 48 (quarenta e oito) horas.",
+  "termosContratoCorpo8": "O atendimento ao consumidor é feito pelo WhatsApp — o botão de contato na Tela de Início abre uma conversa direta com a nossa equipe de suporte. Solicitações de atendimento humano seguem as normas da política estabelecida pela RMF Global, sendo que os usuários do Plano Premium têm exclusividade nesse atendimento humano em um prazo de até 48 (quarenta e oito) horas.",
   "termosContratoTitulo9": "9. Consentimento livre, inequívoco e revogação",
   "termosContratoCorpo9": "Ao utilizar o aplicativo Guardião-X e ativar suas funções de segurança, o usuário declara consentir de forma livre, informada e inequívoca com a coleta e o uso do GPS, de seus dados pessoais e de mídias (fotos) em situações de emergência, conforme descrito neste Contrato. O usuário pode revogar este consentimento a qualquer momento desinstalando o aplicativo ou solicitando a exclusão de sua conta e dos dados associados pelos canais de atendimento indicados no aplicativo, respeitados os prazos de carência de segurança descritos na Seção 5.",
   "termosPrivacidadeTitulo1": "1. Dados coletados e finalidade",
@@ -581,7 +522,6 @@
       }
     }
   },
-  "premiumModalNotaRodape": "* O envio adicional para WhatsApp é um recurso opcional que pode ser ativado na página \"Configurações\" e consome 1 crédito da Carteira por mensagem.",
   "premiumCancelarBotaoModal": "Cancelar Plano Premium",
   "familiaEtiquetaPadrao": "Alarme de rotina",
   "familiaDiasNuncaLabel": "Nunca",

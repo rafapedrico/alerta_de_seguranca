@@ -8,9 +8,9 @@ import '../utils/telefone_utils.dart';
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
 ///
 /// Cria a conta real no Firebase Auth (e-mail/senha), grava o perfil
-/// inicial em `usuarios/{uid}` (nome, e-mail, telefone em E.164,
-/// `creditosDisponiveis: 0`) via [FirebaseSyncService] e envia o e-mail de
-/// verificação. `createUserWithEmailAndPassword` autentica
+/// inicial em `usuarios/{uid}` (nome, e-mail, telefone em E.164) via
+/// [FirebaseSyncService] e envia o e-mail de verificação.
+/// `createUserWithEmailAndPassword` autentica
 /// automaticamente o usuário recém-criado — mas como o e-mail ainda não
 /// foi confirmado, essa sessão é encerrada IMEDIATAMENTE em seguida e o
 /// usuário é devolvido à LoginScreen (nunca entra direto no app sem

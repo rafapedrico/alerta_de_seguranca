@@ -201,20 +201,6 @@ class InicioDashboard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.info_outline, size: 14, color: Colors.white38),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.dashboardAvisoWhatsappCredito,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
           // Item 5: aviso de garantia de cancelamento do Premium nos
           // primeiros 15 dias.
           Row(
@@ -635,8 +621,7 @@ class _CartaoPlano extends StatelessWidget {
 
 /// Modal de detalhes de um plano (Free ou Premium), aberto ao tocar no
 /// respectivo card. Estrutura compartilhada: ícone + título, banner de
-/// destaque, lista de benefícios, nota de rodapé sobre o custo do envio
-/// extra via WhatsApp, e ação(ões) no rodapé.
+/// destaque, lista de benefícios e ação(ões) no rodapé.
 class _ModalDetalhePlano extends StatelessWidget {
   const _ModalDetalhePlano({
     required this.icone,
@@ -709,11 +694,6 @@ class _ModalDetalhePlano extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.premiumModalNotaRodape,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
             if (onCancelarPremium != null) ...[
               const SizedBox(height: 14),

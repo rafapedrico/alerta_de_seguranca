@@ -12,8 +12,8 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 /// texto não começava com "+", sem checar se o DDI já estava embutido nos
 /// dígitos — um contato importado como "5515981343706" (DDI já incluso,
 /// sem o "+") virava "+555515981343706" (DDI duplicado, E.164 inválido) e
-/// o WhatsApp nunca chegava de verdade, mesmo com a Twilio aceitando o
-/// envio ("queued"). `PhoneNumber.parse` detecta e remove esse DDI
+/// nem SMS nem os demais canais chegavam de verdade a esse número.
+/// `PhoneNumber.parse` detecta e remove esse DDI
 /// duplicado automaticamente (ver `PhoneParser.parse` no pacote), além de
 /// já remover prefixos de acesso nacional (ex: o "0" local) e caracteres
 /// de formatação — não é preciso reimplementar nada disso manualmente.

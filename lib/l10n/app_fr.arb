@@ -28,9 +28,6 @@
   "emailVerificacaoReenvioFalhou": "Impossible de renvoyer l'e-mail. Veuillez réessayer plus tard.",
   "sairDaContaTitulo": "Se déconnecter",
   "sairDaContaConfirmar": "Se déconnecter",
-  "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (1 crédit)",
-  "whatsappSimultaneoTitulo": "Envoyer aussi par WhatsApp",
-  "whatsappSimultaneoDescricao": "Envoie l'alerte immédiatement par WhatsApp en même temps que le Push, sans attendre la confirmation de livraison, en déduisant le montant du Portefeuille pour chaque contact activé.",
   "alertaRecebidoTitulo": "Alerte de sécurité reçue",
   "alertaRecebidoDe": "{nome} pourrait être en danger",
   "@alertaRecebidoDe": {
@@ -49,57 +46,6 @@
   "alertaRecebidoFalhaCompartilhar": "Impossible de partager la photo.",
   "alertaRecebidoFotoIndisponivel": "Impossible de charger la photo.",
   "alertaRecebidoTentarNovo": "Réessayer",
-  "carteiraTitulo": "Portefeuille de crédits",
-  "carteiraMenuItem": "Portefeuille de crédits",
-  "carteiraSaldoAtual": "Solde actuel",
-  "carteiraSaldoCreditos": "{n} Crédits",
-  "@carteiraSaldoCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraLegendaCredito": "Chaque crédit = 1 envoi WhatsApp de secours",
-  "carteiraPacoteEnvios": "Pack {n} Envois",
-  "@carteiraPacoteEnvios": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraValorCreditos": "{n} crédits",
-  "@carteiraValorCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraNotaExplicativa": "Les alertes via l'application sont 100% gratuites. Les envois de secours via WhatsApp coûtent 1 crédit chacun.",
-  "carteiraRecarregarTitulo": "Recharger",
-  "carteiraHistoricoTitulo": "Historique",
-  "carteiraHistoricoVazio": "Aucun mouvement pour l'instant.",
-  "carteiraTipoRecarga": "Recharge",
-  "carteiraTipoDesconto": "Envoi WhatsApp",
-  "carteiraCompraSucesso": "Crédits ajoutés avec succès !",
-  "carteiraCompraFalhaVerificacao": "Impossible de confirmer l'achat. Veuillez réessayer.",
-  "carteiraCompraErro": "Impossible de terminer l'achat.",
-  "carteiraLojaIndisponivel": "Boutique indisponible pour le moment.",
-  "carteiraLimparHistoricoBotao": "Effacer l'historique",
-  "carteiraLimparHistoricoConfirmarTitulo": "Effacer l'historique ?",
-  "carteiraLimparHistoricoConfirmarConteudo": "Les enregistrements de recharge et d'utilisation seront retirés de cette liste sur cet appareil. Cette action est irréversible.",
-  "carteiraDescricaoDescontoWhatsapp": "Envoi de secours via WhatsApp à {nome}",
-  "@carteiraDescricaoDescontoWhatsapp": {
-    "placeholders": {
-      "nome": {
-        "type": "String"
-      }
-    }
-  },
-  "carteiraDescricaoRecarga": "Achat de pack de crédits",
-  "carteiraContatoGenerico": "contact",
   "ouEntreCom": "ou connectez-vous avec",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -146,7 +92,7 @@
   "segurancaAlertaEnviadoTitulo": "Alerte envoyée",
   "segurancaAlertaEnviadoConteudo": "Un message avec la localisation a été envoyé aux numéros enregistrés.",
   "cronometroAtivoDescricao": "Minuteur de sécurité déclenché.\nEntrez votre mot de passe pour désarmer.",
-  "historicoCronometroFalhaMotivo": "le minuteur de sécurité n'a pas été désarmé dans les 180 secondes de tolérance après le déclenchement.",
+  "historicoCronometroFalhaMotivo": "le minuteur de sécurité n'a pas été désarmé dans les 60 secondes de tolérance après le déclenchement.",
   "historicoCronometroPinIncorretoMotivo": "le code PIN a été saisi incorrectement 3 fois de suite en essayant de désarmer le minuteur de sécurité.",
   "historicoCronometroFechamentoForcadoMotivo": "l'application a été fermée de force alors que le minuteur de sécurité sonnait encore, sans confirmation du désarmement.",
   "segurancaTituloSecaoTempo": "Dans combien de temps j'arriverai",
@@ -415,7 +361,7 @@
   "beneficioBotaoFisico": "Bouton physique qui envoie la localisation et une photo à la base de données Gardien-X et aux téléphones enregistrés.",
   "beneficioModoSeguranca": "Mode sécurité avec bouton panique qui enregistre votre localisation chaque minute dans la base de données Gardien-X et déclenche une alerte d'urgence. Cela garantit que votre dernière localisation sera envoyée aux numéros enregistrés à la fin du compte à rebours, même si votre appareil est éteint.",
   "beneficioModoFamilia": "Mode famille avec réveil pour une programmation hebdomadaire ou quotidienne et un check-in de confirmation de sécurité, envoyant la localisation à l'avance à la base de données Gardien-X pour garantir que le membre de la famille reçoive l'alerte d'urgence à l'heure et au jour programmés si le check-in n'est pas confirmé.",
-  "beneficioTresCamadas": "Jusqu'à trois couches de protection pour garantir l'arrivée des alertes d'urgence avec localisation et photos. (Application, SMS et WhatsApp en option).",
+  "beneficioTresCamadas": "Deux couches de protection pour garantir l'arrivée des alertes d'urgence avec localisation et photos. (Application et SMS).",
   "beneficioTempoEspera": "Délai d'attente pour les modifications et la consultation de données critiques.",
   "agoraNao": "Pas maintenant",
   "assinarPreco": "S'abonner 9,90 €/mois",
@@ -499,7 +445,6 @@
   "dashboardPlanoPremiumDescricao": "Touchez ici pour découvrir les avantages Premium.",
   "dashboardFaqTitulo": "Questions Fréquentes",
   "dashboardCentralAtendimentoTitulo": "Centre de Service Client",
-  "dashboardAvisoWhatsappCredito": "Les messages via WhatsApp sont une fonctionnalité optionnelle et dépendent d'un solde positif et d'une activation préalable dans les Paramètres.",
   "dashboardAvisoGarantiaCancelamento": "En cas d'annulation du forfait Premium dans les 15 premiers jours, recevez 50 % du montant payé, sans démarches.",
   "faqAppBarTitulo": "Questions Fréquentes (FAQ)",
   "faqTooltipInicio": "Accueil",
@@ -517,18 +462,14 @@
   "faqResposta5": "Cette fonction du bouton panique a pour priorité absolue la sécurité de l'utilisateur. Lorsque le bouton panique physique ou celui de la page « Sécurité » est activé, un message d'alerte d'urgence contenant la localisation est immédiatement envoyé aux numéros enregistrés. Ensuite, après l'ouverture de l'appareil photo et la prise de la photo par l'utilisateur, un second message d'alerte d'urgence contenant la photo est envoyé. Cela garantit que la localisation parviendra au numéro enregistré même si l'utilisateur tarde ou ne prend pas la photo.",
   "faqPergunta6": "Est-il possible de suivre la localisation d'un appareil qui n'a pas l'application Gardien-X installée ?",
   "faqResposta6": "Ce n'est pas possible. La localisation ne peut être partagée que d'application à application, et uniquement avec le consentement et l'autorisation des deux utilisateurs.",
-  "faqPergunta7": "Est-il sûr de payer pour souscrire au forfait premium ou de déposer de l'argent dans le portefeuille de crédit ?",
+  "faqPergunta7": "Est-il sûr de payer pour souscrire au forfait premium ?",
   "faqResposta7": "Oui, c'est sûr. Aucun paiement n'est effectué directement à l'entreprise RMF GLOBAL. Tous les paiements sont traités directement sur la plateforme Google Play Store ou Apple App Store, avec la garantie totale de ces plateformes.",
-  "faqPergunta8": "Puis-je récupérer l'argent déposé dans le portefeuille de crédit ?",
-  "faqResposta8": "Oui, conformément au règlement de Google Play Store et d'Apple, le montant payé lors de l'achat d'un pack de crédits peut être remboursé à l'utilisateur. Ce remboursement est effectué directement par l'institution financière et par les plateformes Google Play Store et Apple, selon la politique de protection des consommateurs de chaque boutique — le Portefeuille de Crédits de Gardien-X ne permet pas de retirer/échanger les crédits contre de l'argent, car ce sont des unités d'envoi, pas une monnaie.",
   "faqPergunta9": "Comment le partage des alertes d'urgence est-il effectué ?",
   "faqResposta9": "Tous les messages d'alerte de sécurité sont envoyés de deux manières standard : d'application à application et par SMS aux numéros de téléphone enregistrés dans la page « Paramètres ».",
-  "faqPergunta10": "Comment fonctionne l'envoi supplémentaire d'alerte d'urgence vers WhatsApp ?",
-  "faqResposta10": "L'envoi de message vers WhatsApp est une forme supplémentaire de sécurité, constituant la troisième couche de protection, garantissant davantage que l'alerte d'urgence atteindra sa destination et sera vue par l'utilisateur. Chaque message envoyé à chaque numéro WhatsApp débite 1 crédit du Portefeuille. Les messages WhatsApp ne sont envoyés que s'il y a des crédits dans le portefeuille, si l'autorisation d'envoi de messages WhatsApp est activée (dans la page Paramètres) et si un numéro de téléphone est activé pour recevoir ces messages.",
   "faqPergunta11": "Comment fonctionne le service client ?",
-  "faqResposta11": "Le chat WhatsApp a été programmé pour répondre automatiquement à la plupart des questions et demandes des utilisateurs. Les demandes effectuées via le menu « Parler à un agent physique » suivront les règles de la politique établie par l'entreprise RMF Global, les utilisateurs du forfait Premium bénéficiant d'une exclusivité pour ce service dans un délai maximal de 48 heures.",
+  "faqResposta11": "Le service client est assuré par WhatsApp : appuyez sur le bouton de contact sur l'écran d'accueil pour parler directement à notre équipe d'assistance. Les demandes effectuées via le menu « Parler à un agent physique » suivent les règles de la politique établie par l'entreprise RMF Global, les utilisateurs du forfait Premium bénéficiant d'une exclusivité pour ce service dans un délai maximal de 48 heures.",
   "faqPergunta12": "Les messages d'alerte d'urgence ne seront-ils envoyés qu'aux numéros enregistrés ayant l'application Gardien-X installée ?",
-  "faqResposta12": "Non. Nous recommandons que les deux téléphones aient l'application installée, mais même si le téléphone destinataire n'a pas Gardien-X, l'alerte d'urgence est envoyée par SMS ou par WhatsApp.",
+  "faqResposta12": "Non. Nous recommandons que les deux téléphones aient l'application installée, mais même si le téléphone destinataire n'a pas Gardien-X, l'alerte d'urgence est tout de même envoyée par SMS.",
   "termosAppBarTitulo": "Conditions et Confidentialité",
   "termosTabContrato": "Contrat de Consentement",
   "termosTabPrivacidade": "Politique de Confidentialité",
@@ -537,18 +478,18 @@
   "termosContratoCorpo1": "Le présent Contrat de Consentement régit l'utilisation de l'application Gardien-X, développée et exploitée par RMF Global LTDA (« RMF Global »), destinée à aider l'utilisateur dans des situations d'urgence personnelle grâce au check-in de sécurité, aux alertes automatiques, au partage de localisation entre membres de la famille et contacts de confiance, et à la capture de preuves photographiques. Gardien-X est un outil d'aide et de soutien à la sécurité personnelle et NE remplace PAS les services d'urgence officiels (Police - 190, Pompiers - 193, SAMU - 192, ou les numéros d'urgence équivalents de votre pays) ni aucun autre service d'urgence public. En cas de risque immédiat, l'utilisateur doit toujours contacter en premier les numéros d'urgence officiels.",
   "termosContratoTitulo2": "2. Consentement pour l'utilisation de la localisation (GPS et localisation en arrière-plan)",
   "termosContratoCorpo2": "En activant le compte à rebours du check-in, le bouton SOS ou la surveillance familiale, l'utilisateur consent expressément à la collecte et à l'envoi de sa localisation géographique (GPS) en temps réel, y compris en arrière-plan (Background Location) lorsque l'application n'est pas activement utilisée, strictement pour permettre l'envoi et l'enregistrement d'alertes préventives et de panique vers les serveurs de Gardien-X et vers les contacts d'urgence enregistrés, y compris automatiquement si le check-in n'est pas confirmé dans le délai configuré.",
-  "termosContratoTitulo3": "3. Consentement pour l'envoi de messages (SMS/Application/WhatsApp)",
-  "termosContratoCorpo3": "L'utilisateur consent à l'envoi de messages d'alerte (contenant la localisation, le contexte indiqué et, le cas échéant, une photo) aux numéros de téléphone et comptes enregistrés comme contacts d'urgence, par SMS et par notification entre applications. L'envoi supplémentaire via WhatsApp est une fonctionnalité optionnelle, qui dépend d'un solde positif dans le portefeuille de crédits et d'une activation préalable sur la page Paramètres, sujette aux frais supplémentaires indiqués dans l'application.",
+  "termosContratoTitulo3": "3. Consentement pour l'envoi de messages (SMS/Application)",
+  "termosContratoCorpo3": "L'utilisateur consent à l'envoi de messages d'alerte (contenant la localisation, le contexte indiqué et, le cas échéant, une photo) aux numéros de téléphone et comptes enregistrés comme contacts d'urgence, par SMS et par notification entre applications.",
   "termosContratoTitulo4": "4. Consentement pour l'utilisation de l'appareil photo et la capture de médias",
   "termosContratoCorpo4": "L'utilisateur consent à ce que, dans certains scénarios d'urgence (fin du compte à rebours sans confirmation, activation du bouton panique ou tentative de désarmement échouée), l'application puisse ouvrir automatiquement l'appareil photo pour capturer une image, qui sera envoyée comme preuve supplémentaire aux contacts d'urgence enregistrés et sauvegardée dans la base de données de Gardien-X.",
   "termosContratoTitulo5": "5. Délais de sécurité (période de carence)",
   "termosContratoCorpo5": "Certaines actions sensibles (changement de mot de passe/PIN, suppression de contacts d'urgence, consultation immédiate de l'historique) sont soumises à un délai de carence avant d'être appliquées, afin d'empêcher des tiers non autorisés de désactiver les fonctions de sécurité de l'utilisateur sous la contrainte.",
   "termosContratoTitulo6": "6. Forfaits, tarifs et paiements",
-  "termosContratoCorpo6": "Le Forfait Free débloque toutes les fonctionnalités Premium pendant jusqu'à 10 (dix) jours par mois, les jours restants étant soumis aux limites du forfait gratuit. Le Forfait Premium coûte le montant affiché dans l'application au moment de l'abonnement, facturé mensuellement, avec un accès illimité à toutes les fonctionnalités de l'application. Les abonnements au Forfait Premium et les recharges du portefeuille de crédit sont traités exclusivement via les plateformes Google Play Store et Apple App Store, soumis à leurs politiques respectives de facturation, de remboursement et de protection des consommateurs — RMF Global ne reçoit ni ne traite les paiements directement.",
+  "termosContratoCorpo6": "Le Forfait Free débloque toutes les fonctionnalités Premium pendant jusqu'à 10 (dix) jours par mois, les jours restants étant soumis aux limites du forfait gratuit. Le Forfait Premium coûte le montant affiché dans l'application au moment de l'abonnement, facturé mensuellement, avec un accès illimité à toutes les fonctionnalités de l'application. Les abonnements au Forfait Premium sont traités exclusivement via les plateformes Google Play Store et Apple App Store, soumis à leurs politiques respectives de facturation, de remboursement et de protection des consommateurs — RMF Global ne reçoit ni ne traite les paiements directement.",
   "termosContratoTitulo7": "7. Annulation et remboursement",
   "termosContratoCorpo7": "En cas d'annulation du Forfait Premium dans les 15 (quinze) premiers jours suivant la souscription, l'utilisateur récupère 50 % (cinquante pour cent) du montant payé, sans démarches, sous réserve des politiques de remboursement de Google Play Store ou d'Apple App Store, selon la plateforme utilisée pour l'abonnement.",
   "termosContratoTitulo8": "8. Service Client (SAC)",
-  "termosContratoCorpo8": "Le service client est assuré principalement par le chat automatisé WhatsApp, programmé pour répondre automatiquement à la plupart des questions et demandes des utilisateurs. Les demandes d'assistance humaine suivent les règles de la politique établie par RMF Global, les utilisateurs du Forfait Premium bénéficiant d'un accès exclusif à cette assistance humaine dans un délai maximal de 48 (quarante-huit) heures.",
+  "termosContratoCorpo8": "Le service client est assuré par WhatsApp : le bouton de contact sur l'écran d'accueil ouvre une conversation directe avec notre équipe d'assistance. Les demandes d'assistance humaine suivent les règles de la politique établie par RMF Global, les utilisateurs du Forfait Premium bénéficiant d'un accès exclusif à cette assistance humaine dans un délai maximal de 48 (quarante-huit) heures.",
   "termosContratoTitulo9": "9. Consentement libre, sans équivoque, et révocation",
   "termosContratoCorpo9": "En utilisant l'application Gardien-X et en activant ses fonctions de sécurité, l'utilisateur déclare consentir de manière libre, éclairée et sans équivoque à la collecte et à l'utilisation du GPS, de ses données personnelles et de médias (photos) en situation d'urgence, comme décrit dans ce Contrat. L'utilisateur peut révoquer ce consentement à tout moment en désinstallant l'application ou en demandant la suppression de son compte et des données associées via les canaux d'assistance indiqués dans l'application, sous réserve des délais de carence de sécurité décrits à la Section 5.",
   "termosPrivacidadeTitulo1": "1. Données collectées et finalité",
@@ -574,7 +515,6 @@
   "premiumCancelarConfirmBotao": "Annuler Premium",
   "premiumCanceladoSnackbar": "Forfait Premium annulé. Vous êtes maintenant sur le forfait Gratuit.",
   "premiumAssinarBotaoComPreco": "S'abonner à Premium — {preco}",
-  "premiumModalNotaRodape": "* L'envoi supplémentaire par WhatsApp est une fonctionnalité optionnelle activable dans la page « Paramètres » et consomme 1 crédit du Portefeuille par message.",
   "premiumCancelarBotaoModal": "Annuler le forfait Premium",
   "familiaEtiquetaPadrao": "Alarme de routine",
   "familiaDiasNuncaLabel": "Jamais",

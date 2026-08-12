@@ -28,9 +28,6 @@
   "emailVerificacaoReenvioFalhou": "Couldn't resend the email. Please try again later.",
   "sairDaContaTitulo": "Sign out",
   "sairDaContaConfirmar": "Sign out",
-  "contatoWhatsappSwitchLabel": "Notify via WhatsApp (1 credit)",
-  "whatsappSimultaneoTitulo": "Also send via WhatsApp",
-  "whatsappSimultaneoDescricao": "Sends the alert immediately via WhatsApp together with the Push, without waiting for delivery confirmation, deducting the amount from the Wallet for each enabled contact.",
   "alertaRecebidoTitulo": "Security alert received",
   "alertaRecebidoDe": "{nome} may be in danger",
   "@alertaRecebidoDe": {
@@ -49,57 +46,6 @@
   "alertaRecebidoFalhaCompartilhar": "Couldn't share the photo.",
   "alertaRecebidoFotoIndisponivel": "Couldn't load the photo.",
   "alertaRecebidoTentarNovo": "Try again",
-  "carteiraTitulo": "Credit Wallet",
-  "carteiraMenuItem": "Credit Wallet",
-  "carteiraSaldoAtual": "Current balance",
-  "carteiraSaldoCreditos": "{n} Credits",
-  "@carteiraSaldoCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraLegendaCredito": "Each credit = 1 contingency WhatsApp message",
-  "carteiraPacoteEnvios": "{n} Sends Package",
-  "@carteiraPacoteEnvios": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraValorCreditos": "{n} credits",
-  "@carteiraValorCreditos": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "carteiraNotaExplicativa": "In-app alerts are 100% free. WhatsApp contingency messages cost 1 credit each.",
-  "carteiraRecarregarTitulo": "Top up",
-  "carteiraHistoricoTitulo": "History",
-  "carteiraHistoricoVazio": "No transactions yet.",
-  "carteiraTipoRecarga": "Top-up",
-  "carteiraTipoDesconto": "WhatsApp send",
-  "carteiraCompraSucesso": "Credits added successfully!",
-  "carteiraCompraFalhaVerificacao": "Couldn't verify the purchase. Please try again.",
-  "carteiraCompraErro": "Couldn't complete the purchase.",
-  "carteiraLojaIndisponivel": "Store unavailable right now.",
-  "carteiraLimparHistoricoBotao": "Clear History",
-  "carteiraLimparHistoricoConfirmarTitulo": "Clear history?",
-  "carteiraLimparHistoricoConfirmarConteudo": "Recharge and usage records will be removed from this list on this device. This action cannot be undone.",
-  "carteiraDescricaoDescontoWhatsapp": "WhatsApp contingency message to {nome}",
-  "@carteiraDescricaoDescontoWhatsapp": {
-    "placeholders": {
-      "nome": {
-        "type": "String"
-      }
-    }
-  },
-  "carteiraDescricaoRecarga": "Credit package purchase",
-  "carteiraContatoGenerico": "contact",
   "ouEntreCom": "or sign in with",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
@@ -146,7 +92,7 @@
   "segurancaAlertaEnviadoTitulo": "Alert sent",
   "segurancaAlertaEnviadoConteudo": "A message with your location has been sent to the registered numbers.",
   "cronometroAtivoDescricao": "Security countdown timer triggered.\nEnter your password to disarm.",
-  "historicoCronometroFalhaMotivo": "the security countdown timer was not disarmed within the 180-second tolerance window after triggering.",
+  "historicoCronometroFalhaMotivo": "the security countdown timer was not disarmed within the 60-second tolerance window after triggering.",
   "historicoCronometroPinIncorretoMotivo": "the PIN was entered incorrectly 3 times in a row while trying to disarm the security countdown timer.",
   "historicoCronometroFechamentoForcadoMotivo": "the app was force-closed while the security countdown timer was still ringing, without disarm confirmation.",
   "segurancaTituloSecaoTempo": "How long until I arrive",
@@ -415,7 +361,7 @@
   "beneficioBotaoFisico": "Physical button that sends location and photo to the Guardian-X database and registered phones.",
   "beneficioModoSeguranca": "Security mode with a panic button that logs your location every one minute to the Guardian-X database and triggers an emergency alert. This guarantees your last location will be sent to the registered numbers when the timer ends, even if your device is turned off.",
   "beneficioModoFamilia": "Family mode with a weekly or daily scheduled alarm and security check-in, sending your location ahead of time to the Guardian-X database to ensure the family member receives the emergency alert at the scheduled time and day if the check-in isn't confirmed.",
-  "beneficioTresCamadas": "Up to three layers of protection to guarantee emergency alerts with location and photos arrive. (App, SMS and optional WhatsApp).",
+  "beneficioTresCamadas": "Two layers of protection to guarantee emergency alerts with location and photos arrive. (App and SMS).",
   "beneficioTempoEspera": "Waiting period for changes and viewing critical data.",
   "agoraNao": "Not now",
   "assinarPreco": "Subscribe $9.90/mo",
@@ -499,7 +445,6 @@
   "dashboardPlanoPremiumDescricao": "Tap here to see the Premium benefits.",
   "dashboardFaqTitulo": "Frequently Asked Questions",
   "dashboardCentralAtendimentoTitulo": "Customer Support Center",
-  "dashboardAvisoWhatsappCredito": "WhatsApp messages are an optional feature and depend on a positive balance and prior activation in Settings.",
   "dashboardAvisoGarantiaCancelamento": "If you cancel the Premium plan within the first 15 days, get 50% of the amount paid back, hassle-free.",
   "faqAppBarTitulo": "Frequently Asked Questions (FAQ)",
   "faqTooltipInicio": "Home",
@@ -517,18 +462,14 @@
   "faqResposta5": "This panic button function has the user's safety as its top priority. When the physical panic button or the one on the \"Security\" page is triggered, an emergency alert message containing the location is sent immediately to the registered numbers. Then, after the device's camera opens and the user takes a photo, a second emergency alert message containing the photo is sent. This guarantees the location will reach the registered number even if the user takes time or doesn't take the photo.",
   "faqPergunta6": "Is it possible to track and follow the location of a device that doesn't have the Guardian-X app installed?",
   "faqResposta6": "No, it isn't possible. Location can only be shared from app to app, and only with the consent and permission of both users.",
-  "faqPergunta7": "Is it safe to pay for the Premium plan or deposit money into the credit wallet?",
+  "faqPergunta7": "Is it safe to pay for the Premium plan?",
   "faqResposta7": "Yes, it's safe. No payment is made directly to the RMF GLOBAL company. All payments are processed directly through the Google Play Store or Apple App Store platform, with the platforms' full guarantee.",
-  "faqPergunta8": "Can I withdraw the money deposited in the credit wallet?",
-  "faqResposta8": "Yes, in accordance with Google Play Store and Apple regulations, the amount paid when purchasing a credit package can be refunded to the user. This refund is made directly by the financial institution and by the Google Play Store and Apple platforms, following each store's consumer protection policy — the Guardian-X Credit Wallet does not allow cashing out/withdrawing credits as money, since they are send units, not currency.",
   "faqPergunta9": "How are emergency alerts shared?",
   "faqResposta9": "All security alert messages are sent in two standard ways: from app to app, and by SMS to the mobile numbers registered on the \"Settings\" page.",
-  "faqPergunta10": "How does sending an additional emergency alert to WhatsApp work?",
-  "faqResposta10": "Sending a message to WhatsApp is an additional form of security, being the third layer of protection as extra assurance that the registered number will have one more guarantee that the emergency alert will reach its destination and be seen by the user. Each message sent to each WhatsApp number debits 1 credit from the Wallet. WhatsApp messages are only sent if there are credits in the wallet, if authorization to send WhatsApp messages is enabled (on the Settings page), and if a phone number is enabled to receive these messages.",
   "faqPergunta11": "How does the customer support service work?",
-  "faqResposta11": "The WhatsApp chat has been programmed to automatically answer most of the user's questions and requests. Requests made through the \"Talk to a human agent\" menu will follow the policy rules set by the RMF Global company, where Premium plan users will have exclusive access to this support within up to 48 hours.",
+  "faqResposta11": "Customer support is provided via WhatsApp — tap the contact button on the Home screen to talk directly with our support team. Requests made through the \"Talk to a human agent\" menu follow the policy rules set by the RMF Global company, where Premium plan users get exclusive access to this support within up to 48 hours.",
   "faqPergunta12": "Will emergency alert messages only be sent to registered numbers that have the Guardian-X app installed?",
-  "faqResposta12": "No. We recommend that both phones have the app installed, but even if the recipient's phone doesn't have Guardian-X, the emergency alert is sent via SMS or WhatsApp.",
+  "faqResposta12": "No. We recommend that both phones have the app installed, but even if the recipient's phone doesn't have Guardian-X, the emergency alert is still sent via SMS.",
   "termosAppBarTitulo": "Terms and Privacy",
   "termosTabContrato": "Consent Agreement",
   "termosTabPrivacidade": "Privacy Policy",
@@ -537,18 +478,18 @@
   "termosContratoCorpo1": "This Consent Agreement governs the use of the Guardian-X app, developed and operated by RMF Global LTDA (\"RMF Global\"), intended to assist the user in personal emergency situations through security check-ins, automatic alerts, location sharing between family members and trusted contacts, and photographic evidence capture. Guardian-X is a personal-safety aid tool and does NOT replace official emergency services (Military Police - 190, Fire Department - 193, SAMU - 192, or the equivalent emergency numbers in your country) or any other public emergency service. In an immediate risk situation, the user must always contact official emergency numbers first.",
   "termosContratoTitulo2": "2. Consent for location use (GPS and Background Location)",
   "termosContratoCorpo2": "By activating the check-in timer, the SOS button, or family monitoring, the user expressly consents to the collection and transmission of their real-time geographic location (GPS), including in the background (Background Location) when the app isn't actively in use, strictly to enable sending and saving preventive and panic alerts to Guardian-X's servers and to the registered emergency contacts, including automatically if the check-in isn't confirmed within the configured time.",
-  "termosContratoTitulo3": "3. Consent for sending messages (SMS/App/WhatsApp)",
-  "termosContratoCorpo3": "The user consents to sending alert messages (containing location, informed context, and, when applicable, a photo) to the phone numbers and accounts registered as emergency contacts, via SMS and app-to-app notification. Additional WhatsApp delivery is an optional feature that depends on a positive balance in the credit wallet and prior activation on the Settings page, subject to the additional charge disclosed inside the app.",
+  "termosContratoTitulo3": "3. Consent for sending messages (SMS/App)",
+  "termosContratoCorpo3": "The user consents to sending alert messages (containing location, informed context, and, when applicable, a photo) to the phone numbers and accounts registered as emergency contacts, via SMS and app-to-app notification.",
   "termosContratoTitulo4": "4. Consent for camera use and media capture",
   "termosContratoCorpo4": "The user consents that, in certain emergency scenarios (timer ending without confirmation, panic button activation, or a failed disarm attempt), the app may automatically open the device's camera to capture a photo, to be sent as additional evidence to the registered emergency contacts and saved to the Guardian-X database.",
   "termosContratoTitulo5": "5. Security waiting periods",
   "termosContratoCorpo5": "Certain sensitive actions (changing the password/PIN, deleting emergency contacts, immediate viewing of history) are subject to a waiting period before taking effect, to prevent unauthorized third parties from disabling the user's security functions under duress.",
   "termosContratoTitulo6": "6. Plans, pricing and payments",
-  "termosContratoCorpo6": "The Free Plan unlocks all Premium features for up to 10 (ten) days each month, with the remaining days subject to the free plan's limits. The Premium Plan costs the amount shown in the app at the time of subscription, charged monthly, with unlimited access to all app features. Premium Plan subscriptions and credit wallet top-ups are processed exclusively through the Google Play Store and Apple App Store platforms, subject to those platforms' respective billing, refund, and consumer protection policies — RMF Global does not receive or process payments directly.",
+  "termosContratoCorpo6": "The Free Plan unlocks all Premium features for up to 10 (ten) days each month, with the remaining days subject to the free plan's limits. The Premium Plan costs the amount shown in the app at the time of subscription, charged monthly, with unlimited access to all app features. Premium Plan subscriptions are processed exclusively through the Google Play Store and Apple App Store platforms, subject to those platforms' respective billing, refund, and consumer protection policies — RMF Global does not receive or process payments directly.",
   "termosContratoTitulo7": "7. Cancellation and refund",
   "termosContratoCorpo7": "If the Premium Plan is canceled within the first 15 (fifteen) days of subscribing, the user gets back 50% (fifty percent) of the amount paid, hassle-free, subject to the refund policies of the Google Play Store or Apple App Store, depending on the platform used for the subscription.",
   "termosContratoTitulo8": "8. Customer Support (SAC)",
-  "termosContratoCorpo8": "Customer support is primarily handled through the automated WhatsApp chat, programmed to automatically answer most user questions and requests. Requests for human support follow the policy rules set by RMF Global, with Premium Plan users getting exclusive access to this human support within up to 48 (forty-eight) hours.",
+  "termosContratoCorpo8": "Customer support is provided via WhatsApp — the contact button on the Home screen opens a direct chat with our support team. Requests for human support follow the policy rules set by RMF Global, with Premium Plan users getting exclusive access to this human support within up to 48 (forty-eight) hours.",
   "termosContratoTitulo9": "9. Free, unambiguous consent and revocation",
   "termosContratoCorpo9": "By using the Guardian-X app and activating its security features, the user declares they freely, knowingly, and unambiguously consent to the collection and use of GPS, personal data, and media (photos) in emergency situations, as described in this Agreement. The user may revoke this consent at any time by uninstalling the app or requesting the deletion of their account and associated data through the support channels shown in the app, subject to the security waiting periods described in Section 5.",
   "termosPrivacidadeTitulo1": "1. Data collected and purpose",
@@ -574,7 +515,6 @@
   "premiumCancelarConfirmBotao": "Cancel Premium",
   "premiumCanceladoSnackbar": "Premium Plan canceled. You are now on the Free Plan.",
   "premiumAssinarBotaoComPreco": "Subscribe to Premium — {preco}",
-  "premiumModalNotaRodape": "* The additional WhatsApp delivery is an optional feature that can be enabled on the \"Settings\" page and costs 1 credit from the Wallet per message.",
   "premiumCancelarBotaoModal": "Cancel Premium Plan",
   "familiaEtiquetaPadrao": "Routine alarm",
   "familiaDiasNuncaLabel": "Never",

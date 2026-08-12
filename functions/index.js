@@ -21,12 +21,8 @@
  *    as informa (caso do PIN incorreto, que não captura GPS na hora).
  * 4. Monta a mensagem de alerta (texto varia por `tipo`) com o link do
  *    Google Maps.
- * 5. Aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`):
- *    Push FCM gratuito para os contatos que têm o app instalado, com
- *    WhatsApp/Twilio como contingência paga só depois de 60s sem
- *    confirmação de entrega (ver `transbordoWhatsappMonitor.js`) — e só
- *    para contatos com a chave "Notificar via WhatsApp" ligada e saldo
- *    suficiente na Carteira do usuário.
+ * 5. Aciona o pipeline de entrega (ver `alertaHibridoService.js`): Push
+ *    FCM gratuito para os contatos que têm o app instalado.
  */
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
@@ -36,14 +32,12 @@ const logger = require("firebase-functions/logger");
 
 // IMPORTANTE: initializeApp() precisa rodar ANTES de qualquer módulo que
 // chame getFirestore()/getMessaging() em seu próprio escopo top-level
-// (ver alertaHibridoService.js, walletService.js, comprasService.js,
-// scheduledAlarmMonitor.js, transbordoWhatsappMonitor.js) — por isso
+// (ver alertaHibridoService.js, scheduledAlarmMonitor.js) — por isso
 // esses `require`s só acontecem DEPOIS da linha abaixo, nunca antes.
 initializeApp();
 const db = getFirestore();
 
 const {dispararAlertaHibrido} = require("./alertaHibridoService");
-const {TWILIO_SECRETS} = require("./smsGateway");
 
 const TIPO_TENTATIVA_DESARME_INCORRETO = "tentativa_desarme_incorreto";
 const TIPO_SOS_FISICO = "sos_fisico";
@@ -80,12 +74,6 @@ function montarTextoLocalizacao(latitude, longitude) {
 exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
     {
       document: "usuarios/{usuarioId}/alertas/{alertaId}",
-      // Necessário mesmo aqui (não só no job de transbordo) porque, com a
-      // chave global "Enviar também via WhatsApp" ligada, o WhatsApp pode
-      // ser enviado de forma SÍNCRONA dentro de `dispararAlertaHibrido`
-      // (ver `enviarWhatsappSimultaneoParaContatos`), exigindo os
-      // segredos do Twilio já injetados nesta execução.
-      secrets: TWILIO_SECRETS,
     },
     async (event) => {
       const snap = event.data;
@@ -168,11 +156,6 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
           // log/telemetria (ex: distingue botão físico de SOS manual,
           // mesmo os dois usando `tipo: "sos_fisico"`).
           origem: alerta.origem || alerta.tipo,
-          // Chave global "Enviar também via WhatsApp" (ver
-          // ConfiguracoesTab) — quando ligada, o WhatsApp de contingência
-          // é tentado IMEDIATAMENTE, em paralelo ao Push, em vez de
-          // esperar os 60s normais de transbordo.
-          enviarWhatsappSimultaneo: usuario && usuario.enviarWhatsappSimultaneo === true,
           fotoUrl: alerta.tipo === TIPO_SOS_FISICO_FOTO ? alerta.fotoUrl : undefined,
           // Coordenadas ESTRUTURADAS (além de já estarem embutidas como
           // texto em `mensagem`) — o app do guardião usa isso para
@@ -199,18 +182,6 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
 exports.monitorarAlarmesAgendados =
   require("./scheduledAlarmMonitor").monitorarAlarmesAgendados;
 
-// Job agendado do "transbordo" WhatsApp (ver transbordoWhatsappMonitor.js)
-// — decide, 60s após cada Push FCM, quem realmente precisa (e pode ser
-// cobrado por) da contingência via WhatsApp/Twilio.
-exports.processarTransbordoAlertas =
-  require("./transbordoWhatsappMonitor").processarTransbordoAlertas;
-
-// Callable de verificação de compra de créditos (ver comprasService.js)
-// — recarga da Carteira em USD via Google Play, com verificação
-// server-side antes de creditar qualquer saldo.
-exports.confirmarCompraCredito =
-  require("./comprasService").confirmarCompraCredito;
-
 // Aba Monitoramento (ver monitoramentoService.js): permissão bilateral e
 // explícita de compartilhamento de localização GPS em tempo real,
 // totalmente independente do pipeline de alerta de emergência acima.
@@ -235,10 +206,3 @@ exports.definirBloqueioSolicitante =
 // resposta (ver monitoramentoExpiracaoMonitor.js).
 exports.monitorarExpiracaoMonitoramento =
   require("./monitoramentoExpiracaoMonitor").monitorarExpiracaoMonitoramento;
-
-// Suporte via WhatsApp (ver whatsappWebhook.js): webhook HTTP inbound
-// (assinatura Twilio validada) que aciona o atendimento automático via
-// IA (whatsappSuporteIA.js) e responde em texto livre dentro da janela
-// de 24h de conversa ativa. Templates pré-aprovados para envio ATIVO
-// (fora da janela) ficam mapeados em whatsappTemplates.js.
-exports.whatsappWebhook = require("./whatsappWebhook").whatsappWebhook;

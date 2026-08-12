@@ -25,8 +25,8 @@ dependencies:
   # login social Google/Facebook/Apple, ver
   # lib/services/social_auth_service.dart). firebase_messaging ativado para
   # o Push App-para-App de alerta híbrido (ver lib/services/fcm_service.dart)
-  # e cloud_functions para as chamadas callable (ex: confirmação de compra
-  # de créditos da Carteira).
+  # e cloud_functions para as chamadas callable da aba Monitoramento (ver
+  # lib/services/monitoramento_service.dart).
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
   firebase_auth: ^4.16.0
@@ -67,8 +67,11 @@ dependencies:
   flutter_facebook_auth: ^7.1.0
   sign_in_with_apple: ^7.0.1
 
-  # Compras consumíveis (recarga da Carteira em USD) — Google Play apenas,
-  # não há projeto iOS neste repositório.
+  # Consulta o preço REAL da assinatura mensal do Plano Premium
+  # diretamente da loja (Google Play Billing/App Store) — ver
+  # lib/services/premium_price_service.dart. NÃO relacionado à antiga
+  # Carteira de Créditos (removida em 2026-08-11 junto com o WhatsApp de
+  # contingência que ela financiava).
   in_app_purchase: ^3.2.0
 
   # Encryption
@@ -132,8 +135,7 @@ flutter:
 # `dart run flutter_launcher_icons`, ver assets/images/app_icon.png (logo
 # "GX" do Guardião-X). Ativado só para Android (ícone padrão + ícone
 # adaptativo, com fundo sólido grafite combinando com o escudo do ícone)
-# — este repositório não possui projeto iOS (ver comentário sobre
-# in_app_purchase acima).
+# — este repositório não possui projeto iOS.
 flutter_launcher_icons:
   android: true
   ios: false

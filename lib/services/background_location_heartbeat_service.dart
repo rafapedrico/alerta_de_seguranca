@@ -199,9 +199,10 @@ class BackgroundLocationHeartbeatService {
       // Cronômetro de check-in ATIVO da aba Segurança (ver
       // [registrarCheckinAtivo]), se houver — mesma janela de registro
       // (48h) e de localização (2h) usada pelos alarmes de rotina.
-      // [prazoFinal] = [checkinDisparo] + 180s (reespecificação do
-      // usuário, 2026-08-10): ao zerar, o Cronômetro concede uma
-      // tolerância sonora de 180 segundos com o teclado de PIN aberto
+      // [prazoFinal] = [checkinDisparo] + 60s (reespecificação do
+      // usuário, 2026-08-10, ajustada de 180s para 60s em 2026-08-11):
+      // ao zerar, o Cronômetro concede uma tolerância sonora de 60
+      // segundos com o teclado de PIN aberto
       // (ver `AlarmeService.duracaoJanelaFinalCronometro`/
       // `cronometro_disparado_screen.dart`) antes de qualquer alerta real
       // ser disparado — o mesmo prazo usado por
@@ -270,11 +271,11 @@ class BackgroundLocationHeartbeatService {
     }
   }
 
-  /// Mesmo formato `{nome, telefone, whatsappHabilitado}` gravado em
+  /// Mesmo formato `{nome, telefone}` gravado em
   /// `usuarios/{uid}.contatosEmergencia` (ver
   /// `FirebaseSyncService.sincronizarContatosEmergencia`), repassado
   /// junto com o alarme agendado para a Cloud Function de disparo poder
-  /// aplicar as mesmas regras de contingência via WhatsApp.
+  /// resolver o Push FCM.
   Future<List<Map<String, dynamic>>> _resolverContatosEmergencia() async {
     try {
       final contatos = await DatabaseHelper().getContatosEmergencia();
@@ -282,7 +283,6 @@ class BackgroundLocationHeartbeatService {
           .map((c) => {
                 'nome': (c['nome'] as String?) ?? '',
                 'telefone': (c['telefone'] as String?) ?? '',
-                'whatsappHabilitado': (c['whatsapp_habilitado'] as int?) == 1,
               })
           .where((c) => (c['telefone'] as String).isNotEmpty)
           .toList();

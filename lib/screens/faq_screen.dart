@@ -149,13 +149,13 @@ class _FaqScreenState extends State<FaqScreen> {
         _FaqItem(pergunta: l10n.faqPergunta5, resposta: l10n.faqResposta5),
         _FaqItem(pergunta: l10n.faqPergunta6, resposta: l10n.faqResposta6),
         _FaqItem(pergunta: l10n.faqPergunta7, resposta: l10n.faqResposta7),
-        _FaqItem(pergunta: l10n.faqPergunta8, resposta: l10n.faqResposta8),
         _FaqItem(pergunta: l10n.faqPergunta9, resposta: l10n.faqResposta9),
-        _FaqItem(pergunta: l10n.faqPergunta10, resposta: l10n.faqResposta10),
-        // Item 7 do pedido: resposta atualizada sobre o atendimento ao
-        // consumidor (chat automático do WhatsApp + atendente físico
-        // conforme a política da RMF Global, com exclusividade de até
-        // 48h para o Plano Premium).
+        // Item 7 do pedido original (2026-08-XX): resposta sobre o
+        // atendimento ao consumidor — atualizada em 2026-08-11 (remoção
+        // do WhatsApp) para não mais descrever um chat automático; agora
+        // reflete o link direto de WhatsApp da Tela de Início (suporte
+        // humano) + atendente físico conforme a política da RMF Global,
+        // com exclusividade de até 48h para o Plano Premium.
         _FaqItem(pergunta: l10n.faqPergunta11, resposta: l10n.faqResposta11),
         _FaqItem(pergunta: l10n.faqPergunta12, resposta: l10n.faqResposta12),
       ];

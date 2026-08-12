@@ -26,14 +26,13 @@ import 'notificacao_service.dart';
 /// `NotificacaoService.exibirNotificacaoAlarmeCompleto`) em vez de deixar
 /// o Android exibir automaticamente uma notificação padrão do sistema.
 ///
-/// CRITÉRIO DE CANCELAMENTO DO WHATSAPP DE CONTINGÊNCIA: o job de
-/// transbordo (`functions/transbordoWhatsappMonitor.js`) cancela a
-/// cobrança quando o Push é confirmado como ENTREGUE NO DISPOSITIVO —
-/// não quando o usuário abre o app ou lê a notificação. Este serviço
-/// grava essa confirmação assim que `onMessage`/`onBackgroundMessage`
-/// executa (ver [_tratarDadosDoAlerta]), o que acontece automaticamente
-/// na entrega da mensagem pelo SO, mesmo com a tela bloqueada e o app
-/// fechado — nunca depende de interação do usuário.
+/// CONFIRMAÇÃO DE ENTREGA: grava em `entregas_alerta/{id}/confirmacoes`
+/// que o Push foi ENTREGUE NO DISPOSITIVO — não quando o usuário abre o
+/// app ou lê a notificação. Este serviço grava essa confirmação assim
+/// que `onMessage`/`onBackgroundMessage` executa (ver
+/// [_tratarDadosDoAlerta]), o que acontece automaticamente na entrega da
+/// mensagem pelo SO, mesmo com a tela bloqueada e o app fechado — nunca
+/// depende de interação do usuário.
 class FcmService {
   FcmService._internal();
   static final FcmService _instance = FcmService._internal();
@@ -182,9 +181,7 @@ class FcmService {
   /// é gravada PRIMEIRO, em seu próprio try/catch — uma falha ao MOSTRAR
   /// a notificação de tela cheia (ex: canal ainda não criado, permissão
   /// negada) NUNCA deve impedir o registro da entrega já confirmada pelo
-  /// FCM, o que faria o job de transbordo
-  /// (`functions/transbordoWhatsappMonitor.js`) cobrar WhatsApp
-  /// desnecessariamente mesmo com o Push já entregue.
+  /// FCM.
   Future<void> _tratarAlertaEmergencia(Map<String, dynamic> data) async {
     final idEntrega = data['idEntrega'] as String?;
     final mensagem = (data['mensagem'] as String?) ?? '';

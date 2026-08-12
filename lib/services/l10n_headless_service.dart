@@ -15,7 +15,7 @@ import 'localization_service.dart';
 /// `idioma_selecionado`, ver [LocalizationService]/[LocaleService]) e
 /// carrega o [AppLocalizations] correspondente diretamente via
 /// `AppLocalizations.delegate.load(Locale)`, garantindo que qualquer
-/// alerta disparado pelo dispositivo (SMS, WhatsApp, log interno no
+/// alerta disparado pelo dispositivo (SMS, Push, log interno no
 /// Histórico) saia estritamente no idioma que o usuário escolheu no
 /// aplicativo — nunca no idioma do sistema operacional nem hardcoded em
 /// português.
