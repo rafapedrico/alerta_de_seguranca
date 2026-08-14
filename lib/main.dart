@@ -129,8 +129,11 @@ void main() {
   if (coldStartViaSosFisico ||
       coldStartViaRotinaAlarme ||
       coldStartViaCronometroAlarme) {
+    // Os TRÊS cold starts de emergência (SOS físico, Alarme de Rotina,
+    // Cronômetro Regressivo) precisam preservar a sessão — ver
+    // documentação completa em [_iniciarFirebaseEAuth].
     futuroFirebaseEAuthImediato =
-        _iniciarFirebaseEAuth(coldStartViaSosFisico: coldStartViaSosFisico);
+        _iniciarFirebaseEAuth(preservarSessaoExistente: true);
   }
 
   // ETAPA 1, fim: primeiro frame disparado imediatamente — ZERO
@@ -224,7 +227,7 @@ Future<void> _inicializarPreferenciasVisuais() async {
 /// Protegida por try/catch e NUNCA lança exceção: se o Firebase falhar
 /// ao inicializar (sem rede, projeto mal configurado, etc.), o app
 /// continua funcional para login local/SMS, que não dependem dele.
-Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async {
+Future<void> _iniciarFirebaseEAuth({required bool preservarSessaoExistente}) async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('☁️ [Firebase] Inicializado com sucesso.');
@@ -266,20 +269,38 @@ Future<void> _iniciarFirebaseEAuth({required bool coldStartViaSosFisico}) async 
   // login válido de uma execução anterior. Login (com a barreira de
   // `emailVerified`) volta a ser exigido a cada abertura normal.
   //
-  // EXCEÇÃO DELIBERADA (bug real corrigido): cold start via SOS FÍSICO
-  // NUNCA exibe nenhuma tela de login/conta — a UI vai direto para
-  // `_TelaPretaAguardandoSos` (tela preta, zero dado de usuário) e
-  // depois para a câmera. Fazer logout() TAMBÉM nesse fluxo zerava
-  // `FirebaseAuthService().uidAtual` ANTES do `SosDisparoService`
-  // sequer rodar, forçando SEMPRE o SMS de fallback sem link real da
-  // foto e desativando o Push — justamente no cenário mais crítico (app
-  // fechado, botão físico). Como nenhuma UI de conta é exibida nesse
-  // fluxo, preservar a sessão aqui mantém a MESMA garantia de segurança
-  // da Opção A (nunca mostrar dados de conta sem reautenticação) e
-  // permite que o SOS físico dispare com todos os canais (SMS com link
-  // real + Push), mesmo 100% a frio.
+  // EXCEÇÃO DELIBERADA, agora estendida aos TRÊS cold starts de
+  // emergência (SOS físico, Alarme de Rotina, Cronômetro Regressivo —
+  // [preservarSessaoExistente]): nenhum deles exibe qualquer tela de
+  // login/conta — SOS físico vai direto para `_TelaPretaAguardandoSos`
+  // (tela preta, zero dado de usuário); Rotina/Cronômetro vão direto
+  // para [AlarmeDisparadoScreen]/[CronometroDisparadoScreen] (só teclado
+  // de PIN + confirmação de alerta, também sem nenhum dado de conta).
+  //
+  // BUG REAL CONFIRMADO (2026-08-14): esta exceção originalmente só
+  // cobria o SOS físico (documentado abaixo) — Rotina e Cronômetro
+  // continuavam fazendo logout() normalmente em QUALQUER cold start via
+  // alarme nativo (app fechado/morto quando o alarme disparou), pelo
+  // MESMO motivo já identificado e corrigido para o SOS físico: o
+  // `logout()` roda em paralelo (sem `await`) com a tela de PIN/som já
+  // exibida, e costuma terminar bem ANTES do usuário resolver o
+  // teclado (PIN correto, 3 erros, ou os 60s de tolerância se
+  // esgotando) — nesse ponto `FirebaseAuthService().uidAtual` já está
+  // `null`, e todo o disparo de emergência que depende de sessão
+  // (`FirebaseSyncService.dispararAlertaTentativaDesarmeIncorreto` —
+  // ver `_firebaseDisponivel`, que exige um `uid`) vira NO-OP
+  // silencioso: nem o Firestore é escrito, nem a Cloud Function dispara
+  // o Push para o app receptor. SMS nativo e histórico LOCAL continuam
+  // funcionando (não dependem de sessão), o que produzia exatamente o
+  // sintoma relatado num teste real de timeout: "teclado, som,
+  // confirmação em tela e histórico local funcionaram, mas SMS/Push/
+  // histórico do receptor nunca chegaram". Preservar a sessão aqui
+  // mantém a MESMA garantia de segurança da Opção A (nenhuma tela com
+  // dados de conta é exibida em nenhum dos três fluxos) e permite que o
+  // alerta dispare em todos os canais (SMS + Push/Firestore), mesmo
+  // 100% a frio.
   try {
-    if (!coldStartViaSosFisico) {
+    if (!preservarSessaoExistente) {
       await FirebaseAuthService().logout();
     }
   } catch (e) {
@@ -858,7 +879,7 @@ class _SplashGateState extends State<_SplashGate> {
     // só quando o usuário efetivamente tocar em "Entrar" — ver
     // [_iniciarFirebaseEAuth] para a explicação completa de por que isso
     // é seguro.
-    unawaited(_iniciarFirebaseEAuth(coldStartViaSosFisico: false));
+    unawaited(_iniciarFirebaseEAuth(preservarSessaoExistente: false));
 
     if (mounted) setState(() => _pronto = true);
   }

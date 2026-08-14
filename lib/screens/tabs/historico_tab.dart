@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/alertas_recebidos_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
+import '../../widgets/texto_com_links.dart';
 import '../alerta_recebido_screen.dart';
 
 /// Tela de Histórico Geral: mescla os eventos administrativos locais
@@ -139,6 +139,13 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Ver [DatabaseHelper.historicoAtualizadoNotifier]: cobre o caso de um
+    // evento ser gravado com esta aba já visível/em primeiro plano (ex:
+    // 3ª tentativa de PIN errada resolvida dentro da própria
+    // `SegurancaTab`, sem nenhuma Activity nova por cima) — complementar
+    // ao `WidgetsBindingObserver` abaixo, que só cobre o app
+    // minimizado/reaberto.
+    DatabaseHelper.historicoAtualizadoNotifier.addListener(_aoHistoricoAtualizado);
     _carregarHistorico();
     _atualizarStatusAuditoria();
   }
@@ -146,8 +153,15 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    DatabaseHelper.historicoAtualizadoNotifier.removeListener(_aoHistoricoAtualizado);
     _tickerAuditoria?.cancel();
     super.dispose();
+  }
+
+  void _aoHistoricoAtualizado() {
+    if (!mounted) return;
+    _carregarHistorico();
+    _atualizarStatusAuditoria();
   }
 
   /// CORREÇÃO DE BUG REAL (2026-08-12): esta aba fica MONTADA O TEMPO
@@ -534,42 +548,6 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     }
   }
 
-  /// Varre [texto] em busca de URLs (`http`/`https` — cobre tanto o link
-  /// do Google Maps das coordenadas quanto o link do Firebase Storage da
-  /// foto, ambos embutidos como texto simples nas mensagens de SOS já
-  /// persistidas) e devolve os spans prontos para um `Text.rich`, com
-  /// cada URL encontrada sublinhada e clicável (abre via [_abrirLink]) —
-  /// o restante do texto permanece como texto comum, sem estilo de link.
-  List<InlineSpan> _linkificarTexto(String texto, TextStyle estiloBase) {
-    final regexUrl = RegExp(r'https?://[^\s\)]+');
-    final spans = <InlineSpan>[];
-    int ultimoIndice = 0;
-
-    for (final match in regexUrl.allMatches(texto)) {
-      if (match.start > ultimoIndice) {
-        spans.add(TextSpan(text: texto.substring(ultimoIndice, match.start), style: estiloBase));
-      }
-      final url = match.group(0)!;
-      spans.add(
-        TextSpan(
-          text: url,
-          style: estiloBase.copyWith(
-            color: Colors.blue.shade700,
-            decoration: TextDecoration.underline,
-          ),
-          recognizer: TapGestureRecognizer()..onTap = () => _abrirLink(url),
-        ),
-      );
-      ultimoIndice = match.end;
-    }
-
-    if (ultimoIndice < texto.length) {
-      spans.add(TextSpan(text: texto.substring(ultimoIndice), style: estiloBase));
-    }
-
-    return spans;
-  }
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String>(
@@ -834,14 +812,26 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              item.descricao,
+                            // Item 3 (reespecificação do usuário,
+                            // 2026-08-14): links de localização/foto
+                            // embutidos na descrição (ex: mensagens de
+                            // alertas recebidos) agora sempre aparecem em
+                            // AZUL e clicáveis — mesmo tratamento já dado
+                            // à lista de "Alertas Enviados" abaixo, via
+                            // [construirSpansComLinks].
+                            Text.rich(
+                              TextSpan(
+                                children: construirSpansComLinks(
+                                  item.descricao,
+                                  TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black.withOpacity(0.75),
+                                  ),
+                                  _abrirLink,
+                                ),
+                              ),
                               softWrap: true,
                               overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.black.withOpacity(0.75),
-                              ),
                             ),
                           ],
                         ),
@@ -1079,9 +1069,10 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                     // imagem em alta resolução no navegador.
                     subtitle: Text.rich(
                       TextSpan(
-                        children: _linkificarTexto(
+                        children: construirSpansComLinks(
                           descricao,
                           TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                          _abrirLink,
                         ),
                       ),
                     ),

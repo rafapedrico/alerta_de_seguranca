@@ -344,7 +344,19 @@ class FirebaseSyncService {
     String? motivo,
     String? eventoId,
   }) async {
-    if (!_firebaseDisponivel) return false;
+    // Diagnóstico direto do bug real corrigido em 2026-08-14 (ver
+    // `main.dart::_iniciarFirebaseEAuth`): sem sessão ativa
+    // (`_usuarioId == null`), este método sempre retorna `false` logo
+    // abaixo, SEM escrever nada no Firestore — nem o Push chega ao app
+    // receptor. Log explícito para nunca mais precisar adivinhar isso de
+    // novo via teste físico.
+    debugPrint('☁️ [TENTATIVA DE DESARME INCORRETA] Firebase.apps=${Firebase.apps.length} '
+        'uid=${_usuarioId ?? "NULO (sem sessão!)"} _firebaseDisponivel=$_firebaseDisponivel');
+    if (!_firebaseDisponivel) {
+      debugPrint('🚫 [TENTATIVA DE DESARME INCORRETA] Abortando: Firebase '
+          'indisponível ou sem sessão ativa — Push/Firestore NÃO enviado.');
+      return false;
+    }
     try {
       if (eventoId != null && eventoId.isNotEmpty) {
         final documentoEvento = _documentoUsuario.collection('alertas').doc(eventoId);

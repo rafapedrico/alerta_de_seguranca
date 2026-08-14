@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -8,6 +9,19 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
+
+  /// Notificador global (contador incremental) disparado toda vez que um
+  /// novo evento é gravado no histórico local (ver [inserirEventoHistorico]).
+  /// Telas que exibem o histórico (ex: `HistoricoTab`) escutam este
+  /// notificador para recarregar a lista IMEDIATAMENTE quando um evento é
+  /// gravado com o app já em primeiro plano — sem depender de app
+  /// minimizado/reaberto (`AppLifecycleState.resumed`), que só cobre o
+  /// caso de o alerta ter disparado através de uma Activity nativa
+  /// separada por cima da MainActivity (ver `cronometro_disparado_screen.dart`),
+  /// nunca o caso de uma tentativa MANUAL de desarme resolvida sem sair
+  /// da própria `SegurancaTab` (ver `seguranca_tab.dart`).
+  static final ValueNotifier<int> historicoAtualizadoNotifier =
+      ValueNotifier<int>(0);
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -732,12 +746,17 @@ class DatabaseHelper {
     required String categoria,
   }) async {
     final db = await database;
-    return await db.insert('historico', {
+    final id = await db.insert('historico', {
       'titulo': titulo,
       'descricao': descricao,
       'categoria': categoria,
       'timestamp': DateTime.now().toIso8601String(),
     });
+    // Avisa qualquer tela ouvindo (ver [historicoAtualizadoNotifier]) que
+    // um novo evento acabou de ser gravado, para recarregar a lista já em
+    // primeiro plano.
+    historicoAtualizadoNotifier.value++;
+    return id;
   }
 
   /// Retorna os eventos do histórico exibidos na tela de Histórico Geral

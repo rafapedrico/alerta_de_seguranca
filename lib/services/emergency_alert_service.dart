@@ -330,13 +330,18 @@ class EmergencyAlertService {
     List<Map<String, dynamic>> contatosEmergencia = [];
     try {
       contatosEmergencia = await _db.getContatosEmergencia();
+      debugPrint('👥 [TENTATIVA DE DESARME INCORRETA] ${contatosEmergencia.length} '
+          'contato(s) de emergência carregado(s) do SQLite local.');
     } catch (e) {
       debugPrint('⚠️ [TENTATIVA DE DESARME INCORRETA] Falha ao buscar '
           'contatos de emergência: $e');
     }
 
+    debugPrint('📍 [TENTATIVA DE DESARME INCORRETA] Coletando GPS...');
     final localizacaoFormatada =
         await _obterLocalizacaoFormatada(posicaoEmMemoria: posicaoEmMemoria);
+    debugPrint('📍 [TENTATIVA DE DESARME INCORRETA] Localização resolvida: '
+        '$localizacaoFormatada');
 
     final mensagemAlerta =
         l10n.smsTentativaDesarmeCorpo(motivoTexto, localizacaoFormatada);
@@ -390,15 +395,21 @@ class EmergencyAlertService {
         .toList();
 
     if (numerosDestinatarios.isEmpty) {
-      debugPrint('⚠️ Nenhum contato de emergência cadastrado para receber o alerta.');
+      debugPrint('⚠️ [SMS] Nenhum contato de emergência com telefone válido '
+          'cadastrado (${contatosEmergencia.length} contato(s) lido(s) do '
+          'SQLite, nenhum com telefone preenchido) — SMS NÃO enviado.');
       return;
     }
 
+    debugPrint('📨 [SMS] Enviando SMS para ${numerosDestinatarios.length} '
+        'contato(s) via MethodChannel nativo...');
     try {
       await _canalSms.invokeMethod('enviarSms', {
         'telefones': numerosDestinatarios,
         'mensagem': mensagem,
       });
+      debugPrint('📨 [SMS] MethodChannel nativo retornou sem exceção — '
+          'SMS enfileirado com sucesso no rádio.');
     } on MissingPluginException catch (e) {
       // O engine headless criado pelo android_alarm_manager_plus para
       // executar este callback em segundo plano NÃO possui nenhum
@@ -412,14 +423,17 @@ class EmergencyAlertService {
       // interrompemos o fluxo com segurança, evitando qualquer
       // travamento/loop infinito no aparelho do usuário.
       debugPrint(
-          '⚠️ MissingPluginException: canal de SMS indisponível neste engine '
+          '⚠️ [SMS] MissingPluginException: canal de SMS indisponível neste engine '
           '(provavelmente o isolate headless do AlarmManager). Abortando '
           'envio sem repetir. Detalhe: $e');
     } catch (e) {
       // Qualquer outro erro inesperado durante a chamada nativa também é
       // tratado da mesma forma: registrado e o fluxo é interrompido,
-      // nunca repetido automaticamente.
-      debugPrint('⚠️ Falha ao enviar SMS de emergência: $e');
+      // nunca repetido automaticamente. Cobre também o `result.error(...)`
+      // que o lado nativo (SmsSender.kt) devolve quando NENHUM contato foi
+      // efetivamente enviado (ex: SmsManager indisponível/sem serviço) —
+      // chega aqui como PlatformException.
+      debugPrint('⚠️ [SMS] Falha ao enviar SMS de emergência: $e');
     }
   }
 

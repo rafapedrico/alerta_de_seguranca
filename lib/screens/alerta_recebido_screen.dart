@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/alertas_recebidos_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../widgets/texto_com_links.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -229,15 +230,38 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
     );
   }
 
+  /// Item 3 (reespecificação do usuário, 2026-08-14): o link de
+  /// localização/foto embutido no corpo bruto da mensagem (ver
+  /// [EmergencyAlertService._formatarPosicao]) agora aparece em AZUL e
+  /// clicável — mesmo tratamento dado aos cards do Histórico (ver
+  /// `historico_tab.dart`/[construirSpansComLinks]), em vez de texto cru
+  /// na mesma cor do restante da mensagem.
   Widget _buildMensagemTexto() {
+    const estiloBase = TextStyle(color: Colors.white70, fontSize: 14);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E313F),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(widget.mensagem, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+      child: Text.rich(
+        TextSpan(
+          children: construirSpansComLinks(widget.mensagem, estiloBase, _abrirLinkDaMensagem),
+        ),
+      ),
     );
+  }
+
+  Future<void> _abrirLinkDaMensagem(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [AlertaRecebidoScreen] Falha ao abrir link da mensagem: $e');
+    }
   }
 
   Widget _buildFoto(AppLocalizations l10n) {

@@ -13,6 +13,7 @@ import '../../services/api_service.dart';
 import '../../services/background_location_heartbeat_service.dart';
 import '../../services/captura_dissuasao_service.dart';
 import '../../services/sos_disparo_service.dart';
+import '../../widgets/confirmacao_alerta_emergencia.dart';
 import '../../widgets/pin_dialog.dart';
 
 
@@ -509,17 +510,48 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // ainda pode estar rodando neste exato instante.
     _cancelarTimerPrincipal();
     _fecharDialogoPinSeAberto();
+
+    // CORREÇÃO DE BUG REAL (2026-08-14, disparo duplicado): o alarme
+    // NATIVO (AlarmManager, agendado por
+    // [AlarmeService.agendarAlarmeEmergencia] para o instante em que o
+    // cronômetro original chegaria a zero) e o heartbeat de nuvem
+    // (dead man's switch) precisam ser cancelados AQUI, IMEDIATAMENTE —
+    // ANTES de [_executarDisparoDeEmergencia], que aguarda rede (GPS, SMS,
+    // Firestore, podendo levar vários segundos). Antes, esse cancelamento
+    // só acontecia no FINAL de [_executarDisparoDeEmergencia] (via
+    // [_pararTimer]), depois de toda aquela espera: se o horário original
+    // do cronômetro chegasse ENQUANTO essa espera ainda rodava, o alarme
+    // nativo (ainda agendado) disparava por conta própria, abrindo
+    // [CronometroDisparadoScreen] com som + teclado de PIN para um ciclo
+    // que já tinha sido resolvido (disparo duplicado real reportado pelo
+    // usuário). `cancelarAlarme()`/`cancelarCheckinAtivo()` chamados de
+    // novo mais tarde (dentro de [_pararTimer]) são inofensivos —
+    // idempotentes por natureza.
+    unawaited(_alarmeService.cancelarAlarme());
+    _locationService.pararCicloDeAtualizacao();
+    BackgroundLocationHeartbeatService().cancelarCheckinAtivo();
+
     await _executarDisparoDeEmergencia();
   }
 
-  /// Executa o disparo de emergência (SMS + Push App-para-App) e exibe
-  /// IMEDIATAMENTE o aviso na tela (regra
-  /// de negócio 2/3: "Mensagem com a localização foi enviada para os
-  /// números cadastrados."), sem esperar a confirmação de rede do
-  /// SMS/nuvem, que roda em paralelo. Reaproveita o [EmergencyAlertService],
-  /// compartilhado com o callback headless do [AlarmeService]. Protegido
-  /// por try/catch para que qualquer falha (GPS, SMS, banco) jamais trave
-  /// a interface do usuário ou dispare novamente em loop.
+  /// Executa o disparo de emergência COMPLETO — SMS nativo, push/Firestore
+  /// para o app receptor (ver [EmergencyAlertService.dispararAlertaTentativaDesarmeIncorreto])
+  /// e registro no histórico local — e exibe IMEDIATAMENTE a confirmação
+  /// de envio em tela cheia, sem esperar a confirmação de rede do
+  /// SMS/nuvem, que roda em paralelo.
+  ///
+  /// Reespecificação do usuário (2026-08-14): unificado com o MESMO
+  /// pipeline e o MESMO componente visual ([ConfirmacaoAlertaEmergencia])
+  /// já usados pela 3ª tentativa de PIN errada e pelo timeout de 60s
+  /// DENTRO da janela final de tolerância (ver
+  /// `cronometro_disparado_screen.dart`) — antes, este método (disparo por
+  /// 3ª tentativa de PIN errada durante uma tentativa MANUAL de desarme,
+  /// ANTES do cronômetro zerar) usava o alerta genérico
+  /// ([EmergencyAlertService.dispararAlertaDeEmergencia]) e um simples
+  /// `AlertDialog` de aviso, divergindo do fluxo da janela final.
+  ///
+  /// Protegido por try/catch para que qualquer falha (GPS, SMS, banco)
+  /// jamais trave a interface do usuário ou dispare novamente em loop.
   ///
   /// Regra de negócio 7 (restrições obrigatórias): a CÂMERA nunca é
   /// acionada em nenhum ponto deste fluxo. NOTA (reespecificação do
@@ -527,15 +559,14 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// som de alarme — isso foi revertido DE PROPÓSITO, mas só para o novo
   /// fluxo "ao zerar" (ver [CronometroDisparadoScreen], que toca o alarme
   /// e abre o teclado de PIN por até 60s). Este método específico
-  /// (disparo por 3ª tentativa de PIN errada durante uma tentativa
-  /// MANUAL de desarme, ANTES do cronômetro zerar) continua sem tocar
-  /// nenhum som — regra histórica preservada aqui, não pedida para
-  /// mudar.
+  /// continua sem tocar nenhum som — regra histórica preservada aqui, não
+  /// pedida para mudar.
   Future<void> _executarDisparoDeEmergencia() async {
-    _mostrarAlertaMensagemEnviada();
+    final l10n = AppLocalizations.of(context)!;
+    _abrirConfirmacaoAlertaEnviado();
     try {
-      await _emergencyAlertService.dispararAlertaDeEmergencia(
-        contexto: _contextoController.text.trim(),
+      await _emergencyAlertService.dispararAlertaTentativaDesarmeIncorreto(
+        motivo: l10n.historicoCronometroPinIncorretoMotivo,
         posicaoEmMemoria: _locationService.ultimaPosicao,
       );
     } catch (e) {
@@ -544,25 +575,22 @@ class _SegurancaTabState extends State<SegurancaTab> {
     _pararTimer();
   }
 
-  /// Exibe o alerta na tela avisando que a mensagem de emergência foi
-  /// enviada (regras de negócio 2 e 3). Chamado uma única vez por ciclo,
-  /// de dentro de [_executarDisparoDeEmergencia] — nunca aguarda a
-  /// confirmação de rede do SMS/nuvem para aparecer.
-  void _mostrarAlertaMensagemEnviada() {
+  /// Abre, em tela cheia, o MESMO componente de confirmação usado por
+  /// `cronometro_disparado_screen.dart` (ver [ConfirmacaoAlertaEmergencia])
+  /// — ícone e texto em vermelho, nunca aguardando a confirmação de rede
+  /// do SMS/nuvem para aparecer. Chamado uma única vez por ciclo, de
+  /// dentro de [_executarDisparoDeEmergencia].
+  void _abrirConfirmacaoAlertaEnviado() {
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context)!;
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 36),
-        title: Text(l10n.segurancaAlertaEnviadoTitulo),
-        content: Text(l10n.segurancaAlertaEnviadoConteudo),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.fechar),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ConfirmacaoAlertaEmergencia(
+          aoFechar: () {
+            if (mounted && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
       ),
     );
   }

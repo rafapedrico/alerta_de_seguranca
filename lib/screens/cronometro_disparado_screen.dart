@@ -14,6 +14,7 @@ import '../services/firebase_sync_service.dart';
 import '../services/l10n_headless_service.dart';
 import '../services/location_service.dart';
 import '../services/rotina_alarme_service.dart';
+import '../widgets/confirmacao_alerta_emergencia.dart';
 import '../widgets/pin_dialog.dart';
 
 /// Chave (SharedPreferences) sinalizando que o fluxo do Cronômetro
@@ -358,12 +359,13 @@ class _CronometroDisparadoScreenState
   }
 
   Future<void> _aoEsgotarTempoLimite() async {
+    debugPrint('⏰ [TIMEOUT] 60s de tolerância esgotados sem desarme — iniciando disparo.');
     String? motivo;
     try {
       final l10n = await L10nHeadlessService.obter();
       motivo = l10n.historicoCronometroFalhaMotivo;
     } catch (e) {
-      debugPrint('⚠️ Falha ao montar motivo de tempo esgotado: $e');
+      debugPrint('⚠️ [TIMEOUT] Falha ao montar motivo de tempo esgotado: $e');
     }
     await _dispararAlerta(motivo: motivo);
   }
@@ -432,19 +434,23 @@ class _CronometroDisparadoScreenState
     // 3. Dispara o alerta (nuvem primeiro e aguardada, depois o fluxo
     // local completo — SMS nativo + backend, já com o motivo/localização
     // e o registro automático no histórico, ver [EmergencyAlertService]).
+    debugPrint('☁️ [TIMEOUT] Enviando Push/Firestore (FirebaseSyncService)...');
     try {
-      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+      final enviado = await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
         motivo: motivo,
       );
+      debugPrint('☁️ [TIMEOUT] Push/Firestore -> enviado=$enviado');
     } catch (e) {
-      debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem: $e');
+      debugPrint('⚠️ [TIMEOUT] Falha ao disparar alerta prioritário na nuvem: $e');
     }
+    debugPrint('📡 [TIMEOUT] Disparando EmergencyAlertService (GPS + SMS + histórico local)...');
     try {
       await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(
         motivo: motivo,
       );
+      debugPrint('📡 [TIMEOUT] EmergencyAlertService concluído.');
     } catch (e) {
-      debugPrint('⚠️ Falha ao disparar alerta de emergência do cronômetro: $e');
+      debugPrint('⚠️ [TIMEOUT] Falha ao disparar alerta de emergência do cronômetro: $e');
     }
 
     // 4. Confirmação de envio — permanece fixa na tela (sem fechamento
@@ -472,19 +478,28 @@ class _CronometroDisparadoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final Widget tela = Scaffold(
+    // Reespecificação do usuário (2026-08-14): a confirmação de alerta
+    // enviado (3ª tentativa de PIN incorreta OU timeout dos 60s) usa
+    // exatamente o mesmo componente visual — em VERMELHO, nunca verde —
+    // compartilhado com `seguranca_tab.dart` (tentativa MANUAL de
+    // desarme, antes do cronômetro zerar). Ver [ConfirmacaoAlertaEmergencia].
+    if (_alertaDisparado) {
+      return ConfirmacaoAlertaEmergencia(aoFechar: _fecharTela);
+    }
+
+    // Gesto de deslizar para cima é exclusivo da confirmação pós-alerta
+    // acima — especificação do usuário: o gesto de "arrastar para
+    // descartar" (seção 2 do pedido) é exclusivo do Alarme de Rotina, o
+    // Cronômetro não o reproduz durante o teclado de PIN.
+    return Scaffold(
       backgroundColor: const Color(0xFF121212),
       body: SafeArea(
         child: Stack(
           children: [
-            Center(
+            const Center(
               child: Icon(
-                _alertaDisparado
-                    ? Icons.check_circle_rounded
-                    : Icons.security_rounded,
-                color: _alertaDisparado
-                    ? Colors.greenAccent.withOpacity(0.35)
-                    : Colors.redAccent.withOpacity(0.25),
+                Icons.security_rounded,
+                color: Color(0x40FF5252), // Colors.redAccent com opacity 0.25
                 size: 140,
               ),
             ),
@@ -492,83 +507,20 @@ class _CronometroDisparadoScreenState
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _alertaDisparado
-                          ? AppLocalizations.of(context)!
-                              .alarmeRotinaAlertaEnviadoDescricao
-                          : AppLocalizations.of(context)!
-                              .cronometroAtivoDescricao,
-                      style: TextStyle(
-                        color: _alertaDisparado
-                            ? Colors.greenAccent
-                            : Colors.redAccent,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (_alertaDisparado) ...[
-                      const SizedBox(height: 24),
-                      const Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        color: Colors.white38,
-                        size: 32,
-                      ),
-                      Text(
-                        AppLocalizations.of(context)!.fecharConfirmacaoDica,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38, fontSize: 13),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.greenAccent,
-                            side: const BorderSide(color: Colors.greenAccent),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                          ),
-                          onPressed: _fecharTela,
-                          child: Text(
-                            AppLocalizations.of(context)!.fecharConfirmacaoBotao,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  AppLocalizations.of(context)!.cronometroAtivoDescricao,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-
-    // Gesto de deslizar para cima: só encerra a tela de confirmação
-    // (pós-alerta) — especificação do usuário: o gesto de "arrastar para
-    // descartar" (seção 2 do pedido) é exclusivo do Alarme de Rotina, o
-    // Cronômetro não o reproduz durante o teclado de PIN.
-    if (!_alertaDisparado) return tela;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragEnd: (details) {
-        if (details.velocity.pixelsPerSecond.dy < -250) {
-          _fecharTela();
-        }
-      },
-      child: tela,
     );
   }
 }
