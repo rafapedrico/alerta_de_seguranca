@@ -559,7 +559,25 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // idempotentes por natureza.
     unawaited(_alarmeService.cancelarAlarme());
     _locationService.pararCicloDeAtualizacao();
-    BackgroundLocationHeartbeatService().cancelarCheckinAtivo();
+
+    // CORREÇÃO DE BUG REAL (2026-08-15): antes, chamava só
+    // `cancelarCheckinAtivo()` — que só PARA o heartbeat LOCAL de
+    // atualizar o documento, sem nunca marcar `alarmes_agendados` como
+    // resolvido na nuvem. Como esta 3ª tentativa errada acontece durante
+    // um desarme MANUAL (ANTES do cronômetro principal chegar a zero), o
+    // `prazoFinalEpochMs` já gravado no Firestore ainda podia estar
+    // MINUTOS no futuro (tempo restante do cronômetro + 60s de
+    // tolerância) — o documento ficava PENDENTE por até alguns minutos
+    // mesmo com o alerta já enviado agora mesmo, e a Cloud Function
+    // agendada (`monitorarAlarmesAgendados`, a cada 2 min) disparava um
+    // SEGUNDO alerta duplicado quando esse prazo antigo vencia (sintoma
+    // real relatado: 2 a 6 minutos depois). `confirmarAlertaJaDisparado`
+    // grava ALERTA_DISPARADO no Firestore (tirando o documento da
+    // consulta da function) E chama `cancelarCheckinAtivo()`
+    // internamente — mesmo remédio já usado em
+    // `CronometroDisparadoScreen._dispararAlerta` para o disparo
+    // acontecendo DEPOIS do cronômetro zerar.
+    BackgroundLocationHeartbeatService().confirmarAlertaJaDisparado();
 
     await _executarDisparoDeEmergencia();
   }
@@ -649,8 +667,21 @@ class _SegurancaTabState extends State<SegurancaTab> {
     debugPrint('🚨 [PIN INCORRETO 3x] 3 PINs incorretos consecutivos detectados. '
         'Encerrando o cronômetro e disparando o alerta completo.');
 
+    // CORREÇÃO DE BUG REAL (2026-08-15): esta chamada não informava
+    // [motivo], então a notificação Push recebida pelo contato de
+    // emergência caía no texto GENÉRICO de `functions/index.js`
+    // ("...incorretamente 2 vezes seguidas...") — um texto histórico de
+    // antes da unificação para 3 tentativas (ver
+    // `PinDialogContent.limiteErrosConsecutivos: 3` acima, em
+    // [_abrirDialogoDesarme]), e DIFERENTE do SMS local, que já usa o
+    // texto certo ("3 vezes", `l10n.historicoCronometroPinIncorretoMotivo`,
+    // ver [_executarDisparoDeEmergencia]). Passar o mesmo motivo aqui
+    // também deixa Push e SMS consistentes entre si para o mesmo evento.
     try {
-      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
+      final l10n = AppLocalizations.of(context)!;
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: l10n.historicoCronometroPinIncorretoMotivo,
+      );
     } catch (e) {
       debugPrint('⚠️ [PIN INCORRETO 3x] Falha ao disparar alerta prioritário na nuvem: $e');
     }
