@@ -10,4 +10,12 @@
     <string name="facebook_app_id">1053780267051671</string>
     <string name="fb_login_protocol_scheme">fb1053780267051671</string>
     <string name="facebook_client_token">32cdc22743159f24dadae84b30af82ca</string>
+
+    <!-- Modo "Despertador de Emergência" — notificação de controle do
+         AlertaRecebidoAlarmService (ver essa classe para o comentário
+         completo). Texto nativo (não passa pelo l10n do Flutter, igual
+         aos demais textos nativos deste app). -->
+    <string name="alerta_alarme_titulo">Alerta de emergência tocando</string>
+    <string name="alerta_alarme_corpo">Toque para abrir ou deslize para silenciar</string>
+    <string name="alerta_alarme_silenciar">Silenciar</string>
 </resources>

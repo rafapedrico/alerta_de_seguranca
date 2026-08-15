@@ -121,4 +121,31 @@ class FirebaseAuthService {
   Future<void> enviarEmailVerificacao() async {
     await _auth.currentUser?.sendEmailVerification();
   }
+
+  /// Força a renovação do ID token do usuário atual — necessária ANTES
+  /// de qualquer chamada autenticada ao Firestore feita logo após
+  /// [Firebase.initializeApp] no cold start (ver `main.dart`,
+  /// sincronização do `fcmToken` a partir da sessão recém-restaurada).
+  ///
+  /// BUG REAL CONFIRMADO (2026-08-15, via logcat): a sessão é restaurada
+  /// SINCRONAMENTE pelo SDK ([uidAtual] já não é nulo imediatamente após
+  /// `Firebase.initializeApp()`), mas o ID token usado pelo SDK do
+  /// Firestore para AUTORIZAR a chamada ainda não está necessariamente
+  /// pronto/anexado nesse instante exato — a primeira escrita
+  /// autenticada do cold start falhava com
+  /// `[cloud_firestore/permission-denied]` mesmo com um `uid` válido e
+  /// as regras corretas (`request.auth.uid == usuarioId`), porque
+  /// `request.auth` ainda não estava totalmente populado no momento em
+  /// que a chamada saiu. `getIdToken(true)` força essa renovação e só
+  /// retorna depois que o token está de fato pronto, eliminando a
+  /// corrida. Protegida por try/catch: sem sessão ativa (`currentUser ==
+  /// null`) ou qualquer falha de rede, é um no-op seguro — o chamador
+  /// decide o que fazer a seguir.
+  Future<void> garantirTokenPronto() async {
+    try {
+      await _auth.currentUser?.getIdToken(true);
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseAuthService] Falha ao renovar o ID token: $e');
+    }
+  }
 }

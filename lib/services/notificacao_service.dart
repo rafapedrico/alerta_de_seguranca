@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -53,7 +52,26 @@ class NotificacaoService {
   /// este aparelho como contato de emergência. Separado do canal de
   /// check-in de rotina para que o usuário possa configurar volume/som
   /// de forma independente para cada tipo de alerta.
-  static const String canalAlertaRecebidoId = 'alerta_emergencia_recebido';
+  /// BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
+  /// `dumpsys notification`): o Android trava as configurações de ÁUDIO
+  /// de um canal (`audioAttributesUsage`, som) no momento em que ele é
+  /// criado pela PRIMEIRA vez — o mecanismo de "deletar e recriar" usado
+  /// para migrar canais já existentes (ver [inicializar]) se mostrou NÃO
+  /// confiável na prática: mesmo depois de rodar, um aparelho de teste
+  /// real continuou mostrando `usage=USAGE_NOTIFICATION` (som padrão do
+  /// sistema) em vez de `USAGE_ALARM` no canal deste alerta —
+  /// silenciosamente incapaz de furar o modo Silencioso/Não Perturbe, o
+  /// PRÓPRIO objetivo do ajuste "Despertador de Emergência". Trocar o ID
+  /// do canal é a forma robusta/padrão de resolver isso: um ID NOVO
+  /// nunca existiu antes, então o Android o cria do zero, com as
+  /// configurações corretas, sem depender de deletar+recriar
+  /// funcionar de forma confiável em 100% dos aparelhos/versões do
+  /// Android. Quem já tinha o app instalado ganha automaticamente o novo
+  /// canal (com as configurações certas) na próxima vez que este método
+  /// rodar — o canal antigo `alerta_emergencia_recebido` fica órfão,
+  /// inofensivo, e pode ser removido manualmente pelo usuário em
+  /// Configurações do Android se desejar (não reaparece).
+  static const String canalAlertaRecebidoId = 'alerta_emergencia_recebido_v2';
   static String canalAlertaRecebidoNome = 'Alerta de Emergência Recebido';
   static String canalAlertaRecebidoDescricao =
       'Alertas de segurança de contatos que cadastraram este aparelho como emergência.';
@@ -127,6 +145,12 @@ class NotificacaoService {
 
   static bool _inicializado = false;
 
+  /// Chave em disco (sobrevive entre isolates, ao contrário de
+  /// [_inicializado]) que marca se a migração ÚNICA de canais antigos
+  /// (deletar + recriar) já rodou nesta instalação — ver [inicializar].
+  static const String _chaveCanaisMigrados =
+      'notificacao_canais_migrados_v1';
+
   /// Payload de uma notificação de SOLICITAÇÃO ('solicitacao_monitoramento')
   /// recebida antes de existir uma sessão autenticada — capturado tanto no
   /// cold start (ver [inicializar]/[_capturarPayloadSolicitacaoPendente])
@@ -137,6 +161,19 @@ class NotificacaoService {
   /// o modal de decisão direto em vez da Home normal.
   static Map<String, dynamic>? payloadSolicitacaoPendente;
 
+  /// Payload de um alerta de emergência RECEBIDO de outro usuário (tipo
+  /// `'alerta_recebido'`, ver [exibirNotificacaoAlertaRecebido]) capturado
+  /// num COLD START via toque nesta notificação (app 100% fechado) —
+  /// mesma mecânica de [payloadSolicitacaoPendente], mas com um
+  /// tratamento DIFERENTE e deliberado: reespecificação do usuário
+  /// (2026-08-14) exige que o usuário NUNCA precise logar para ver a
+  /// mensagem/localização de um alerta recebido. Por isso este payload é
+  /// consumido em `main.dart` (ver `_inicializarNotificacoesEAbrirAlertaPendente`)
+  /// para pular a barreira de login e abrir [AlertaRecebidoScreen] direto
+  /// — ao contrário de [payloadSolicitacaoPendente], que é sempre
+  /// guardado até um login de verdade acontecer.
+  static Map<String, dynamic>? payloadAlertaRecebidoPendente;
+
   static void _capturarPayloadSolicitacaoPendente(String? payload) {
     if (payload == null || !payload.startsWith('{')) return;
     try {
@@ -144,6 +181,8 @@ class NotificacaoService {
       if (dados['tipo'] == 'monitoramento_push' &&
           dados['subTipo'] == 'solicitacao_monitoramento') {
         payloadSolicitacaoPendente = dados;
+      } else if (dados['tipo'] == 'alerta_recebido') {
+        payloadAlertaRecebidoPendente = dados;
       }
     } catch (e) {
       debugPrint(
@@ -160,6 +199,17 @@ class NotificacaoService {
     return dados;
   }
 
+  /// Lê e limpa o payload de alerta recebido pendente — chamado por
+  /// `main.dart` logo após [inicializar] resolver, ANTES de qualquer
+  /// LoginScreen aparecer (ver [payloadAlertaRecebidoPendente]). Devolve
+  /// `null` no fluxo normal (cold start sem nenhuma notificação
+  /// envolvida).
+  static Map<String, dynamic>? consumirPayloadAlertaRecebidoPendente() {
+    final dados = payloadAlertaRecebidoPendente;
+    payloadAlertaRecebidoPendente = null;
+    return dados;
+  }
+
   /// Canal nativo dedicado ao fluxo de "acordar a tela" para solicitações
   /// de monitoramento (ver `SolicitacaoMonitoramentoWakeService`/
   /// `SolicitacaoMonitoramentoFcmReceiver`, no lado Kotlin, e
@@ -171,6 +221,43 @@ class NotificacaoService {
   /// (app em primeiro/segundo plano, via `onNewIntent`).
   static const MethodChannel _canalSolicitacaoNativa =
       MethodChannel('com.example.security_check_app/solicitacao_monitoramento');
+
+  /// Modo "Despertador de Emergência" (reespecificação do usuário,
+  /// 2026-08-15) — ver `AlertaRecebidoAlarmService.kt`/
+  /// `AlertaRecebidoAlarmPlugin.kt` para a implementação nativa completa
+  /// (alarme sonoro em loop, volume máximo do STREAM_ALARM, desarme via
+  /// notificação/toque/arraste). Usado por [exibirNotificacaoAlertaRecebido]
+  /// (iniciar) e por `AlertaRecebidoScreen` (parar, ao abrir a tela ou
+  /// tocar no link do mapa).
+  static const MethodChannel _canalAlertaRecebidoAlarme =
+      MethodChannel('com.example.security_check_app/alerta_recebido_alarme');
+
+  /// Inicia o alarme sonoro contínuo em volume máximo — chamado junto com
+  /// a notificação de tela cheia em [exibirNotificacaoAlertaRecebido].
+  /// Protegido: uma falha aqui (ex: `MissingPluginException` no engine
+  /// headless do `firebase_messaging` com o app 100% fechado — ver
+  /// documentação completa em `AlertaRecebidoAlarmService.kt`) NUNCA deve
+  /// impedir a notificação de tela cheia (que já funciona nesse cenário)
+  /// de aparecer.
+  static Future<void> iniciarAlarmeCritico() async {
+    try {
+      await _canalAlertaRecebidoAlarme.invokeMethod('iniciarAlarme');
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao iniciar o Despertador de Emergência: $e');
+    }
+  }
+
+  /// Para o alarme sonoro contínuo — chamado sempre que o usuário toma
+  /// qualquer ação sobre o alerta recebido (abre a tela, toca no link do
+  /// mapa etc., ver `AlertaRecebidoScreen`). Idempotente e seguro chamar
+  /// mesmo se nenhum alarme estiver tocando.
+  static Future<void> pararAlarmeCritico() async {
+    try {
+      await _canalAlertaRecebidoAlarme.invokeMethod('pararAlarme');
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao parar o Despertador de Emergência: $e');
+    }
+  }
 
   /// Ids de permissão com o modal de decisão atualmente aberto — evita
   /// empilhar dois diálogos para a MESMA solicitação quando mais de um
@@ -313,6 +400,16 @@ class NotificacaoService {
       canalAlertaRecebidoNome,
       description: canalAlertaRecebidoDescricao,
       importance: Importance.max,
+      // Modo "Despertador de Emergência" (2026-08-15): roteia o som
+      // desta notificação pelo canal STREAM_ALARM do Android (em vez do
+      // STREAM_NOTIFICATION padrão) — o mesmo canal usado por
+      // despertadores do sistema, que NÃO é silenciado pelo modo
+      // Silencioso/Vibrar do aparelho. Efeito mesmo no pior caso (app
+      // 100% fechado, ver `AlertaRecebidoAlarmService.kt`), onde o loop
+      // sonoro contínuo em volume máximo daquele serviço não chega a
+      // iniciar — este ajuste garante que ao menos o som PADRÃO desta
+      // notificação já fure o silencioso.
+      audioAttributesUsage: AudioAttributesUsage.alarm,
     );
     final canalMonitoramento = AndroidNotificationChannel(
       canalMonitoramentoId,
@@ -336,20 +433,67 @@ class NotificacaoService {
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
-    // O Android trava as configurações de um canal (incluindo som) no
-    // momento em que ele é criado pela PRIMEIRA vez — chamar
-    // `createNotificationChannel` de novo com `playSound: false` NÃO
-    // atualiza um canal 'checkin_rotina' já existente em instalações
-    // anteriores ao ajuste acima. Remover e recriar aqui garante que a
-    // correção do "toque duplo" também se aplique a quem já tinha o app
-    // instalado, não só a instalações novas. Idempotente e seguro: apagar
-    // um canal inexistente (instalação nova) é um no-op.
-    try {
-      await implementacaoAndroid?.deleteNotificationChannel(canalId);
-    } catch (e) {
-      debugPrint('⚠️ [NotificacaoService] Falha ao remover canal antigo de check-in: $e');
+    // CORREÇÃO DE BUG REAL (2026-08-15, diagnosticado ao vivo via
+    // logcat): o migration de canais abaixo (deletar + recriar,
+    // necessário SÓ UMA VEZ por instalação para aplicar `playSound:
+    // false`/`audioAttributesUsage: alarm` a canais já existentes de
+    // versões antigas — ver comentários originais preservados logo
+    // abaixo) rodava TODA VEZ que [inicializar] era chamado, inclusive
+    // em CADA isolate headless novo do `firebase_messaging`
+    // (`_inicializado` é um `bool` estático — não sobrevive entre
+    // isolates, cada mensagem em segundo plano criava um isolate 100%
+    // novo). Cada mensagem recebida disparava, então, 2 chamadas nativas
+    // extras de `deleteNotificationChannel` — round-trips desnecessários
+    // (o canal já teria sido migrado da PRIMEIRA vez) que competiam pela
+    // janela de execução CURTA que o Android concede a um
+    // `BroadcastReceiver`/isolate headless antes de matá-lo. Sintoma real
+    // observado: o isolate reiniciava do zero a cada mensagem (mesma
+    // sequência completa de logs repetindo), e a notificação de alerta
+    // NUNCA chegava a ser exibida (`dumpsys notification` confirmou
+    // ausência). Uma flag persistida em disco (sobrevive entre isolates,
+    // ao contrário do `bool` estático) garante que a migração rode
+    // literalmente UMA vez por instalação, nunca de novo — deixando
+    // [inicializar] rápido o bastante para caber na janela do isolate
+    // headless.
+    final prefsMigracao = await SharedPreferences.getInstance();
+    final bool canaisJaMigrados =
+        prefsMigracao.getBool(_chaveCanaisMigrados) ?? false;
+
+    if (!canaisJaMigrados) {
+      // O Android trava as configurações de um canal (incluindo som) no
+      // momento em que ele é criado pela PRIMEIRA vez — chamar
+      // `createNotificationChannel` de novo com `playSound: false` NÃO
+      // atualiza um canal 'checkin_rotina' já existente em instalações
+      // anteriores ao ajuste acima. Remover e recriar aqui garante que a
+      // correção do "toque duplo" também se aplique a quem já tinha o app
+      // instalado, não só a instalações novas. Idempotente e seguro: apagar
+      // um canal inexistente (instalação nova) é um no-op.
+      try {
+        await implementacaoAndroid?.deleteNotificationChannel(canalId);
+      } catch (e) {
+        debugPrint('⚠️ [NotificacaoService] Falha ao remover canal antigo de check-in: $e');
+      }
+      // Mesmo motivo acima: quem já tinha o app instalado ANTES do ajuste
+      // "Despertador de Emergência" (2026-08-15, `audioAttributesUsage:
+      // AudioAttributesUsage.alarm`) ficaria preso no canal antigo
+      // (STREAM_NOTIFICATION) para sempre sem isto.
+      try {
+        await implementacaoAndroid?.deleteNotificationChannel(canalAlertaRecebidoId);
+      } catch (e) {
+        debugPrint('⚠️ [NotificacaoService] Falha ao remover canal antigo de alerta recebido: $e');
+      }
+      try {
+        await prefsMigracao.setBool(_chaveCanaisMigrados, true);
+      } catch (e) {
+        debugPrint('⚠️ [NotificacaoService] Falha ao persistir flag de migração de canais: $e');
+      }
     }
 
+    // `createNotificationChannel` é barato/seguro chamar sempre, mesmo
+    // com o canal já existente (o Android trata como no-op) — os
+    // próprios canais em si são um recurso PERSISTIDO pelo sistema
+    // operacional (sobrevivem a reinícios do app), diferente da migração
+    // acima.
     await implementacaoAndroid?.createNotificationChannel(canal);
     await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
     await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
@@ -502,10 +646,37 @@ class NotificacaoService {
       channelDescription: canalAlertaRecebidoDescricao,
       importance: Importance.max,
       priority: Priority.high,
-      ongoing: true,
+      // Modo "Despertador de Emergência" (item 4, reespecificação do
+      // usuário, 2026-08-15): precisa continuar DESCARTÁVEL por arraste
+      // — `ongoing: true` (valor anterior) bloqueia completamente o
+      // gesto de swipe, o que impediria o usuário de silenciar o alarme
+      // dessa forma. `autoCancel` continua `false` de propósito: um
+      // toque simples abre o app SEM remover a notificação sozinho — é
+      // [cancelarNotificacaoAlertaRecebido] (chamado explicitamente ao
+      // abrir `AlertaRecebidoScreen`) quem a remove de fato, o que por
+      // sua vez para o som insistente (ver `additionalFlags` abaixo).
+      ongoing: false,
       fullScreenIntent: true,
       autoCancel: false,
       playSound: true,
+      // Ver comentário completo no canal (acima, em [inicializar]) —
+      // roteia o som desta notificação pelo STREAM_ALARM.
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      // MODO "DESPERTADOR DE EMERGÊNCIA" (items 3/4, reespecificação do
+      // usuário, 2026-08-15) — `Notification.FLAG_INSISTENT` (valor 4),
+      // aplicado via `additionalFlags` (recurso nativo padrão do
+      // Android, não um hack): repete o som/vibração em loop contínuo
+      // até a notificação ser CANCELADA (arrastada para descartar, ou
+      // removida programaticamente — ver [cancelarNotificacaoAlertaRecebido]).
+      // ÚNICO mecanismo de loop que funciona de forma 100% confiável
+      // mesmo com o app TOTALMENTE fechado: roda inteiramente dentro da
+      // MESMA chamada `flutter_local_notifications` que já posta esta
+      // notificação com sucesso no isolate headless do
+      // `firebase_messaging` (diferente do plugin nativo customizado
+      // `AlertaRecebidoAlarmService`/`AlertaRecebidoAlarmPlugin`, que só
+      // funciona quando o app já tem um engine "de verdade" rodando —
+      // ver documentação completa em `AlertaRecebidoAlarmService.kt`).
+      additionalFlags: Int32List.fromList(<int>[4]),
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
       styleInformation: fotoBytes != null
           ? BigPictureStyleInformation(
@@ -522,21 +693,56 @@ class NotificacaoService {
       'tipo': 'alerta_recebido',
       'idEntrega': idEntrega,
       'mensagem': mensagem,
+      // Item pendente (2026-08-14, reespecificação do usuário): "todas as
+      // mensagens" devem mostrar o horário e data EXATA — capturado aqui,
+      // no momento real da entrega no dispositivo (mesmo instante em que
+      // AlertasRecebidosService.registrarAlertaRecebido grava `recebido_em`
+      // no SQLite local), e propagado pelo payload até AlertaRecebidoScreen
+      // (ver `recebidoEm` abaixo e em [_processarRespostaPayloadJson]).
+      'recebidoEm': DateTime.now().toIso8601String(),
       if (nomeRemetente != null) 'nomeRemetente': nomeRemetente,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (fotoUrl != null && fotoUrl.isNotEmpty) 'fotoUrl': fotoUrl,
     });
 
+    // Modo "Despertador de Emergência" (item 3 do pedido): inicia o
+    // alarme sonoro contínuo em volume máximo EM PARALELO à notificação
+    // de tela cheia abaixo — ver [iniciarAlarmeCritico].
+    unawaited(iniciarAlarmeCritico());
+
     await _plugin.show(
-      // Id estável derivado do idEntrega — evita colidir com os ids de
-      // notificação de check-in de rotina (idAlarme/idAlarme+10000).
-      30000 + (idEntrega.hashCode.abs() % 60000),
+      _idNotificacaoAlertaRecebido(idEntrega),
       tituloAlerta,
       mensagem,
       details,
       payload: payload,
     );
+  }
+
+  /// Id estável derivado do [idEntrega] — evita colidir com os ids de
+  /// notificação de check-in de rotina (idAlarme/idAlarme+10000).
+  /// Compartilhado entre [exibirNotificacaoAlertaRecebido] (posta) e
+  /// [cancelarNotificacaoAlertaRecebido] (remove) para nunca divergir.
+  static int _idNotificacaoAlertaRecebido(String idEntrega) =>
+      30000 + (idEntrega.hashCode.abs() % 60000);
+
+  /// Remove a notificação do alerta recebido — item 4 do pedido
+  /// ("Despertador de Emergência"): cancelar a notificação
+  /// programaticamente é o que efetivamente para o som insistente em
+  /// loop (`Notification.FLAG_INSISTENT`, ver
+  /// [exibirNotificacaoAlertaRecebido]), já que este só continua
+  /// tocando "até a notificação ser cancelada". Chamado por
+  /// `AlertaRecebidoScreen` assim que o usuário abre a tela (qualquer
+  /// caminho: toque na notificação, no card do Histórico, etc.) ou toca
+  /// no link do mapa. Seguro chamar mesmo sem nenhuma notificação ativa
+  /// com este [idEntrega] (no-op).
+  static Future<void> cancelarNotificacaoAlertaRecebido(String idEntrega) async {
+    try {
+      await _plugin.cancel(_idNotificacaoAlertaRecebido(idEntrega));
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao cancelar notificação de alerta recebido: $e');
+    }
   }
 
   /// Exibe a notificação para os eventos de push da aba Monitoramento —
@@ -852,6 +1058,7 @@ class NotificacaoService {
             longitude: (dados['longitude'] as num?)?.toDouble(),
             fotoUrl: dados['fotoUrl'] as String?,
             idEntrega: dados['idEntrega'] as String?,
+            recebidoEm: dados['recebidoEm'] as String?,
           ),
         ),
       );

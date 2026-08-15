@@ -37,6 +37,11 @@
          é sempre uma decisão explícita do usuário. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
+    <!-- Exigida para forçar o volume do canal STREAM_ALARM ao máximo ao
+         receber um alerta crítico de outro usuário — ver
+         AlertaRecebidoAlarmService (modo "Despertador de Emergência"). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
@@ -258,6 +263,24 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Solicitacao de localizacao recebida (acordar tela)"/>
+        </service>
+
+        <!-- Modo "Despertador de Emergência" (reespecificação do usuário,
+             2026-08-15): toca um alarme em loop, no volume máximo do
+             canal STREAM_ALARM (furando o modo silencioso do aparelho),
+             quando ESTE aparelho recebe o alerta crítico de outro
+             usuário — ver AlertaRecebidoAlarmService/AlertaRecebidoAlarmPlugin.
+             A notificação PRÓPRIA deste serviço (exigida pelo Android
+             para qualquer Foreground Service) tem botão "Silenciar" e
+             pode ser descartada com um gesto — ambos silenciam o alarme
+             imediatamente (ver `setDeleteIntent`/`ACTION_PARAR`). -->
+        <service
+            android:name=".AlertaRecebidoAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Alarme sonoro de alerta de emergencia recebido de outro usuario"/>
         </service>
 
         <!-- Device Admin — única forma de bloquear a tela sob demanda

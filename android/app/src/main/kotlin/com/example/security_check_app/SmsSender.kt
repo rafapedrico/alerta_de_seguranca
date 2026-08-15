@@ -1,7 +1,12 @@
 package com.example.security_check_app
 
 import android.Manifest
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SmsManager
@@ -91,6 +96,70 @@ class SmsSender : FlutterPlugin {
         /** Nome do MethodChannel usado tanto pela Activity quanto pelo engine headless. */
         const val CHANNEL = "com.example.security_check_app/sms"
 
+        /** Ação do broadcast usado como `sentIntent` de cada parte do SMS —
+         * ver [garantirReceiverDeStatusRegistrado]/[enviar]. Diagnóstico
+         * pedido pelo usuário (2026-08-15): "status do envio" de verdade,
+         * não só "a chamada não lançou exceção" (que só prova que o
+         * PEDIDO foi bem formado, não que o RÁDIO aceitou/transmitiu o
+         * SMS). */
+        private const val ACAO_SMS_STATUS = "com.example.security_check_app.ACTION_SMS_STATUS"
+        private var receiverDeStatusRegistrado = false
+
+        /** Traduz o `resultCode` devolvido pelo `sentIntent` do
+         * `SmsManager` num motivo legível — os códigos de erro
+         * (`RESULT_ERROR_*`) são exatamente o diagnóstico que faltava
+         * para saber SE/POR QUE o rádio recusou o envio (sem serviço,
+         * rádio desligado/modo avião, etc.), distinto de qualquer
+         * exceção Kotlin (que só cobre erros ANTES de chegar ao rádio). */
+        private fun descreverResultadoEnvio(resultCode: Int): String {
+            return when (resultCode) {
+                Activity.RESULT_OK -> "OK — aceito pelo rádio"
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE -> "RESULT_ERROR_GENERIC_FAILURE (falha genérica do rádio/operadora)"
+                SmsManager.RESULT_ERROR_NO_SERVICE -> "RESULT_ERROR_NO_SERVICE (sem serviço/sinal de rede no momento do envio)"
+                SmsManager.RESULT_ERROR_NULL_PDU -> "RESULT_ERROR_NULL_PDU (falha interna ao montar o PDU do SMS)"
+                SmsManager.RESULT_ERROR_RADIO_OFF -> "RESULT_ERROR_RADIO_OFF (rádio desligado — modo avião?)"
+                SmsManager.RESULT_ERROR_LIMIT_EXCEEDED -> "RESULT_ERROR_LIMIT_EXCEEDED (limite de SMS da operadora/sistema excedido)"
+                SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED -> "RESULT_ERROR_SHORT_CODE_NOT_ALLOWED"
+                SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED -> "RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED"
+                SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE -> "RESULT_ERROR_FDN_CHECK_FAILURE (lista de discagem fixa do chip bloqueando o número)"
+                else -> "código desconhecido ($resultCode)"
+            }
+        }
+
+        /** Registra, uma única vez por processo, o `BroadcastReceiver` que
+         * recebe o resultado REAL de cada `sentIntent` (ver [enviar]) —
+         * dispara assim que o rádio confirma (ou recusa) o envio, não
+         * quando a chamada Kotlin retorna (que é só o pedido sendo
+         * enfileirado). */
+        private fun garantirReceiverDeStatusRegistrado(context: Context) {
+            if (receiverDeStatusRegistrado) return
+            val appContext = context.applicationContext
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context, intent: Intent) {
+                    val telefone = intent.getStringExtra(EXTRA_TELEFONE) ?: "(desconhecido)"
+                    val parte = intent.getIntExtra(EXTRA_PARTE, 1)
+                    val totalPartes = intent.getIntExtra(EXTRA_TOTAL_PARTES, 1)
+                    Log.i(
+                        TAG,
+                        "[SMS] Status do envio para $telefone (parte $parte/$totalPartes): " +
+                            descreverResultadoEnvio(resultCode),
+                    )
+                }
+            }
+            val filtro = IntentFilter(ACAO_SMS_STATUS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                appContext.registerReceiver(receiver, filtro, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                appContext.registerReceiver(receiver, filtro)
+            }
+            receiverDeStatusRegistrado = true
+        }
+
+        private const val EXTRA_TELEFONE = "telefone"
+        private const val EXTRA_PARTE = "parte"
+        private const val EXTRA_TOTAL_PARTES = "total_partes"
+
         /**
          * Envia a [mensagem] para cada telefone da lista [telefones], dividindo
          * automaticamente em múltiplas partes caso exceda o limite de
@@ -104,11 +173,23 @@ class SmsSender : FlutterPlugin {
          * lança exceção: erros por telefone só são logados (`Log.e`,
          * visíveis via `adb logcat -s SmsSender`) para diagnóstico.
          *
+         * DIAGNÓSTICO REFORÇADO (2026-08-15, pedido do usuário): cada
+         * tentativa agora carrega um `sentIntent` por parte — o Android só
+         * dispara esse broadcast quando o RÁDIO efetivamente processa o
+         * envio (sucesso ou erro específico, ver [descreverResultadoEnvio]),
+         * diferente do log anterior ("enfileirado com sucesso"), que só
+         * provava que `sendMultipartTextMessage` não lançou exceção — ou
+         * seja, que o PEDIDO estava bem formado, nunca que o SMS de fato
+         * saiu do aparelho.
+         *
          * @return quantos telefones tiveram o envio efetivamente tentado com
          * sucesso (sem exceção) — 0 se todos falharem, usado pelo chamador
-         * para decidir se reporta erro ao lado Dart.
+         * para decidir se reporta erro ao lado Dart. O resultado REAL de
+         * cada tentativa (aceito pelo rádio ou não) chega em seguida, de
+         * forma assíncrona, nos logs de [garantirReceiverDeStatusRegistrado].
          */
         fun enviar(context: Context, telefones: List<String>, mensagem: String): Int {
+            garantirReceiverDeStatusRegistrado(context)
             val smsManager = resolverSmsManagerAtivo(context)
             var enviados = 0
 
@@ -116,11 +197,38 @@ class SmsSender : FlutterPlugin {
                 if (telefone.isBlank()) continue
                 try {
                     val partes = smsManager.divideMessage(mensagem)
-                    smsManager.sendMultipartTextMessage(telefone, null, partes, null, null)
+                    Log.i(TAG, "[SMS] Enviando para: $telefone (${partes.size} parte(s))...")
+
+                    val flagsImutavel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+                    val sentIntents = ArrayList<PendingIntent>(partes.size)
+                    for (indiceParte in partes.indices) {
+                        val intent = Intent(ACAO_SMS_STATUS).apply {
+                            setPackage(context.packageName)
+                            putExtra(EXTRA_TELEFONE, telefone)
+                            putExtra(EXTRA_PARTE, indiceParte + 1)
+                            putExtra(EXTRA_TOTAL_PARTES, partes.size)
+                        }
+                        // requestCode único (telefone + parte) — cada
+                        // PendingIntent precisa carregar seus PRÓPRIOS
+                        // extras sem ser sobrescrito por outra tentativa
+                        // concorrente (ex: 2+ contatos cadastrados).
+                        val requestCode = telefone.hashCode() * 31 + indiceParte
+                        sentIntents.add(
+                            PendingIntent.getBroadcast(
+                                context, requestCode, intent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or flagsImutavel,
+                            ),
+                        )
+                    }
+
+                    smsManager.sendMultipartTextMessage(telefone, null, partes, sentIntents, null)
                     enviados++
-                    Log.i(TAG, "SMS enfileirado com sucesso para o rádio (destinatário oculto do log).")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Falha ao enviar SMS para um dos contatos — demais contatos da lista seguem tentados normalmente.", e)
+                    Log.e(TAG, "[SMS] Falha ao enviar SMS para $telefone — demais contatos da lista seguem tentados normalmente.", e)
                 }
             }
 

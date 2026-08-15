@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/alertas_recebidos_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/notificacao_service.dart';
 import '../widgets/texto_com_links.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -30,6 +32,7 @@ class AlertaRecebidoScreen extends StatefulWidget {
     this.longitude,
     this.fotoUrl,
     this.idEntrega,
+    this.recebidoEm,
   });
 
   final String mensagem;
@@ -49,6 +52,16 @@ class AlertaRecebidoScreen extends StatefulWidget {
   /// HomeScreen/aba Histórico).
   final String? idEntrega;
 
+  /// Data/hora EXATA (ISO 8601) em que este alerta foi recebido neste
+  /// aparelho — reespecificação do usuário (2026-08-14): "todas as
+  /// mensagens" devem mostrar horário e data exata, em vez de só uma
+  /// descrição relativa. Vem de `NotificacaoService.exibirNotificacaoAlertaRecebido`
+  /// (campo `recebidoEm` do payload) ou, quando aberta a partir do
+  /// Histórico, do `recebido_em` já gravado localmente (ver
+  /// `historico_tab.dart`). `null` só em payloads antigos/incompletos —
+  /// nesse caso o bloco de data/hora simplesmente não aparece.
+  final String? recebidoEm;
+
   @override
   State<AlertaRecebidoScreen> createState() => _AlertaRecebidoScreenState();
 }
@@ -65,9 +78,23 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
   @override
   void initState() {
     super.initState();
+    // Item 4 do pedido ("Despertador de Emergência"): abrir esta tela —
+    // por qualquer caminho (toque na notificação, no card do Histórico,
+    // etc.) — já é uma ação clara do usuário sobre o alerta, então
+    // silencia o alarme sonoro imediatamente. Dois mecanismos, cobrindo
+    // os dois cenários documentados em `NotificacaoService`/
+    // `AlertaRecebidoAlarmService.kt`: [pararAlarmeCritico] para o
+    // plugin nativo customizado (só ativo quando o app já tinha um
+    // engine "de verdade" rodando) e [cancelarNotificacaoAlertaRecebido]
+    // remove a notificação em si — o que, por sua vez, é o que
+    // efetivamente para o som em loop contínuo
+    // (`Notification.FLAG_INSISTENT`, funciona mesmo vindo do isolate
+    // headless). Ambos idempotentes/seguros mesmo sem nada tocando.
+    NotificacaoService.pararAlarmeCritico();
     final idEntrega = widget.idEntrega;
     if (idEntrega != null && idEntrega.isNotEmpty) {
       AlertasRecebidosService.marcarVisualizadoPorIdEntrega(idEntrega);
+      NotificacaoService.cancelarNotificacaoAlertaRecebido(idEntrega);
     }
     if (_temFoto) _carregarFoto();
   }
@@ -126,6 +153,19 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
     }
   }
 
+  /// Formata [widget.recebidoEm] como data + hora exata no idioma ativo
+  /// do usuário (ex: "14/08/2026 22:15" em pt-BR, "8/14/2026 10:15 PM" em
+  /// en-US) — ver documentação completa em [AlertaRecebidoScreen.recebidoEm].
+  /// Devolve `null` quando não há timestamp (esconde o bloco no `build`).
+  String? _dataHoraExata(BuildContext context) {
+    final iso = widget.recebidoEm;
+    if (iso == null || iso.isEmpty) return null;
+    final dataHora = DateTime.tryParse(iso);
+    if (dataHora == null) return null;
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMd(locale).add_Hm().format(dataHora.toLocal());
+  }
+
   void _mostrarSnack(String texto) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
@@ -133,6 +173,14 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
 
   Future<void> _abrirMapa() async {
     if (widget.latitude == null || widget.longitude == null) return;
+    // Item 4 do pedido: "clicar no link de localização" também silencia
+    // o alarme — redundante com o `initState` acima (já parado ao abrir
+    // esta tela), mas mantido aqui explicitamente por segurança/clareza.
+    NotificacaoService.pararAlarmeCritico();
+    final idEntrega = widget.idEntrega;
+    if (idEntrega != null && idEntrega.isNotEmpty) {
+      NotificacaoService.cancelarNotificacaoAlertaRecebido(idEntrega);
+    }
     final uri = Uri.parse('https://maps.google.com/?q=${widget.latitude},${widget.longitude}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -195,6 +243,20 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                if (_dataHoraExata(context) != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.schedule, color: Colors.white54, size: 15),
+                      const SizedBox(width: 6),
+                      Text(
+                        _dataHoraExata(context)!,
+                        style: const TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 16),
                 if (_temFoto) _buildFoto(l10n) else _buildMensagemTexto(),
                 if (widget.latitude != null && widget.longitude != null) ...[

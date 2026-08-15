@@ -56,15 +56,43 @@ async function resolverContasPorTelefone(contatos) {
         if (!telefoneNormalizado) return base;
 
         try {
+          // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 —
+          // "messaging/registration-token-not-registered" mesmo com o
+          // token atual sincronizado no Firestore): quando o MESMO
+          // telefone está cadastrado em mais de uma conta (contas de
+          // teste antigas nunca apagadas, por exemplo), `.limit(1)` sem
+          // ordenação pegava a PRIMEIRA que o Firestore devolvesse — uma
+          // ordem arbitrária, não necessariamente a conta ativa de
+          // verdade.
+          //
+          // TENTATIVA 1 (revertida): `orderBy(fcmTokenAtualizadoEm, desc)`
+          // direto na query — funcionalmente correta, MAS o Firestore
+          // EXCLUI dos resultados qualquer documento que não tenha o
+          // campo ordenado (confirmado em teste físico: uma conta cujo
+          // token ainda não tinha sido sincronizado sob este código novo
+          // simplesmente sumia da lista, mesmo sendo a única conta ativa
+          // de verdade — pior que o bug original).
+          //
+          // Escolhe em MEMÓRIA em vez de na query: busca todas as contas
+          // com esse telefone (query simples, equality-only, sem
+          // depender de nenhum índice composto) e escolhe a com
+          // `fcmTokenAtualizadoEm` mais recente — contas sem esse campo
+          // nunca são excluídas, só ficam por último na prioridade.
           const snap = await db.collection("usuarios")
               .where("telefone", "==", telefoneNormalizado)
-              .limit(1)
               .get();
           if (snap.empty) return base;
 
-          const doc = snap.docs[0];
-          const dados = doc.data();
-          return {...base, uidDestino: doc.id, fcmToken: dados.fcmToken || null};
+          let melhorDoc = snap.docs[0];
+          for (const doc of snap.docs) {
+            const atual = doc.data().fcmTokenAtualizadoEm;
+            const melhor = melhorDoc.data().fcmTokenAtualizadoEm;
+            if (atual && (!melhor || atual.toMillis() > melhor.toMillis())) {
+              melhorDoc = doc;
+            }
+          }
+          const dados = melhorDoc.data();
+          return {...base, uidDestino: melhorDoc.id, fcmToken: dados.fcmToken || null};
         } catch (e) {
           logger.error(
               `[resolverContasPorTelefone] Falha ao resolver conta para ${telefoneNormalizado}`, e,
@@ -112,6 +140,27 @@ async function enviarFcmParaContatos(contatosResolvidos, titulo, corpo, dadosExt
         `[FCM Enviado] ${resposta.successCount} enviado(s), ` +
         `${resposta.failureCount} falha(s) de ${comToken.length} token(s).`,
     );
+
+    // CORREÇÃO (bug real, 2026-08-14 — Razr recebendo
+    // "0 enviado(s), 1 falha(s) de 1 token(s)" em TODO disparo, sem
+    // nenhuma pista do motivo): `sendEachForMulticast` nunca lança
+    // exceção por falha individual de token (é por isso que o `catch`
+    // abaixo nunca via nada) — cada resultado fica em `resposta.responses`,
+    // na MESMA ordem/tamanho de `comToken`. Loga o `error.code`/
+    // `error.message` de cada falha (nunca o token cru, só nome+telefone
+    // do contato, suficiente pra identificar QUEM sem expor o segredo) —
+    // é a única forma de distinguir, por exemplo, um token morto
+    // (`messaging/registration-token-not-registered`) de um projeto
+    // Firebase incompatível (`messaging/mismatched-credential`) ou
+    // qualquer outra causa.
+    resposta.responses.forEach((r, i) => {
+      if (r.success) return;
+      const contato = comToken[i];
+      logger.error(
+          `[FCM Enviado] Falha no token de "${contato.nome || contato.telefone}" ` +
+          `(uidDestino=${contato.uidDestino}): ${r.error && r.error.code} — ${r.error && r.error.message}`,
+      );
+    });
   } catch (e) {
     logger.error("[FCM Enviado] Falha ao enviar multicast FCM", e);
   }

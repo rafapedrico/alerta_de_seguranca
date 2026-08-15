@@ -48,6 +48,12 @@ class AlarmeService {
   /// `seguranca_tab.dart`/`BackgroundLocationHeartbeatService`.
   static const Duration duracaoJanelaFinalCronometro = Duration(seconds: 60);
 
+  /// Chave fixa usada na trava atômica nativa contra disparo duplo (ver
+  /// [reivindicarDisparoUnicoCronometro]/[RotinaAlarmPlugin.kt]) — um
+  /// único cronômetro ativo por vez, mesmo espírito de
+  /// [idAlarmeCronometroSeguranca] acima.
+  static const String _chaveDisparoUnicoCronometro = 'cronometro';
+
   /// Deve ser chamado uma única vez, bem no início do main.dart, ANTES
   /// de runApp(), para inicializar o plugin android_alarm_manager_plus
   /// (usado pelo Alarme de Rotina — ver `rotina_alarme_service.dart`).
@@ -119,6 +125,19 @@ class AlarmeService {
           '⚠️ Falha ao resetar chaveCronometroFluxoResolvido no novo ciclo: $e');
     }
 
+    // Libera a trava atômica nativa contra disparo duplo (ver
+    // [reivindicarDisparoUnicoCronometro]) para o NOVO ciclo — mesmo
+    // motivo/mesmo lugar do reset acima: sem isto, a partir do 2º ciclo
+    // a reivindicação ficaria presa em "já reivindicado" do ciclo
+    // anterior, bloqueando o disparo de verdade deste novo ciclo.
+    try {
+      await _canalRotinaAlarme.invokeMethod('liberarReivindicacaoDisparo', {
+        'chave': _chaveDisparoUnicoCronometro,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao liberar reivindicação de disparo único do novo ciclo: $e');
+    }
+
     try {
       await _canalRotinaAlarme.invokeMethod('agendarAlarmeNativo', {
         'idAlarme': idAlarmeCronometroSeguranca,
@@ -141,6 +160,35 @@ class AlarmeService {
   /// esgotado — ver `SegurancaTab._pararTimer`) — nos dois casos o ciclo
   /// já está definitivamente resolvido, nunca por uma ação sem prova de
   /// identidade.
+  /// Trava atômica NATIVA contra disparo duplo do Cronômetro Regressivo
+  /// (item 1, reespecificação do usuário, 2026-08-15) — ver documentação
+  /// completa em `RotinaAlarmPlugin.kt` (seção "TRAVA ATÔMICA CONTRA
+  /// DISPARO DUPLO"). Deve ser chamado (e aguardado) como o PRIMEIRO
+  /// passo de qualquer disparo de emergência do Cronômetro — só quando
+  /// retornar `true` o chamador pode prosseguir com o pipeline real
+  /// (SMS/Firestore/histórico); `false` significa que OUTRA
+  /// instância/engine já reivindicou este mesmo ciclo, e o chamador deve
+  /// abortar silenciosamente.
+  ///
+  /// Em caso de falha na própria chamada nativa (MethodChannel
+  /// indisponível por qualquer motivo), retorna `true` (permissivo) — um
+  /// disparo de segurança crítico nunca deve ser bloqueado por uma falha
+  /// técnica na trava em si; nesse cenário raro, a trava antiga baseada
+  /// em `chaveCronometroFluxoResolvido` (polling em SharedPreferences)
+  /// continua atuando como rede de segurança secundária.
+  Future<bool> reivindicarDisparoUnicoCronometro() async {
+    try {
+      final reivindicado = await _canalRotinaAlarme.invokeMethod<bool>(
+        'reivindicarDisparoUnico',
+        {'chave': _chaveDisparoUnicoCronometro},
+      );
+      return reivindicado ?? true;
+    } catch (e) {
+      debugPrint('⚠️ Falha ao reivindicar disparo único do cronômetro (permitindo por padrão): $e');
+      return true;
+    }
+  }
+
   Future<void> cancelarAlarme() async {
     try {
       await _canalRotinaAlarme.invokeMethod('cancelarAlarmeNativo', {

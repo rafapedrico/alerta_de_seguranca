@@ -9,6 +9,7 @@ import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
 import '../../services/alarme_sonoro_service.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../services/firebase_sync_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/battery_optimization_service.dart';
@@ -61,6 +62,16 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
 
+  // Seção "Meu Perfil" (telefone de contato, ver FirebaseSyncService) —
+  // BUG REAL CONFIRMADO (2026-08-14): logins sociais (Google/Facebook/
+  // Apple) nunca passam por CadastroScreen, então `usuarios/{uid}.telefone`
+  // nunca é gravado automaticamente para essas contas — a Cloud Function
+  // de disparo de alerta nunca encontra essa conta ao resolver o telefone
+  // de um contato de emergência, mesmo com fcmToken válido. Esta seção
+  // permite editar o campo a qualquer momento, fechando essa lacuna.
+  String? _telefoneAtual;
+  bool _carregandoTelefone = true;
+
   // Estado local do Alerta Sonoro Customizável (Etapa 1 - Expansão
   // Global): número do som selecionado (1-10) e duração do toque em
   // segundos, carregados/persistidos via [AlarmeSonoroService].
@@ -92,6 +103,17 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     _carregarConfiguracaoIdioma();
     _carregarStatusDeviceAdmin();
     _carregarStatusBateria();
+    _carregarTelefoneAtual();
+  }
+
+  Future<void> _carregarTelefoneAtual() async {
+    final telefone = await FirebaseSyncService().obterTelefoneAtual();
+    if (mounted) {
+      setState(() {
+        _telefoneAtual = telefone;
+        _carregandoTelefone = false;
+      });
+    }
   }
 
   @override
@@ -904,6 +926,88 @@ Future<void> _selecionarSom(int? numero) async {
   }
 
 
+  /// Abre um diálogo para editar o telefone de contato (ver
+  /// [FirebaseSyncService.atualizarTelefone]) — mesma validação
+  /// internacional (E.164) já usada em [CadastroScreen], reaproveitada
+  /// aqui via [TelefoneUtils.normalizarE164].
+  Future<void> _editarTelefonePerfil() async {
+    final controller = TextEditingController(text: _telefoneAtual ?? '');
+    final formKey = GlobalKey<FormState>();
+    final l10n = AppLocalizations.of(context)!;
+
+    final novoTelefone = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.meuPerfilTelefoneTitulo),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.meuPerfilTelefoneDescricao,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.campoCelularLabel,
+                  prefixIcon: const Icon(Icons.phone_android_outlined),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return l10n.campoCelularObrigatorio;
+                  }
+                  if (TelefoneUtils.normalizarE164(valor) == null) {
+                    return l10n.campoCelularInvalido;
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancelar),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.of(ctx).pop(TelefoneUtils.normalizarE164(controller.text));
+            },
+            child: Text(l10n.salvar),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (novoTelefone == null) return; // cancelado ou inválido
+
+    final sucesso = await FirebaseSyncService().atualizarTelefone(novoTelefone);
+    if (!mounted) return;
+
+    if (sucesso) {
+      setState(() => _telefoneAtual = novoTelefone);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(sucesso
+            ? l10n.meuPerfilTelefoneAtualizado
+            : l10n.meuPerfilFalhaAtualizarTelefone),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
+      ),
+    );
+  }
+
   /// Encerra a sessão do Firebase Auth e volta para a LoginScreen,
   /// limpando toda a pilha de navegação — usa a [appNavigatorKey] global
   /// (em vez do `context` local desta aba) porque esta tela pode estar
@@ -1367,6 +1471,52 @@ Future<void> _selecionarSom(int? numero) async {
           ),
         const SizedBox(height: 8),
 
+
+        const Divider(),
+
+        // =========================================
+        // SEÇÃO: MEU PERFIL (telefone de contato)
+        // =========================================
+        _sectionHeader(theme, Icons.person_outline, AppLocalizations.of(context)!.meuPerfilTitulo),
+        if (_carregandoTelefone)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                  ? Colors.green.shade100
+                  : Colors.orange.shade100,
+              child: Icon(
+                Icons.phone_android_outlined,
+                color: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                    ? Colors.green.shade700
+                    : Colors.orange.shade700,
+              ),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.meuPerfilTelefoneTitulo,
+              softWrap: true,
+              overflow: TextOverflow.clip,
+            ),
+            subtitle: Text(
+              _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                  ? _telefoneAtual!
+                  : AppLocalizations.of(context)!.meuPerfilTelefoneNaoCadastrado,
+              softWrap: true,
+              overflow: TextOverflow.clip,
+              style: TextStyle(
+                color: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                    ? Colors.green.shade600
+                    : Colors.orange.shade600,
+                fontSize: 13,
+              ),
+            ),
+            trailing: const Icon(Icons.edit),
+            onTap: _editarTelefonePerfil,
+          ),
 
         const Divider(),
         ListTile(

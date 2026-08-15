@@ -1,6 +1,7 @@
 package com.example.security_check_app
 
 import android.content.Intent
+import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +27,7 @@ open class MainActivity: FlutterActivity() {
         flutterEngine.plugins.add(RotinaAlarmPlugin())
         flutterEngine.plugins.add(DeviceAdminPlugin())
         flutterEngine.plugins.add(SosDispatchPlugin())
+        flutterEngine.plugins.add(AlertaRecebidoAlarmPlugin())
 
         // ATENÇÃO — NÃO registre aqui um MethodChannel manual no canal
         // "com.example.security_check_app/rotina_alarme": esse canal já
@@ -57,11 +59,30 @@ open class MainActivity: FlutterActivity() {
         canalSolicitacaoMonitoramento = canal
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        tratarIntentDeAlertaRecebido(intent)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val payload = extrairPayloadSolicitacao(intent, limpar = true) ?: return
-        canalSolicitacaoMonitoramento?.invokeMethod("solicitacaoRecebida", payload)
+        val payload = extrairPayloadSolicitacao(intent, limpar = true)
+        if (payload != null) {
+            canalSolicitacaoMonitoramento?.invokeMethod("solicitacaoRecebida", payload)
+        }
+        tratarIntentDeAlertaRecebido(intent)
+    }
+
+    /** Modo "Despertador de Emergência" (item 4 do pedido): se este
+     * Intent veio do toque no corpo da notificação de controle do alarme
+     * sonoro (ver [AlertaRecebidoAlarmService.EXTRA_PARAR_AO_ABRIR]),
+     * silencia o alarme IMEDIATAMENTE — nativo, sem depender do lado
+     * Dart (o engine pode ainda estar subindo, num cold start). */
+    private fun tratarIntentDeAlertaRecebido(intent: Intent?) {
+        if (intent?.getBooleanExtra(AlertaRecebidoAlarmService.EXTRA_PARAR_AO_ABRIR, false) == true) {
+            AlertaRecebidoAlarmPlugin.pararAlarme(applicationContext)
+        }
     }
 
     /** Lê (e opcionalmente limpa, para não reprocessar a mesma solicitação

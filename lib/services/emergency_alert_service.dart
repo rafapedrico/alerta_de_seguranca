@@ -401,6 +401,16 @@ class EmergencyAlertService {
       return;
     }
 
+    // Diagnóstico detalhado pedido pelo usuário (2026-08-15): um log por
+    // NÚMERO individual antes do envio — além da contagem agregada, que
+    // já existia. `numeroFormatado` é exatamente o que sai do SQLite
+    // (já normalizado para E.164 na hora do cadastro, ver
+    // `TelefoneUtils.normalizarE164` em `configuracoes_tab.dart`), então
+    // este log também serve para confirmar visualmente que a formatação
+    // (DDI +55, sem espaços/parênteses/traços) está correta.
+    for (final numeroFormatado in numerosDestinatarios) {
+      debugPrint('📨 [SMS] Enviando para: $numeroFormatado');
+    }
     debugPrint('📨 [SMS] Enviando SMS para ${numerosDestinatarios.length} '
         'contato(s) via MethodChannel nativo...');
     try {
@@ -408,9 +418,19 @@ class EmergencyAlertService {
         'telefones': numerosDestinatarios,
         'mensagem': mensagem,
       });
+      // IMPORTANTE: isto só confirma que `sendMultipartTextMessage` NÃO
+      // lançou exceção — ou seja, que o PEDIDO estava bem formado
+      // (número/mensagem válidos, SmsManager resolvido). NÃO é
+      // confirmação de que o rádio de fato transmitiu o SMS. Essa
+      // confirmação REAL chega de forma assíncrona, alguns instantes
+      // depois, nos logs nativos `[SMS] Status do envio para ...`
+      // (ver `SmsSender.kt`, `adb logcat -s SmsSender`) — só ela prova
+      // entrega ao rádio (`RESULT_OK`) ou expõe o motivo exato da falha
+      // (`RESULT_ERROR_NO_SERVICE`, `RESULT_ERROR_RADIO_OFF`, etc.).
       debugPrint('📨 [SMS] MethodChannel nativo retornou sem exceção — '
-          'SMS enfileirado com sucesso no rádio.');
-    } on MissingPluginException catch (e) {
+          'pedido enfileirado (ver logs nativos "SmsSender" para a '
+          'confirmação REAL de entrega ao rádio).');
+    } on MissingPluginException catch (e, s) {
       // O engine headless criado pelo android_alarm_manager_plus para
       // executar este callback em segundo plano NÃO possui nenhum
       // plugin/MethodChannel customizado registrado nele (apenas o
@@ -426,7 +446,8 @@ class EmergencyAlertService {
           '⚠️ [SMS] MissingPluginException: canal de SMS indisponível neste engine '
           '(provavelmente o isolate headless do AlarmManager). Abortando '
           'envio sem repetir. Detalhe: $e');
-    } catch (e) {
+      debugPrint('⚠️ [SMS] Stack trace: $s');
+    } catch (e, s) {
       // Qualquer outro erro inesperado durante a chamada nativa também é
       // tratado da mesma forma: registrado e o fluxo é interrompido,
       // nunca repetido automaticamente. Cobre também o `result.error(...)`
@@ -434,6 +455,7 @@ class EmergencyAlertService {
       // efetivamente enviado (ex: SmsManager indisponível/sem serviço) —
       // chega aqui como PlatformException.
       debugPrint('⚠️ [SMS] Falha ao enviar SMS de emergência: $e');
+      debugPrint('⚠️ [SMS] Stack trace: $s');
     }
   }
 

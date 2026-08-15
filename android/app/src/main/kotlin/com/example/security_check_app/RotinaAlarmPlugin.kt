@@ -61,6 +61,54 @@ class RotinaAlarmPlugin : FlutterPlugin {
                 false
             }
         }
+
+        // ==========================================================
+        // TRAVA ATÔMICA CONTRA DISPARO DUPLO (item 1, reespecificação do
+        // usuário, 2026-08-15)
+        // ==========================================================
+        // BUG REAL: no timeout de 60s do Cronômetro Regressivo, é possível
+        // existirem DUAS instâncias de `CronometroDisparadoScreen` rodando
+        // em paralelo, cada uma em seu PRÓPRIO engine/isolate Dart (engine
+        // da MainActivity, se o app já estava aberto no instante do
+        // disparo, + engine da RotinaCheckinAlarmActivity dedicada,
+        // lançada pelo alarme nativo — ver documentação completa em
+        // `cronometro_disparado_screen.dart`). A trava anterior
+        // (`chaveCronometroFluxoResolvido`, em SharedPreferences via
+        // polling de 1s no lado Dart) tem uma janela de corrida real: como
+        // as DUAS instâncias contam os MESMOS 60 segundos a partir de
+        // quase o mesmo instante, ambas podem expirar dentro da MESMA
+        // janela de 1s do poll, cada uma lendo a flag como "ainda não
+        // resolvido" ANTES de qualquer uma escrever `true` — resultando em
+        // DOIS disparos reais (2 SMS, 2 alertas na nuvem).
+        //
+        // Este `HashSet` é uma classe Kotlin ÚNICA por PROCESSO Android —
+        // ao contrário de um campo estático Dart (isolado por engine/
+        // isolate), é genuinamente compartilhado pelos dois engines
+        // (mesmo processo do app) e as chamadas ao MethodChannel de dois
+        // engines diferentes são serializadas pela própria Main
+        // Thread/Looper do Android — dando exclusão mútua real e
+        // IMEDIATA, sem depender de I/O de disco nem de nenhuma janela de
+        // polling. `@Synchronized` é uma camada extra de segurança (não
+        // estritamente necessária dado o serializamento acima, mas
+        // protege contra qualquer chamada vinda de outra Thread no
+        // futuro).
+        private val chavesDisparoReivindicadas = HashSet<String>()
+
+        /** Retorna `true` apenas para o PRIMEIRO chamador com esta [chave]
+         * — chamadas seguintes com a MESMA chave (outra instância/engine
+         * tentando o mesmo disparo) retornam `false` imediatamente. */
+        @Synchronized
+        fun reivindicarDisparoUnico(chave: String): Boolean {
+            return chavesDisparoReivindicadas.add(chave)
+        }
+
+        /** Libera a reivindicação de [chave], permitindo um novo disparo
+         * único no PRÓXIMO ciclo — chamado no início de cada novo ciclo do
+         * Cronômetro (ver `AlarmeService.agendarAlarmeEmergencia`). */
+        @Synchronized
+        fun liberarReivindicacaoDisparo(chave: String) {
+            chavesDisparoReivindicadas.remove(chave)
+        }
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -214,6 +262,23 @@ class RotinaAlarmPlugin : FlutterPlugin {
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao acordar para a janela final: ${e.message}", null)
+                        }
+                    }
+                    "reivindicarDisparoUnico" -> {
+                        try {
+                            val chave = call.argument<String>("chave") ?: "default"
+                            result.success(reivindicarDisparoUnico(chave))
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao reivindicar disparo unico: ${e.message}", null)
+                        }
+                    }
+                    "liberarReivindicacaoDisparo" -> {
+                        try {
+                            val chave = call.argument<String>("chave") ?: "default"
+                            liberarReivindicacaoDisparo(chave)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ROTINA_ALARME_ERROR", "Falha ao liberar reivindicacao de disparo: ${e.message}", null)
                         }
                     }
                     else -> result.notImplemented()

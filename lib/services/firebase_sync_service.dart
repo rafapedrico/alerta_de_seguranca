@@ -105,6 +105,56 @@ class FirebaseSyncService {
     }
   }
 
+  /// Lê o `telefone` atual gravado em `usuarios/{uid}` — usado por
+  /// [ConfiguracoesTab] (seção "Meu Perfil") para exibir/editar o número
+  /// já cadastrado. `null` se não houver sessão, o documento não existir
+  /// ainda, ou o campo nunca ter sido gravado (ex: login social, ver
+  /// [atualizarTelefone] — [CadastroScreen] é o único fluxo que grava
+  /// `telefone` automaticamente, no login com e-mail/senha).
+  Future<String?> obterTelefoneAtual() async {
+    if (!_firebaseDisponivel) return null;
+    try {
+      final snap = await _documentoUsuario.get().timeout(_timeoutFirestore);
+      return snap.data()?['telefone'] as String?;
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao ler telefone atual: $e');
+      return null;
+    }
+  }
+
+  /// Grava/atualiza o `telefone` de contato em `usuarios/{uid}` — mesmo
+  /// campo que [criarPerfilInicial] já grava no cadastro por e-mail/senha,
+  /// mas aqui editável a qualquer momento (ver [ConfiguracoesTab]).
+  ///
+  /// BUG REAL CONFIRMADO (2026-08-14, teste físico): logins SOCIAIS
+  /// (Google/Facebook/Apple, ver `SocialAuthService`) nunca chamam
+  /// [criarPerfilInicial] — o documento `usuarios/{uid}` só passa a
+  /// existir de forma incidental na primeira sincronização de `fcmToken`
+  /// (ver [atualizarFcmToken]), SEM NENHUM campo `telefone`. Resultado:
+  /// a Cloud Function (`resolverContasPorTelefone`,
+  /// `functions/alertaHibridoService.js`) nunca encontra essa conta ao
+  /// resolver o telefone de um contato de emergência — o alerta por Push
+  /// nunca chega a esse usuário, mesmo com um `fcmToken` válido e
+  /// atualizado. Este método (chamado pela nova seção "Meu Perfil") é o
+  /// que fecha essa lacuna para quem logou via rede social.
+  ///
+  /// [telefone] deve já vir normalizado em E.164 (ver [TelefoneUtils] —
+  /// quem chama é responsável por validar ANTES; aqui é só a escrita).
+  /// Retorna `true` em caso de sucesso.
+  Future<bool> atualizarTelefone(String telefone) async {
+    if (!_firebaseDisponivel) return false;
+    try {
+      await _documentoUsuario.set(
+        {'telefone': telefone},
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar telefone: $e');
+      return false;
+    }
+  }
+
   /// Grava/atualiza o token FCM atual do aparelho em
   /// `usuarios/{uid}.fcmToken` — é por ele que a Cloud Function resolve,
   /// na hora de um alerta, para onde enviar o Push App-para-App gratuito
@@ -112,13 +162,50 @@ class FirebaseSyncService {
   /// que o token for renovado pelo `onTokenRefresh`).
   Future<void> atualizarFcmToken(String token) async {
     if (!_firebaseDisponivel) return;
+    final String? uid = _usuarioId;
+    // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 —
+    // "messaging/registration-token-not-registered" mesmo com o token
+    // atual sincronizado): quando o MESMO telefone está cadastrado em
+    // mais de uma conta (ex: contas de teste antigas nunca apagadas), a
+    // Cloud Function (`resolverContasPorTelefone`, ver
+    // functions/alertaHibridoService.js) resolvia sempre a PRIMEIRA conta
+    // que o Firestore devolvesse pra aquele telefone — que podia ser uma
+    // conta antiga abandonada, com um token morto, em vez da sessão
+    // ativa de verdade. `fcmTokenAtualizadoEm` (timestamp do servidor,
+    // sempre que o token é gravado) deixa a Cloud Function ordenar por
+    // "conta mais recentemente ativa" em vez de confiar na ordem
+    // arbitrária do Firestore.
+    final Map<String, dynamic> dados = {
+      'fcmToken': token,
+      'fcmTokenAtualizadoEm': FieldValue.serverTimestamp(),
+    };
     try {
-      await _documentoUsuario.set(
-        {'fcmToken': token},
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
+      await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
     } catch (e) {
-      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken: $e');
+      // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 — Razr
+      // com sessão restaurada e `uid` válido, `permission-denied` em
+      // TODO cold start mesmo já com [FirebaseAuthService.garantirTokenPronto]
+      // (`getIdToken(true)`) `await`ado ANTES desta chamada, ver
+      // `main.dart`): esse `await` só garante que o SDK Dart/FirebaseAuth
+      // TERMINOU de buscar o token renovado — não que o SDK NATIVO do
+      // Firestore (que escuta as mudanças de token por um canal próprio,
+      // separado) já terminou de propagar esse MESMO token para o
+      // provedor de autenticação que efetivamente assina esta chamada.
+      // São dois hops assíncronos distintos, sem nenhuma garantia de
+      // ordem entre si. Em vez de uma lógica de espera mais complexa
+      // (ex: nova ponte nativa só para isso), uma única retentativa com
+      // um atraso curto é suficiente: a propagação interna do Firestore é
+      // sempre muito mais rápida que 1.5s na prática.
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken (uid=$uid): $e — tentando novamente em 1.5s.');
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      try {
+        await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
+        debugPrint('📲 [FirebaseSyncService] fcmToken sincronizado na 2ª tentativa (uid=$uid).');
+      } catch (e2) {
+        debugPrint(
+            '⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken mesmo na 2ª tentativa (uid=$uid): $e2');
+      }
     }
   }
 

@@ -378,6 +378,37 @@ class _CronometroDisparadoScreenState
   Future<void> _dispararAlerta({String? motivo}) async {
     if (_alertaJaProcessado) return;
     _alertaJaProcessado = true;
+
+    // TRAVA ATÔMICA NATIVA (item 1, reespecificação do usuário,
+    // 2026-08-15): `_alertaJaProcessado` acima só protege esta MESMA
+    // instância/engine Dart — se existir uma SEGUNDA instância desta
+    // tela rodando em paralelo em outro engine (app já aberto quando o
+    // alarme nativo dispara — ver documentação completa da classe, no
+    // topo do arquivo), ela tem seu PRÓPRIO `_alertaJaProcessado`, e
+    // ambas conseguiam passar por esta guarda quase ao mesmo tempo,
+    // disparando SMS/Firestore em DOBRO. `reivindicarDisparoUnicoCronometro`
+    // usa uma trava nativa (HashSet num companion object Kotlin — real e
+    // IMEDIATAMENTE compartilhada entre os dois engines, já que ambos
+    // rodam no MESMO processo Android) para garantir exclusividade real:
+    // só a PRIMEIRA chamada (de qualquer engine) recebe `true`.
+    final bool souQuemDisparaDeVerdade =
+        await AlarmeService().reivindicarDisparoUnicoCronometro();
+    if (!souQuemDisparaDeVerdade) {
+      // PERDI a corrida para a outra instância/engine — NÃO mexo em
+      // `_fluxoEncerrado`/`_pollFluxoResolvidoTimer` aqui: o polling de
+      // [_iniciarPollingDeFluxoResolvido] continua rodando normalmente e
+      // vai detectar, em até ~1s, o `chaveCronometroFluxoResolvido` que a
+      // instância VENCEDORA está prestes a gravar mais abaixo neste
+      // mesmo método — é ELE quem para o som, fecha o teclado de PIN e
+      // encerra esta tela (ver [_aoDetectarResolvidoEmOutraInstancia]).
+      // Cancelar o polling aqui deixaria esta instância "perdedora" com o
+      // som tocando e o teclado aberto para sempre.
+      debugPrint('🚫 [DISPARO DUPLICADO EVITADO] Outra instância do '
+          'Cronômetro já reivindicou este disparo — abortando silenciosamente '
+          'e aguardando o polling de sincronização encerrar esta tela.');
+      return;
+    }
+
     _fluxoEncerrado = true;
     _pollFluxoResolvidoTimer?.cancel();
 

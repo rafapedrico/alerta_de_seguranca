@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:async';
 import '../../services/database_helper.dart';
@@ -13,6 +14,7 @@ import '../../services/api_service.dart';
 import '../../services/background_location_heartbeat_service.dart';
 import '../../services/captura_dissuasao_service.dart';
 import '../../services/sos_disparo_service.dart';
+import '../cronometro_disparado_screen.dart' show chaveCronometroFluxoResolvido;
 import '../../widgets/confirmacao_alerta_emergencia.dart';
 import '../../widgets/pin_dialog.dart';
 
@@ -510,6 +512,34 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // ainda pode estar rodando neste exato instante.
     _cancelarTimerPrincipal();
     _fecharDialogoPinSeAberto();
+
+    // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
+    // logcat): mesmo com `cancelarAlarme()` chamado imediatamente (ver
+    // comentário abaixo), o alarme NATIVO ainda conseguia disparar
+    // depois — `AlarmManager.cancel()` não é garantidamente instantâneo
+    // para um alarme já muito próximo/prestes a entregar (limitação real
+    // do Android, não deste app) — abrindo [CronometroDisparadoScreen] do
+    // ZERO, sem NENHUMA pista de que este ciclo já tinha sido resolvido
+    // aqui: nem a trava nativa (só usada por aquela tela) nem
+    // [chaveCronometroFluxoResolvido] (só gravada por ela também) eram
+    // tocadas neste caminho de desarme MANUAL. Resultado observado ao
+    // vivo: um 3º disparo (`[TIMEOUT]`) completo — SMS+Firestore de novo
+    // para os mesmos contatos — quando os 60s de tolerância daquela tela
+    // se esgotaram sozinhos, minutos depois do desarme manual já
+    // resolvido aqui. Reivindicar a MESMA trava nativa E gravar a MESMA
+    // flag em disco que [CronometroDisparadoScreen] usa fecha as duas
+    // pontas: se a tela abrir mesmo assim, sua própria chamada a
+    // `reivindicarDisparoUnicoCronometro()` já encontra a trava tomada
+    // (aborta ANTES de qualquer SMS/rede) e, ainda que o polling dela
+    // leve até ~1s para reagir, a flag em disco garante que ela se
+    // autoencerre em seguida, sem depender só do cancelamento do alarme.
+    try {
+      await AlarmeService().reivindicarDisparoUnicoCronometro();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(chaveCronometroFluxoResolvido, true);
+    } catch (e) {
+      debugPrint('⚠️ Falha ao reivindicar trava/gravar flag de fluxo resolvido: $e');
+    }
 
     // CORREÇÃO DE BUG REAL (2026-08-14, disparo duplicado): o alarme
     // NATIVO (AlarmManager, agendado por

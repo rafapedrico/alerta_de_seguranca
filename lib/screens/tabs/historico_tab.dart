@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/alertas_recebidos_service.dart';
@@ -385,19 +386,16 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     }
   }
 
+  /// Data + hora EXATA no idioma ativo do usuário (ex: "14/08/2026 22:15"
+  /// em pt-BR) — reespecificação do usuário (2026-08-14): "todas as
+  /// mensagens" devem mostrar o horário e data exata "para melhor
+  /// visualização", em vez da descrição relativa ("há X minutos") usada
+  /// antes. Mesmo formato de [AlertaRecebidoScreen._dataHoraExata].
   String _formatarDataHora(String timestampIso) {
     final dataHora = DateTime.tryParse(timestampIso);
     if (dataHora == null) return '';
-
-    final agora = DateTime.now();
-    final diferenca = agora.difference(dataHora);
-
-    final l10n = AppLocalizations.of(context)!;
-    if (diferenca.inMinutes < 1) return l10n.historicoAgoraMesmo;
-    if (diferenca.inMinutes < 60) return l10n.historicoHaMinutos(diferenca.inMinutes);
-    if (diferenca.inHours < 24) return l10n.historicoHaHoras(diferenca.inHours);
-    if (diferenca.inDays == 1) return l10n.historicoOntem;
-    return l10n.historicoHaDias(diferenca.inDays);
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMd(locale).add_Hm().format(dataHora.toLocal());
   }
 
   Future<void> _excluirEvento(int id) async {
@@ -515,6 +513,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
             longitude: item.longitude,
             fotoUrl: item.fotoUrl,
             idEntrega: item.idEntrega,
+            recebidoEm: item.timestamp,
           ),
         ),
       );

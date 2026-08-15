@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_navigator.dart';
 import 'firebase_options.dart';
 import 'screens/alarme_disparado_screen.dart';
+import 'screens/alerta_recebido_screen.dart';
 import 'screens/cronometro_disparado_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -105,6 +107,33 @@ void main() {
   // sozinhos caso ainda não tenha rodado).
   EncryptionService().initialize();
 
+  // REQUISITO OFICIAL DO FLUTTER/FLUTTERFIRE (reespecificação do
+  // usuário, 2026-08-15): `FirebaseMessaging.onBackgroundMessage(...)`
+  // deve ser registrado o MAIS CEDO possível dentro de `main()`, SEM
+  // depender de estado de login/navegação — é essa chamada que grava,
+  // no lado nativo, QUAL função Dart o Android deve invocar quando uma
+  // mensagem chegar com o app fechado. Fire-and-forget (sem `await`):
+  // `Firebase.initializeApp()` sozinho pode levar 4s+ (ver comentário
+  // completo em [_iniciarFirebaseEAuth]), e não faz sentido atrasar o
+  // primeiro frame (`runApp()`, logo abaixo) por causa disso. Chamar
+  // `Firebase.initializeApp()` de novo aqui (além da chamada existente
+  // em [_iniciarFirebaseEAuth]) é seguro e barato — o SDK é idempotente,
+  // a segunda chamada só devolve a instância já inicializada sem
+  // repetir nenhum I/O.
+  unawaited(_registrarHandlerFcmDeBackgroundImediatamente());
+
+  // REESPECIFICAÇÃO DO USUÁRIO (2026-08-14): tocar na notificação de um
+  // "alerta recebido" (mensagem de outro usuário que cadastrou este
+  // aparelho como contato de emergência) NUNCA deve exigir login — o
+  // usuário precisa ver a mensagem/localização direto. Mesma lógica de
+  // "o mais cedo possível, sem depender de login/navegação" do handler
+  // de FCM acima: `NotificacaoService.inicializar()` não depende de
+  // Firebase, só precisa rodar cedo o bastante para resgatar (via
+  // `getNotificationAppLaunchDetails()`) o payload de um COLD START via
+  // toque nesta notificação, ANTES de qualquer LoginScreen chegar a
+  // aparecer. Fire-and-forget — ver [_inicializarNotificacoesEAbrirAlertaPendente].
+  unawaited(_inicializarNotificacoesEAbrirAlertaPendente());
+
   // Dispara (chama, SEM `await`) a inicialização de Firebase+Auth — isso
   // já executa o corpo síncrono da função até o primeiro `await`
   // interno, mas retorna a Future imediatamente sem bloquear main().
@@ -195,6 +224,89 @@ Future<void> _inicializarPreferenciasVisuais() async {
   await LocaleService.inicializar();
 }
 
+/// Registra `FirebaseMessaging.onBackgroundMessage` o mais cedo possível
+/// (ver chamada em [main], logo no início da função, incondicional) —
+/// ÚNICA responsabilidade desta função, deliberadamente separada de
+/// [_iniciarFirebaseEAuth] (que também chama `Firebase.initializeApp()`,
+/// entre várias outras coisas, mas só é disparada incondicionalmente
+/// para os 3 cold starts de emergência — no cold start NORMAL, fica
+/// atrás da animação da splash, ver [_SplashGateState._aguardarProntidao]).
+/// [FirebaseMessaging.onBackgroundMessage] em si é uma chamada síncrona e
+/// barata (só grava o callback handle nativo) — só depende de
+/// `Firebase.initializeApp()` já ter completado, por isso aguardado aqui
+/// antes. Protegida por try/catch: nunca lança exceção, nem impede o
+/// resto do cold start.
+Future<void> _registrarHandlerFcmDeBackgroundImediatamente() async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    debugPrint('📲 [main] Handler de background do FCM registrado (imediato, cold start).');
+  } catch (e) {
+    debugPrint('⚠️ [main] Falha ao registrar handler de background do FCM imediatamente: $e');
+  }
+}
+
+/// REESPECIFICAÇÃO DO USUÁRIO (2026-08-14): "quando eu tocar na
+/// notificação, em vez de aparecer a tela de login, preciso que apareça
+/// a tela bonita [...] com a localização — o usuário não precisa logar
+/// no app para ver a mensagem e localização".
+///
+/// Chamada sem `await` logo no início de [main] (junto com
+/// [_registrarHandlerFcmDeBackgroundImediatamente]), incondicionalmente
+/// — inclusive nos 3 cold starts de emergência (SOS físico/Rotina/
+/// Cronômetro), onde é sempre um no-op silencioso (esses fluxos nunca
+/// nascem de um toque nesta notificação, então nunca há payload
+/// pendente).
+///
+/// [NotificacaoService.inicializar] não depende de Firebase/sessão — só
+/// dela já ter rodado é que [NotificacaoService.consumirPayloadAlertaRecebidoPendente]
+/// tem algo pra devolver (a leitura de `getNotificationAppLaunchDetails()`
+/// que resgata o payload de um COLD START acontece DENTRO de
+/// [NotificacaoService.inicializar]). Se houver um payload pendente,
+/// substitui TODA a pilha de navegação (`pushAndRemoveUntil`, mesmo
+/// padrão do fallback de `AlertaRecebidoScreen._fecharTela`) por
+/// [AlertaRecebidoScreen] — a LoginScreen/splash nunca chega a ficar
+/// visível por mais que um frame, mesmo que já estivesse prestes a
+/// aparecer.
+///
+/// `addPostFrameCallback` garante que `appNavigatorKey.currentState` já
+/// existe (o primeiro frame do [runApp] em [main] já rodou) antes de
+/// tentar navegar — protegido por try/catch, nunca lança exceção nem
+/// atrasa o resto do cold start.
+Future<void> _inicializarNotificacoesEAbrirAlertaPendente() async {
+  try {
+    await NotificacaoService.inicializar();
+  } catch (e) {
+    debugPrint('⚠️ [main] Falha ao inicializar NotificacaoService no cold start: $e');
+    return;
+  }
+
+  final dados = NotificacaoService.consumirPayloadAlertaRecebidoPendente();
+  if (dados == null) return;
+
+  debugPrint('📬 [main] Cold start via toque em alerta recebido — abrindo direto, sem login.');
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    try {
+      appNavigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => AlertaRecebidoScreen(
+            mensagem: (dados['mensagem'] as String?) ?? '',
+            nomeRemetente: dados['nomeRemetente'] as String?,
+            latitude: (dados['latitude'] as num?)?.toDouble(),
+            longitude: (dados['longitude'] as num?)?.toDouble(),
+            fotoUrl: dados['fotoUrl'] as String?,
+            idEntrega: dados['idEntrega'] as String?,
+            recebidoEm: dados['recebidoEm'] as String?,
+          ),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [main] Falha ao abrir AlertaRecebidoScreen no cold start: $e');
+    }
+  });
+}
+
 /// ETAPA 2: o MÍNIMO de Firebase necessário para os botões de login
 /// funcionarem — só `Firebase.initializeApp()` + a política de sessão
 /// (Opção A). Nada de FCM/heartbeat aqui (ver ETAPA 3,
@@ -260,6 +372,65 @@ Future<void> _iniciarFirebaseEAuth({required bool preservarSessaoExistente}) asy
         '(${kDebugMode ? "debug" : "playIntegrity"}).');
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao ativar App Check: $e');
+  }
+
+  // BUG REAL CONFIRMADO (2026-08-15 — "app receptor deslogado não recebe
+  // alerta"): o `fcmToken` salvo em `usuarios/{uid}.fcmToken` (é POR ELE
+  // que a Cloud Function resolve, na hora de um alerta, o telefone de um
+  // contato de emergência — ver `resolverContasPorTelefone` em
+  // `functions/alertaHibridoService.js`, já independente de status de
+  // login) só era sincronizado dentro de [FcmService.inicializar], antes
+  // chamado exclusivamente APÓS um login manual bem-sucedido
+  // (`login_screen.dart`) ou já no dashboard
+  // ([iniciarServicosPosLoginOuDashboard], abaixo). Resultado: se o token
+  // do aparelho rotacionar (reinstalação, limpeza de dados do app,
+  // renovação periódica do próprio FCM) enquanto o usuário permanece
+  // deslogado (Opção A força logout a cada cold start normal — ver
+  // política logo abaixo), o token gravado no Firestore fica
+  // PERMANENTEMENTE desatualizado até o próximo login manual — nenhum
+  // Push chega a esse aparelho nesse meio tempo, mesmo com o Guardião-X
+  // instalado e o número certo cadastrado como contato de emergência.
+  //
+  // Registra o handler de background do FCM + pede a permissão de
+  // notificação AQUI, incondicionalmente (independente de login) — este
+  // registro em si (`FirebaseMessaging.onBackgroundMessage`) já não tem
+  // NENHUMA dependência de sessão (ver [FcmService.registrarInfraestrutura]);
+  // só não estava sendo chamado tão cedo porque seu único call site
+  // (`iniciarServicosPosLoginOuDashboard`) só roda depois do usuário
+  // alcançar o dashboard. Chamar de novo lá é seguro/idempotente
+  // (guardado por `_infraestruturaRegistrada`).
+  try {
+    await FcmService().registrarInfraestrutura();
+  } catch (e) {
+    debugPrint('⚠️ [main] Falha ao registrar infraestrutura de FCM no cold start: $e');
+  }
+
+  // CORREÇÃO (bug real confirmado, 2026-08-15 — "app receptor deslogado
+  // não recebe alerta"): sincroniza o TOKEN aqui, usando a sessão que o
+  // SDK acabou de restaurar automaticamente do disco em
+  // [Firebase.initializeApp] (linha acima) — ANTES do `logout()` da
+  // Opção A rodar mais abaixo. Isso NÃO enfraquece a Opção A (nenhuma
+  // sessão fica viva além do que já ficava; o logout() continua rodando
+  // normalmente logo em seguida) — só aproveita a janela em que a
+  // sessão anterior ainda está legitimamente disponível, em TODO cold
+  // start (não só em logins reais), para manter o token sempre fresco.
+  // Sem sessão restaurada (nunca logou neste aparelho, ou já deslogou
+  // manualmente antes) é um no-op silencioso.
+  try {
+    if (FirebaseAuthService().uidAtual != null) {
+      // Ver documentação completa em [FirebaseAuthService.garantirTokenPronto]
+      // — sem isto, a escrita abaixo falhava com
+      // `[cloud_firestore/permission-denied]` mesmo com um `uid` válido
+      // (corrida real confirmada via logcat: o ID token da sessão
+      // recém-restaurada ainda não estava pronto no instante exato desta
+      // chamada).
+      await FirebaseAuthService().garantirTokenPronto();
+      await FcmService().inicializar();
+      debugPrint('📲 [main] Token FCM sincronizado a partir da sessão restaurada '
+          '(cold start, antes do logout da Opção A).');
+    }
+  } catch (e) {
+    debugPrint('⚠️ [main] Falha ao sincronizar token FCM no cold start: $e');
   }
 
   // POLÍTICA DE SEGURANÇA (Opção A): todo cold start NORMAL (usuário
