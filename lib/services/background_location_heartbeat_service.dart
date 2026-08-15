@@ -148,6 +148,28 @@ class BackgroundLocationHeartbeatService {
     cancelarCheckinAtivo();
   }
 
+  /// Marca o check-in ativo como ALERTA JÁ DISPARADO localmente (3ª
+  /// tentativa de PIN incorreta OU os 60s de tolerância se esgotando, ver
+  /// `CronometroDisparadoScreen._dispararAlerta`) — avisa a nuvem
+  /// IMEDIATAMENTE (ver [AlarmeAgendadoCloudService.marcarAlertaDisparado])
+  /// e encerra o acompanhamento local, mesmo papel de
+  /// [confirmarCheckinSeguro] para o outro desfecho possível do ciclo.
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-15, duplo disparo do Cronômetro): sem
+  /// isto, o documento `alarmes_agendados/checkin_seguranca` continuava
+  /// PENDENTE mesmo após o alerta já ter sido enviado pelo aparelho (3ª
+  /// senha errada, antes do fim natural dos 60s) — e a Cloud Function
+  /// `monitorarAlarmesAgendados`, ao rodar minutos depois e ver o prazo
+  /// original já vencido num documento ainda PENDENTE, disparava um
+  /// SEGUNDO alerta duplicado. Chamar isto no mesmo instante do disparo
+  /// local (`_dispararAlerta`, cobrindo tanto a 3ª senha errada quanto o
+  /// timeout natural) tira o documento da consulta da function.
+  void confirmarAlertaJaDisparado() {
+    unawaited(AlarmeAgendadoCloudService()
+        .marcarAlertaDisparado(idAlarmeCheckinSeguranca));
+    cancelarCheckinAtivo();
+  }
+
   Future<void> _executarCiclo() async {
     try {
       final usuarioId = FirebaseAuthService().uidAtual;
@@ -192,7 +214,16 @@ class BackgroundLocationHeartbeatService {
           etiqueta: (alarme['etiqueta'] as String?) ?? '',
           contextoPersonalizado:
               (alarme['contexto_personalizado'] as String?) ?? '',
-          reiniciarComoPendente: false,
+          // CORREÇÃO DE DÉBITO TÉCNICO (2026-08-15): antes, sempre `false`
+          // — o documento deste alarme (id FIXO, reaproveitado a cada
+          // repetição) nunca voltava a PENDENTE depois do primeiro ciclo,
+          // desarmando a proteção da Cloud Function para as ocorrências
+          // seguintes. Consome (lê E remove) a sinalização gravada pelos
+          // caminhos de resolução de ciclo (PIN correto, alerta disparado,
+          // reativação manual) — ver
+          // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+          reiniciarComoPendente: AlarmeAgendadoCloudService()
+              .consumirSinalizacaoDeNovoCiclo(idAlarme),
         ));
       }
 

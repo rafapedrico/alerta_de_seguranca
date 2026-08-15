@@ -527,6 +527,10 @@ class RotinaAlarmeService {
     // intacto) continuar exatamente como antes. Ver
     // [AlarmeAgendadoCloudService.marcarConfirmadoSeguro].
     unawaited(AlarmeAgendadoCloudService().marcarConfirmadoSeguro(idAlarme.toString()));
+    // Ciclo definitivamente concluído (êxito) — a PRÓXIMA ocorrência deste
+    // mesmo id, reagendada logo abaixo, deve nascer PENDENTE de novo. Ver
+    // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
 
     // 1. Limpa os timers pendentes locais de SMS e notificação — inclui
     // a janela final de 60 segundos, caso o PIN correto tenha sido
@@ -915,6 +919,24 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha ao inicializar Firebase neste isolate: $e');
   }
+
+  // CORREÇÃO DE BUG REAL (2026-08-15, mesma classe do duplo disparo do
+  // Cronômetro — ver `CronometroDisparadoScreen._dispararAlerta` /
+  // `AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme`): este
+  // callback É o próprio prazo final expirando (a janela final nativa),
+  // então não há um alarme local irmão para cancelar — mas o documento
+  // `alarmes_agendados/{idAlarme}` na nuvem continua PENDENTE até aqui, e
+  // a Cloud Function agendada (`monitorarAlarmesAgendados`) roda de
+  // qualquer forma a cada 2 minutos. Sem marcar ALERTA_DISPARADO agora,
+  // ela encontraria o mesmo documento vencido pouco depois e disparia um
+  // SEGUNDO alerta duplicado. Ver
+  // [AlarmeAgendadoCloudService.marcarAlertaDisparado].
+  unawaited(AlarmeAgendadoCloudService().marcarAlertaDisparado(idAlarme.toString()));
+  // Ciclo definitivamente concluído (falha) — a PRÓXIMA ocorrência deste
+  // mesmo id (já reagendada no disparo original, ver
+  // `_callbackCheckinRotina`) deve nascer PENDENTE de novo. Ver
+  // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+  AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
 
   // MESMA ordem crítica usada no resto do app: nuvem primeiro (rápida,
   // minimalista), depois o fluxo local completo (SMS nativo + backend).

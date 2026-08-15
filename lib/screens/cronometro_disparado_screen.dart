@@ -451,6 +451,18 @@ class _CronometroDisparadoScreenState
     unawaited(RotinaAlarmeService.pararServicoForeground());
     unawaited(AlarmeService().cancelarAlarme());
 
+    // CORREÇÃO DE BUG REAL (2026-08-15, duplo disparo): além de cancelar
+    // o alarme NATIVO acima, é preciso avisar a nuvem — via
+    // `alarmes_agendados/checkin_seguranca` — que o alerta já foi
+    // disparado localmente, senão o documento continua PENDENTE e a
+    // Cloud Function agendada (`monitorarAlarmesAgendados`), ao rodar
+    // minutos depois e encontrar o prazo original já vencido, dispara um
+    // SEGUNDO alerta duplicado (cenário real: 3ª senha errada dispara na
+    // hora, e poucos segundos depois — quando os 60s originais se
+    // esgotam — a function dispara de novo). Ver documentação completa em
+    // [BackgroundLocationHeartbeatService.confirmarAlertaJaDisparado].
+    BackgroundLocationHeartbeatService().confirmarAlertaJaDisparado();
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(chaveCronometroFluxoResolvido, true);

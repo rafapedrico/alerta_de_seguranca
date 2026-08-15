@@ -29,6 +29,55 @@ class AlarmeAgendadoCloudService {
   bool get _firebaseDisponivel =>
       Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
 
+  /// Ids de alarme de ROTINA (mesma string usada como chave do documento,
+  /// ver [_documento]) cujo PRÓXIMO registro em
+  /// `BackgroundLocationHeartbeatService._executarCiclo` deve usar
+  /// [reiniciarCicloComoPendente] em vez de [registrarAlarmeAgendado] — ver
+  /// [sinalizarNovoCiclo]/[consumirSinalizacaoDeNovoCiclo].
+  final Set<String> _idsRotinaComNovoCicloPendente = {};
+
+  /// Sinaliza que o ciclo do alarme de ROTINA [idAlarme] acabou de ser
+  /// CONCLUÍDO de forma definitiva (PIN correto, alerta de emergência
+  /// disparado — inclusive pelo callback headless —, ou o alarme foi
+  /// reativado/reagendado manualmente pelo usuário na aba Família) e que a
+  /// PRÓXIMA vez que este mesmo id for registrado pelo heartbeat deve
+  /// nascer como um ciclo PENDENTE totalmente novo no Firestore.
+  ///
+  /// CORREÇÃO DE DÉBITO TÉCNICO (2026-08-15): diferente do Cronômetro (id
+  /// fixo `checkin_seguranca`, que já reiniciava o ciclo via
+  /// `BackgroundLocationHeartbeatService.registrarCheckinAtivo`), os
+  /// alarmes de Rotina reaproveitam o MESMO `idAlarme` (autoincrement do
+  /// SQLite) em toda repetição semanal/diária — mas
+  /// [registrarAlarmeAgendado] deliberadamente PRESERVA o `status` já
+  /// gravado a cada heartbeat. Sem esta sinalização, depois do PRIMEIRO
+  /// ciclo de um alarme recorrente (êxito ou falha), o documento ficava
+  /// PARA SEMPRE fora de PENDENTE, e a Cloud Function agendada
+  /// (`monitorarAlarmesAgendados`) parava de proteger TODAS as ocorrências
+  /// seguintes desse mesmo alarme.
+  ///
+  /// IMPORTANTE — NUNCA chamar isto no instante em que o alarme apenas
+  /// DISPARA (`RotinaAlarmeService`, callback `_callbackCheckinRotina`): o
+  /// reagendamento nativo da PRÓXIMA ocorrência já acontece nesse momento,
+  /// mas o ciclo ATUAL ainda está em aberto (teclado de PIN prestes a
+  /// abrir) — reiniciar o documento nesse instante apagaria o
+  /// monitoramento do ciclo em andamento sempre que a repetição for
+  /// diária/frequente o bastante para a PRÓXIMA ocorrência já cair dentro
+  /// da janela de 48h de heartbeat. Só chamar quando o ciclo ATUAL já
+  /// estiver definitivamente resolvido (ou antes dele sequer começar, ex:
+  /// reativação manual de um alarme pausado/editado).
+  void sinalizarNovoCiclo(String idAlarme) {
+    _idsRotinaComNovoCicloPendente.add(idAlarme);
+  }
+
+  /// Consome (lê E remove) a sinalização de [sinalizarNovoCiclo] para
+  /// [idAlarme] — chamado por
+  /// `BackgroundLocationHeartbeatService._executarCiclo` a cada ciclo, para
+  /// decidir entre [registrarAlarmeAgendado] (preserva status) e
+  /// [reiniciarCicloComoPendente] (sempre PENDENTE) para este candidato.
+  bool consumirSinalizacaoDeNovoCiclo(String idAlarme) {
+    return _idsRotinaComNovoCicloPendente.remove(idAlarme);
+  }
+
   /// Id do documento namespaced por usuário (`{uid}_{idAlarme}`) — evita
   /// colisão entre o mesmo `idAlarme` local (autoincrement do SQLite) de
   /// dois usuários diferentes, e casa com a regra de segurança do
@@ -114,6 +163,42 @@ class AlarmeAgendadoCloudService {
     } catch (e) {
       debugPrint(
           '⚠️ [AlarmeAgendadoCloudService] Falha ao marcar alarme #$idAlarme como seguro: $e');
+    }
+  }
+
+  /// Marca o alarme como ALERTA_DISPARADO — chamado assim que o alerta de
+  /// emergência já foi disparado PELO PRÓPRIO APARELHO (3ª tentativa de
+  /// PIN incorreta OU os 60s de tolerância se esgotando localmente, ver
+  /// `BackgroundLocationHeartbeatService.confirmarAlertaJaDisparado`).
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-15, duplo disparo do Cronômetro): sem
+  /// esta chamada, o documento `alarmes_agendados/{idAlarme}` permanecia
+  /// PENDENTE mesmo depois do disparo local — a única forma de sair de
+  /// PENDENTE antes desta correção era [marcarConfirmadoSeguro] (PIN
+  /// certo). Isso significa que, quando as 3 tentativas de PIN erradas
+  /// aconteciam ANTES do prazo (`prazoFinalEpochMs`) se esgotar, o alerta
+  /// já tinha sido enviado pelo aparelho, mas o documento continuava
+  /// PENDENTE — e assim que o prazo original vencia (poucos segundos
+  /// depois), a Cloud Function agendada (`monitorarAlarmesAgendados`, que
+  /// só olha para `status == PENDENTE`) encontrava esse mesmo documento
+  /// "vencido sem confirmação" e disparava um SEGUNDO alerta duplicado.
+  /// Gravar ALERTA_DISPARADO aqui, no mesmo instante do disparo local,
+  /// tira o documento da consulta da function e resolve o duplo envio —
+  /// mesmo espírito de [marcarConfirmadoSeguro], só que para o outro
+  /// desfecho possível do ciclo.
+  Future<void> marcarAlertaDisparado(String idAlarme) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documento(idAlarme).set(
+        {
+          'status': AlarmeAgendadoStatus.alertaDisparado.valorFirestore,
+          'alertaDisparadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [AlarmeAgendadoCloudService] Falha ao marcar alarme #$idAlarme como alerta disparado: $e');
     }
   }
 }

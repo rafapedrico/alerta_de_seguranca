@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
+import '../../services/alarme_agendado_cloud_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
 import '../../services/rotina_alarme_service.dart';
@@ -217,6 +218,11 @@ Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
       final atualizado = await _db.buscarAlarmePorId(alarme.id!);
       if (atualizado != null) {
         await RotinaAlarmeService.agendarAlarme(atualizado);
+        // Reativado pelo usuário — pode carregar um status antigo
+        // (CONFIRMADO_SEGURA/ALERTA_DISPARADO) de antes de ter sido
+        // desativado; o ciclo que está começando agora precisa nascer
+        // PENDENTE. Ver [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+        AlarmeAgendadoCloudService().sinalizarNovoCiclo(alarme.id!.toString());
       }
     } else {
       await RotinaAlarmeService.cancelarAlarme(alarme.id!);
@@ -365,6 +371,9 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
     // 3. Reagenda apenas o alarme nativo no Android (sem re-disparar o ciclo de alteração do banco)
     final alarmeReativado = alarme.copyWith(pausado: false, ativo: true);
     await RotinaAlarmeService.agendarAlarme(alarmeReativado.toMap());
+    // Ver [AlarmeAgendadoCloudService.sinalizarNovoCiclo] — mesmo motivo
+    // do toggle em [_alternarAtivo].
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(alarme.id!.toString());
 
     // 4. Registra no histórico
     if (mounted) {
@@ -692,6 +701,13 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                               final dadosSalvos = await _db.buscarAlarmePorId(idSalvo);
                               if (dadosSalvos != null) {
                                 await RotinaAlarmeService.agendarAlarme(dadosSalvos);
+                                // Criado ou editado (horário/dias podem ter
+                                // mudado) — o ciclo que está começando
+                                // agora não pode herdar o status de uma
+                                // programação anterior. Ver
+                                // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+                                AlarmeAgendadoCloudService()
+                                    .sinalizarNovoCiclo(idSalvo.toString());
                               }
                             } else {
                               await RotinaAlarmeService.cancelarAlarme(idSalvo);

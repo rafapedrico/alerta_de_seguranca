@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/alarme_rotina.dart';
+import '../services/alarme_agendado_cloud_service.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
 import '../services/emergency_alert_service.dart';
@@ -697,6 +698,27 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       // (duplicando o alerta) alguns instantes depois.
       if (_idAlarmeAtual != null) {
         unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+
+        // CORREÇÃO DE BUG REAL (2026-08-15, mesma classe do duplo disparo
+        // do Cronômetro — ver `CronometroDisparadoScreen._dispararAlerta`):
+        // cancelar o alarme NATIVO acima não é suficiente. É preciso
+        // também avisar a nuvem que o alerta já foi disparado pelo
+        // aparelho, senão o documento `alarmes_agendados/{idAlarme}`
+        // continua PENDENTE, e a Cloud Function agendada
+        // (`monitorarAlarmesAgendados`), ao rodar minutos depois e
+        // encontrar o prazo original (`prazoFinalEpochMs`) já vencido
+        // nesse mesmo documento ainda PENDENTE, dispara um SEGUNDO alerta
+        // duplicado — mesmo cenário real relatado no Cronômetro (3ª senha
+        // errada dispara na hora, e a janela final nativa/a Cloud Function
+        // disparam de novo pouco depois). Ver
+        // [AlarmeAgendadoCloudService.marcarAlertaDisparado].
+        unawaited(AlarmeAgendadoCloudService()
+            .marcarAlertaDisparado(_idAlarmeAtual!.toString()));
+        // Ciclo definitivamente concluído (falha) — a PRÓXIMA ocorrência
+        // deste mesmo id deve nascer PENDENTE de novo. Ver
+        // [AlarmeAgendadoCloudService.sinalizarNovoCiclo] (débito técnico
+        // corrigido em 2026-08-15).
+        AlarmeAgendadoCloudService().sinalizarNovoCiclo(_idAlarmeAtual!.toString());
       }
     }
 
@@ -789,6 +811,14 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     // alguns instantes depois.
     if (_idAlarmeAtual != null) {
       unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+      // Ver documentação completa em [_dispararAlertaDeFalhaDeDesarme] —
+      // mesma correção contra o duplo disparo via Cloud Function agendada.
+      unawaited(AlarmeAgendadoCloudService()
+          .marcarAlertaDisparado(_idAlarmeAtual!.toString()));
+      // Ciclo definitivamente concluído (falha/descarte) — a PRÓXIMA
+      // ocorrência deste mesmo id deve nascer PENDENTE de novo. Ver
+      // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+      AlarmeAgendadoCloudService().sinalizarNovoCiclo(_idAlarmeAtual!.toString());
     }
 
     String? motivo;
