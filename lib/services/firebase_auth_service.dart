@@ -97,6 +97,38 @@ class FirebaseAuthService {
     return _auth.signInWithEmailAndPassword(email: email, password: senha);
   }
 
+  /// Envia o e-mail de redefinição de senha do Firebase Auth ("Esqueci
+  /// minha senha", ver `RecuperarSenhaDialog`). Lança
+  /// [FirebaseAuthException] em caso de falha (e-mail inválido, sem
+  /// conta cadastrada, sem rede, etc.) — quem chama deve tratar e exibir
+  /// a mensagem adequada, mesmo padrão de [login]/[criarConta].
+  ///
+  /// [languageCode] (reespecificação do usuário, 2026-08-16): sem
+  /// informar, o Firebase Auth envia o TEMPLATE do e-mail (assunto, corpo,
+  /// botão) sempre em inglês, o idioma padrão do projeto — independente do
+  /// idioma que o usuário escolheu dentro do app. `setLanguageCode` avisa
+  /// o SDK, ANTES do envio, para usar a tradução do template configurada
+  /// no Firebase Console para esse código (`pt`, `es`, `en`, etc.) — ver
+  /// [RecuperarSenhaDialog], que passa
+  /// `Localizations.localeOf(context).languageCode`. Best-effort: uma
+  /// falha aqui (ex: código de idioma sem template configurado no
+  /// Console) nunca deve impedir o envio do e-mail em si — só o idioma do
+  /// texto que fica comprometido (cai no padrão do projeto).
+  Future<void> recuperarSenha({
+    required String email,
+    String? languageCode,
+  }) async {
+    if (languageCode != null && languageCode.isNotEmpty) {
+      try {
+        await _auth.setLanguageCode(languageCode);
+      } catch (e) {
+        debugPrint(
+            '⚠️ [FirebaseAuthService] Falha ao definir idioma ($languageCode) do e-mail de recuperação: $e');
+      }
+    }
+    return _auth.sendPasswordResetEmail(email: email);
+  }
+
   Future<void> logout() async {
     try {
       await _auth.signOut();

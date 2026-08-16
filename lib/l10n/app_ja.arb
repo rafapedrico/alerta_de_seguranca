@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "パスワードが一致しません",
   "botaoEntrar": "ログイン",
   "esqueciMinhaSenha": "パスワードをお忘れの方",
-  "recuperacaoSenhaEmBreve": "パスワード復旧機能は近日公開予定です。",
+  "recuperacaoSenhaTitulo": "パスワードの再設定",
+  "recuperacaoSenhaDescricao": "登録済みのメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。",
+  "recuperacaoSenhaBotaoEnviar": "リンクを送信",
+  "recuperacaoSenhaSucesso": "再設定用リンクを送信しました！{email} の受信トレイ(迷惑メールフォルダも)をご確認ください。",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "このメールアドレスのアカウントが見つかりませんでした。",
+  "recuperacaoSenhaErroRede": "接続に失敗しました。インターネット接続を確認してもう一度お試しください。",
   "erroLoginCredenciaisInvalidas": "メールアドレスまたはパスワードが正しくありません",
   "erroLoginMuitasTentativas": "試行回数が多すぎます。しばらくしてから再度お試しください",
   "erroLoginGenerico": "ログインできませんでした。もう一度お試しください",

@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "पासवर्ड मेल नहीं खाते",
   "botaoEntrar": "लॉगिन करें",
   "esqueciMinhaSenha": "पासवर्ड भूल गए",
-  "recuperacaoSenhaEmBreve": "पासवर्ड रिकवरी जल्द ही उपलब्ध होगी।",
+  "recuperacaoSenhaTitulo": "पासवर्ड पुनर्प्राप्त करें",
+  "recuperacaoSenhaDescricao": "अपना पंजीकृत ईमेल दर्ज करें। हम आपको पासवर्ड रीसेट करने के लिए एक लिंक भेजेंगे।",
+  "recuperacaoSenhaBotaoEnviar": "लिंक भेजें",
+  "recuperacaoSenhaSucesso": "रीसेट लिंक भेज दिया गया है! {email} का इनबॉक्स (और स्पैम) जांचें।",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "इस ईमेल से जुड़ा कोई खाता नहीं मिला।",
+  "recuperacaoSenhaErroRede": "कनेक्शन विफल। अपना इंटरनेट जांचें और फिर से प्रयास करें।",
   "erroLoginCredenciaisInvalidas": "ईमेल या पासवर्ड गलत है",
   "erroLoginMuitasTentativas": "बहुत सारे प्रयास। कृपया बाद में पुनः प्रयास करें",
   "erroLoginGenerico": "साइन इन नहीं हो सका। कृपया पुनः प्रयास करें",

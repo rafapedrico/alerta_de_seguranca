@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Passwords do not match",
   "botaoEntrar": "Sign In",
   "esqueciMinhaSenha": "Forgot my password",
-  "recuperacaoSenhaEmBreve": "Password recovery coming soon.",
+  "recuperacaoSenhaTitulo": "Recover password",
+  "recuperacaoSenhaDescricao": "Enter your registered email. We'll send you a link to reset your password.",
+  "recuperacaoSenhaBotaoEnviar": "Send link",
+  "recuperacaoSenhaSucesso": "Reset link sent! Check the inbox (and spam folder) of {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "We couldn't find an account with this email.",
+  "recuperacaoSenhaErroRede": "Connection failed. Check your internet and try again.",
   "erroLoginCredenciaisInvalidas": "Incorrect email or password",
   "erroLoginMuitasTentativas": "Too many attempts. Try again later",
   "erroLoginGenerico": "Couldn't sign in. Please try again",

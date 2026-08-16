@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Les mots de passe ne correspondent pas",
   "botaoEntrar": "Se connecter",
   "esqueciMinhaSenha": "Mot de passe oublié",
-  "recuperacaoSenhaEmBreve": "Récupération du mot de passe bientôt disponible.",
+  "recuperacaoSenhaTitulo": "Récupérer le mot de passe",
+  "recuperacaoSenhaDescricao": "Indiquez votre e-mail enregistré. Nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+  "recuperacaoSenhaBotaoEnviar": "Envoyer le lien",
+  "recuperacaoSenhaSucesso": "Lien de réinitialisation envoyé ! Vérifiez la boîte de réception (et les spams) de {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Nous n'avons trouvé aucun compte avec cet e-mail.",
+  "recuperacaoSenhaErroRede": "Échec de connexion. Vérifiez votre connexion internet et réessayez.",
   "erroLoginCredenciaisInvalidas": "E-mail ou mot de passe incorrect",
   "erroLoginMuitasTentativas": "Trop de tentatives. Réessayez plus tard",
   "erroLoginGenerico": "Connexion impossible. Veuillez réessayer",

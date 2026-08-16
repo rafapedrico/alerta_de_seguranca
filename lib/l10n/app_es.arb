@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Las contraseñas no coinciden",
   "botaoEntrar": "Entrar",
   "esqueciMinhaSenha": "Olvidé mi contraseña",
-  "recuperacaoSenhaEmBreve": "Recuperación de contraseña próximamente.",
+  "recuperacaoSenhaTitulo": "Recuperar contraseña",
+  "recuperacaoSenhaDescricao": "Indica tu correo registrado. Te enviaremos un enlace para restablecer tu contraseña.",
+  "recuperacaoSenhaBotaoEnviar": "Enviar enlace",
+  "recuperacaoSenhaSucesso": "¡Enlace de restablecimiento enviado! Revisa la bandeja de entrada (y spam) de {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "No encontramos una cuenta con este correo.",
+  "recuperacaoSenhaErroRede": "Fallo de conexión. Comprueba tu internet e inténtalo de nuevo.",
   "erroLoginCredenciaisInvalidas": "Correo o contraseña incorrectos",
   "erroLoginMuitasTentativas": "Demasiados intentos. Inténtalo de nuevo más tarde",
   "erroLoginGenerico": "No se pudo iniciar sesión. Inténtalo de nuevo",

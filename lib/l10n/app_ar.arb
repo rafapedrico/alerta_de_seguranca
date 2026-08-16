@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "كلمتا المرور غير متطابقتين",
   "botaoEntrar": "تسجيل الدخول",
   "esqueciMinhaSenha": "نسيت كلمة المرور",
-  "recuperacaoSenhaEmBreve": "استعادة كلمة المرور ستكون متاحة قريبًا.",
+  "recuperacaoSenhaTitulo": "استعادة كلمة المرور",
+  "recuperacaoSenhaDescricao": "أدخل بريدك الإلكتروني المسجل. سنرسل لك رابطًا لإعادة تعيين كلمة المرور.",
+  "recuperacaoSenhaBotaoEnviar": "إرسال الرابط",
+  "recuperacaoSenhaSucesso": "تم إرسال رابط إعادة التعيين! تحقق من صندوق الوارد (والبريد العشوائي) الخاص بـ {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "لم نتمكن من العثور على حساب بهذا البريد الإلكتروني.",
+  "recuperacaoSenhaErroRede": "فشل الاتصال. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
   "erroLoginCredenciaisInvalidas": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
   "erroLoginMuitasTentativas": "محاولات كثيرة جدًا. حاول مرة أخرى لاحقًا",
   "erroLoginGenerico": "تعذر تسجيل الدخول. حاول مرة أخرى",

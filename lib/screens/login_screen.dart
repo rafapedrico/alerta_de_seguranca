@@ -11,6 +11,7 @@ import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/onboarding_service.dart';
+import '../widgets/recuperar_senha_dialog.dart';
 import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
 import '../services/notificacao_service.dart';
@@ -366,9 +367,14 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  /// Abre o modal de recuperação de senha real via Firebase Auth (ver
+  /// [RecuperarSenhaDialog]) — reespecificação do usuário (2026-08-16):
+  /// antes só mostrava um SnackBar de placeholder. Pré-preenche o e-mail
+  /// com o que o usuário já tiver digitado no formulário de login.
   void _abrirEsqueciMinhaSenha() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.recuperacaoSenhaEmBreve)),
+    showDialog<void>(
+      context: context,
+      builder: (_) => RecuperarSenhaDialog(emailInicial: _emailController.text),
     );
   }
 

@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Die Passwörter stimmen nicht überein",
   "botaoEntrar": "Anmelden",
   "esqueciMinhaSenha": "Passwort vergessen",
-  "recuperacaoSenhaEmBreve": "Passwort-Wiederherstellung bald verfügbar.",
+  "recuperacaoSenhaTitulo": "Passwort zurücksetzen",
+  "recuperacaoSenhaDescricao": "Geben Sie Ihre registrierte E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+  "recuperacaoSenhaBotaoEnviar": "Link senden",
+  "recuperacaoSenhaSucesso": "Link zum Zurücksetzen gesendet! Überprüfen Sie den Posteingang (und Spam-Ordner) von {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Wir konnten kein Konto mit dieser E-Mail-Adresse finden.",
+  "recuperacaoSenhaErroRede": "Verbindung fehlgeschlagen. Überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
   "erroLoginCredenciaisInvalidas": "E-Mail oder Passwort falsch",
   "erroLoginMuitasTentativas": "Zu viele Versuche. Bitte später erneut versuchen",
   "erroLoginGenerico": "Anmeldung fehlgeschlagen. Bitte erneut versuchen",

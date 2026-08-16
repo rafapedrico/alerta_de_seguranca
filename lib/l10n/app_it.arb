@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Le password non corrispondono",
   "botaoEntrar": "Accedi",
   "esqueciMinhaSenha": "Ho dimenticato la password",
-  "recuperacaoSenhaEmBreve": "Recupero password disponibile a breve.",
+  "recuperacaoSenhaTitulo": "Recupera password",
+  "recuperacaoSenhaDescricao": "Inserisci la tua e-mail registrata. Ti invieremo un link per reimpostare la password.",
+  "recuperacaoSenhaBotaoEnviar": "Invia link",
+  "recuperacaoSenhaSucesso": "Link di reimpostazione inviato! Controlla la posta in arrivo (e lo spam) di {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Non abbiamo trovato un account con questa e-mail.",
+  "recuperacaoSenhaErroRede": "Connessione fallita. Controlla la tua connessione internet e riprova.",
   "erroLoginCredenciaisInvalidas": "E-mail o password errati",
   "erroLoginMuitasTentativas": "Troppi tentativi. Riprova più tardi",
   "erroLoginGenerico": "Impossibile accedere. Riprova",

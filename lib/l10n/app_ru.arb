@@ -13,7 +13,19 @@
   "senhasNaoCoincidem": "Пароли не совпадают",
   "botaoEntrar": "Войти",
   "esqueciMinhaSenha": "Забыли пароль",
-  "recuperacaoSenhaEmBreve": "Восстановление пароля скоро будет доступно.",
+  "recuperacaoSenhaTitulo": "Восстановить пароль",
+  "recuperacaoSenhaDescricao": "Укажите ваш зарегистрированный e-mail. Мы отправим ссылку для сброса пароля.",
+  "recuperacaoSenhaBotaoEnviar": "Отправить ссылку",
+  "recuperacaoSenhaSucesso": "Ссылка для сброса отправлена! Проверьте входящие (и спам) на {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Мы не нашли аккаунт с этим e-mail.",
+  "recuperacaoSenhaErroRede": "Ошибка соединения. Проверьте интернет и попробуйте снова.",
   "erroLoginCredenciaisInvalidas": "Неверный e-mail или пароль",
   "erroLoginMuitasTentativas": "Слишком много попыток. Повторите позже",
   "erroLoginGenerico": "Не удалось войти. Попробуйте снова",
