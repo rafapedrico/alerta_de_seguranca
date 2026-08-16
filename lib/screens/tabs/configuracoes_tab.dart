@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../app_navigator.dart';
 import '../../services/database_helper.dart';
@@ -9,24 +9,28 @@ import '../../services/font_scale_service.dart';
 import '../../services/contatos_emergencia_service.dart';
 import '../../services/alarme_sonoro_service.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../services/firebase_sync_service.dart';
 import '../../services/locale_service.dart';
 import '../../services/localization_service.dart';
-import '../../services/firebase_sync_service.dart';
+import '../../services/battery_optimization_service.dart';
+import '../../services/sms_permission_service.dart';
 import '../../utils/telefone_utils.dart';
-import '../carteira_screen.dart';
+import '../excluir_conta_screen.dart';
 import '../login_screen.dart';
+import '../permissoes_status_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 
 
-// Planos de fundo reais disponíveis em assets/, com nomes elegantes.
+// Planos de fundo reais disponíveis em assets/ — nomes traduzidos via
+// AppLocalizations, ver [_PresetWallpaper.rotulo].
 const List<_PresetWallpaper> _presetWallpapers = [
-  _PresetWallpaper('Azul Profundo', 'blue'),
-  _PresetWallpaper('Escuro Absoluto', 'dark'),
-  _PresetWallpaper('Cinza Urbano', 'gray'),
-  _PresetWallpaper('Verde Botânico', 'green'),
-  _PresetWallpaper('Lavanda Suave', 'lavender'),
-  _PresetWallpaper('Luz Clássica', 'light'),
+  _PresetWallpaper('blue'),
+  _PresetWallpaper('dark'),
+  _PresetWallpaper('gray'),
+  _PresetWallpaper('green'),
+  _PresetWallpaper('lavender'),
+  _PresetWallpaper('light'),
 ];
 
 class ConfiguracoesTab extends StatefulWidget {
@@ -51,8 +55,24 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   bool _deviceAdminAtivo = false;
   bool _carregandoDeviceAdmin = true;
 
+  // Isenção de otimização de bateria (ver BatteryOptimizationService) —
+  // mesmo padrão de silêncio do card de Device Admin acima: só aparece
+  // enquanto a isenção AINDA NÃO está concedida.
+  bool _bateriaIsenta = false;
+  bool _carregandoBateria = true;
+
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
+
+  // Seção "Meu Perfil" (telefone de contato, ver FirebaseSyncService) —
+  // BUG REAL CONFIRMADO (2026-08-14): logins sociais (Google/Facebook/
+  // Apple) nunca passam por CadastroScreen, então `usuarios/{uid}.telefone`
+  // nunca é gravado automaticamente para essas contas — a Cloud Function
+  // de disparo de alerta nunca encontra essa conta ao resolver o telefone
+  // de um contato de emergência, mesmo com fcmToken válido. Esta seção
+  // permite editar o campo a qualquer momento, fechando essa lacuna.
+  String? _telefoneAtual;
+  bool _carregandoTelefone = true;
 
   // Estado local do Alerta Sonoro Customizável (Etapa 1 - Expansão
   // Global): número do som selecionado (1-10) e duração do toque em
@@ -84,6 +104,18 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     _carregarConfiguracaoAlarmeSonoro();
     _carregarConfiguracaoIdioma();
     _carregarStatusDeviceAdmin();
+    _carregarStatusBateria();
+    _carregarTelefoneAtual();
+  }
+
+  Future<void> _carregarTelefoneAtual() async {
+    final telefone = await FirebaseSyncService().obterTelefoneAtual();
+    if (mounted) {
+      setState(() {
+        _telefoneAtual = telefone;
+        _carregandoTelefone = false;
+      });
+    }
   }
 
   @override
@@ -94,6 +126,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     // esse resultado, então basta reconsultar o status.
     if (state == AppLifecycleState.resumed) {
       _carregarStatusDeviceAdmin();
+      _carregarStatusBateria();
     }
   }
 
@@ -103,6 +136,16 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
       setState(() {
         _deviceAdminAtivo = ativo;
         _carregandoDeviceAdmin = false;
+      });
+    }
+  }
+
+  Future<void> _carregarStatusBateria() async {
+    final isento = await BatteryOptimizationService().estaIsento();
+    if (mounted) {
+      setState(() {
+        _bateriaIsenta = isento;
+        _carregandoBateria = false;
       });
     }
   }
@@ -239,7 +282,7 @@ Future<void> _selecionarSom(int? numero) async {
     setState(() => _carregandoContatos = true);
     try {
       // Antes de exibir a lista, remove definitivamente qualquer contato
-      // cuja trava de segurança de 24h já tenha expirado.
+      // cuja trava de segurança de 2h já tenha expirado.
       await _db.processarExclusoesPendentesExpiradas();
       final contatos = await _db.getContatosEmergencia();
       if (mounted) {
@@ -254,7 +297,7 @@ Future<void> _selecionarSom(int? numero) async {
   }
 
   /// Retorna true se o contato estiver marcado como "exclusão pendente"
-  /// (aguardando o prazo de segurança de 24h para remoção definitiva).
+  /// (aguardando o prazo de segurança de 2h para remoção definitiva).
   bool _isExclusaoPendente(Map<String, dynamic> contato) {
     final valor = contato['exclusao_pendente'];
     return valor == 1 || valor == true;
@@ -279,6 +322,16 @@ Future<void> _selecionarSom(int? numero) async {
         );
       }
       return;
+    }
+
+    // 0) Verifica/solicita a permissão de SMS de emergência ANTES de
+    // finalizar o cadastro do PRIMEIRO contato (ver SmsPermissionService)
+    // — momento mais contextual para explicar o motivo: é exatamente
+    // para ESTE contato que o SMS de pânico seria enviado. Nunca bloqueia
+    // o cadastro em si, mesmo se o usuário negar.
+    if (_contatosEmergencia.isEmpty) {
+      await SmsPermissionService().verificarAoAdicionarPrimeiroContato(context);
+      if (!mounted) return;
     }
 
     // 1) Solicita permissão explicitamente ANTES de abrir a agenda.
@@ -328,9 +381,10 @@ Future<void> _selecionarSom(int? numero) async {
     // DDI embutido (ex: "5515981343706", sem o "+"); a limpeza antiga só
     // removia caracteres de formatação e deixava esse número "cru" no
     // banco, que o backend então prefixava com "+55" de novo (DDI
-    // duplicado, ex: "+555515981343706") — WhatsApp nunca chegava de
-    // verdade. `TelefoneUtils.normalizarE164` detecta e remove esse DDI
-    // duplicado corretamente, para qualquer país.
+    // duplicado, ex: "+555515981343706") — nem SMS nem os demais canais
+    // chegavam de verdade a esse número. `TelefoneUtils.normalizarE164`
+    // detecta e remove esse DDI duplicado corretamente, para qualquer
+    // país.
     final telefoneOriginal = contatoCompleto.phones.first.number;
     final telefoneNormalizado = TelefoneUtils.normalizarE164(telefoneOriginal);
 
@@ -354,11 +408,14 @@ Future<void> _selecionarSom(int? numero) async {
 
     // Registra no histórico ('familia') a adição do novo contato de
     // emergência, tornando a ação 100% transparente e auditável.
-    await _db.inserirEventoHistorico(
-      titulo: 'Contato de emergência adicionado',
-      descricao: '$nome foi cadastrado como contato de emergência.',
-      categoria: 'familia',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoContatoAdicionadoTitulo,
+        descricao: l10n.historicoContatoAdicionadoDescricao(nome),
+        categoria: 'familia',
+      );
+    }
 
     await _carregarContatosEmergencia();
 
@@ -381,32 +438,48 @@ Future<void> _selecionarSom(int? numero) async {
 
 
   /// Solicita a exclusão de um contato de emergência, ativando a trava de
-  /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
+  /// segurança de 2h. O contato NÃO é removido imediatamente: fica marcado
   /// como "exclusao_pendente" e continua recebendo alertas de emergência
-  /// normalmente até que o prazo de 24h expire.
-  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
-  /// envio) para o contato [id] — ver arquitetura híbrida de alertas: só
-  /// dispara WhatsApp após 60s sem confirmação de entrega no app E com
-  /// esta chave ligada E saldo suficiente na Carteira.
-  Future<void> _alternarWhatsappHabilitado(int id, bool habilitado) async {
-    await _db.atualizarWhatsappHabilitado(id, habilitado);
-    await _carregarContatosEmergencia();
-    ContatosEmergenciaService.notificarAlteracao();
-  }
+  /// normalmente até que o prazo de 2h expire.
+  ///
+  /// Exibe o modal de confirmação ("Apagar contato" / "Se aprovada a
+  /// efetivação será concluída em 2h00") ANTES de sequer iniciar a
+  /// contagem de 2h — o ícone de lixeira, sozinho, não deve mais
+  /// disparar a exclusão. Só ao tocar em "Confirmar" é que
+  /// [_excluirContato] (e, com ele, a trava de segurança de 2h) é
+  /// acionado; "Cancelar" ou fechar o diálogo não tem nenhum efeito.
+  Future<void> _confirmarEExcluirContato(int id, String nome) async {
+    final l10n = AppLocalizations.of(context)!;
+    final bool? confirmou = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            l10n.contatoApagarConfirmacaoTitulo,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            l10n.contatoApagarConfirmacaoMensagem,
+            style: const TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancelar),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.confirmar, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
 
-  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp": distinta
-  /// do switch por contato "Notificar via WhatsApp" acima. Quando ativa,
-  /// e desde que haja saldo suficiente na Carteira, o alerta passa a ser
-  /// enviado de forma SIMULTÂNEA (App + WhatsApp) para os contatos com
-  /// "Notificar via WhatsApp" ligado, sem aguardar os 60s normais de
-  /// transbordo (ver functions/alertaHibridoService.js). Persistida no
-  /// SQLite local e sincronizada com o Firestore, de onde a Cloud
-  /// Function a lê no momento do disparo.
-  Future<void> _alternarEnviarWhatsappSimultaneo(bool ativo) async {
-    await _ensureUserConfig();
-    await _db.atualizarEnviarWhatsappSimultaneo(ativo);
-    await FirebaseSyncService().atualizarEnviarWhatsappSimultaneo(ativo);
-    await _loadConfig();
+    if (confirmou != true || !mounted) return;
+    await _excluirContato(id, nome);
   }
 
   Future<void> _excluirContato(int id, String nome) async {
@@ -414,18 +487,21 @@ Future<void> _selecionarSom(int? numero) async {
 
     // Registra no histórico ('familia') a solicitação de exclusão do
     // contato, deixando claro que a remoção definitiva ainda está sujeita
-    // à trava de segurança de 24h.
-    await _db.inserirEventoHistorico(
-      titulo: 'Exclusão de contato solicitada',
-      descricao: '$nome terá a remoção efetivada em até 24 horas.',
-      categoria: 'familia',
-    );
+    // à trava de segurança de 2h.
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoContatoExclusaoSolicitadaTitulo,
+        descricao: l10n.historicoContatoExclusaoSolicitadaDescricao(nome),
+        categoria: 'familia',
+      );
+    }
 
     await _carregarContatosEmergencia();
 
     // Notifica a aba Família (via ValueNotifier global) para que ela
     // recarregue automaticamente sua lista de contatos de emergência,
-    // refletindo imediatamente o estado "Removendo em 24h...".
+    // refletindo imediatamente o estado "Removendo em 2h...".
     ContatosEmergenciaService.notificarAlteracao();
 
     if (mounted) {
@@ -460,19 +536,16 @@ Future<void> _selecionarSom(int? numero) async {
   String? get _senhaPendente => _userConfig?['senha_pendente'] as String?;
 
   String? get _planoDeFundoUrl => _userConfig?['plano_de_fundo_url'] as String?;
-  bool get _enviarWhatsappSimultaneo =>
-      (_userConfig?['enviar_whatsapp_simultaneo'] as int?) == 1;
 
   Future<void> _ensureUserConfig() async {
     if (_userConfig == null) {
       final id = await _db.insertUserConfig({
         'pin_real': null,
         'tempo_padrao_timer': 15,
-        'enviar_whatsapp_simultaneo': 0,
         'tipo_plano': 'free',
         'plano_de_fundo_url': null,
       });
-      _userConfig = {'id': id, 'tipo_plano': 'free', 'enviar_whatsapp_simultaneo': 0, 'tempo_padrao_timer': 15};
+      _userConfig = {'id': id, 'tipo_plano': 'free', 'tempo_padrao_timer': 15};
     }
   }
 
@@ -558,7 +631,7 @@ Future<void> _selecionarSom(int? numero) async {
     // 1) Primeiro cadastro (nenhum PIN ainda definido): o PIN é efetivado
     //    INSTANTANEAMENTE, sem qualquer carência.
     // 2) Alteração de um PIN já existente: a nova senha fica pendente por
-    //    24 horas, mantendo a senha atual intacta até o prazo se cumprir.
+    //    2 horas, mantendo a senha atual intacta até o prazo se cumprir.
     //
     // O método do DatabaseHelper decide qual dos dois casos se aplica e
     // retorna `true` quando a efetivação foi instantânea (primeiro
@@ -566,22 +639,24 @@ Future<void> _selecionarSom(int? numero) async {
     final bool efetivadoInstantaneamente =
         await _db.salvarOuAgendarPinReal(id, pin);
 
-    if (efetivadoInstantaneamente) {
-      // Registra no histórico ('sistema') o cadastro inicial do PIN.
-      await _db.inserirEventoHistorico(
-        titulo: 'PIN de acesso definido',
-        descricao: 'PIN de acesso cadastrado e ativado imediatamente '
-            '(primeiro cadastro, sem carência de segurança).',
-        categoria: 'sistema',
-      );
-    } else {
-      // Registra no histórico ('sistema') a solicitação de troca do PIN,
-      // deixando claro que a nova senha só entra em vigor após 24h.
-      await _db.inserirEventoHistorico(
-        titulo: 'Alteração de PIN solicitada',
-        descricao: 'Nova senha de acesso pendente, entrará em vigor em 24 horas.',
-        categoria: 'sistema',
-      );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      if (efetivadoInstantaneamente) {
+        // Registra no histórico ('sistema') o cadastro inicial do PIN.
+        await _db.inserirEventoHistorico(
+          titulo: l10n.historicoPinDefinidoTitulo,
+          descricao: l10n.historicoPinDefinidoDescricao,
+          categoria: 'sistema',
+        );
+      } else {
+        // Registra no histórico ('sistema') a solicitação de troca do PIN,
+        // deixando claro que a nova senha só entra em vigor após 2h.
+        await _db.inserirEventoHistorico(
+          titulo: l10n.historicoPinAlteracaoSolicitadaTitulo,
+          descricao: l10n.historicoPinAlteracaoSolicitadaDescricao,
+          categoria: 'sistema',
+        );
+      }
     }
 
     await _loadConfig();
@@ -591,7 +666,7 @@ Future<void> _selecionarSom(int? numero) async {
           content: Text(
             efetivadoInstantaneamente
                 ? AppLocalizations.of(context)!.pinDefinidoComSucesso
-                : AppLocalizations.of(context)!.pinNovaSenhaEmVigor24h,
+                : AppLocalizations.of(context)!.pinNovaSenhaEmVigorCarencia,
           ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
@@ -619,6 +694,7 @@ Future<void> _selecionarSom(int? numero) async {
             itemCount: _presetWallpapers.length,
             itemBuilder: (ctx, index) {
               final wp = _presetWallpapers[index];
+              final l10nCtx = AppLocalizations.of(ctx)!;
               final isSelected = _planoDeFundoUrl == wp.key;
               return GestureDetector(
                 onTap: () {
@@ -682,7 +758,7 @@ Future<void> _selecionarSom(int? numero) async {
                           right: 4,
                           bottom: 4,
                           child: Text(
-                            wp.label,
+                            wp.rotulo(l10nCtx),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
@@ -718,11 +794,17 @@ Future<void> _selecionarSom(int? numero) async {
     await _db.updateUserConfig({'id': id, 'plano_de_fundo_url': key});
 
     // Registra no histórico ('sistema') a alteração do plano de fundo.
-    await _db.inserirEventoHistorico(
-      titulo: 'Plano de fundo alterado',
-      descricao: 'Novo plano de fundo selecionado: $key.',
-      categoria: 'sistema',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      final nomeTema = _presetWallpapers
+          .firstWhere((w) => w.key == key, orElse: () => const _PresetWallpaper('light'))
+          .rotulo(l10n);
+      await _db.inserirEventoHistorico(
+        titulo: l10n.historicoPlanoFundoAlteradoTitulo,
+        descricao: l10n.historicoPlanoFundoAlteradoDescricao(nomeTema),
+        categoria: 'sistema',
+      );
+    }
 
     // Espelha a escolha em SharedPreferences para acesso rápido/síncrono
     // nas demais telas (ex: Segurança, Família).
@@ -771,21 +853,21 @@ Future<void> _selecionarSom(int? numero) async {
                   const Divider(height: 1),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Pequeno',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoPequeno,
                     fator: FontScaleService.pequeno,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 14,
                   ),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Padrão',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoPadrao,
                     fator: FontScaleService.padrao,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 16,
                   ),
                   _opcaoTamanhoFonte(
                     ctx,
-                    label: 'Grande',
+                    label: AppLocalizations.of(ctx)!.fontTamanhoGrande,
                     fator: FontScaleService.grande,
                     fatorAtual: fatorAtual,
                     amostraFontSize: 18,
@@ -835,15 +917,98 @@ Future<void> _selecionarSom(int? numero) async {
     await FontScaleService.salvar(fator);
     if (mounted) {
       setState(() {});
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.tamanhoLetrasAlterado(FontScaleService.rotuloPara(fator))),
+          content: Text(l10n.tamanhoLetrasAlterado(FontScaleService.rotuloPara(fator, l10n))),
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
   }
 
+
+  /// Abre um diálogo para editar o telefone de contato (ver
+  /// [FirebaseSyncService.atualizarTelefone]) — mesma validação
+  /// internacional (E.164) já usada em [CadastroScreen], reaproveitada
+  /// aqui via [TelefoneUtils.normalizarE164].
+  Future<void> _editarTelefonePerfil() async {
+    final controller = TextEditingController(text: _telefoneAtual ?? '');
+    final formKey = GlobalKey<FormState>();
+    final l10n = AppLocalizations.of(context)!;
+
+    final novoTelefone = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.meuPerfilTelefoneTitulo),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.meuPerfilTelefoneDescricao,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.campoCelularLabel,
+                  prefixIcon: const Icon(Icons.phone_android_outlined),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (valor) {
+                  if (valor == null || valor.trim().isEmpty) {
+                    return l10n.campoCelularObrigatorio;
+                  }
+                  if (TelefoneUtils.normalizarE164(valor) == null) {
+                    return l10n.campoCelularInvalido;
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancelar),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.of(ctx).pop(TelefoneUtils.normalizarE164(controller.text));
+            },
+            child: Text(l10n.salvar),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (novoTelefone == null) return; // cancelado ou inválido
+
+    final sucesso = await FirebaseSyncService().atualizarTelefone(novoTelefone);
+    if (!mounted) return;
+
+    if (sucesso) {
+      setState(() => _telefoneAtual = novoTelefone);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(sucesso
+            ? l10n.meuPerfilTelefoneAtualizado
+            : l10n.meuPerfilFalhaAtualizarTelefone),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
+      ),
+    );
+  }
 
   /// Encerra a sessão do Firebase Auth e volta para a LoginScreen,
   /// limpando toda a pilha de navegação — usa a [appNavigatorKey] global
@@ -932,6 +1097,7 @@ Future<void> _selecionarSom(int? numero) async {
         ),
 
         _buildCartaoDeviceAdmin(),
+        _buildCartaoOtimizacaoBateria(),
 
         const Divider(),
 
@@ -946,40 +1112,6 @@ Future<void> _selecionarSom(int? numero) async {
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Chave GLOBAL "Enviar também via WhatsApp" — distinta do switch
-        // por contato "Notificar via WhatsApp" (abaixo, em cada card):
-        // liga o modo de envio SIMULTÂNEO (App + WhatsApp), sem aguardar
-        // os 60s normais de transbordo, desde que haja saldo na Carteira.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Card(
-            elevation: 0,
-            color: const Color(0xFFE8F5E9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.green.shade200),
-            ),
-            child: SwitchListTile(
-              secondary: const Icon(Icons.bolt, color: Color(0xFF4C7040)),
-              title: Text(
-                AppLocalizations.of(context)!.whatsappSimultaneoTitulo,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              subtitle: Text(
-                AppLocalizations.of(context)!.whatsappSimultaneoDescricao,
-                softWrap: true,
-                overflow: TextOverflow.clip,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              value: _enviarWhatsappSimultaneo,
-              onChanged: _alternarEnviarWhatsappSimultaneo,
-            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -1017,7 +1149,6 @@ Future<void> _selecionarSom(int? numero) async {
                 final id = contato['id'] as int;
                 final nome = contato['nome'] as String? ?? AppLocalizations.of(context)!.familiaSemNome;
                 final telefone = contato['telefone'] as String? ?? '';
-                final whatsappHabilitado = (contato['whatsapp_habilitado'] as int?) == 1;
                 return Card(
                   elevation: 0,
                   color: Colors.white,
@@ -1026,10 +1157,7 @@ Future<void> _selecionarSom(int? numero) async {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                  ListTile(
+                  child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: const Color(0xFFE8F5E9),
                       child: Text(
@@ -1054,7 +1182,7 @@ Future<void> _selecionarSom(int? numero) async {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  AppLocalizations.of(context)!.familiaRemovendoEm24h,
+                                  AppLocalizations.of(context)!.familiaRemovendoEmCarencia,
                                   softWrap: true,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -1077,24 +1205,8 @@ Future<void> _selecionarSom(int? numero) async {
                         : IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             tooltip: AppLocalizations.of(context)!.tooltipExcluirContato,
-                            onPressed: () => _excluirContato(id, nome),
+                            onPressed: () => _confirmarEExcluirContato(id, nome),
                           ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    secondary: const Icon(Icons.chat, size: 20, color: Color(0xFF4C7040)),
-                    title: Text(
-                      AppLocalizations.of(context)!.contatoWhatsappSwitchLabel,
-                      softWrap: true,
-                      overflow: TextOverflow.clip,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    value: whatsappHabilitado,
-                    onChanged: (valor) => _alternarWhatsappHabilitado(id, valor),
-                  ),
-                    ],
                   ),
                 );
               }),
@@ -1148,9 +1260,9 @@ Future<void> _selecionarSom(int? numero) async {
                 ? _presetWallpapers
                         .firstWhere(
                           (w) => w.key == _planoDeFundoUrl,
-                          orElse: () => const _PresetWallpaper('Luz Clássica', 'light'),
+                          orElse: () => const _PresetWallpaper('light'),
                         )
-                        .label
+                        .rotulo(AppLocalizations.of(context)!)
                 : AppLocalizations.of(context)!.planoFundoPadrao,
             softWrap: true,
             overflow: TextOverflow.clip,
@@ -1185,7 +1297,8 @@ Future<void> _selecionarSom(int? numero) async {
             overflow: TextOverflow.clip,
           ),
           subtitle: Text(
-            FontScaleService.rotuloPara(FontScaleService.fontScaleNotifier.value),
+            FontScaleService.rotuloPara(
+                FontScaleService.fontScaleNotifier.value, AppLocalizations.of(context)!),
             softWrap: true,
             overflow: TextOverflow.clip,
             style: const TextStyle(fontSize: 13),
@@ -1254,7 +1367,7 @@ Future<void> _selecionarSom(int? numero) async {
                           (som) => DropdownMenuItem<int>(
                             value: som.numero,
                             child: Text(
-                              som.nomeExibicao,
+                              som.nomeLocalizado(AppLocalizations.of(context)!),
                               softWrap: true,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1344,9 +1457,11 @@ Future<void> _selecionarSom(int? numero) async {
                   .map(
                     (idioma) => DropdownMenuItem<String>(
                       value: idioma.codigo,
+                      // Exibe só o nome nativo do idioma (sem o descritor em
+                      // português, que nunca era traduzido) — autoexplicativo
+                      // para qualquer falante daquele idioma.
                       child: Text(
-                        '${idioma.bandeiraEmoji}  ${idioma.nomeEmPortugues} '
-                        '(${idioma.nomeNativo})',
+                        '${idioma.bandeiraEmoji}  ${idioma.nomeNativo}',
                         softWrap: true,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1361,21 +1476,97 @@ Future<void> _selecionarSom(int? numero) async {
 
         const Divider(),
 
+        // =========================================
+        // SEÇÃO: MEU PERFIL (telefone de contato)
+        // =========================================
+        _sectionHeader(theme, Icons.person_outline, AppLocalizations.of(context)!.meuPerfilTitulo),
+        if (_carregandoTelefone)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                  ? Colors.green.shade100
+                  : Colors.orange.shade100,
+              child: Icon(
+                Icons.phone_android_outlined,
+                color: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                    ? Colors.green.shade700
+                    : Colors.orange.shade700,
+              ),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.meuPerfilTelefoneTitulo,
+              softWrap: true,
+              overflow: TextOverflow.clip,
+            ),
+            subtitle: Text(
+              _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                  ? _telefoneAtual!
+                  : AppLocalizations.of(context)!.meuPerfilTelefoneNaoCadastrado,
+              softWrap: true,
+              overflow: TextOverflow.clip,
+              style: TextStyle(
+                color: _telefoneAtual != null && _telefoneAtual!.isNotEmpty
+                    ? Colors.green.shade600
+                    : Colors.orange.shade600,
+                fontSize: 13,
+              ),
+            ),
+            trailing: const Icon(Icons.edit),
+            onTap: _editarTelefonePerfil,
+          ),
+
+        const Divider(),
         ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.green.shade50,
-            child: Icon(Icons.account_balance_wallet, color: Colors.green.shade700),
+            backgroundColor: Colors.blue.shade50,
+            child: Icon(Icons.verified_user_outlined, color: Colors.blue.shade700),
           ),
           title: Text(
-            AppLocalizations.of(context)!.carteiraMenuItem,
+            AppLocalizations.of(context)!.statusPermissoesTitulo,
             softWrap: true,
             overflow: TextOverflow.clip,
           ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CarteiraScreen()),
+          subtitle: Text(
+            AppLocalizations.of(context)!.statusPermissoesSubtitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 12.5),
           ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const PermissoesStatusScreen()),
+            );
+          },
+        ),
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.red.shade50,
+            child: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.excluirContaTitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          subtitle: Text(
+            AppLocalizations.of(context)!.excluirContaSubtitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 12.5),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ExcluirContaScreen()),
+            );
+          },
         ),
 
         const Divider(),
@@ -1448,6 +1639,55 @@ Future<void> _selecionarSom(int? numero) async {
     );
   }
 
+  /// Cartão de consentimento para a isenção de otimização de bateria
+  /// (ver BatteryOptimizationService) — mesmo padrão de silêncio do
+  /// cartão de Device Admin acima: só é renderizado enquanto a isenção
+  /// NÃO está concedida.
+  Widget _buildCartaoOtimizacaoBateria() {
+    if (_carregandoBateria || _bateriaIsenta) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.battery_charging_full, color: Colors.black45),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.batteriaOtimizacaoTitulo,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppLocalizations.of(context)!.batteriaOtimizacaoDescricaoInativo,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => BatteryOptimizationService()
+                  .solicitarComExplicacao(context)
+                  .then((_) => _carregarStatusBateria()),
+              child: Text(AppLocalizations.of(context)!.batteriaOtimizacaoBotaoAtivar),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _sectionHeader(ThemeData theme, IconData icon, String title) {
 
     return Padding(
@@ -1471,8 +1711,28 @@ Future<void> _selecionarSom(int? numero) async {
 }
 
 class _PresetWallpaper {
-  final String label;
   final String key;
 
-  const _PresetWallpaper(this.label, this.key);
+  const _PresetWallpaper(this.key);
+
+  /// Nome do tema traduzido no idioma ativo do app — nunca hardcoded.
+  /// Renomeações pedidas: "Escuro Absoluto" -> "Cinza Platina",
+  /// "Cinza Urbano" -> "Luz do Amanhecer", "Lavanda Suave" -> "Rosa Claro".
+  String rotulo(AppLocalizations l10n) {
+    switch (key) {
+      case 'blue':
+        return l10n.temaAzulProfundo;
+      case 'dark':
+        return l10n.temaCinzaPlatina;
+      case 'gray':
+        return l10n.temaLuzDoAmanhecer;
+      case 'green':
+        return l10n.temaVerdeBotanico;
+      case 'lavender':
+        return l10n.temaRosaClaro;
+      case 'light':
+      default:
+        return l10n.temaLuzClassica;
+    }
+  }
 }

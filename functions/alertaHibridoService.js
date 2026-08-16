@@ -1,47 +1,46 @@
 /**
- * Pipeline híbrido de disparo de alerta — módulo compartilhado pelas duas
- * origens de alerta já existentes (`aoReceberAlertaTentativaDesarme` em
- * `index.js` e `monitorarAlarmesAgendados` em `scheduledAlarmMonitor.js`).
+ * Pipeline de disparo de alerta via Push FCM — módulo compartilhado pelas
+ * duas origens de alerta já existentes (`aoReceberAlertaTentativaDesarme`
+ * em `index.js` e `monitorarAlarmesAgendados` em
+ * `scheduledAlarmMonitor.js`).
  *
- * Substitui o antigo envio DIRETO e sempre-pago via WhatsApp/Twilio por:
- * 1. Resolver, por telefone, quais dos contatos de emergência têm conta
+ * REMOÇÃO DO WHATSAPP (2026-08-11): este módulo enviava também WhatsApp
+ * de contingência via Twilio (transbordo 60s após o Push, ou imediato com
+ * a chave global "Enviar também via WhatsApp"), debitando a Carteira de
+ * Créditos do usuário a cada envio — removido por completo a pedido do
+ * usuário, junto com `smsGateway.js`, `transbordoWhatsappMonitor.js`,
+ * `walletService.js` e `comprasService.js`. O único canal de nuvem
+ * restante é o Push FCM App-para-App, gratuito, para contatos de
+ * emergência que também têm o Guardião X instalado.
+ *
+ * 1. Resolve, por telefone, quais dos contatos de emergência têm conta
  *    no app (Push FCM gratuito, App-para-App).
- * 2. Enviar o Push (alta prioridade) a quem foi encontrado — em paralelo,
- *    se a chave GLOBAL "Enviar também via WhatsApp" (ver
- *    `usuarios/{uid}.enviarWhatsappSimultaneo`, ConfiguracoesTab) estiver
- *    ligada, também tenta debitar a Carteira e enviar WhatsApp
- *    IMEDIATAMENTE (sem aguardar transbordo) para cada contato com
- *    "Notificar via WhatsApp" ligado e saldo suficiente.
- * 3. Criar um documento em `entregas_alerta` com prazo de 60s — é o job
- *    agendado `processarTransbordoAlertas` (ver
- *    `transbordoWhatsappMonitor.js`) quem decide, depois desse prazo,
- *    quem AINDA precisa do WhatsApp de contingência (pulando quem já foi
- *    atendido pelo envio simultâneo do passo 2, ver `whatsappJaEnviado`
- *    abaixo).
+ * 2. Envia o Push (alta prioridade) a quem foi encontrado.
+ * 3. Registra `entregas_alerta/{idEntrega}` — mantido como bookkeeping de
+ *    entrega (ver `FirebaseSyncService.confirmarEntregaAlerta`/
+ *    `FcmService` no app), mesmo sem nenhum job de transbordo consumindo
+ *    mais essa confirmação.
  */
 
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
-const {normalizarTelefoneE164, enviarSmsParaTelefones} = require("./smsGateway");
-const {debitarSaldo} = require("./walletService");
-const {JANELA_TRANSBORDO_MS} = require("./constantes");
+const {normalizarTelefoneE164} = require("./telefoneUtils");
 
 const db = getFirestore();
 
 const COLECAO_ENTREGAS = "entregas_alerta";
-const STATUS_AGUARDANDO_TRANSBORDO = "AGUARDANDO_TRANSBORDO";
 const TITULO_PUSH = "🚨 Alerta de segurança";
 
 /**
- * Para cada contato `{nome, telefone, whatsappHabilitado}`, normaliza o
- * telefone e busca em `usuarios` por uma conta com esse mesmo telefone —
- * é assim que o app resolve, EM TEMPO DE ALERTA, quais dos 3 contatos de
- * emergência possuem o Guardião X instalado (sem depender de o usuário
- * "vincular guardiões" manualmente).
+ * Para cada contato `{nome, telefone}`, normaliza o telefone e busca em
+ * `usuarios` por uma conta com esse mesmo telefone — é assim que o app
+ * resolve, EM TEMPO DE ALERTA, quais dos contatos de emergência possuem
+ * o Guardião X instalado (sem depender de o usuário "vincular guardiões"
+ * manualmente).
  *
- * @param {Array<{nome?: string, telefone?: string, whatsappHabilitado?: boolean}>} contatos
- * @return {Promise<Array<{nome: string, telefone: string, whatsappHabilitado: boolean, uidDestino: string|null, fcmToken: string|null}>>}
+ * @param {Array<{nome?: string, telefone?: string}>} contatos
+ * @return {Promise<Array<{nome: string, telefone: string, uidDestino: string|null, fcmToken: string|null}>>}
  */
 async function resolverContasPorTelefone(contatos) {
   return Promise.all(
@@ -50,7 +49,6 @@ async function resolverContasPorTelefone(contatos) {
         const base = {
           nome: contato.nome || "",
           telefone: telefoneNormalizado || contato.telefone || "",
-          whatsappHabilitado: !!contato.whatsappHabilitado,
           uidDestino: null,
           fcmToken: null,
         };
@@ -58,15 +56,43 @@ async function resolverContasPorTelefone(contatos) {
         if (!telefoneNormalizado) return base;
 
         try {
+          // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 —
+          // "messaging/registration-token-not-registered" mesmo com o
+          // token atual sincronizado no Firestore): quando o MESMO
+          // telefone está cadastrado em mais de uma conta (contas de
+          // teste antigas nunca apagadas, por exemplo), `.limit(1)` sem
+          // ordenação pegava a PRIMEIRA que o Firestore devolvesse — uma
+          // ordem arbitrária, não necessariamente a conta ativa de
+          // verdade.
+          //
+          // TENTATIVA 1 (revertida): `orderBy(fcmTokenAtualizadoEm, desc)`
+          // direto na query — funcionalmente correta, MAS o Firestore
+          // EXCLUI dos resultados qualquer documento que não tenha o
+          // campo ordenado (confirmado em teste físico: uma conta cujo
+          // token ainda não tinha sido sincronizado sob este código novo
+          // simplesmente sumia da lista, mesmo sendo a única conta ativa
+          // de verdade — pior que o bug original).
+          //
+          // Escolhe em MEMÓRIA em vez de na query: busca todas as contas
+          // com esse telefone (query simples, equality-only, sem
+          // depender de nenhum índice composto) e escolhe a com
+          // `fcmTokenAtualizadoEm` mais recente — contas sem esse campo
+          // nunca são excluídas, só ficam por último na prioridade.
           const snap = await db.collection("usuarios")
               .where("telefone", "==", telefoneNormalizado)
-              .limit(1)
               .get();
           if (snap.empty) return base;
 
-          const doc = snap.docs[0];
-          const dados = doc.data();
-          return {...base, uidDestino: doc.id, fcmToken: dados.fcmToken || null};
+          let melhorDoc = snap.docs[0];
+          for (const doc of snap.docs) {
+            const atual = doc.data().fcmTokenAtualizadoEm;
+            const melhor = melhorDoc.data().fcmTokenAtualizadoEm;
+            if (atual && (!melhor || atual.toMillis() > melhor.toMillis())) {
+              melhorDoc = doc;
+            }
+          }
+          const dados = melhorDoc.data();
+          return {...base, uidDestino: melhorDoc.id, fcmToken: dados.fcmToken || null};
         } catch (e) {
           logger.error(
               `[resolverContasPorTelefone] Falha ao resolver conta para ${telefoneNormalizado}`, e,
@@ -114,78 +140,42 @@ async function enviarFcmParaContatos(contatosResolvidos, titulo, corpo, dadosExt
         `[FCM Enviado] ${resposta.successCount} enviado(s), ` +
         `${resposta.failureCount} falha(s) de ${comToken.length} token(s).`,
     );
+
+    // CORREÇÃO (bug real, 2026-08-14 — Razr recebendo
+    // "0 enviado(s), 1 falha(s) de 1 token(s)" em TODO disparo, sem
+    // nenhuma pista do motivo): `sendEachForMulticast` nunca lança
+    // exceção por falha individual de token (é por isso que o `catch`
+    // abaixo nunca via nada) — cada resultado fica em `resposta.responses`,
+    // na MESMA ordem/tamanho de `comToken`. Loga o `error.code`/
+    // `error.message` de cada falha (nunca o token cru, só nome+telefone
+    // do contato, suficiente pra identificar QUEM sem expor o segredo) —
+    // é a única forma de distinguir, por exemplo, um token morto
+    // (`messaging/registration-token-not-registered`) de um projeto
+    // Firebase incompatível (`messaging/mismatched-credential`) ou
+    // qualquer outra causa.
+    resposta.responses.forEach((r, i) => {
+      if (r.success) return;
+      const contato = comToken[i];
+      logger.error(
+          `[FCM Enviado] Falha no token de "${contato.nome || contato.telefone}" ` +
+          `(uidDestino=${contato.uidDestino}): ${r.error && r.error.code} — ${r.error && r.error.message}`,
+      );
+    });
   } catch (e) {
     logger.error("[FCM Enviado] Falha ao enviar multicast FCM", e);
   }
 }
 
 /**
- * Envia o WhatsApp de contingência de forma IMEDIATA — em paralelo ao
- * Push FCM, sem aguardar os 60s normais de transbordo (ver
- * `transbordoWhatsappMonitor.js`) — para cada contato com "Notificar via
- * WhatsApp" ligado. Usado somente quando a chave GLOBAL "Enviar também
- * via WhatsApp" (`usuarios/{uid}.enviarWhatsappSimultaneo`, ver
- * ConfiguracoesTab) está ativa. Debita a Carteira ANTES de cada envio,
- * exatamente com a mesma regra do transbordo (`debitarSaldo` — nunca
- * deixa o saldo negativo); um contato sem saldo suficiente simplesmente
- * não é enviado aqui e permanece elegível para a tentativa normal de
- * transbordo 60s depois. Nunca lança exceção — cada contato é isolado em
- * seu próprio try/catch.
+ * Orquestra o disparo do alerta de emergência: resolve contas, envia o
+ * Push gratuito e registra `entregas_alerta/{idEntrega}`. Retorna o id do
+ * documento criado (ou `null` se não havia contatos de emergência para
+ * notificar).
  *
- * @param {string} usuarioId
- * @param {Array<{telefone: string, nome: string, whatsappHabilitado: boolean}>} contatosResolvidos
- * @param {string} mensagem
- * @param {string} idEntrega
- * @return {Promise<Set<string>>} telefones que TIVERAM uma tentativa
- *     bem-sucedida (debitado + enviado) — usado para o transbordo nunca
- *     cobrar esses mesmos contatos de novo.
- */
-async function enviarWhatsappSimultaneoParaContatos(usuarioId, contatosResolvidos, mensagem, idEntrega) {
-  const elegiveis = (contatosResolvidos || []).filter((c) => c.whatsappHabilitado);
-  const enviados = new Set();
-
-  await Promise.all(elegiveis.map(async (contato) => {
-    try {
-      const resultadoDebito = await debitarSaldo(usuarioId, contato, idEntrega);
-      if (!resultadoDebito.sucesso) {
-        logger.info(
-            `[WhatsApp Simultâneo] entregas_alerta/${idEntrega} — não foi possível debitar ` +
-            `o saldo do usuário ${usuarioId} para o contato ${contato.telefone} ` +
-            `(motivo: ${resultadoDebito.motivo}); contato segue elegível para o transbordo padrão.`,
-        );
-        return;
-      }
-
-      await enviarSmsParaTelefones([contato.telefone], mensagem);
-      enviados.add(contato.telefone);
-      logger.info(
-          `[WhatsApp Simultâneo] entregas_alerta/${idEntrega} — $0.10 USD debitado do ` +
-          `usuário ${usuarioId}; WhatsApp enviado IMEDIATAMENTE (junto com o Push, sem ` +
-          `aguardar os 60s de transbordo) para ${contato.telefone}.`,
-      );
-    } catch (e) {
-      logger.error(
-          `[WhatsApp Simultâneo] Falha ao processar contato ${contato.telefone} de entregas_alerta/${idEntrega}`, e,
-      );
-    }
-  }));
-
-  return enviados;
-}
-
-/**
- * Orquestra o disparo híbrido de um alerta de emergência: resolve contas,
- * envia o Push gratuito (em paralelo, se [enviarWhatsappSimultaneo] for
- * `true`, também tenta o WhatsApp imediato — ver
- * [enviarWhatsappSimultaneoParaContatos]) e registra
- * `entregas_alerta/{idEntrega}` com o prazo de transbordo de 60s para os
- * contatos que ainda precisarem dele. Retorna o id do documento criado
- * (ou `null` se não havia contatos de emergência para notificar).
- *
- * @param {{usuarioId: string, contatos: Array<Object>, mensagem: string, origem: string, enviarWhatsappSimultaneo?: boolean, fotoUrl?: string, latitude?: number, longitude?: number}} params
+ * @param {{usuarioId: string, contatos: Array<Object>, mensagem: string, origem: string, fotoUrl?: string, latitude?: number, longitude?: number}} params
  * @return {Promise<string|null>}
  */
-async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, enviarWhatsappSimultaneo, fotoUrl, latitude, longitude}) {
+async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, fotoUrl, latitude, longitude}) {
   if (!contatos || contatos.length === 0) {
     logger.warn(
         `[dispararAlertaHibrido] Usuário ${usuarioId} não possui contatos de ` +
@@ -206,56 +196,40 @@ async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, env
     logger.error(`[dispararAlertaHibrido] Falha ao buscar nome do remetente ${usuarioId}`, e);
   }
 
-  const [, telefonesJaEnviados] = await Promise.all([
-    enviarFcmParaContatos(contatosResolvidos, TITULO_PUSH, mensagem, {
-      tipo: "alerta_emergencia",
-      idEntrega,
-      origem,
-      mensagem,
-      nomeRemetente,
-      // Presente somente para alertas do tipo `sos_fisico_foto` — o app
-      // do guardião usa este link (Firebase Storage, com token de
-      // acesso embutido) para baixar e exibir a foto na notificação
-      // (ver NotificacaoService.exibirNotificacaoAlertaRecebido).
-      ...(fotoUrl ? {fotoUrl} : {}),
-      // Coordenadas ESTRUTURADAS (habilita o botão "Ver no Mapa" no app
-      // do guardião sem depender de parsing de texto livre) — os valores
-      // de `data` do FCM só aceitam string, por isso o `.toString()`; o
-      // Flutter faz o parse de volta para double (ver FcmService).
-      ...(typeof latitude === "number" ? {latitude: latitude.toString()} : {}),
-      ...(typeof longitude === "number" ? {longitude: longitude.toString()} : {}),
-    }),
-    enviarWhatsappSimultaneo ?
-      enviarWhatsappSimultaneoParaContatos(usuarioId, contatosResolvidos, mensagem, idEntrega) :
-      Promise.resolve(new Set()),
-  ]);
-
-  const prazoTransbordoEpochMs = Date.now() + JANELA_TRANSBORDO_MS;
+  await enviarFcmParaContatos(contatosResolvidos, TITULO_PUSH, mensagem, {
+    tipo: "alerta_emergencia",
+    idEntrega,
+    origem,
+    mensagem,
+    nomeRemetente,
+    // Presente somente para alertas do tipo `sos_fisico_foto` — o app
+    // do guardião usa este link (Firebase Storage, com token de
+    // acesso embutido) para baixar e exibir a foto na notificação
+    // (ver NotificacaoService.exibirNotificacaoAlertaRecebido).
+    ...(fotoUrl ? {fotoUrl} : {}),
+    // Coordenadas ESTRUTURADAS (habilita o botão "Ver no Mapa" no app
+    // do guardião sem depender de parsing de texto livre) — os valores
+    // de `data` do FCM só aceitam string, por isso o `.toString()`; o
+    // Flutter faz o parse de volta para double (ver FcmService).
+    ...(typeof latitude === "number" ? {latitude: latitude.toString()} : {}),
+    ...(typeof longitude === "number" ? {longitude: longitude.toString()} : {}),
+  });
 
   await entregaRef.set({
     usuarioId,
     origem,
     mensagem,
-    status: STATUS_AGUARDANDO_TRANSBORDO,
     criadoEm: Timestamp.now(),
-    prazoTransbordoEpochMs,
     contatos: contatosResolvidos.map((c) => ({
       nome: c.nome,
       telefone: c.telefone,
-      whatsappHabilitado: c.whatsappHabilitado,
       uidDestino: c.uidDestino,
-      // `true` quando este contato já recebeu o WhatsApp de forma
-      // IMEDIATA (ver [enviarWhatsappSimultaneoParaContatos] acima) — o
-      // job de transbordo (`transbordoWhatsappMonitor.js`) pula qualquer
-      // contato com esta flag, evitando cobrança/envio em duplicidade.
-      whatsappJaEnviado: telefonesJaEnviados.has(c.telefone),
     })),
   });
 
   logger.info(
-      `[Aguardando 60s] entregas_alerta/${idEntrega} criado para o usuário ` +
-      `${usuarioId} (origem: ${origem}) — ${contatosResolvidos.length} contato(s), ` +
-      `transbordo às ${new Date(prazoTransbordoEpochMs).toISOString()}.`,
+      `[dispararAlertaHibrido] entregas_alerta/${idEntrega} criado para o usuário ` +
+      `${usuarioId} (origem: ${origem}) — ${contatosResolvidos.length} contato(s).`,
   );
 
   return idEntrega;
@@ -264,8 +238,6 @@ async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, env
 module.exports = {
   resolverContasPorTelefone,
   enviarFcmParaContatos,
-  enviarWhatsappSimultaneoParaContatos,
   dispararAlertaHibrido,
   COLECAO_ENTREGAS,
-  STATUS_AGUARDANDO_TRANSBORDO,
 };

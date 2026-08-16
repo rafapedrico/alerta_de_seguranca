@@ -7,10 +7,12 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
+import '../models/alarme_rotina.dart';
 import 'alarme_agendado_cloud_service.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
+import 'l10n_headless_service.dart';
 import 'notificacao_service.dart';
 
 // Canal unificado para comunicação nativa
@@ -19,7 +21,7 @@ const MethodChannel _canalRotinaAlarme =
 
 /// Chave (SharedPreferences) que sinaliza ao lado Dart em primeiro plano
 /// ([AlarmeDisparadoScreen]) que o alarme de rotina ENTROU na "janela
-/// final" de 2 minutos (tolerância já expirada, segunda e última chance
+/// final" de 60 segundos (tolerância já expirada, segunda e última chance
 /// antes do alerta de emergência ser disparado de verdade). Como o
 /// callback headless do `android_alarm_manager_plus` roda em um isolate
 /// completamente separado do isolate da UI em primeiro plano, esta é a
@@ -80,6 +82,23 @@ const String chaveAlarmeEmergenciaDisparada = 'alarme_emergencia_disparada';
 /// `true` na resolução DEFINITIVA — nunca antes.
 const String chaveAlarmeFluxoResolvido = 'alarme_fluxo_resolvido';
 
+/// Chave (SharedPreferences) sinalizando que o app foi fechado à força
+/// (gesto de "jogar para cima"/force close nos Recentes) ENQUANTO o
+/// alarme de rotina ainda tocava sem confirmação — especificação do
+/// usuário (2026-08-07, item 4): esse gesto deve disparar o alerta de
+/// emergência IMEDIATAMENTE, em vez de simplesmente reabrir a tela e
+/// continuar tocando como antes.
+///
+/// Gravada pelo lado NATIVO (`RotinaAlarmWakeService.onTaskRemoved`, ver
+/// `RotinaAlarmFluxoState.marcarFechamentoForcado`) num arquivo de
+/// SharedPreferences 100% nativo — NÃO o `FlutterSharedPreferences` que
+/// esta chave Dart normalmente usaria, já que não há nenhum engine
+/// Flutter vivo no exato momento do `onTaskRemoved` para escrever nele.
+/// [AlarmeDisparadoScreen] consome o sinal assim que seu próprio engine
+/// (re)inicia, via o método nativo `consumirFechamentoForcado` (que já
+/// limpa a flag nativa ao ler, evitando reprocessar no próximo ciclo).
+const String chaveAlarmeFechamentoForcado = 'alarme_fechamento_forcado';
+
 class RotinaAlarmeService {
   RotinaAlarmeService._internal();
   static final RotinaAlarmeService _instance = RotinaAlarmeService._internal();
@@ -89,12 +108,19 @@ class RotinaAlarmeService {
   static const int _offsetIdTolerancia = 30000;
   static const int _offsetIdJanelaFinal = 40000;
 
-  /// Duração da janela final (última chance) após a tolerância expirar:
-  /// o alarme toca novamente, exibe o teclado de PIN diretamente (sem
-  /// exigir novo toque no botão) com este limite estrito, e QUALQUER
-  /// falha (PIN incorreto ou tempo esgotado) dispara o alerta de
-  /// emergência imediatamente.
-  static const Duration duracaoJanelaFinal = Duration(minutes: 2);
+  /// Duração da janela final (última chance) após a tolerância expirar —
+  /// especificação do usuário (2026-08-07): tempo TOTAL de toque =
+  /// tolerância cadastrada + 60 segundos adicionais. O alarme toca
+  /// novamente, exibe o teclado de PIN diretamente (sem exigir novo
+  /// toque no botão) com este limite estrito, e QUALQUER falha (3ª
+  /// tentativa de PIN incorreta ou tempo esgotado) dispara o alerta de
+  /// emergência imediatamente. Este MESMO valor também é usado para
+  /// calcular `prazoFinalDisparo` (ver [BackgroundLocationHeartbeatService]/
+  /// `AlarmeAgendadoModel`), o prazo que a Cloud Function agendada
+  /// (`functions/scheduledAlarmMonitor.js`) usa como rede de segurança
+  /// caso o aparelho fique sem bateria/internet — mudar aqui já ajusta
+  /// os dois lados automaticamente, sem precisar mexer na function.
+  static const Duration duracaoJanelaFinal = Duration(seconds: 60);
 
   static int _idCheckin(int idAlarme) => _offsetIdCheckin + idAlarme;
   static int _idTolerancia(int idAlarme) => _offsetIdTolerancia + idAlarme;
@@ -347,7 +373,7 @@ class RotinaAlarmeService {
 
   /// Limpa as flags em disco usadas para sinalizar (entre o isolate
   /// headless e a UI em primeiro plano) que o alarme está tocando e/ou na
-  /// janela final de 2 minutos. Chamado sempre que o alarme é
+  /// janela final de 60 segundos. Chamado sempre que o alarme é
   /// cancelado/pausado/confirmado, para nunca deixar
   /// [AlarmeDisparadoScreen] "preso" numa fase antiga.
   static Future<void> _limparFlagsDeFaseFinal() async {
@@ -405,6 +431,32 @@ class RotinaAlarmeService {
     debugPrint('▶️ Alarme de rotina #$idAlarme reativado pelo usuário.');
   }
 
+  /// Consome (lê E limpa, atomicamente, do lado nativo) a flag de
+  /// "fechamento forçado" gravada por `RotinaAlarmWakeService.onTaskRemoved`
+  /// — ver documentação completa em [chaveAlarmeFechamentoForcado]. `true`
+  /// significa que esta abertura da tela do alarme aconteceu porque o
+  /// usuário arrastou o app para fora dos Recentes enquanto ele ainda
+  /// tocava sem confirmação; `false` (inclusive em caso de erro) é o
+  /// caminho normal (disparo/reabertura por qualquer outro motivo).
+  /// [tipoAlarme] opcional: quando informado (ex: `'cronometro'`, ver
+  /// `CronometroDisparadoScreen`), só consome a flag se o tipo do alarme
+  /// atualmente em andamento no lado nativo bater — ver documentação
+  /// completa em `RotinaAlarmFluxoState.consumirFechamentoForcado` (Kotlin).
+  /// `null` (padrão, usado pelo Alarme de Rotina) preserva o
+  /// comportamento histórico: consome incondicionalmente.
+  static Future<bool> consumirFechamentoForcado({String? tipoAlarme}) async {
+    try {
+      final resultado = await _canalRotinaAlarme.invokeMethod<bool>(
+        'consumirFechamentoForcado',
+        {'tipoAlarme': tipoAlarme},
+      );
+      return resultado ?? false;
+    } catch (e) {
+      debugPrint('⚠️ Falha ao consultar fechamento forçado: $e');
+      return false;
+    }
+  }
+
   static Future<void> iniciarTelaAlarmeNativa(int idAlarme) async {
     try {
       await _canalRotinaAlarme.invokeMethod('iniciarTelaAlarme', {
@@ -418,7 +470,7 @@ class RotinaAlarmeService {
   /// Reinicia o som NATIVO (Kotlin/MediaPlayer) em loop, SOMENTE se já
   /// houver uma `RotinaCheckinAlarmActivity` viva e registrada no
   /// momento da chamada — usado como reforço, na transição para a
-  /// JANELA FINAL de 2 minutos, quando a tolerância expira sem
+  /// JANELA FINAL de 60 segundos, quando a tolerância expira sem
   /// confirmação (ver [AlarmeDisparadoScreen._entrarNaFaseFinal]).
   ///
   /// Propositalmente NÃO lança nenhuma Activity/tela nova: se o app
@@ -475,9 +527,13 @@ class RotinaAlarmeService {
     // intacto) continuar exatamente como antes. Ver
     // [AlarmeAgendadoCloudService.marcarConfirmadoSeguro].
     unawaited(AlarmeAgendadoCloudService().marcarConfirmadoSeguro(idAlarme.toString()));
+    // Ciclo definitivamente concluído (êxito) — a PRÓXIMA ocorrência deste
+    // mesmo id, reagendada logo abaixo, deve nascer PENDENTE de novo. Ver
+    // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
 
     // 1. Limpa os timers pendentes locais de SMS e notificação — inclui
-    // a janela final de 2 minutos, caso o PIN correto tenha sido
+    // a janela final de 60 segundos, caso o PIN correto tenha sido
     // confirmado dentro dela.
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
@@ -518,13 +574,14 @@ class RotinaAlarmeService {
       debugPrint('⚠️ Erro ao parar som nativo no check-in: $e');
     }
 
-    final etiqueta = (dados?['etiqueta'] as String?)?.trim().isNotEmpty == true
-        ? dados!['etiqueta'] as String
-        : 'Alarme de rotina';
+    final l10n = await L10nHeadlessService.obter();
+    final etiqueta = dados != null
+        ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
+        : l10n.familiaEtiquetaPadrao;
 
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Check-in de rotina confirmado',
-      descricao: '$etiqueta: o usuário confirmou "Cheguei bem" com sucesso.',
+      titulo: l10n.historicoCheckinRotinaConfirmadoTitulo,
+      descricao: l10n.historicoCheckinRotinaConfirmadoDescricao(etiqueta),
     );
 
     // Reagenda automaticamente a rotina do alarme para o próximo dia/período
@@ -654,7 +711,10 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
     return;
   }
 
-  final etiqueta = (dados['etiqueta'] as String?) ?? 'Check-in de rotina';
+  // Resolve a chave neutra padrão (ou uma tradução legada já gravada no
+  // banco — ver AlarmeRotina.etiquetaExibida) para o texto traduzido no
+  // idioma ATUAL do app, nunca um texto fixo/de outro idioma.
+  final etiqueta = AlarmeRotina.fromMap(dados).etiquetaExibida(await L10nHeadlessService.obter());
   final minutosTolerancia = dados['minutos_tolerancia'] as int? ?? 10;
 
   try {
@@ -702,7 +762,7 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 /// dispararia o alerta imediatamente por conta própria).
 ///
 /// NÃO dispara mais o alerta de emergência diretamente: em vez disso,
-/// concede uma ÚLTIMA CHANCE de 2 minutos — o alarme toca novamente, a
+/// concede uma ÚLTIMA CHANCE de 60 segundos — o alarme toca novamente, a
 /// tela volta ao primeiro plano já com o teclado de PIN aberto
 /// (diretamente, sem exigir novo toque no botão) e QUALQUER falha nesse
 /// prazo (PIN incorreto ou tempo esgotado) aciona
@@ -715,18 +775,17 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
 
   debugPrint(
       '🔔 [HEADLESS] Tolerância do check-in de rotina #$idAlarme expirada — '
-      'concedendo janela final de 2 minutos antes do alerta de emergência.');
+      'concedendo janela final de 60 segundos antes do alerta de emergência.');
 
   try {
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
   } catch (_) {}
 
   try {
+    final l10n = await L10nHeadlessService.obter();
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Check-in de rotina — última chance',
-      descricao: 'O tempo de tolerância expirou sem confirmação. O alarme '
-          'está tocando novamente com um prazo final de 2 minutos antes '
-          'do alerta de emergência ser disparado.',
+      titulo: l10n.historicoCheckinRotinaUltimaChanceTitulo,
+      descricao: l10n.historicoCheckinRotinaUltimaChanceDescricao,
     );
   } catch (_) {}
 
@@ -759,7 +818,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
   // efetivamente re-toca o som nativo e o som Dart assim que detecta a
   // fase final, com no máximo ~1s de atraso.
 
-  // Agenda o disparo REAL de emergência para daqui a 2 minutos, caso o
+  // Agenda o disparo REAL de emergência para daqui a 60 segundos, caso o
   // PIN correto não seja confirmado antes disso — ver
   // [RotinaAlarmeService.confirmarCheckinRotina], que cancela este alarme
   // também.
@@ -779,7 +838,7 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
   }
 }
 
-/// Disparado quando a JANELA FINAL de 2 minutos (ver
+/// Disparado quando a JANELA FINAL de 60 segundos (ver
 /// [_callbackToleranciaExpirada]) expira sem que o PIN correto tenha sido
 /// confirmado. Este é o disparo REAL e definitivo do alerta de
 /// emergência — não há mais nenhuma chance depois deste ponto.
@@ -808,14 +867,13 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     await prefs.remove(chaveAlarmeFaseFinalDeadlineEpochMs);
   } catch (_) {}
 
-  String etiqueta = 'Alarme de rotina';
+  final l10n = await L10nHeadlessService.obter();
+  String etiqueta = l10n.familiaEtiquetaPadrao;
   String? eventoId;
   try {
     final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
     if (dados != null) {
-      etiqueta = (dados['etiqueta'] as String?)?.trim().isNotEmpty == true
-          ? dados['etiqueta'] as String
-          : etiqueta;
+      etiqueta = AlarmeRotina.fromMap(dados).etiquetaExibida(l10n);
       // TRAVA CONTRA MENSAGENS DUPLICADAS: MESMO eventoId calculado em
       // [AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme] (mesmo
       // idAlarme + mesmo `ultimo_disparo_epoch`, gravado uma única vez
@@ -830,13 +888,11 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     }
   } catch (_) {}
 
-  final motivo = '$etiqueta: o check-in de rotina não foi confirmado dentro '
-      'do prazo final de 2 minutos, mesmo após o tempo de tolerância já ter '
-      'expirado.';
+  final motivo = l10n.historicoCheckinRotinaFalhaMotivo(etiqueta);
 
   try {
     await NotificacaoService.registrarEventoSistema(
-      titulo: 'Alerta de emergência disparado (rotina)',
+      titulo: l10n.historicoAlertaEmergenciaRotinaTitulo,
       descricao: motivo,
     );
   } catch (_) {}
@@ -864,6 +920,24 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     debugPrint('⚠️ [HEADLESS] Falha ao inicializar Firebase neste isolate: $e');
   }
 
+  // CORREÇÃO DE BUG REAL (2026-08-15, mesma classe do duplo disparo do
+  // Cronômetro — ver `CronometroDisparadoScreen._dispararAlerta` /
+  // `AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme`): este
+  // callback É o próprio prazo final expirando (a janela final nativa),
+  // então não há um alarme local irmão para cancelar — mas o documento
+  // `alarmes_agendados/{idAlarme}` na nuvem continua PENDENTE até aqui, e
+  // a Cloud Function agendada (`monitorarAlarmesAgendados`) roda de
+  // qualquer forma a cada 2 minutos. Sem marcar ALERTA_DISPARADO agora,
+  // ela encontraria o mesmo documento vencido pouco depois e disparia um
+  // SEGUNDO alerta duplicado. Ver
+  // [AlarmeAgendadoCloudService.marcarAlertaDisparado].
+  unawaited(AlarmeAgendadoCloudService().marcarAlertaDisparado(idAlarme.toString()));
+  // Ciclo definitivamente concluído (falha) — a PRÓXIMA ocorrência deste
+  // mesmo id (já reagendada no disparo original, ver
+  // `_callbackCheckinRotina`) deve nascer PENDENTE de novo. Ver
+  // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+  AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
+
   // MESMA ordem crítica usada no resto do app: nuvem primeiro (rápida,
   // minimalista), depois o fluxo local completo (SMS nativo + backend).
   try {
@@ -881,6 +955,22 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
     );
   } catch (e) {
     debugPrint('⚠️ [HEADLESS] Falha durante o disparo de emergência de rotina: $e');
+  }
+
+  // CORREÇÃO (pedido do usuário, 2026-08-11): este callback é o único
+  // caminho de disparo que pode rodar SEM nenhuma tela do app visível
+  // (isolate headless do `android_alarm_manager_plus` — diferente de
+  // [AlarmeDisparadoScreen._dispararAlertaDeFalhaDeDesarme]/
+  // [_descartarPorArraste], que sempre têm a Activity nativa aberta ou
+  // mostram a notificação do sistema). Sem esta chamada, o usuário só
+  // ficava sabendo que o alerta foi enviado se reabrisse o app depois —
+  // agora a mesma notificação do sistema usada no gesto de arraste (ver
+  // [NotificacaoService.exibirNotificacaoAlertaEnviado]) confirma o
+  // envio imediatamente, mesmo com o app 100% fechado.
+  try {
+    await NotificacaoService.exibirNotificacaoAlertaEnviado();
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha ao exibir notificação de confirmação: $e');
   }
 
   try {

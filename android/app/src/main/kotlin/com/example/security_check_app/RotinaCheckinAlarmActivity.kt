@@ -1,15 +1,10 @@
 package com.example.security_check_app
 
 import android.content.Intent
-import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import android.view.WindowManager
-import androidx.preference.PreferenceManager
 import io.flutter.embedding.engine.FlutterEngine
 
 /**
@@ -32,14 +27,22 @@ import io.flutter.embedding.engine.FlutterEngine
  * bloqueada, e que o alerta sonoro do check-in de rotina toque mesmo com
  * a tela apagada.
  *
- * SOM EM LOOP (MediaPlayer nativo): esta Activity é responsável por
- * tocar, ela mesma, o som de alarme em loop assim que é criada
- * ([onCreate]), usando o mesmo asset de áudio configurado pelo usuário
- * em Configurações (`assets/sounds/som_1.mp3` ... `som_10.mp3`, ver
- * [AlarmeSonoroService]). O som é interrompido via [RotinaAlarmSomBridge]
- * (ver [RotinaAlarmPlugin]), chamado pelo lado Dart assim que o PIN
- * correto for digitado ou o botão "Cancelar"/"Pausar Alarme" for tocado
- * no `pin_dialog.dart`.
+ * ÁUDIO: especificação do usuário (2026-08-07, item 1) — toca APENAS o
+ * som customizado escolhido em Configurações, SEM nenhuma reprodução
+ * paralela. Essa é responsabilidade EXCLUSIVA do `AudioPlayer` Dart em
+ * [AlarmeDisparadoScreen._tocarSomDoAlarme] (o único que lê de verdade a
+ * preferência do usuário, com múltiplos fallbacks). Este `MediaPlayer`
+ * nativo, que existia aqui antes, foi DESATIVADO de propósito
+ * ([iniciarSomEmLoop] virou no-op): ele lia a chave nativa
+ * `alarm_sound_path` via `PreferenceManager.getDefaultSharedPreferences`
+ * — um arquivo de preferências DIFERENTE do `FlutterSharedPreferences`
+ * usado pelo plugin `shared_preferences` do lado Dart — e por isso
+ * NUNCA era realmente atualizado com a escolha do usuário, tocando
+ * sempre "som_1.mp3" fixo em paralelo com o som Dart correto (o
+ * "áudio duplicado/paralelo" relatado). [RotinaAlarmSomBridge]/os
+ * métodos nativos "pararAlarme"/"silenciarSomSemFechar" continuam
+ * existindo e são seguros de chamar (viram no-op sem player nenhum
+ * registrado), preservando a mesma interface para o resto do código.
  *
  * ROTA INICIAL PARA O FLUTTER: o extra/rota [ROTA_INICIAL_ROTINA_ALARME]
  * é lido no lado Dart (`main.dart`) para navegar diretamente para a
@@ -104,90 +107,28 @@ class RotinaCheckinAlarmActivity : MainActivity() {
         // Activity diretamente por cima do Keyguard.
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
 
-        iniciarSomEmLoop()
+        // NÃO chama mais iniciarSomEmLoop() — ver comentário da classe
+        // (item 1): o som é responsabilidade exclusiva do AudioPlayer
+        // Dart, nunca deste MediaPlayer nativo.
     }
 
     /**
-     * Inicia a reprodução do som de alarme (número 1, "Bipe Clássico",
-     * usado como padrão neste MVP nativo) em LOOP contínuo, protegido
-     * por try/catch para NUNCA impedir a exibição da tela de
-     * confirmação caso o asset de áudio esteja ausente/inválido
-     * (ex: placeholder vazio, ver `assets/sounds/README.md`).
+     * DESATIVADO de propósito (item 1 — ver comentário da classe): não
+     * cria mais nenhum `MediaPlayer`. Mantido como método vazio (em vez
+     * de removido) só para minimizar o diff nos pontos que ainda o
+     * chamam ([reiniciarSom]) — nenhum som nativo volta a tocar a partir
+     * daqui.
      */
     private fun iniciarSomEmLoop() {
-        try {
-            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-            val soundPath = prefs.getString("alarm_sound_path", "som_1.mp3")
-            val durationSeconds = prefs.getInt("alarm_sound_duration", 30) // Padrão 30s
-
-            val descritor = assets.openFd("flutter_assets/assets/sounds/$soundPath")
-            val novoPlayer = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build(),
-                )
-                setDataSource(descritor.fileDescriptor, descritor.startOffset, descritor.length)
-                descritor.close()
-                isLooping = true
-                prepare()
-                start()
-                setVolume(1.0f, 1.0f)
-            }
-            mediaPlayer = novoPlayer
-            RotinaAlarmSomBridge.registrarPlayer(novoPlayer)
-
-            // Agendar parada automática após duração configurada.
-            // CORREÇÃO (crash real observado em teste, IllegalStateException
-            // em MediaPlayer.stop()): esta closure referencia [novoPlayer]
-            // (uma val LOCAL, capturada no instante em que este método foi
-            // chamado) em vez do campo mutável [mediaPlayer] — evita tentar
-            // parar/liberar um player DIFERENTE (mais novo) caso
-            // [reiniciarSom] tenha substituído [mediaPlayer] entretanto
-            // (ex: a janela final "tocando novamente" antes destes 30s
-            // originais terminarem). Também protege .stop() e .release()
-            // em blocos try/catch SEPARADOS: se o player já tiver sido
-            // parado/liberado por outro caminho (ex: MethodChannel
-            // "pararAlarme" chamado enquanto este Handler ainda esperava),
-            // a falha em .stop() não impede a tentativa de .release().
-            Handler(Looper.getMainLooper()).postDelayed({
-                try {
-                    if (novoPlayer.isPlaying) {
-                        novoPlayer.stop()
-                    }
-                } catch (e: Exception) {
-                    Log.e("RotinaCheckin", "Erro ao parar som automaticamente (player já parado?)", e)
-                }
-                try {
-                    novoPlayer.release()
-                } catch (e: Exception) {
-                    Log.e("RotinaCheckin", "Erro ao liberar player automaticamente", e)
-                }
-                // Só limpa o campo/bridge se ainda apontarem para ESTE
-                // player específico — um [reiniciarSom] mais recente pode
-                // já ter os substituído por um player mais novo.
-                if (mediaPlayer === novoPlayer) {
-                    mediaPlayer = null
-                    RotinaAlarmSomBridge.registrarPlayer(null)
-                }
-                Log.d("RotinaCheckin", "Som interrompido após $durationSeconds segundos")
-            }, durationSeconds * 1000L)
-        } catch (e: Exception) {
-            // Falha silenciosa: a tela de confirmação continua
-            // funcionando normalmente mesmo sem áudio (ex: asset
-            // placeholder vazio ou dispositivo sem suporte).
-            mediaPlayer = null
-        }
+        mediaPlayer = null
     }
 
     /**
-     * Reinicia a reprodução do som de alarme em loop — chamado pelo
-     * [RotinaAlarmPlugin] (método "reiniciarSomSeAtivo") quando a
-     * tolerância de check-in expira e o alarme precisa "tocar
-     * novamente" para a janela final de 2 minutos. Para qualquer
-     * MediaPlayer ainda em execução antes de iniciar um novo, evitando
-     * duas instâncias tocando simultaneamente.
+     * DESATIVADO de propósito (item 1): não reinicia mais nenhum som
+     * nativo. Mantido como no-op seguro porque [RotinaAlarmPlugin]
+     * ("reiniciarSomSeAtivo") ainda pode chamá-lo — o reforço sonoro da
+     * janela final agora é feito 100% pelo AudioPlayer Dart (ver
+     * [AlarmeDisparadoScreen._entrarNaFaseFinal]).
      */
     fun reiniciarSom() {
         try {
@@ -195,7 +136,6 @@ class RotinaCheckinAlarmActivity : MainActivity() {
         } catch (_: Exception) {
         }
         mediaPlayer = null
-        iniciarSomEmLoop()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -210,11 +150,26 @@ class RotinaCheckinAlarmActivity : MainActivity() {
      * Repassa ao Flutter, através da rota inicial padrão do
      * `FlutterActivity` (`window.setInitialRoute`/`getInitialRoute`),
      * o sinal de que este cold start específico deve ir DIRETO para a
-     * tela de confirmação de check-in de rotina (com o botão "Pausar
-     * Alarme"). Ver `main.dart` (`_lerRotaInicialRotinaAlarme`).
+     * tela de confirmação do alarme disparado. Ver `main.dart`.
+     *
+     * GENERALIZAÇÃO (Cronômetro Regressivo, aba Segurança): esta Activity
+     * — antes exclusiva do Alarme de Rotina — passou a ser COMPARTILHADA
+     * pelos dois fluxos, reaproveitando toda a infraestrutura nativa já
+     * validada (Keyguard, Doze, fechamento forçado, reabertura ao
+     * desbloquear — ver [RotinaAlarmWakeService]/[RotinaAlarmPlugin]), em
+     * vez de duplicar uma segunda Activity/Service/Receiver do zero. O
+     * extra [EXTRA_TIPO_ALARME] (lido do próprio `intent`, com
+     * [TIPO_ALARME_ROTINA] como padrão — nenhuma mudança de comportamento
+     * para chamadores antigos que não o enviam) decide qual rota inicial
+     * o lado Dart recebe; o restante da Activity (flags de janela, ciclo
+     * de vida) permanece 100% genérico entre os dois tipos.
      */
     override fun getInitialRoute(): String {
-        return ROTA_INICIAL_ROTINA_ALARME
+        return if (tipoAlarmeDoIntent(intent) == TIPO_ALARME_CRONOMETRO) {
+            ROTA_INICIAL_CRONOMETRO_ALARME
+        } else {
+            ROTA_INICIAL_ROTINA_ALARME
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -250,9 +205,29 @@ class RotinaCheckinAlarmActivity : MainActivity() {
          */
         const val ROTA_INICIAL_ROTINA_ALARME = "/rotina_alarme_confirmacao"
 
-        /** Chave do extra inteiro (id do alarme de rotina) enviado
-         * junto com o [Intent] que abre esta Activity. */
+        /**
+         * Rota inicial equivalente para o Cronômetro Regressivo da aba
+         * Segurança — ver comentário de [getInitialRoute]/[EXTRA_TIPO_ALARME].
+         * Lida no lado Dart (`main.dart`) para navegar direto para
+         * `CronometroDisparadoScreen`.
+         */
+        const val ROTA_INICIAL_CRONOMETRO_ALARME = "/cronometro_alarme_confirmacao"
+
+        /** Chave do extra inteiro (id do alarme de rotina, ou o id
+         * sentinel reservado do Cronômetro — ver `AlarmeService.kt`/
+         * `alarme_service.dart`) enviado junto com o [Intent] que abre
+         * esta Activity. */
         const val EXTRA_ID_ALARME = "id_alarme_rotina"
+
+        /**
+         * Chave do extra de string que identifica qual fluxo disparou
+         * esta Activity: [TIPO_ALARME_ROTINA] (padrão, retrocompatível
+         * com todo código antigo que não envia este extra) ou
+         * [TIPO_ALARME_CRONOMETRO].
+         */
+        const val EXTRA_TIPO_ALARME = "tipo_alarme"
+        const val TIPO_ALARME_ROTINA = "rotina"
+        const val TIPO_ALARME_CRONOMETRO = "cronometro"
 
         /** Extrai o id do alarme de rotina do [intent] recebido, ou
          * `null` se ausente/inválido. */
@@ -260,6 +235,12 @@ class RotinaCheckinAlarmActivity : MainActivity() {
             if (intent == null || !intent.hasExtra(EXTRA_ID_ALARME)) return null
             val valor = intent.getIntExtra(EXTRA_ID_ALARME, -1)
             return if (valor >= 0) valor else null
+        }
+
+        /** Extrai o tipo de alarme do [intent] recebido — [TIPO_ALARME_ROTINA]
+         * quando ausente (retrocompatibilidade total). */
+        fun tipoAlarmeDoIntent(intent: Intent?): String {
+            return intent?.getStringExtra(EXTRA_TIPO_ALARME) ?: TIPO_ALARME_ROTINA
         }
     }
 }

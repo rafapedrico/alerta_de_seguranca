@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../app_navigator.dart';
 import '../firebase_options.dart';
@@ -11,6 +11,66 @@ import 'alertas_recebidos_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'notificacao_service.dart';
+
+/// Handler de SEGUNDO PLANO/TERMINADO do FCM — chamado pelo Android num
+/// ISOLATE/ENGINE TOTALMENTE SEPARADO, sem NENHUM estado compartilhado
+/// com o processo principal do app.
+///
+/// REESPECIFICAÇÃO DO USUÁRIO (2026-08-15, requisitos oficiais do
+/// Flutter/FlutterFire): antes, este handler era um método ESTÁTICO
+/// dentro da classe [FcmService] — funciona na prática na maioria dos
+/// casos, mas diverge do padrão oficial documentado pela própria
+/// FlutterFire (`FirebaseMessaging.onBackgroundMessage`), que exige uma
+/// função TOP-LEVEL (fora de qualquer classe), não um método de classe
+/// "que precise de inicialização". Diagnosticado ao vivo via logcat
+/// (2026-08-15): o broadcast nativo do FCM chegava
+/// (`FLTFireMsgReceiver: broadcast received for message`), mas a engine
+/// Flutter de background nunca era instanciada
+/// (`FLTFireBGExecutor: Creating background FlutterEngine instance`
+/// nunca aparecia nos logs) — o Android ficava reagendando via
+/// `AlarmManager: setExactAndAllowWhileIdle [name: FcmRetry...]`
+/// repetidamente, sem nunca completar. Descoberto em paralelo que o
+/// "Battery Care"/"Smart Background" PRÓPRIO da Motorola também
+/// restringia o app (`BatteryCare: [SmartBackgroundController] skip
+/// foreground package`, fora do controle deste código — precisa de
+/// ajuste manual nas configurações do aparelho), mas mover este handler
+/// para o formato 100% conforme à documentação oficial é a correção de
+/// código correta e a que efetivamente está ao alcance do app, eliminando
+/// de vez a divergência como possível causa/agravante.
+///
+/// `@pragma('vm:entry-point')` é OBRIGATÓRIO: sem ele, o compilador
+/// Dart AOT (release) pode fazer tree-shaking desta função por não
+/// enxergar nenhuma chamada estática a ela no código (só é referenciada
+/// via callback handle nativo) — resultando exatamente no sintoma
+/// observado (nada acontece em segundo plano, sem nenhuma exceção
+/// visível). `WidgetsFlutterBinding.ensureInitialized()` também é
+/// exigido pela documentação oficial antes de usar qualquer plugin
+/// (`flutter_local_notifications`, `http`, `Firebase`) neste isolate
+/// novo/isolado — sem binding próprio, sem estado compartilhado com o
+/// processo principal.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage mensagem) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('📩 [FCM Recebido - Background] ${mensagem.data}');
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    }
+    // Requisito 4 (renderização nativa a partir do isolate de
+    // background): [FcmService._tratarDadosDoAlerta] já despacha para
+    // [NotificacaoService.exibirNotificacaoAlertaRecebido], que monta o
+    // canal de alta prioridade (`Importance.max`) com `fullScreenIntent:
+    // true` e `audioAttributesUsage: AudioAttributesUsage.alarm` (som
+    // roteado pelo STREAM_ALARM) via `flutter_local_notifications` —
+    // funciona sem alterações a partir deste isolate, já que o plugin
+    // (diferente de plugins locais customizados deste app, ver
+    // `SmsSender.kt`) é registrado automaticamente em QUALQUER engine
+    // Flutter, inclusive este headless.
+    await FcmService()._tratarDadosDoAlerta(mensagem.data);
+  } catch (e) {
+    debugPrint('⚠️ [FcmService] Falha ao processar mensagem em segundo plano: $e');
+  }
+}
 
 /// Serviço central do lado "guardião" da arquitetura híbrida de alertas:
 /// mantém o `fcmToken` do aparelho sincronizado com
@@ -26,14 +86,13 @@ import 'notificacao_service.dart';
 /// `NotificacaoService.exibirNotificacaoAlarmeCompleto`) em vez de deixar
 /// o Android exibir automaticamente uma notificação padrão do sistema.
 ///
-/// CRITÉRIO DE CANCELAMENTO DO WHATSAPP DE CONTINGÊNCIA: o job de
-/// transbordo (`functions/transbordoWhatsappMonitor.js`) cancela a
-/// cobrança quando o Push é confirmado como ENTREGUE NO DISPOSITIVO —
-/// não quando o usuário abre o app ou lê a notificação. Este serviço
-/// grava essa confirmação assim que `onMessage`/`onBackgroundMessage`
-/// executa (ver [_tratarDadosDoAlerta]), o que acontece automaticamente
-/// na entrega da mensagem pelo SO, mesmo com a tela bloqueada e o app
-/// fechado — nunca depende de interação do usuário.
+/// CONFIRMAÇÃO DE ENTREGA: grava em `entregas_alerta/{id}/confirmacoes`
+/// que o Push foi ENTREGUE NO DISPOSITIVO — não quando o usuário abre o
+/// app ou lê a notificação. Este serviço grava essa confirmação assim
+/// que `onMessage`/`onBackgroundMessage` executa (ver
+/// [_tratarDadosDoAlerta]), o que acontece automaticamente na entrega da
+/// mensagem pelo SO, mesmo com a tela bloqueada e o app fechado — nunca
+/// depende de interação do usuário.
 class FcmService {
   FcmService._internal();
   static final FcmService _instance = FcmService._internal();
@@ -79,7 +138,7 @@ class FcmService {
     if (Firebase.apps.isEmpty) return;
 
     try {
-      FirebaseMessaging.onBackgroundMessage(_aoReceberMensagemEmSegundoPlano);
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       await FirebaseMessaging.instance.requestPermission();
       FirebaseMessaging.onMessage.listen(_processarMensagem);
       _infraestruturaRegistrada = true;
@@ -101,16 +160,41 @@ class FcmService {
     try {
       final messaging = FirebaseMessaging.instance;
 
+      // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 — Razr
+      // com `fcmToken` gravado no Firestore, mas TODO envio a ele falhava
+      // no `[FCM Enviado] 0 enviado(s), 1 falha(s) de 1 token(s)` da Cloud
+      // Function): `getToken()` sozinho devolve o token já em CACHE local
+      // sempre que existir um — um `pm clear`/reinstalação some com esse
+      // cache, mas qualquer outra causa de invalidação do lado do servidor
+      // FCM (ex: o token expirar/ser revogado sem o SDK perceber) deixa o
+      // cache local "vivo" apontando pra um registro morto, e `getToken()`
+      // nunca vai buscar um substituto sozinho. `deleteToken()` força o
+      // SDK a esquecer esse cache e negociar um registro NOVO de verdade
+      // no próximo `getToken()` — a única forma confiável de garantir que
+      // o valor gravado no Firestore é sempre um registro vivo, não uma
+      // cópia local potencialmente morta.
+      try {
+        await messaging.deleteToken();
+      } catch (e) {
+        debugPrint('⚠️ [FcmService] Falha ao invalidar token em cache (seguindo mesmo assim): $e');
+      }
+
       final token = await messaging.getToken();
       if (token != null) {
+        debugPrint('📲 [FcmService] Novo token FCM obtido (...${token.substring(token.length - 12)}) — sincronizando com o Firestore.');
         await FirebaseSyncService().atualizarFcmToken(token);
         debugPrint('📲 [FcmService] Token FCM inicial sincronizado.');
+      } else {
+        // ANTES: esse caso não gerava NENHUM log — uma falha silenciosa
+        // real (getToken() devolvendo null, ex: sem Google Play Services
+        // disponível/atualizado) ficava indistinguível de "tudo certo".
+        debugPrint('⚠️ [FcmService] getToken() devolveu null — nenhum token para sincronizar com o Firestore.');
       }
 
       if (!_listenerDeRenovacaoRegistrado) {
         messaging.onTokenRefresh.listen((novoToken) {
+          debugPrint('📲 [FcmService] Token FCM renovado pelo SO (...${novoToken.substring(novoToken.length - 12)}) — sincronizando.');
           FirebaseSyncService().atualizarFcmToken(novoToken);
-          debugPrint('📲 [FcmService] Token FCM renovado e sincronizado.');
         });
         _listenerDeRenovacaoRegistrado = true;
       }
@@ -123,23 +207,6 @@ class FcmService {
   Future<void> _processarMensagem(RemoteMessage mensagem) async {
     debugPrint('📩 [FCM Recebido - Foreground] ${mensagem.data}');
     await _tratarDadosDoAlerta(mensagem.data, emPrimeiroPlano: true);
-  }
-
-  /// Handler de SEGUNDO PLANO/TERMINADO — chamado pelo Android num
-  /// isolate separado, precisa ser uma função top-level ou estática
-  /// anotada com `@pragma('vm:entry-point')`, e re-inicializar o Firebase
-  /// já que não compartilha nenhum estado com o processo principal.
-  @pragma('vm:entry-point')
-  static Future<void> _aoReceberMensagemEmSegundoPlano(RemoteMessage mensagem) async {
-    debugPrint('📩 [FCM Recebido - Background] ${mensagem.data}');
-    try {
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-      }
-      await FcmService()._tratarDadosDoAlerta(mensagem.data);
-    } catch (e) {
-      debugPrint('⚠️ [FcmService] Falha ao processar mensagem em segundo plano: $e');
-    }
   }
 
   /// Lógica compartilhada entre primeiro e segundo plano: despacha o
@@ -182,9 +249,7 @@ class FcmService {
   /// é gravada PRIMEIRO, em seu próprio try/catch — uma falha ao MOSTRAR
   /// a notificação de tela cheia (ex: canal ainda não criado, permissão
   /// negada) NUNCA deve impedir o registro da entrega já confirmada pelo
-  /// FCM, o que faria o job de transbordo
-  /// (`functions/transbordoWhatsappMonitor.js`) cobrar WhatsApp
-  /// desnecessariamente mesmo com o Push já entregue.
+  /// FCM.
   Future<void> _tratarAlertaEmergencia(Map<String, dynamic> data) async {
     final idEntrega = data['idEntrega'] as String?;
     final mensagem = (data['mensagem'] as String?) ?? '';

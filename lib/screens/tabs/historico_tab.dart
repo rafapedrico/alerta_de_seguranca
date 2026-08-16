@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/alertas_recebidos_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
+import '../../widgets/texto_com_links.dart';
 import '../alerta_recebido_screen.dart';
 
 /// Tela de Histórico Geral: mescla os eventos administrativos locais
@@ -70,7 +72,7 @@ class _ItemHistorico {
   bool get ehFoto => fotoUrl != null && fotoUrl!.isNotEmpty;
 }
 
-class _HistoricoTabState extends State<HistoricoTab> {
+class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   static const String _categoriaRecebido = 'alerta_recebido';
@@ -137,14 +139,56 @@ class _HistoricoTabState extends State<HistoricoTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Ver [DatabaseHelper.historicoAtualizadoNotifier]: cobre o caso de um
+    // evento ser gravado com esta aba já visível/em primeiro plano (ex:
+    // 3ª tentativa de PIN errada resolvida dentro da própria
+    // `SegurancaTab`, sem nenhuma Activity nova por cima) — complementar
+    // ao `WidgetsBindingObserver` abaixo, que só cobre o app
+    // minimizado/reaberto.
+    DatabaseHelper.historicoAtualizadoNotifier.addListener(_aoHistoricoAtualizado);
     _carregarHistorico();
     _atualizarStatusAuditoria();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    DatabaseHelper.historicoAtualizadoNotifier.removeListener(_aoHistoricoAtualizado);
     _tickerAuditoria?.cancel();
     super.dispose();
+  }
+
+  void _aoHistoricoAtualizado() {
+    if (!mounted) return;
+    _carregarHistorico();
+    _atualizarStatusAuditoria();
+  }
+
+  /// CORREÇÃO DE BUG REAL (2026-08-12): esta aba fica MONTADA O TEMPO
+  /// TODO dentro do `IndexedStack` da `HomeScreen` — `initState()` (e,
+  /// portanto, [_carregarHistorico]/[_atualizarStatusAuditoria]) só roda
+  /// UMA VEZ, logo no login, muito antes de qualquer alerta de emergência
+  /// acontecer. Quando o Cronômetro dispara um alerta com o app já em
+  /// primeiro plano, a tela nativa dedicada (`RotinaCheckinAlarmActivity`,
+  /// engine PRÓPRIO — ver `cronometro_disparado_screen.dart`) abre POR
+  /// CIMA da `MainActivity` já em uso, sem nunca desmontar/recriar este
+  /// widget — ao fechar a confirmação e voltar para trás, esta aba
+  /// reaparecia com os dados de ANTES do alerta (novo evento de histórico
+  /// já salvo no SQLite, mas invisível até o usuário reabrir o app do
+  /// zero). `WidgetsBindingObserver` reflete corretamente essa transição:
+  /// a `MainActivity` recebe `onPause`/`onResume` do Android sempre que
+  /// outra Activity é empilhada por cima dela e depois finalizada — o
+  /// mesmo sinal que cobre o caso mais comum de app minimizado/reaberto.
+  /// Recarrega os DOIS conjuntos de dados desta tela (histórico normal +
+  /// status/eventos do cofre de Auditoria) sempre que o app volta ao
+  /// primeiro plano.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _carregarHistorico();
+      _atualizarStatusAuditoria();
+    }
   }
 
   Future<void> _atualizarStatusAuditoria() async {
@@ -342,19 +386,16 @@ class _HistoricoTabState extends State<HistoricoTab> {
     }
   }
 
+  /// Data + hora EXATA no idioma ativo do usuário (ex: "14/08/2026 22:15"
+  /// em pt-BR) — reespecificação do usuário (2026-08-14): "todas as
+  /// mensagens" devem mostrar o horário e data exata "para melhor
+  /// visualização", em vez da descrição relativa ("há X minutos") usada
+  /// antes. Mesmo formato de [AlertaRecebidoScreen._dataHoraExata].
   String _formatarDataHora(String timestampIso) {
     final dataHora = DateTime.tryParse(timestampIso);
     if (dataHora == null) return '';
-
-    final agora = DateTime.now();
-    final diferenca = agora.difference(dataHora);
-
-    final l10n = AppLocalizations.of(context)!;
-    if (diferenca.inMinutes < 1) return l10n.historicoAgoraMesmo;
-    if (diferenca.inMinutes < 60) return l10n.historicoHaMinutos(diferenca.inMinutes);
-    if (diferenca.inHours < 24) return l10n.historicoHaHoras(diferenca.inHours);
-    if (diferenca.inDays == 1) return l10n.historicoOntem;
-    return l10n.historicoHaDias(diferenca.inDays);
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMd(locale).add_Hm().format(dataHora.toLocal());
   }
 
   Future<void> _excluirEvento(int id) async {
@@ -472,6 +513,7 @@ class _HistoricoTabState extends State<HistoricoTab> {
             longitude: item.longitude,
             fotoUrl: item.fotoUrl,
             idEntrega: item.idEntrega,
+            recebidoEm: item.timestamp,
           ),
         ),
       );
@@ -483,6 +525,25 @@ class _HistoricoTabState extends State<HistoricoTab> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
+    }
+  }
+
+  /// Abre [url] no aplicativo mais apropriado do aparelho: um link do
+  /// Google Maps abre o próprio app de mapas (coordenadas GPS); um link
+  /// do Firebase Storage abre o navegador, exibindo a foto em alta
+  /// resolução (com opção nativa de download/compartilhamento do
+  /// navegador). Usado por [_linkificarTexto] — item 6 do pedido de UX:
+  /// transformar os textos de GPS/foto do histórico de "Alertas
+  /// Enviados" em links de fato clicáveis.
+  Future<void> _abrirLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [HistoricoTab] Falha ao abrir link do histórico: $e');
     }
   }
 
@@ -750,14 +811,26 @@ class _HistoricoTabState extends State<HistoricoTab> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              item.descricao,
+                            // Item 3 (reespecificação do usuário,
+                            // 2026-08-14): links de localização/foto
+                            // embutidos na descrição (ex: mensagens de
+                            // alertas recebidos) agora sempre aparecem em
+                            // AZUL e clicáveis — mesmo tratamento já dado
+                            // à lista de "Alertas Enviados" abaixo, via
+                            // [construirSpansComLinks].
+                            Text.rich(
+                              TextSpan(
+                                children: construirSpansComLinks(
+                                  item.descricao,
+                                  TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black.withOpacity(0.75),
+                                  ),
+                                  _abrirLink,
+                                ),
+                              ),
                               softWrap: true,
                               overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.black.withOpacity(0.75),
-                              ),
                             ),
                           ],
                         ),
@@ -989,7 +1062,19 @@ class _HistoricoTabState extends State<HistoricoTab> {
                       child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
                     ),
                     title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(descricao),
+                    // Coordenadas GPS e o link da foto (quando presentes no
+                    // texto — ver EmergencyAlertService) viram links de
+                    // fato clicáveis: GPS abre o Google Maps, foto abre a
+                    // imagem em alta resolução no navegador.
+                    subtitle: Text.rich(
+                      TextSpan(
+                        children: construirSpansComLinks(
+                          descricao,
+                          TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                          _abrirLink,
+                        ),
+                      ),
+                    ),
                     trailing: Text(
                       _formatarDataHora(timestamp),
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),

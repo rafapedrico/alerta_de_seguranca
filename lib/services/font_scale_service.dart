@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Serviço central para persistência e leitura do fator de escala de
@@ -43,10 +44,11 @@ class FontScaleService {
     return prefs.getDouble(prefsKey) ?? defaultValue;
   }
 
-  /// Rótulo amigável para exibição na UI, de acordo com o fator atual.
-  static String rotuloPara(double fator) {
-    if (fator <= pequeno) return 'Pequeno';
-    if (fator >= grande) return 'Grande';
-    return 'Padrão';
+  /// Rótulo amigável para exibição na UI, de acordo com o fator atual —
+  /// traduzido via [AppLocalizations], nunca hardcoded.
+  static String rotuloPara(double fator, AppLocalizations l10n) {
+    if (fator <= pequeno) return l10n.fontTamanhoPequeno;
+    if (fator >= grande) return l10n.fontTamanhoGrande;
+    return l10n.fontTamanhoPadrao;
   }
 }

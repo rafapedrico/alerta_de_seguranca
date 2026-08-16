@@ -1,8 +1,18 @@
 package com.example.security_check_app
 
+import android.Manifest
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
+import android.util.Log
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodChannel
 
@@ -43,10 +53,29 @@ class SmsSender : FlutterPlugin {
                         val telefones = call.argument<List<String>>("telefones") ?: emptyList()
                         val mensagem = call.argument<String>("mensagem") ?: ""
 
-                        enviar(binding.applicationContext, telefones, mensagem)
+                        val enviados = enviar(binding.applicationContext, telefones, mensagem)
 
-                        result.success(true)
+                        // CORREÇÃO DE BUG REAL (2026-08-11): antes, uma falha em
+                        // QUALQUER telefone da lista (número malformado, chip sem
+                        // sinal etc.) lançava e abortava o `for` inteiro dentro de
+                        // [enviar] — os contatos seguintes da lista, mesmo com
+                        // números perfeitamente válidos, nunca chegavam a ser
+                        // tentados. Agora [enviar] isola cada tentativa e retorna
+                        // quantos realmente saíram; só reporta erro ao lado Dart
+                        // (`EmergencyAlertService._enviarSms`, que já trata isso
+                        // sem travar o Histórico) quando NENHUM dos contatos foi
+                        // enviado com sucesso.
+                        if (enviados == 0 && telefones.isNotEmpty()) {
+                            result.error(
+                                "SMS_ERROR",
+                                "Falha ao enviar SMS nativo para todos os ${telefones.size} contato(s).",
+                                null,
+                            )
+                        } else {
+                            result.success(true)
+                        }
                     } catch (e: Exception) {
+                        Log.e(TAG, "Falha inesperada ao processar enviarSms", e)
                         result.error("SMS_ERROR", "Falha ao enviar SMS nativo: ${e.message}", null)
                     }
                 } else {
@@ -62,29 +91,236 @@ class SmsSender : FlutterPlugin {
     }
 
     companion object {
+        private const val TAG = "SmsSender"
+
         /** Nome do MethodChannel usado tanto pela Activity quanto pelo engine headless. */
         const val CHANNEL = "com.example.security_check_app/sms"
+
+        /** Ação do broadcast usado como `sentIntent` de cada parte do SMS —
+         * ver [garantirReceiverDeStatusRegistrado]/[enviar]. Diagnóstico
+         * pedido pelo usuário (2026-08-15): "status do envio" de verdade,
+         * não só "a chamada não lançou exceção" (que só prova que o
+         * PEDIDO foi bem formado, não que o RÁDIO aceitou/transmitiu o
+         * SMS). */
+        private const val ACAO_SMS_STATUS = "com.example.security_check_app.ACTION_SMS_STATUS"
+        private var receiverDeStatusRegistrado = false
+
+        /** Traduz o `resultCode` devolvido pelo `sentIntent` do
+         * `SmsManager` num motivo legível — os códigos de erro
+         * (`RESULT_ERROR_*`) são exatamente o diagnóstico que faltava
+         * para saber SE/POR QUE o rádio recusou o envio (sem serviço,
+         * rádio desligado/modo avião, etc.), distinto de qualquer
+         * exceção Kotlin (que só cobre erros ANTES de chegar ao rádio). */
+        private fun descreverResultadoEnvio(resultCode: Int): String {
+            return when (resultCode) {
+                Activity.RESULT_OK -> "OK — aceito pelo rádio"
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE -> "RESULT_ERROR_GENERIC_FAILURE (falha genérica do rádio/operadora)"
+                SmsManager.RESULT_ERROR_NO_SERVICE -> "RESULT_ERROR_NO_SERVICE (sem serviço/sinal de rede no momento do envio)"
+                SmsManager.RESULT_ERROR_NULL_PDU -> "RESULT_ERROR_NULL_PDU (falha interna ao montar o PDU do SMS)"
+                SmsManager.RESULT_ERROR_RADIO_OFF -> "RESULT_ERROR_RADIO_OFF (rádio desligado — modo avião?)"
+                SmsManager.RESULT_ERROR_LIMIT_EXCEEDED -> "RESULT_ERROR_LIMIT_EXCEEDED (limite de SMS da operadora/sistema excedido)"
+                SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED -> "RESULT_ERROR_SHORT_CODE_NOT_ALLOWED"
+                SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED -> "RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED"
+                SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE -> "RESULT_ERROR_FDN_CHECK_FAILURE (lista de discagem fixa do chip bloqueando o número)"
+                else -> "código desconhecido ($resultCode)"
+            }
+        }
+
+        /** Registra, uma única vez por processo, o `BroadcastReceiver` que
+         * recebe o resultado REAL de cada `sentIntent` (ver [enviar]) —
+         * dispara assim que o rádio confirma (ou recusa) o envio, não
+         * quando a chamada Kotlin retorna (que é só o pedido sendo
+         * enfileirado). */
+        private fun garantirReceiverDeStatusRegistrado(context: Context) {
+            if (receiverDeStatusRegistrado) return
+            val appContext = context.applicationContext
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context, intent: Intent) {
+                    val telefone = intent.getStringExtra(EXTRA_TELEFONE) ?: "(desconhecido)"
+                    val parte = intent.getIntExtra(EXTRA_PARTE, 1)
+                    val totalPartes = intent.getIntExtra(EXTRA_TOTAL_PARTES, 1)
+                    Log.i(
+                        TAG,
+                        "[SMS] Status do envio para $telefone (parte $parte/$totalPartes): " +
+                            descreverResultadoEnvio(resultCode),
+                    )
+                }
+            }
+            val filtro = IntentFilter(ACAO_SMS_STATUS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                appContext.registerReceiver(receiver, filtro, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                appContext.registerReceiver(receiver, filtro)
+            }
+            receiverDeStatusRegistrado = true
+        }
+
+        private const val EXTRA_TELEFONE = "telefone"
+        private const val EXTRA_PARTE = "parte"
+        private const val EXTRA_TOTAL_PARTES = "total_partes"
 
         /**
          * Envia a [mensagem] para cada telefone da lista [telefones], dividindo
          * automaticamente em múltiplas partes caso exceda o limite de
          * caracteres de um único SMS.
          *
-         * @throws Exception em caso de falha no envio (permissão ausente,
-         * SmsManager indisponível, etc.), propagada para quem chamou tratar.
+         * CORREÇÃO DE BUG REAL (2026-08-11): cada tentativa é isolada em seu
+         * próprio try/catch — antes, uma exceção em UM telefone (número
+         * malformado, chip sem sinal/serviço, etc.) escapava do `for` e
+         * abortava o restante da lista, deixando os demais contatos de
+         * emergência SEM SMS mesmo com números perfeitamente válidos. Nunca
+         * lança exceção: erros por telefone só são logados (`Log.e`,
+         * visíveis via `adb logcat -s SmsSender`) para diagnóstico.
+         *
+         * DIAGNÓSTICO REFORÇADO (2026-08-15, pedido do usuário): cada
+         * tentativa agora carrega um `sentIntent` por parte — o Android só
+         * dispara esse broadcast quando o RÁDIO efetivamente processa o
+         * envio (sucesso ou erro específico, ver [descreverResultadoEnvio]),
+         * diferente do log anterior ("enfileirado com sucesso"), que só
+         * provava que `sendMultipartTextMessage` não lançou exceção — ou
+         * seja, que o PEDIDO estava bem formado, nunca que o SMS de fato
+         * saiu do aparelho.
+         *
+         * @return quantos telefones tiveram o envio efetivamente tentado com
+         * sucesso (sem exceção) — 0 se todos falharem, usado pelo chamador
+         * para decidir se reporta erro ao lado Dart. O resultado REAL de
+         * cada tentativa (aceito pelo rádio ou não) chega em seguida, de
+         * forma assíncrona, nos logs de [garantirReceiverDeStatusRegistrado].
          */
-        fun enviar(context: Context, telefones: List<String>, mensagem: String) {
-            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        fun enviar(context: Context, telefones: List<String>, mensagem: String): Int {
+            garantirReceiverDeStatusRegistrado(context)
+            val smsManager = resolverSmsManagerAtivo(context)
+            var enviados = 0
+
+            for (telefone in telefones) {
+                if (telefone.isBlank()) continue
+                try {
+                    val partes = smsManager.divideMessage(mensagem)
+                    Log.i(TAG, "[SMS] Enviando para: $telefone (${partes.size} parte(s))...")
+
+                    val flagsImutavel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        PendingIntent.FLAG_IMMUTABLE
+                    } else {
+                        0
+                    }
+                    val sentIntents = ArrayList<PendingIntent>(partes.size)
+                    for (indiceParte in partes.indices) {
+                        val intent = Intent(ACAO_SMS_STATUS).apply {
+                            setPackage(context.packageName)
+                            putExtra(EXTRA_TELEFONE, telefone)
+                            putExtra(EXTRA_PARTE, indiceParte + 1)
+                            putExtra(EXTRA_TOTAL_PARTES, partes.size)
+                        }
+                        // requestCode único (telefone + parte) — cada
+                        // PendingIntent precisa carregar seus PRÓPRIOS
+                        // extras sem ser sobrescrito por outra tentativa
+                        // concorrente (ex: 2+ contatos cadastrados).
+                        val requestCode = telefone.hashCode() * 31 + indiceParte
+                        sentIntents.add(
+                            PendingIntent.getBroadcast(
+                                context, requestCode, intent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or flagsImutavel,
+                            ),
+                        )
+                    }
+
+                    smsManager.sendMultipartTextMessage(telefone, null, partes, sentIntents, null)
+                    enviados++
+                } catch (e: Exception) {
+                    Log.e(TAG, "[SMS] Falha ao enviar SMS para $telefone — demais contatos da lista seguem tentados normalmente.", e)
+                }
+            }
+
+            return enviados
+        }
+
+        /**
+         * Resolve o [SmsManager] vinculado ao chip ATIVO/padrão para SMS —
+         * essencial em aparelhos DUAL-SIM (ou com um dos dois slots
+         * fisicamente vazio, cenário real observado em testes: slot 0
+         * `ABSENT`, slot 1 com o chip ativo). Nesses aparelhos,
+         * `SmsManager.getDefault()`/o `SmsManager` genérico do sistema pode
+         * não conseguir resolver de forma confiável qual assinatura usar,
+         * falhando com erros internos de telefonia (ex:
+         * `getGroupIdLevel1`) mesmo com um chip perfeitamente funcional e
+         * em serviço.
+         *
+         * ESTRATÉGIA (com fallback seguro em cada etapa — nunca lança
+         * exceção antes de tentar o envio de verdade):
+         * 1. Sem a permissão `READ_PHONE_STATE` concedida (não é possível
+         *    consultar o [SubscriptionManager]), cai direto no
+         *    `SmsManager` "padrão" — mesmo comportamento histórico,
+         *    preservado como fallback.
+         * 2. Com a permissão concedida: prioriza o id de assinatura
+         *    PADRÃO do sistema para SMS
+         *    (`SubscriptionManager.getDefaultSmsSubscriptionId()`) —
+         *    respeita a escolha explícita do usuário quando o aparelho
+         *    tem dois chips ativos simultaneamente.
+         * 3. Sem um padrão definido (`INVALID_SUBSCRIPTION_ID` — comum
+         *    quando só um dos dois slots tem chip, como no aparelho de
+         *    teste), usa a PRIMEIRA assinatura ativa encontrada.
+         * 4. Qualquer falha em qualquer etapa acima (SecurityException,
+         *    SubscriptionManager indisponível, etc.) cai no `SmsManager`
+         *    "padrão" — a resolução do chip nunca pode ser, ela mesma, o
+         *    motivo de um SOS não ser enviado.
+         */
+        private fun resolverSmsManagerAtivo(context: Context): SmsManager {
+            val subId = resolverSubscriptionIdAtivo(context)
+            if (subId != null && subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                try {
+                    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        context.getSystemService(SmsManager::class.java)
+                            .createForSubscriptionId(subId)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        SmsManager.getSmsManagerForSubscriptionId(subId)
+                    }
+                } catch (_: Exception) {
+                    // Cai no fallback abaixo — nunca impede o envio por
+                    // causa da resolução específica do chip.
+                }
+            }
+
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)
             } else {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
             }
+        }
 
-            for (telefone in telefones) {
-                if (telefone.isBlank()) continue
-                val partes = smsManager.divideMessage(mensagem)
-                smsManager.sendMultipartTextMessage(telefone, null, partes, null, null)
+        /**
+         * @return o id de assinatura (SIM) a usar para o envio, ou `null`
+         * quando não foi possível determinar um (sem permissão, nenhuma
+         * assinatura ativa, ou qualquer falha ao consultar o
+         * [SubscriptionManager]) — nesse caso [resolverSmsManagerAtivo]
+         * cai no `SmsManager` padrão.
+         */
+        private fun resolverSubscriptionIdAtivo(context: Context): Int? {
+            val temPermissao = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!temPermissao) return null
+
+            return try {
+                val subscriptionManager = context.getSystemService(
+                    Context.TELEPHONY_SUBSCRIPTION_SERVICE,
+                ) as? SubscriptionManager ?: return null
+
+                val idPadrao = SubscriptionManager.getDefaultSmsSubscriptionId()
+                if (idPadrao != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    return idPadrao
+                }
+
+                // Sem um padrão explícito definido pelo usuário (comum
+                // quando só um dos dois slots tem chip, como no aparelho
+                // de teste real: slot 0 ABSENT, slot 1 ativo) — usa a
+                // primeira assinatura ATIVA encontrada.
+                subscriptionManager.activeSubscriptionInfoList?.firstOrNull()?.subscriptionId
+            } catch (_: Exception) {
+                null
             }
         }
     }

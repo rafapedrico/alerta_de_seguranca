@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 
 /// Diálogo leve (AlertDialog) para confirmação de PIN, exibido POR CIMA
 /// da tela atual (sem substituir toda a árvore/rota como a antiga
@@ -34,7 +34,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 /// (padrão: 2 — o contador é resetado automaticamente após acionar o
 /// callback, e também sempre que o PIN correto for digitado). Chamadores
 /// que precisem de um disparo já na PRIMEIRA tentativa errada (ex: a
-/// janela final de 2 minutos do alarme de rotina da Família, onde não há
+/// janela final de 60 segundos do alarme de rotina da Família, onde não há
 /// mais margem para uma segunda chance) podem passar
 /// `limiteErrosConsecutivos: 1`. A interface NUNCA reflete esse gatilho —
 /// a mensagem de erro exibida é sempre a mesma ("PIN incorreto. Tente
@@ -55,7 +55,14 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 /// se fecha sozinho por causa disso — continua aberto e funcional,
 /// aceitando o PIN correto mesmo depois do tempo esgotado — apenas o
 /// callback de expiração é dado como responsável por qualquer ação real
-/// (ex: disparar um alerta de emergência).
+/// (ex: disparar um alerta de emergência). Por ser um limite de
+/// SEGURANÇA, o botão/gesto Voltar do sistema Android também fica
+/// bloqueado enquanto ele estiver ativo (diferente do comportamento
+/// padrão sem [segundosLimiteDuro], onde Voltar fecha o diálogo
+/// normalmente — ver `familia_tab.dart`): sem isso, Voltar cancelava o
+/// [Timer] interno da contagem (`dispose()`) sem nunca acionar
+/// [aoExpirarTempoLimite], deixando o alarme tocando indefinidamente sem
+/// jamais disparar o alerta.
 Future<void> exibirDialogoPin({
   required BuildContext context,
   required String? pinEsperado,
@@ -67,6 +74,7 @@ Future<void> exibirDialogoPin({
   Future<void> Function()? aoExpirarTempoLimite,
   bool mostrarBotaoCancelar = false,
   VoidCallback? aoCancelar,
+  Future<void> Function()? aoDescartarPorArraste,
 }) {
   return showDialog<void>(
     context: context,
@@ -82,6 +90,7 @@ Future<void> exibirDialogoPin({
         aoExpirarTempoLimite: aoExpirarTempoLimite,
         mostrarBotaoCancelar: mostrarBotaoCancelar,
         aoCancelar: aoCancelar,
+        aoDescartarPorArraste: aoDescartarPorArraste,
       );
     },
   );
@@ -99,6 +108,7 @@ class PinDialogContent extends StatefulWidget {
     this.aoExpirarTempoLimite,
     this.mostrarBotaoCancelar = false,
     this.aoCancelar,
+    this.aoDescartarPorArraste,
   });
 
   final String? pinEsperado;
@@ -141,6 +151,22 @@ class PinDialogContent extends StatefulWidget {
   /// encarrega de fechar (`Navigator.pop`) antes de chamar este
   /// callback.
   final VoidCallback? aoCancelar;
+
+  /// Callback OPCIONAL, acionado quando o usuário arrasta/joga o próprio
+  /// diálogo (teclado de PIN) para cima com velocidade suficiente (mesmo
+  /// limiar usado na tela de confirmação do Alarme de Rotina — ver
+  /// `alarme_disparado_screen.dart`) — gesto de DESCARTE, distinto do
+  /// gesto de sistema "tirar o app dos Recentes". Especificação do
+  /// usuário: só o Alarme de Rotina usa isto (`null` em todos os demais
+  /// chamadores, inclusive o Cronômetro da Segurança), então por padrão
+  /// (`null`) este widget não ganha NENHUM gesto novo — comportamento
+  /// 100% preservado para quem não passar este parâmetro. Quando
+  /// informado, o próprio diálogo se fecha (`Navigator.pop`) e cancela o
+  /// timer do limite duro ANTES de chamar o callback — toda a lógica real
+  /// (parar som, devolver a tela ao Android, disparar o alerta) fica a
+  /// cargo de quem fornece o callback, igual ao padrão já usado em
+  /// [aoAtingirLimiteDeErros]/[aoExpirarTempoLimite].
+  final Future<void> Function()? aoDescartarPorArraste;
 
   @override
   State<PinDialogContent> createState() => _PinDialogContentState();
@@ -209,6 +235,23 @@ class _PinDialogContentState extends State<PinDialogContent> {
         await widget.aoExpirarTempoLimite!.call();
       } catch (_) {}
     }
+  }
+
+  /// Aciona [widget.aoDescartarPorArraste] (se informado) — ver
+  /// documentação completa no parâmetro. Fecha o diálogo e cancela o
+  /// timer do limite duro ANTES de chamar o callback, mesmo padrão de
+  /// [_acionarLimiteDuroExpirado]/`_verificarPin`. Protegido contra
+  /// disparo duplo (ex: o usuário conseguir arrastar de novo antes do
+  /// `pop` concluir).
+  bool _descarteJaAcionado = false;
+  void _descartarPorArraste() {
+    if (widget.aoDescartarPorArraste == null || _descarteJaAcionado) return;
+    _descarteJaAcionado = true;
+    _timerLimiteDuro?.cancel();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    unawaited(widget.aoDescartarPorArraste!.call());
   }
 
   void _pressionarTecla(String caractere) {
@@ -286,15 +329,52 @@ class _PinDialogContentState extends State<PinDialogContent> {
         _segundosRestantesLimiteDuro ?? widget.segundosTolerancia;
     final bool exibirContagem = segundosParaExibir != null;
 
-    return Dialog(
+    // CORREÇÃO DE BUG REAL (2026-08-12): o teclado numérico usava um
+    // `SizedBox` de tamanho FIXO (260x260), mas o `GridView` de 4 linhas
+    // dentro dele (3 colunas, `childAspectRatio: 1.3`) precisa, para uma
+    // LARGURA de 260, de ~278 de altura — 18px A MAIS do que a caixa
+    // reservava. Resultado: a última linha (dígito "0" + apagar) ficava
+    // cortada/sobreposta ao texto de erro vermelho logo acima, em
+    // QUALQUER aparelho (não era uma questão de tela pequena — o cálculo
+    // já estava incorreto para o valor fixo escolhido). Corrigido
+    // calculando a altura do teclado A PARTIR da largura real (nunca o
+    // contrário) — sempre exatamente do tamanho que o GridView realmente
+    // ocupa, sem sobra nem corte. A LARGURA, por sua vez, agora é
+    // responsiva ao tamanho da tela (`MediaQuery`) em vez de um valor
+    // fixo, para telas pequenas (compactas) ou grandes (tablets) do
+    // Guardião X sempre caberem confortavelmente.
+    final Size tamanhoTela = MediaQuery.sizeOf(context);
+    const int colunasTeclado = 3;
+    const int linhasTeclado = 4;
+    const double espacamentoTeclado = 12;
+    const double aspectRatioTeclado = 1.3;
+    // 75% da largura da tela, nunca menor que 220 (aparelhos bem
+    // compactos) nem maior que 300 (tablets — evita um teclado
+    // desproporcionalmente gigante).
+    final double larguraTeclado =
+        (tamanhoTela.width * 0.75).clamp(220.0, 300.0);
+    final double larguraCelula = (larguraTeclado -
+            espacamentoTeclado * (colunasTeclado - 1)) /
+        colunasTeclado;
+    final double alturaCelula = larguraCelula / aspectRatioTeclado;
+    final double alturaTeclado = alturaCelula * linhasTeclado +
+        espacamentoTeclado * (linhasTeclado - 1);
+
+    final Widget dialogo = Dialog(
       backgroundColor: const Color(0xFF1A1A1A),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: ConstrainedBox(
+        // Teto de altura total do diálogo (85% da tela): em telas muito
+        // baixas (aparelhos pequenos, modo split-screen, fonte do
+        // sistema aumentada) o conteúdo agora ROLA em vez de estourar/
+        // cortar — ver `SingleChildScrollView` logo abaixo.
+        constraints: BoxConstraints(maxHeight: tamanhoTela.height * 0.85),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             const Icon(Icons.lock_outline, color: Colors.white70, size: 40),
             const SizedBox(height: 10),
             Text(
@@ -349,7 +429,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
                   : null,
             ),
             const SizedBox(height: 8),
-            _buildTecladoPIN(),
+            _buildTecladoPIN(largura: larguraTeclado, altura: alturaTeclado),
             if (widget.mostrarBotaoCancelar) ...[
               const SizedBox(height: 8),
               TextButton(
@@ -370,6 +450,51 @@ class _PinDialogContentState extends State<PinDialogContent> {
           ],
         ),
       ),
+      ),
+    );
+
+    // Gesto de descarte (arrastar para cima) — só anexado quando o
+    // chamador informa [widget.aoDescartarPorArraste] (opt-in, ver
+    // documentação do parâmetro); nos demais casos o diálogo continua
+    // exatamente como antes, sem nenhum GestureDetector extra. Mesmo
+    // limiar de velocidade já validado na tela de confirmação do Alarme
+    // de Rotina (`alarme_disparado_screen.dart`).
+    final Widget resultado = widget.aoDescartarPorArraste == null
+        ? dialogo
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragEnd: (details) {
+              if (details.velocity.pixelsPerSecond.dy < -250) {
+                _descartarPorArraste();
+              }
+            },
+            child: dialogo,
+          );
+
+    // CORREÇÃO (bug real reportado 2026-08-11): quando há um limite DURO
+    // de tempo ([widget.segundosLimiteDuro] != null — Cronômetro
+    // Regressivo e fase final do Alarme de Rotina), o botão/gesto de
+    // VOLTAR do sistema Android conseguia fechar este diálogo mesmo com
+    // `barrierDismissible: false` (que só bloqueia toque FORA do
+    // diálogo, nunca o botão/gesto Voltar). Como o `dispose()` deste
+    // State cancela [_timerLimiteDuro] junto, isso apagava silenciosamente
+    // a contagem regressiva de segurança: o app só reagia tocando o som
+    // de novo (ver `CronometroDisparadoScreen._abrirTecladoPin`), sem
+    // jamais dispatar o alerta de emergência, persistir o histórico ou
+    // exibir a confirmação de envio — o cronômetro de 60s simplesmente
+    // travava tocando som para sempre. Bloquear o Voltar do sistema
+    // exclusivamente quando existe esse limite duro fecha a brecha sem
+    // afetar os demais chamadores (ex: `FamiliaTab`/`SegurancaTab`, que
+    // não usam [segundosLimiteDuro] e continuam permitindo Voltar como
+    // cancelamento, documentado em `familia_tab.dart`), nem os fechamentos
+    // programáticos já existentes (PIN correto, alerta já disparado,
+    // gesto de arraste) — todos usam `Navigator.pop()` diretamente, que
+    // [PopScope] com `canPop: false` NUNCA intercepta.
+    if (widget.segundosLimiteDuro == null) return resultado;
+
+    return PopScope(
+      canPop: false,
+      child: resultado,
     );
   }
 
@@ -393,10 +518,15 @@ class _PinDialogContentState extends State<PinDialogContent> {
     );
   }
 
-  Widget _buildTecladoPIN() {
+  /// [largura]/[altura] agora vêm sempre calculados por [build] a partir
+  /// do tamanho real da tela (ver comentário lá) — nunca mais um valor
+  /// fixo — garantindo que a última linha do teclado (dígito "0" +
+  /// apagar) nunca seja cortada, em nenhum aparelho/modelo de tela onde
+  /// o Guardião X esteja instalado.
+  Widget _buildTecladoPIN({required double largura, required double altura}) {
     return SizedBox(
-      width: 260,
-      height: 260,
+      width: largura,
+      height: altura,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

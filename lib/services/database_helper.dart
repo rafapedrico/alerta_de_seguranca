@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -8,6 +9,19 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
+
+  /// Notificador global (contador incremental) disparado toda vez que um
+  /// novo evento é gravado no histórico local (ver [inserirEventoHistorico]).
+  /// Telas que exibem o histórico (ex: `HistoricoTab`) escutam este
+  /// notificador para recarregar a lista IMEDIATAMENTE quando um evento é
+  /// gravado com o app já em primeiro plano — sem depender de app
+  /// minimizado/reaberto (`AppLifecycleState.resumed`), que só cobre o
+  /// caso de o alerta ter disparado através de uma Activity nativa
+  /// separada por cima da MainActivity (ver `cronometro_disparado_screen.dart`),
+  /// nunca o caso de uma tentativa MANUAL de desarme resolvida sem sair
+  /// da própria `SegurancaTab` (ver `seguranca_tab.dart`).
+  static final ValueNotifier<int> historicoAtualizadoNotifier =
+      ValueNotifier<int>(0);
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -21,7 +35,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 17,
+      version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -70,7 +84,7 @@ class DatabaseHelper {
     // aos contatos de emergência da aba Família (até 3 contatos), com
     // integração via Agenda do celular (flutter_contacts).
     // Colunas exclusao_pendente/timestamp_solicitacao implementam a trava
-    // de segurança de 24h antes da remoção definitiva de um contato.
+    // de segurança de 2h antes da remoção definitiva de um contato.
     await db.execute('''
       CREATE TABLE contatos_emergencia (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,6 +178,26 @@ class DatabaseHelper {
         visualizado INTEGER NOT NULL DEFAULT 0
       )
     ''');
+
+    // Table: fila_retry_upload_sos - fila de resiliência offline (ver
+    // RetryUploadService): quando o upload da foto do SOS ao Firebase
+    // Storage falha (sem internet/Wi-Fi/4G no momento do disparo), o SMS
+    // com o link já foi enviado com fallback via GSM normalmente, mas o
+    // PAYLOAD do upload (caminho local da foto já copiada para um
+    // diretório permanente do app + metadados) fica registrado aqui para
+    // ser reenviado automaticamente assim que a conectividade voltar,
+    // sem exigir nenhuma ação do usuário.
+    await db.execute('''
+      CREATE TABLE fila_retry_upload_sos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        foto_path TEXT NOT NULL,
+        origem TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        criado_em TEXT NOT NULL,
+        tentativas INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
   }
 
 
@@ -176,7 +210,7 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE user_config ADD COLUMN plano_de_fundo_url TEXT');
     }
     // Migration from v2 to v3: add senha_pendente e timestamp_alteracao_senha
-    // (regra de segurança de 24h para troca de senha)
+    // (regra de segurança de 2h para troca de senha)
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE user_config ADD COLUMN senha_pendente TEXT');
       await db.execute('ALTER TABLE user_config ADD COLUMN timestamp_alteracao_senha TEXT');
@@ -192,7 +226,7 @@ class DatabaseHelper {
         )
       ''');
     }
-    // Migration from v4 to v5: adiciona a trava de segurança de 24h para
+    // Migration from v4 to v5: adiciona a trava de segurança de 2h para
     // exclusão de contatos de emergência (exclusao_pendente/timestamp_solicitacao).
     if (oldVersion < 5) {
       await db.execute(
@@ -379,9 +413,12 @@ class DatabaseHelper {
     // 'contatos_emergencia' — chave por contato ("Notificar via WhatsApp
     // ($0.10 USD)", ver ConfiguracoesTab) da arquitetura híbrida de
     // alertas: só contatos com esta flag ligada podem gerar cobrança de
-    // WhatsApp de contingência (ver functions/transbordoWhatsappMonitor.js).
-    // Desligado por padrão (0), preservando o saldo do usuário até que ele
-    // ative explicitamente cada contato.
+    // WhatsApp de contingência.
+    // COLUNA MORTA DESDE 2026-08-11: removida toda a integração de
+    // WhatsApp/Twilio (a pedido do usuário) — 'whatsapp_habilitado'
+    // permanece fisicamente na tabela (mesma convenção das demais
+    // migrações deste arquivo, nunca DROP/RENAME COLUMN), mas não é mais
+    // lida nem gravada pelo app.
     if (oldVersion < 14) {
       try {
         await db.execute(
@@ -412,14 +449,15 @@ class DatabaseHelper {
     // Migration from v15 to v16: substitui o campo morto 'forcando_whatsapp'
     // (nunca lido por nenhuma lógica de envio — resquício de uma versão
     // anterior à arquitetura híbrida de alertas) pela chave GLOBAL real
-    // "Enviar também via WhatsApp" (ver [UserConfig]/ConfiguracoesTab):
-    // quando ligada, o alerta passa a ser enviado de forma SIMULTÂNEA
-    // (App + WhatsApp) para os contatos habilitados, em vez de aguardar o
-    // transbordo de 60s (ver functions/alertaHibridoService.js). A coluna
-    // antiga 'forcando_whatsapp' permanece fisicamente na tabela — mesma
-    // convenção das demais migrações deste arquivo, que nunca fazem DROP/
-    // RENAME COLUMN por segurança de compatibilidade entre versões do
-    // SQLite nos aparelhos — mas não é mais lida nem gravada pelo app.
+    // "Enviar também via WhatsApp" (ver [UserConfig]/ConfiguracoesTab). A
+    // coluna antiga 'forcando_whatsapp' permanece fisicamente na tabela —
+    // mesma convenção das demais migrações deste arquivo, que nunca fazem
+    // DROP/RENAME COLUMN por segurança de compatibilidade entre versões
+    // do SQLite nos aparelhos.
+    // COLUNA TAMBÉM MORTA DESDE 2026-08-11: removida toda a integração de
+    // WhatsApp/Twilio (a pedido do usuário) — 'enviar_whatsapp_simultaneo'
+    // segue a mesma convenção acima (permanece na tabela, não é mais
+    // lida nem gravada pelo app).
     if (oldVersion < 16) {
       try {
         await db.execute(
@@ -446,6 +484,23 @@ class DatabaseHelper {
           foto_url TEXT,
           recebido_em TEXT NOT NULL,
           visualizado INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    }
+    // Migration from v17 to v18: cria a tabela 'fila_retry_upload_sos' —
+    // fila de resiliência offline para reenviar o upload da foto do SOS
+    // à nuvem quando a chamada de rede falhar no momento do disparo (ver
+    // RetryUploadService/SosDisparoService).
+    if (oldVersion < 18) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS fila_retry_upload_sos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          foto_path TEXT NOT NULL,
+          origem TEXT NOT NULL,
+          latitude REAL,
+          longitude REAL,
+          criado_em TEXT NOT NULL,
+          tentativas INTEGER NOT NULL DEFAULT 0
         )
       ''');
     }
@@ -490,12 +545,12 @@ class DatabaseHelper {
   // 1) Primeiro acesso (nenhum PIN cadastrado ainda): o PIN informado é
   //    efetivado INSTANTANEAMENTE em 'pin_real', sem qualquer carência.
   // 2) Alteração de um PIN já existente: a nova senha fica pendente por
-  //    24 horas ('senha_pendente' + 'timestamp_alteracao_senha'),
+  //    2 horas ('senha_pendente' + 'timestamp_alteracao_senha'),
   //    mantendo o PIN atual válido até que o prazo de segurança se
   //    cumpra.
   //
   // Retorna `true` se o PIN foi efetivado instantaneamente (primeiro
-  // cadastro), ou `false` se ficou pendente por 24h (alteração).
+  // cadastro), ou `false` se ficou pendente por 2h (alteração).
   Future<bool> salvarOuAgendarPinReal(int userConfigId, String novoPin) async {
     final config = await getUserConfig();
     final String? pinAtual = config?['pin_real'] as String?;
@@ -513,7 +568,7 @@ class DatabaseHelper {
       return true;
     }
 
-    // Regra 2: já existe um PIN ativo — aplica a carência de 24h.
+    // Regra 2: já existe um PIN ativo — aplica a carência de 2h.
     final agora = DateTime.now().millisecondsSinceEpoch.toString();
     await updateUserConfig({
       'id': userConfigId,
@@ -526,8 +581,8 @@ class DatabaseHelper {
   // ==========================================
   // EFETIVAÇÃO CENTRALIZADA DA SENHA PENDENTE
   // ==========================================
-  // Regra de segurança de 24h para ALTERAÇÃO de PIN (regra 2 acima): a
-  // verificação "já passaram 24h desde a solicitação? então promove a
+  // Regra de segurança de 2h para ALTERAÇÃO de PIN (regra 2 acima): a
+  // verificação "já passaram 2h desde a solicitação? então promove a
   // senha_pendente para pin_real" precisa ser executada de forma
   // consistente independente de qual tela o usuário abrir primeiro
   // (Segurança, Configurações, ou logo no cold start do app). Por isso
@@ -538,7 +593,7 @@ class DatabaseHelper {
   //
   // Retorna `true` se uma senha pendente foi efetivada nesta chamada
   // (promovida a pin_real), ou `false` caso não houvesse nada pendente ou
-  // o prazo de 24h ainda não tenha se cumprido.
+  // o prazo de 2h ainda não tenha se cumprido.
   Future<bool> processarSenhaPendenteSeExpirada() async {
     final config = await getUserConfig();
     if (config == null) return false;
@@ -552,7 +607,7 @@ class DatabaseHelper {
 
     final agora = DateTime.now().millisecondsSinceEpoch;
     final decorrido = agora - timestampSolicitacao;
-    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+    const prazoSegurancaMs = 7200000; // 2 horas em milissegundos
 
     if (decorrido < prazoSegurancaMs) {
       // Ainda dentro da carência: o PIN atual continua sendo o único válido.
@@ -619,48 +674,14 @@ class DatabaseHelper {
   }
 
   /// Remove um contato de emergência pelo id (exclusão IMEDIATA/definitiva).
-  /// Usado apenas internamente após o prazo de segurança de 24h ter expirado.
+  /// Usado apenas internamente após o prazo de segurança de 2h ter expirado.
   Future<int> deletarContatoEmergencia(int id) async {
     final db = await database;
     return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Liga/desliga o envio de WhatsApp de contingência ($0.10 USD por
-  /// envio) para este contato específico — ver Switch "Notificar via
-  /// WhatsApp" em ConfiguracoesTab. Refletido no Firestore por
-  /// [FirebaseSyncService.sincronizarContatosEmergencia] e consumido pela
-  /// Cloud Function de transbordo (functions/transbordoWhatsappMonitor.js)
-  /// para decidir se pode cobrar do saldo do usuário.
-  Future<int> atualizarWhatsappHabilitado(int id, bool habilitado) async {
-    final db = await database;
-    return await db.update(
-      'contatos_emergencia',
-      {'whatsapp_habilitado': habilitado ? 1 : 0},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Liga/desliga a chave GLOBAL "Enviar também via WhatsApp" (ver
-  /// ConfiguracoesTab) — distinta do switch por contato "Notificar via
-  /// WhatsApp" ([atualizarWhatsappHabilitado] acima). Quando ligada, o
-  /// alerta é enviado de forma SIMULTÂNEA (App + WhatsApp) para cada
-  /// contato com "Notificar via WhatsApp" ativo e saldo suficiente na
-  /// Carteira, em vez de aguardar os 60s normais de transbordo (ver
-  /// functions/transbordoWhatsappMonitor.js). Refletida no Firestore por
-  /// [FirebaseSyncService.atualizarEnviarWhatsappSimultaneo].
-  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
-    final config = await getUserConfig();
-    if (config == null) return;
-    final id = config['id'] as int;
-    await updateUserConfig({
-      'id': id,
-      'enviar_whatsapp_simultaneo': ativo ? 1 : 0,
-    });
-  }
-
   /// Marca um contato de emergência como "exclusão pendente", iniciando a
-  /// trava de segurança de 24h. O contato NÃO é removido imediatamente,
+  /// trava de segurança de 2h. O contato NÃO é removido imediatamente,
   /// apenas sinalizado com o timestamp da solicitação. Continua sendo
   /// retornado normalmente por getContatosEmergencia() (e portanto ainda
   /// recebe alertas de emergência) até que o prazo expire.
@@ -679,11 +700,11 @@ class DatabaseHelper {
   }
 
   /// Verifica todos os contatos com exclusão pendente e remove
-  /// definitivamente aqueles cujo prazo de segurança de 24 horas já
+  /// definitivamente aqueles cujo prazo de segurança de 2 horas já
   /// tenha expirado desde a solicitação.
   Future<void> processarExclusoesPendentesExpiradas() async {
     final db = await database;
-    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+    const prazoSegurancaMs = 7200000; // 2 horas em milissegundos
     final agora = DateTime.now().millisecondsSinceEpoch;
 
     final pendentes = await db.query(
@@ -725,12 +746,17 @@ class DatabaseHelper {
     required String categoria,
   }) async {
     final db = await database;
-    return await db.insert('historico', {
+    final id = await db.insert('historico', {
       'titulo': titulo,
       'descricao': descricao,
       'categoria': categoria,
       'timestamp': DateTime.now().toIso8601String(),
     });
+    // Avisa qualquer tela ouvindo (ver [historicoAtualizadoNotifier]) que
+    // um novo evento acabou de ser gravado, para recarregar a lista já em
+    // primeiro plano.
+    historicoAtualizadoNotifier.value++;
+    return id;
   }
 
   /// Retorna os eventos do histórico exibidos na tela de Histórico Geral
@@ -1026,7 +1052,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
   // 'pin_real', 'senha_pendente' e 'timestamp_alteracao_senha', forçando
   // o aplicativo a voltar ao estado de "Primeiro Acesso" (sem PIN
   // cadastrado), permitindo cadastrar uma nova senha instantaneamente,
-  // sem a carência de 24h. REMOVER antes de qualquer build de produção.
+  // sem a carência de 2h. REMOVER antes de qualquer build de produção.
   Future<void> debugResetarSenhaParaPrimeiroAcesso() async {
     final db = await database;
     await db.rawUpdate('''
@@ -1222,7 +1248,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
   }
 
   /// Remove definitivamente um contato de monitoramento pelo id. Exclusão
-  /// IMEDIATA (sem trava de 24h, diferente de contatos_emergencia) — não
+  /// IMEDIATA (sem trava de 2h, diferente de contatos_emergencia) — não
   /// revoga, por si só, nenhuma permissão já concedida no Firestore.
   Future<int> deletarContatoMonitoramento(int id) async {
     final db = await database;
@@ -1358,6 +1384,91 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       where: 'id_entrega = ?',
       whereArgs: [idEntrega],
     );
+  }
+
+  // ==========================================================
+  // FILA DE RETRY OFFLINE (ver RetryUploadService)
+  // ==========================================================
+
+  /// Enfileira um upload de foto do SOS que falhou por falta de
+  /// conectividade — [fotoPath] deve já ser um caminho PERMANENTE (não o
+  /// arquivo temporário original da captura, que o SO pode reciclar a
+  /// qualquer momento), ver [RetryUploadService.enfileirar].
+  Future<int> enfileirarRetryUploadSos({
+    required String fotoPath,
+    required String origem,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final db = await database;
+    return await db.insert('fila_retry_upload_sos', {
+      'foto_path': fotoPath,
+      'origem': origem,
+      'latitude': latitude,
+      'longitude': longitude,
+      'criado_em': DateTime.now().toIso8601String(),
+      'tentativas': 0,
+    });
+  }
+
+  /// Lista todos os uploads de SOS ainda pendentes de reenvio, do mais
+  /// antigo para o mais novo (ordem de chegada).
+  Future<List<Map<String, dynamic>>> listarRetryUploadSosPendentes() async {
+    final db = await database;
+    return await db.query('fila_retry_upload_sos', orderBy: 'id ASC');
+  }
+
+  /// Remove um item da fila — chamado assim que o reenvio for concluído
+  /// com sucesso (upload + SMS/nuvem despachados).
+  Future<void> removerRetryUploadSos(int id) async {
+    final db = await database;
+    await db.delete('fila_retry_upload_sos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Incrementa o contador de tentativas de um item que falhou de novo —
+  /// usado por [RetryUploadService] para desistir depois de um número
+  /// máximo de tentativas, evitando reter arquivos de foto órfãos
+  /// indefinidamente no armazenamento do aparelho.
+  Future<void> incrementarTentativaRetryUploadSos(int id) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE fila_retry_upload_sos SET tentativas = tentativas + 1 WHERE id = ?',
+      [id],
+    );
+  }
+
+  /// Apaga TODAS as linhas de TODAS as tabelas locais — usado
+  /// exclusivamente pelo fluxo de "Excluir Conta e Dados"
+  /// (ver `ExclusaoContaService`), nunca por um logout comum (que
+  /// deliberadamente preserva os dados locais para um possível novo
+  /// login no mesmo aparelho). Diferente de apagar o arquivo do banco
+  /// inteiro, `DELETE FROM` em cada tabela mantém o schema intacto (sem
+  /// precisar fechar/reabrir a conexão já em uso pelo resto do app) e é
+  /// suficiente, já que a conta associada a esses dados deixará de
+  /// existir no Firebase Auth logo em seguida.
+  ///
+  /// Cada tabela é apagada isoladamente, protegida por try/catch: uma
+  /// falha isolada (ex: tabela ainda não migrada nesta instalação) nunca
+  /// deve impedir a limpeza das demais.
+  Future<void> apagarTudoLocal() async {
+    final db = await database;
+    const tabelas = [
+      'user_config',
+      'contacts',
+      'contatos_emergencia',
+      'historico',
+      'alarmes_rotina',
+      'monitoramento_contatos',
+      'alertas_terceiros_recebidos',
+      'fila_retry_upload_sos',
+    ];
+    for (final tabela in tabelas) {
+      try {
+        await db.delete(tabela);
+      } catch (e) {
+        debugPrint('⚠️ [DatabaseHelper] Falha ao limpar a tabela "$tabela": $e');
+      }
+    }
   }
 }
 

@@ -1,6 +1,38 @@
+import 'package:security_check_app/l10n/app_localizations.dart';
+
 /// Modelo de dados de um Alarme de Rotina, usado pela aba Família no
 /// gerenciador de múltiplos alarmes (estilo despertador do iPhone).
 class AlarmeRotina {
+  /// Chave neutra (independente de idioma) persistida no campo
+  /// [etiqueta] quando o usuário deixa o rótulo em branco ao
+  /// criar/editar um alarme — em vez de gravar o texto JÁ TRADUZIDO no
+  /// idioma do momento (bug real observado: agendamentos antigos
+  /// ficavam presos para sempre no idioma em que foram criados, mesmo
+  /// depois de trocar o idioma do app nas Configurações). Resolvida
+  /// dinamicamente em [etiquetaExibida] — nunca deve aparecer
+  /// diretamente na UI.
+  static const String chaveEtiquetaPadrao = 'KEY_ALARME_ROTINA';
+
+  /// Traduções LEGADAS de "Alarme de rotina" (uma por idioma suportado)
+  /// que podem já estar gravadas em [etiqueta] para alarmes criados
+  /// ANTES desta correção — tratadas como equivalentes a
+  /// [chaveEtiquetaPadrao] em [etiquetaExibida], para que agendamentos
+  /// antigos também passem a traduzir corretamente ao trocar de idioma,
+  /// e não só os criados dali em diante.
+  static const Set<String> _etiquetasPadraoLegadas = {
+    'Alarme de rotina', // pt
+    'Routine alarm', // en
+    'Alarma de rutina', // es
+    'Alarme de routine', // fr
+    'Routinealarm', // de
+    'Allarme di routine', // it
+    '定期アラーム', // ja
+    '常规闹钟', // zh
+    'Плановый будильник', // ru
+    'منبه روتيني', // ar
+    'नियमित अलार्म', // hi
+  };
+
   final int? id;
   final int hora;
   final int minuto;
@@ -113,26 +145,47 @@ class AlarmeRotina {
   String get horarioFormatado =>
       '${hora.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')}';
 
-  /// Retorna uma descrição resumida dos dias da semana selecionados.
-  String get diasResumidos {
-    if (diasSemana.isEmpty) return 'Nunca';
-    if (diasSemana.length == 7) return 'Todos os dias';
+  /// `true` quando [etiqueta] é a chave neutra padrão ([chaveEtiquetaPadrao]),
+  /// uma das traduções legadas ([_etiquetasPadraoLegadas]) ou está
+  /// simplesmente vazia — em todos esses casos o rótulo exibido deve ser
+  /// resolvido dinamicamente via [etiquetaExibida], nunca o valor bruto
+  /// de [etiqueta] (que pode não estar no idioma atual do app).
+  bool get temEtiquetaPadrao =>
+      etiqueta.isEmpty ||
+      etiqueta == chaveEtiquetaPadrao ||
+      _etiquetasPadraoLegadas.contains(etiqueta);
 
-    const nomesDias = {
-      1: 'Seg',
-      2: 'Ter',
-      3: 'Qua',
-      4: 'Qui',
-      5: 'Sex',
-      6: 'Sáb',
-      7: 'Dom',
+  /// Rótulo do alarme pronto para exibição: resolve a chave neutra (ou
+  /// uma tradução legada já gravada no banco) para o texto traduzido no
+  /// idioma ATUAL do app — nunca lê diretamente um texto já traduzido
+  /// persistido no banco. Use esta função em toda a UI (listagem, pausa,
+  /// exclusão, histórico) em vez de ler [etiqueta] diretamente.
+  String etiquetaExibida(AppLocalizations l10n) =>
+      temEtiquetaPadrao ? l10n.familiaEtiquetaPadrao : etiqueta;
+
+  /// Retorna uma descrição resumida dos dias da semana selecionados, no
+  /// idioma ativo do app — chaves dinâmicas de [AppLocalizations], nunca
+  /// hardcoded, para que o rótulo/frequência do card de alarme (aba
+  /// Família) apareça corretamente traduzido nos 11 idiomas suportados.
+  String diasResumidos(AppLocalizations l10n) {
+    if (diasSemana.isEmpty) return l10n.familiaDiasNuncaLabel;
+    if (diasSemana.length == 7) return l10n.familiaDiasTodosLabel;
+
+    final nomesDias = {
+      1: l10n.familiaDiaAbrevSeg,
+      2: l10n.familiaDiaAbrevTer,
+      3: l10n.familiaDiaAbrevQua,
+      4: l10n.familiaDiaAbrevQui,
+      5: l10n.familiaDiaAbrevSex,
+      6: l10n.familiaDiaAbrevSab,
+      7: l10n.familiaDiaAbrevDom,
     };
 
     final diasOrdenados = diasSemana.toList()..sort();
 
     if (diasOrdenados.length == 5 &&
         diasOrdenados.every((d) => d >= 1 && d <= 5)) {
-      return 'Seg a Sex';
+      return l10n.familiaDiasSegASexLabel;
     }
 
     return diasOrdenados.map((d) => nomesDias[d] ?? '').join(', ');

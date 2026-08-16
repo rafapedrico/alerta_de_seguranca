@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
+import '../main.dart' show iniciarServicosPosLoginOuDashboard;
 import '../services/alertas_recebidos_service.dart';
+import '../services/battery_optimization_service.dart';
+import '../services/sms_permission_service.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/monitoramento_tab.dart';
@@ -47,11 +52,35 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
+    // ETAPA 3 do lazy loading do cold start (ver main.dart): só agora,
+    // com o usuário efetivamente chegando no dashboard, é que sobem os
+    // serviços nativos pesados (Alarme de rotina, notificação,
+    // Foreground Service do botão físico, fila de retry, FCM,
+    // heartbeat de localização, limites do plano) — nunca durante o
+    // cold start em si. Guardada internamente para nunca
+    // rodar duas vezes na mesma sessão do engine (ex.: navegar para
+    // fora e voltar para a Home).
+    unawaited(iniciarServicosPosLoginOuDashboard());
+
     // Indicador de "não visualizado" no ícone da aba Histórico (item 4
     // do pedido de UX do guardião) — recarrega a contagem toda vez que a
     // Home é (re)construída, garantindo que reflita alertas recebidos
     // enquanto o app estava fechado/em segundo plano.
     AlertasRecebidosService.atualizarContagem();
+
+    // Checklist de permissões do onboarding — uma única vez por
+    // instalação, logo na primeira entrada na Home (pós post-frame, já
+    // com o BuildContext totalmente montado). Encadeado (não paralelo)
+    // de propósito: nunca empilha dois diálogos de permissão ao mesmo
+    // tempo — SMS/READ_PHONE_STATE primeiro (ver SmsPermissionService),
+    // isenção de bateria depois (ver BatteryOptimizationService).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await SmsPermissionService().verificarNoOnboarding(context);
+      if (!mounted) return;
+      await BatteryOptimizationService().verificarNoOnboarding(context);
+    });
   }
 
   // Ordem exata das abas: Segurança, Família, Monitoramento, Histórico

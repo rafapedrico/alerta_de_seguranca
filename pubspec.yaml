@@ -13,7 +13,7 @@ dependencies:
   # Internacionalização (i18n/l10n) - Português/Inglês/Espanhol
   flutter_localizations:
     sdk: flutter
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Local Database
   sqflite: ^2.3.0
@@ -21,21 +21,57 @@ dependencies:
 
   # Firebase — projeto real "guardiaox" já configurado (ver
   # android/app/google-services.json). firebase_auth ativado (login/cadastro
-  # reais por e-mail/senha, ver lib/services/firebase_auth_service.dart);
-  # login social (Google/Facebook) permanece mockado por enquanto.
-  # firebase_messaging ativado para o Push App-para-App de alerta híbrido
-  # (ver lib/services/fcm_service.dart) e cloud_functions para as chamadas
-  # callable (ex: confirmação de compra de créditos da Carteira).
+  # reais por e-mail/senha, ver lib/services/firebase_auth_service.dart, e
+  # login social Google/Facebook/Apple, ver
+  # lib/services/social_auth_service.dart). firebase_messaging ativado para
+  # o Push App-para-App de alerta híbrido (ver lib/services/fcm_service.dart)
+  # e cloud_functions para as chamadas callable da aba Monitoramento (ver
+  # lib/services/monitoramento_service.dart).
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
   firebase_auth: ^4.16.0
   firebase_messaging: ^14.9.4
   cloud_functions: ^4.7.6
-  # google_sign_in: ^6.2.1
-  # flutter_facebook_auth: ^6.2.1
+  # CORREÇÃO (bug real diagnosticado em teste, 2026-08-10): login
+  # travando indefinidamente, sem erro, tanto e-mail/senha quanto
+  # social. Sem NENHUM provedor de App Check ativado, o interceptor de
+  # rede que o próprio SDK (firebase_auth/firebase_core) injeta em toda
+  # chamada ficava tentando obter um token de um provedor inexistente e
+  # nunca completava a chamada — nem sucesso, nem exceção, só um
+  # `Future` pendurado para sempre (confirmado via logcat: o log do
+  # próprio SDK "Error getting App Check token; using placeholder token
+  # instead" aparecia, mas a chamada JAMAIS retornava depois disso).
+  # Versão 0.2.x é a faixa compatível com firebase_core ^2.32.0 (ver
+  # lib/main.dart, `_iniciarFirebaseEAuth`, para a ativação).
+  firebase_app_check: ^0.2.1+22
 
-  # Compras consumíveis (recarga da Carteira em USD) — Google Play apenas,
-  # não há projeto iOS neste repositório.
+  # google_sign_in ^7.x — CORREÇÃO (mesmo bug real acima): a 6.2.2 usa a
+  # API "clássica" (legacy) do Google, que o próprio SDK nativo já
+  # acusa como descontinuada em runtime ("Please migrate to the
+  # Credential Manager APIs") — na prática, travava indefinidamente
+  # após obter o token nativo com sucesso, sem nunca completar nem
+  # lançar exceção do lado Dart (confirmado via logcat: só o Google
+  # especificamente, e-mail/senha e Facebook — mesmo caminho de
+  # Firebase Auth — continuaram funcionando normalmente). A 7.x
+  # reescreve a API por completo (singleton `GoogleSignIn.instance`,
+  # `initialize()` obrigatório antes de qualquer outra chamada,
+  # `authenticate()` no lugar de `signIn()`) — ver
+  # `social_auth_service.dart`.
+  google_sign_in: ^7.2.0
+
+  # Login social Facebook/Apple (ver lib/services/social_auth_service.dart)
+  # — versões travadas na major mais recente ainda compatível com
+  # firebase_auth ^4.16.0 (subir pra firebase_auth 6.x seria uma migração
+  # maior, fora do escopo deste recurso; `flutter pub outdated` mostra as
+  # versões mais novas incompatíveis).
+  flutter_facebook_auth: ^7.1.0
+  sign_in_with_apple: ^7.0.1
+
+  # Consulta o preço REAL da assinatura mensal do Plano Premium
+  # diretamente da loja (Google Play Billing/App Store) — ver
+  # lib/services/premium_price_service.dart. NÃO relacionado à antiga
+  # Carteira de Créditos (removida em 2026-08-11 junto com o WhatsApp de
+  # contingência que ela financiava).
   in_app_purchase: ^3.2.0
 
   # Encryption
@@ -50,7 +86,7 @@ dependencies:
   # UI
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.3.3
-  font_awesome_flutter: 10.7.0
+  font_awesome_flutter: ^11.0.0
 
   # Contatos e permissões (Contatos de Emergência - aba Família)
   flutter_contacts: ^1.1.9+2
@@ -99,13 +135,12 @@ flutter:
 # `dart run flutter_launcher_icons`, ver assets/images/app_icon.png (logo
 # "GX" do Guardião-X). Ativado só para Android (ícone padrão + ícone
 # adaptativo, com fundo sólido grafite combinando com o escudo do ícone)
-# — este repositório não possui projeto iOS (ver comentário sobre
-# in_app_purchase acima).
+# — este repositório não possui projeto iOS.
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/images/app_icon.png"
-  min_sdk_android: 21
+  min_sdk_android: 23
   adaptive_icon_background: "#12131C"
   adaptive_icon_foreground: "assets/images/app_icon.png"
 

@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Exigida para o Android sequer OFERECER a opção "Permitir o tempo
+         todo" (background location) — ver OnboardingScreen/OnboardingService,
+         item "Localização sempre ativa". Sem esta declaração no manifest,
+         Permission.locationAlways/Geolocator.requestPermission() nunca
+         retorna LocationPermission.always, mesmo com o usuário tentando
+         conceder manualmente em Configurações. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
@@ -16,6 +23,11 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
+    <!-- Exigida pelo Android 14+ para declarar um Foreground Service do
+         tipo "dataSync" (ver SosDispatchService) — janela crítica de
+         envio do SMS/upload do SOS que sobrevive à morte da Activity. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -24,12 +36,21 @@
 
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
 
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
+    <!-- Isenção de otimização de bateria/Doze agressivo do fabricante —
+         ver BatteryOptimizationService. Só a permissão de PEDIR a
+         isenção (abre a tela nativa de confirmação); a concessão em si
+         é sempre uma decisão explícita do usuário. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
+    <!-- Exigida para forçar o volume do canal STREAM_ALARM ao máximo ao
+         receber um alerta crítico de outro usuário — ver
+         AlertaRecebidoAlarmService (modo "Despertador de Emergência"). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
     <application
-        android:label="security_check_app"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
@@ -108,6 +129,33 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Login social com Facebook (ver
+             lib/services/social_auth_service.dart) — boilerplate padrão
+             exigido pela Facebook SDK nativa (o plugin flutter_facebook_auth
+             não contribui isso automaticamente via merge de manifest, ver
+             comentário em strings.xml sobre os valores placeholder). -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id"/>
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token"/>
+        <activity
+            android:name="com.facebook.FacebookActivity"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:label="@string/app_name"
+            android:exported="false"/>
+        <activity
+            android:name="com.facebook.CustomTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="@string/fb_login_protocol_scheme"/>
+            </intent-filter>
+        </activity>
+
         <!-- Canal padrão do firebase_messaging para mensagens que
              chegam sem um canal explícito — mesmo id do canal de
              "Alerta de Emergência Recebido" criado em tempo de execução
@@ -160,6 +208,22 @@
                 android:value="Monitoramento do botao fisico de SOS de seguranca pessoal"/>
         </service>
 
+        <!-- Reinicia o VolumeSosService após reboot/atualização do app —
+             sem isso, o monitoramento do botão físico só voltava a rodar
+             depois que o usuário abrisse o app manualmente pelo menos
+             uma vez (ver VolumeSosBootReceiver). -->
+        <receiver
+            android:name=".VolumeSosBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
         <!-- Alarme de rotina: caminho 100% nativo (bypassa Doze), acorda
              o aparelho e garante o disparo mesmo com a tela bloqueada. -->
         <receiver
@@ -174,6 +238,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Alarme de rotina de seguranca pessoal (check-in)"/>
         </service>
+
+        <!-- Janela crítica de disparo do SOS (SMS nativo + upload da foto
+             ao Firebase Storage/Firestore) — mantém o processo vivo
+             durante o envio, independente da Activity/engine principal
+             ser destruída (ver SosDispatchService/SosDisparoService). -->
+        <service
+            android:name=".SosDispatchService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
 
         <!-- Solicitação de localização (aba Monitoramento) via FCM: mesmo
              caminho 100% nativo do botão de SOS/alarme de rotina acima —
@@ -197,6 +270,24 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Solicitacao de localizacao recebida (acordar tela)"/>
+        </service>
+
+        <!-- Modo "Despertador de Emergência" (reespecificação do usuário,
+             2026-08-15): toca um alarme em loop, no volume máximo do
+             canal STREAM_ALARM (furando o modo silencioso do aparelho),
+             quando ESTE aparelho recebe o alerta crítico de outro
+             usuário — ver AlertaRecebidoAlarmService/AlertaRecebidoAlarmPlugin.
+             A notificação PRÓPRIA deste serviço (exigida pelo Android
+             para qualquer Foreground Service) tem botão "Silenciar" e
+             pode ser descartada com um gesto — ambos silenciam o alarme
+             imediatamente (ver `setDeleteIntent`/`ACTION_PARAR`). -->
+        <service
+            android:name=".AlertaRecebidoAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Alarme sonoro de alerta de emergencia recebido de outro usuario"/>
         </service>
 
         <!-- Device Admin — única forma de bloquear a tela sob demanda
@@ -228,5 +319,15 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="whatsapp"/>
+        </intent>
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
     </queries>
 </manifest>

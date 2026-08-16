@@ -83,10 +83,6 @@ class FirebaseSyncService {
   /// a Cloud Function resolve, na hora de um alerta, quais contatos de
   /// emergência têm conta no app (ver `alertaHibridoService.js`).
   ///
-  /// `saldoUsd: 0` só é gravado AQUI (cadastro) — nenhum outro ponto do
-  /// app cliente deve voltar a escrever este campo depois disso; toda
-  /// alteração de saldo passa exclusivamente por Cloud Functions (ver
-  /// `functions/walletService.js`).
   Future<void> criarPerfilInicial({
     required String nome,
     required String email,
@@ -99,7 +95,6 @@ class FirebaseSyncService {
           'nome': nome,
           'email': email,
           'telefone': telefone,
-          'saldoUsd': 0,
           'criadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -110,6 +105,111 @@ class FirebaseSyncService {
     }
   }
 
+  /// Equivalente de [criarPerfilInicial] para os 3 fluxos de LOGIN SOCIAL
+  /// (Google/Facebook/Apple, ver `SocialAuthService`) — chamado por
+  /// `LoginScreen._finalizarLoginComSucesso` logo após qualquer login bem
+  /// sucedido (social OU e-mail/senha, idempotente nos dois casos).
+  ///
+  /// CORREÇÃO DE LACUNA REAL (2026-08-16): diferente do cadastro por
+  /// e-mail/senha ([CadastroScreen], que sempre chama [criarPerfilInicial]
+  /// com nome/e-mail/telefone digitados no formulário), os 3 logins
+  /// sociais NUNCA gravavam absolutamente NADA em `usuarios/{uid}` além do
+  /// que outros serviços não relacionados (heartbeat de localização, sync
+  /// de contatos, token FCM) acabavam gravando incidentalmente via merge —
+  /// `nome`/`email` do provedor social (Facebook `public_profile`+`email`,
+  /// perfil do Google, nome/e-mail opcionais da Apple) se perdiam por
+  /// completo, mesmo já vindo prontos em [User.displayName]/[User.email]
+  /// assim que o Firebase Auth aceita a credencial do provedor. Mesmo
+  /// bug/mesma família do já corrigido para `telefone`
+  /// ([atualizarTelefone]/"Meu Perfil" editável, 2026-08-14) — só que para
+  /// nome e e-mail, capturáveis automaticamente aqui (telefone continua
+  /// exigindo entrada manual do usuário: nenhum dos 3 provedores sociais
+  /// devolve telefone verificado por padrão).
+  ///
+  /// [nome]/[email] nulos ou vazios são omitidos do merge (nunca
+  /// sobrescreve um valor real já gravado por um `null`/string vazia vindo
+  /// do provedor, ex: Apple ocultando o e-mail real atrás de um relay, ou
+  /// devolvendo nome só na PRIMEIRA autorização) — `SetOptions(merge:
+  /// true)` preserva o resto do documento intacto, inclusive um
+  /// `telefone` já preenchido manualmente em "Meu Perfil".
+  Future<void> sincronizarPerfilSocial({
+    String? nome,
+    String? email,
+  }) async {
+    if (!_firebaseDisponivel) return;
+    final dados = <String, dynamic>{
+      if (nome != null && nome.isNotEmpty) 'nome': nome,
+      if (email != null && email.isNotEmpty) 'email': email,
+    };
+    if (dados.isEmpty) return;
+    try {
+      // Propositalmente NÃO grava `criadoEm` aqui (diferente de
+      // [criarPerfilInicial]): com `merge: true`, um campo PRESENTE no
+      // payload sempre SOBRESCREVE o valor já existente — gravar
+      // `FieldValue.serverTimestamp()` aqui reiniciaria `criadoEm` a cada
+      // login social subsequente, não só no primeiro. Sem uma leitura
+      // prévia para checar se o documento já existe (custo extra
+      // desnecessário neste caminho, chamado a cada login), o mais seguro
+      // é simplesmente não mexer no campo — o pior caso é um usuário
+      // 100% social nunca ter `criadoEm` gravado, cosmético, não afeta
+      // nenhuma regra de negócio.
+      await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao sincronizar perfil do login social: $e');
+    }
+  }
+
+  /// Lê o `telefone` atual gravado em `usuarios/{uid}` — usado por
+  /// [ConfiguracoesTab] (seção "Meu Perfil") para exibir/editar o número
+  /// já cadastrado. `null` se não houver sessão, o documento não existir
+  /// ainda, ou o campo nunca ter sido gravado (ex: login social, ver
+  /// [atualizarTelefone] — [CadastroScreen] é o único fluxo que grava
+  /// `telefone` automaticamente, no login com e-mail/senha).
+  Future<String?> obterTelefoneAtual() async {
+    if (!_firebaseDisponivel) return null;
+    try {
+      final snap = await _documentoUsuario.get().timeout(_timeoutFirestore);
+      return snap.data()?['telefone'] as String?;
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao ler telefone atual: $e');
+      return null;
+    }
+  }
+
+  /// Grava/atualiza o `telefone` de contato em `usuarios/{uid}` — mesmo
+  /// campo que [criarPerfilInicial] já grava no cadastro por e-mail/senha,
+  /// mas aqui editável a qualquer momento (ver [ConfiguracoesTab]).
+  ///
+  /// BUG REAL CONFIRMADO (2026-08-14, teste físico): logins SOCIAIS
+  /// (Google/Facebook/Apple, ver `SocialAuthService`) nunca chamam
+  /// [criarPerfilInicial] — o documento `usuarios/{uid}` só passa a
+  /// existir de forma incidental na primeira sincronização de `fcmToken`
+  /// (ver [atualizarFcmToken]), SEM NENHUM campo `telefone`. Resultado:
+  /// a Cloud Function (`resolverContasPorTelefone`,
+  /// `functions/alertaHibridoService.js`) nunca encontra essa conta ao
+  /// resolver o telefone de um contato de emergência — o alerta por Push
+  /// nunca chega a esse usuário, mesmo com um `fcmToken` válido e
+  /// atualizado. Este método (chamado pela nova seção "Meu Perfil") é o
+  /// que fecha essa lacuna para quem logou via rede social.
+  ///
+  /// [telefone] deve já vir normalizado em E.164 (ver [TelefoneUtils] —
+  /// quem chama é responsável por validar ANTES; aqui é só a escrita).
+  /// Retorna `true` em caso de sucesso.
+  Future<bool> atualizarTelefone(String telefone) async {
+    if (!_firebaseDisponivel) return false;
+    try {
+      await _documentoUsuario.set(
+        {'telefone': telefone},
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar telefone: $e');
+      return false;
+    }
+  }
+
   /// Grava/atualiza o token FCM atual do aparelho em
   /// `usuarios/{uid}.fcmToken` — é por ele que a Cloud Function resolve,
   /// na hora de um alerta, para onde enviar o Push App-para-App gratuito
@@ -117,13 +217,50 @@ class FirebaseSyncService {
   /// que o token for renovado pelo `onTokenRefresh`).
   Future<void> atualizarFcmToken(String token) async {
     if (!_firebaseDisponivel) return;
+    final String? uid = _usuarioId;
+    // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 —
+    // "messaging/registration-token-not-registered" mesmo com o token
+    // atual sincronizado): quando o MESMO telefone está cadastrado em
+    // mais de uma conta (ex: contas de teste antigas nunca apagadas), a
+    // Cloud Function (`resolverContasPorTelefone`, ver
+    // functions/alertaHibridoService.js) resolvia sempre a PRIMEIRA conta
+    // que o Firestore devolvesse pra aquele telefone — que podia ser uma
+    // conta antiga abandonada, com um token morto, em vez da sessão
+    // ativa de verdade. `fcmTokenAtualizadoEm` (timestamp do servidor,
+    // sempre que o token é gravado) deixa a Cloud Function ordenar por
+    // "conta mais recentemente ativa" em vez de confiar na ordem
+    // arbitrária do Firestore.
+    final Map<String, dynamic> dados = {
+      'fcmToken': token,
+      'fcmTokenAtualizadoEm': FieldValue.serverTimestamp(),
+    };
     try {
-      await _documentoUsuario.set(
-        {'fcmToken': token},
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
+      await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
     } catch (e) {
-      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken: $e');
+      // CORREÇÃO (bug real confirmado em teste físico, 2026-08-14 — Razr
+      // com sessão restaurada e `uid` válido, `permission-denied` em
+      // TODO cold start mesmo já com [FirebaseAuthService.garantirTokenPronto]
+      // (`getIdToken(true)`) `await`ado ANTES desta chamada, ver
+      // `main.dart`): esse `await` só garante que o SDK Dart/FirebaseAuth
+      // TERMINOU de buscar o token renovado — não que o SDK NATIVO do
+      // Firestore (que escuta as mudanças de token por um canal próprio,
+      // separado) já terminou de propagar esse MESMO token para o
+      // provedor de autenticação que efetivamente assina esta chamada.
+      // São dois hops assíncronos distintos, sem nenhuma garantia de
+      // ordem entre si. Em vez de uma lógica de espera mais complexa
+      // (ex: nova ponte nativa só para isso), uma única retentativa com
+      // um atraso curto é suficiente: a propagação interna do Firestore é
+      // sempre muito mais rápida que 1.5s na prática.
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken (uid=$uid): $e — tentando novamente em 1.5s.');
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      try {
+        await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
+        debugPrint('📲 [FirebaseSyncService] fcmToken sincronizado na 2ª tentativa (uid=$uid).');
+      } catch (e2) {
+        debugPrint(
+            '⚠️ [FirebaseSyncService] Falha ao atualizar fcmToken mesmo na 2ª tentativa (uid=$uid): $e2');
+      }
     }
   }
 
@@ -140,10 +277,7 @@ class FirebaseSyncService {
   /// (`entregueApp: true` + `status: 'entregue_dispositivo'`, redundantes
   /// de propósito para deixar o critério inequívoco para quem ler o
   /// documento), o único ponto do pipeline em que o cliente escreve
-  /// diretamente nessa coleção (ver `firestore.rules`) — é essa
-  /// confirmação que o job de transbordo
-  /// (`functions/transbordoWhatsappMonitor.js`) verifica antes de decidir
-  /// se cobra o WhatsApp de contingência para este contato.
+  /// diretamente nessa coleção (ver `firestore.rules`).
   Future<void> confirmarEntregaAlerta(String idEntrega) async {
     if (!_firebaseDisponivel) return;
     try {
@@ -196,7 +330,7 @@ class FirebaseSyncService {
     // própria (ver firestore.rules) que permite acesso a qualquer usuário
     // com permissão "aprovado" na aba Monitoramento (MonitoramentoService),
     // sem expor os demais campos privados do documento principal
-    // (saldoUsd, fcmToken). Best-effort e independente da escrita acima —
+    // (fcmToken). Best-effort e independente da escrita acima —
     // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
     // pânico.
     try {
@@ -220,7 +354,7 @@ class FirebaseSyncService {
   /// [contatos] deve vir diretamente de
   /// `DatabaseHelper.getContatosEmergencia()`, preservando o mesmo
   /// critério já usado pelo SMS nativo (inclui contatos com exclusão
-  /// pendente dentro da janela de 24h, filtra apenas telefones vazios).
+  /// pendente dentro da janela de 2h, filtra apenas telefones vazios).
   Future<void> sincronizarContatosEmergencia(
     List<Map<String, dynamic>> contatos,
   ) async {
@@ -230,10 +364,6 @@ class FirebaseSyncService {
           .map((contato) => {
                 'nome': (contato['nome'] as String?) ?? '',
                 'telefone': (contato['telefone'] as String?) ?? '',
-                // Ver Switch "Notificar via WhatsApp ($0.10 USD)" em
-                // ConfiguracoesTab — só contatos com esta flag ligada
-                // podem gerar cobrança de WhatsApp de contingência.
-                'whatsappHabilitado': (contato['whatsapp_habilitado'] as int?) == 1,
               })
           .where((contato) => (contato['telefone'] as String).isNotEmpty)
           .toList();
@@ -245,28 +375,6 @@ class FirebaseSyncService {
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao sincronizar contatos de emergência: $e');
-    }
-  }
-
-  /// Grava a chave GLOBAL "Enviar também via WhatsApp" (ver
-  /// ConfiguracoesTab) em `usuarios/{uid}.enviarWhatsappSimultaneo` —
-  /// lida pela Cloud Function no momento do disparo
-  /// ([dispararAlertaHibrido] em `functions/alertaHibridoService.js`)
-  /// para decidir se o WhatsApp de contingência deve ser enviado
-  /// IMEDIATAMENTE, em paralelo ao Push FCM, em vez de aguardar os 60s
-  /// normais de transbordo (`functions/transbordoWhatsappMonitor.js`).
-  Future<void> atualizarEnviarWhatsappSimultaneo(bool ativo) async {
-    if (!_firebaseDisponivel) return;
-    try {
-      await _documentoUsuario.set(
-        {'enviarWhatsappSimultaneo': ativo},
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
-      debugPrint(
-          '☁️ [FirebaseSyncService] enviarWhatsappSimultaneo atualizado para $ativo.');
-    } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao atualizar enviarWhatsappSimultaneo: $e');
     }
   }
 
@@ -312,8 +420,8 @@ class FirebaseSyncService {
   /// Dispara o P2 da sequência unificada de SOS — a foto já foi enviada
   /// ao Firebase Storage por [SosDisparoService] antes desta chamada,
   /// [fotoUrl] é o link (com token de acesso) que a Cloud Function
-  /// repassa aos contatos de emergência via Push e WhatsApp. Requer
-  /// sessão autenticada, mesma regra de [dispararAlertaSosFisico].
+  /// repassa aos contatos de emergência via Push. Requer sessão
+  /// autenticada, mesma regra de [dispararAlertaSosFisico].
   Future<bool> dispararAlertaSosFoto({
     required String fotoUrl,
     required String origem,
@@ -378,7 +486,19 @@ class FirebaseSyncService {
     String? motivo,
     String? eventoId,
   }) async {
-    if (!_firebaseDisponivel) return false;
+    // Diagnóstico direto do bug real corrigido em 2026-08-14 (ver
+    // `main.dart::_iniciarFirebaseEAuth`): sem sessão ativa
+    // (`_usuarioId == null`), este método sempre retorna `false` logo
+    // abaixo, SEM escrever nada no Firestore — nem o Push chega ao app
+    // receptor. Log explícito para nunca mais precisar adivinhar isso de
+    // novo via teste físico.
+    debugPrint('☁️ [TENTATIVA DE DESARME INCORRETA] Firebase.apps=${Firebase.apps.length} '
+        'uid=${_usuarioId ?? "NULO (sem sessão!)"} _firebaseDisponivel=$_firebaseDisponivel');
+    if (!_firebaseDisponivel) {
+      debugPrint('🚫 [TENTATIVA DE DESARME INCORRETA] Abortando: Firebase '
+          'indisponível ou sem sessão ativa — Push/Firestore NÃO enviado.');
+      return false;
+    }
     try {
       if (eventoId != null && eventoId.isNotEmpty) {
         final documentoEvento = _documentoUsuario.collection('alertas').doc(eventoId);

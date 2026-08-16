@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:async';
 import '../../services/database_helper.dart';
@@ -9,10 +10,12 @@ import '../../services/location_service.dart';
 import '../../services/emergency_alert_service.dart';
 import '../../services/firebase_sync_service.dart';
 import '../../services/alarme_service.dart';
-import '../../services/alarme_sonoro_service.dart';
 import '../../services/api_service.dart';
+import '../../services/background_location_heartbeat_service.dart';
 import '../../services/captura_dissuasao_service.dart';
 import '../../services/sos_disparo_service.dart';
+import '../cronometro_disparado_screen.dart' show chaveCronometroFluxoResolvido;
+import '../../widgets/confirmacao_alerta_emergencia.dart';
 import '../../widgets/pin_dialog.dart';
 
 
@@ -29,12 +32,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
   final DatabaseHelper _db = DatabaseHelper();
   final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
   final AlarmeService _alarmeService = AlarmeService();
-  // Alerta Sonoro Customizável (Etapa 1 - Expansão Global): dispara o
-  // som escolhido pelo usuário em LOOP assim que o cronômetro principal
-  // chega a zero (tela de bloqueio de PIN é exibida), e para
-  // imediatamente quando o PIN correto é digitado.
-  final AlarmeSonoroService _alarmeSonoroService = AlarmeSonoroService();
-
 
   // Controlador para o campo de Anotações/Dica de Contexto
   final TextEditingController _contextoController = TextEditingController();
@@ -51,13 +48,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
     fontWeight: FontWeight.w500,
   );
 
-  // Tolerância fixa (em segundos) após o cronômetro chegar a zero, antes
-  // do disparo automático de emergência. Usada tanto para a contagem
-  // visual em memória (com o app aberto) quanto somada à duração do
-  // alarme NATIVO agendado via AlarmeService (que continua rodando
-  // mesmo se o app for fechado).
-  static const int _segundosToleranciaPadrao = 60;
-
   // Variáveis do Banco de Dados
   String? _pinRealConfirmado;
 
@@ -70,24 +60,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
   bool _isTimerAtivo = false;
   int _segundosRestantes = 0;
 
-  // Estado de Bloqueio por PIN
-  Timer? _timerToleranciaBloqueio;
-
-  int _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
-
   // ==========================================================
-  // GUARDA CONTRA CONDIÇÃO DE CORRIDA (race condition) DE TIMERS
+  // CONTROLE DO DIÁLOGO DE PIN DE DESARME
   // ==========================================================
-  // Flag de controle centralizada: impede que _ativarBloqueioDeSeguranca()
-  // seja executada mais de uma vez simultaneamente (ex: o _timer principal
-  // chegando a zero E um toque manual do usuário em _alternarTimer quase
-  // ao mesmo tempo), o que anteriormente podia criar DOIS
-  // _timerToleranciaBloqueio concorrentes — o mais antigo ficava "órfão"
-  // rodando em paralelo sem que sua referência fosse cancelada antes de
-  // ser sobrescrita pelo novo Timer, causando decrementos/disparos de SOS
-  // mais rápidos e inesperados que o esperado (o efeito visual relatado:
-  // o botão fica laranja por ~1s e o SOS já dispara).
-  bool _bloqueioEmAndamento = false;
+  // Regra de negócio reespecificada em 2026-08-09: o toque no botão
+  // laranja NÃO interrompe mais o cronômetro principal — ele continua
+  // rodando normalmente em segundo plano por trás do diálogo de PIN
+  // (ver [_abrirDialogoDesarme]). Esta flag apenas evita que o mesmo
+  // diálogo seja aberto duas vezes simultaneamente (o modal já bloqueia
+  // toques na tela por baixo dele, mas esta guarda extra cobre qualquer
+  // chamada programática repetida).
+  bool _dialogoPinAberto = false;
 
   // Serviço singleton responsável pelo ciclo de vida proativo do GPS:
   // solicitação de permissão, warm-up ao iniciar o cronômetro e loop de
@@ -140,29 +123,21 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // Interrompe o loop de atualização de localização (se ainda ativo) ao
     // destruir a tela, evitando Timers órfãos em segundo plano.
     _locationService.pararCicloDeAtualizacao();
-    // Garante que o alerta sonoro em loop nunca continue tocando após a
-    // tela ser destruída.
-    _alarmeSonoroService.pararAlarme();
     super.dispose();
   }
 
   // ==========================================================
   // GERENCIADOR CENTRALIZADO DO CICLO DE VIDA DOS TIMERS
   // ==========================================================
-  // Ponto ÚNICO de cancelamento de TODOS os Timers desta tela
-  // (cronômetro principal, tolerância de bloqueio e status da API).
-  // Chamado sistematicamente ANTES de qualquer novo Timer ser criado em
-  // qualquer fluxo (iniciar cronômetro, ativar bloqueio, dispose), e
+  // Ponto ÚNICO de cancelamento de TODOS os Timers desta tela (cronômetro
+  // principal e status da API). Chamado sistematicamente ANTES de
+  // qualquer novo Timer ser criado (iniciar cronômetro, dispose), e
   // também diretamente pelo dispose(). Isso elimina de raiz qualquer
   // possibilidade de dois Timers do mesmo tipo coexistirem
-  // simultaneamente — a causa raiz da condição de corrida relatada (o
-  // cronômetro "piscando" laranja por ~1s e disparando o SOS
-  // prematuramente).
+  // simultaneamente.
   void _cancelarTodosOsTimers() {
     _timer?.cancel();
     _timer = null;
-    _timerToleranciaBloqueio?.cancel();
-    _timerToleranciaBloqueio = null;
     _timerStatusApi?.cancel();
     _timerStatusApi = null;
   }
@@ -173,14 +148,6 @@ class _SegurancaTabState extends State<SegurancaTab> {
   void _cancelarTimerPrincipal() {
     _timer?.cancel();
     _timer = null;
-  }
-
-  /// Cancela exclusivamente o Timer de tolerância de bloqueio (60s),
-  /// sempre chamado ANTES de criar um novo — nunca permitindo que dois
-  /// Timers de tolerância concorram entre si.
-  void _cancelarTimerToleranciaBloqueio() {
-    _timerToleranciaBloqueio?.cancel();
-    _timerToleranciaBloqueio = null;
   }
 
   /// Chama ApiService.enviarStatus (heartbeat para /api/status) e
@@ -235,7 +202,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         setState(() {
           _pinRealConfirmado = config['pin_real'] as String?;
         });
-        // Verifica se o prazo de segurança de 24h já expirou, e caso
+        // Verifica se o prazo de segurança de 2h já expirou, e caso
         // afirmativo, efetiva a troca de senha pendente automaticamente.
         await _processarSenhaPendenteSeExpirada();
       }
@@ -243,7 +210,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   }
 
   /// Verifica se existe uma senha pendente e se o prazo de segurança de
-  /// 24 horas desde a solicitação já se passou. Se sim, promove a senha
+  /// 2 horas desde a solicitação já se passou. Se sim, promove a senha
   /// pendente para senha principal (pin_real) e limpa os campos temporários.
   /// Caso contrário, mantém a senha antiga como válida para autenticação.
   ///
@@ -261,31 +228,65 @@ class _SegurancaTabState extends State<SegurancaTab> {
         });
       }
     }
-    // Se ainda não passaram 24h, nada é feito: a senha antiga
+    // Se ainda não passaram 2h, nada é feito: a senha antiga
     // (_pinRealConfirmado) continua sendo a única válida para autenticação.
   }
 
   /// Ação disparada ao tocar no botão circular de check-in.
   ///
-  /// Regra de segurança crítica: uma vez que o timer esteja ativo (em
-  /// contagem regressiva), ele NUNCA pode ser cancelado diretamente por um
-  /// simples toque. Em vez disso, o toque interrompe a contagem regressiva
-  /// e abre a MESMA tela de bloqueio com teclado de PIN (com os mesmos 60s
-  /// de tolerância) usada quando o timer expira naturalmente. Isso garante
-  /// que, mesmo para desarmar voluntariamente, o usuário precise confirmar
-  /// com o PIN. O ALARME NATIVO agendado via AlarmeService só é cancelado
-  /// quando o PIN correto for digitado com sucesso — abrir a tela de
-  /// bloqueio, por si só, NUNCA cancela o alarme nativo.
+  /// Regra de segurança crítica (reespecificada em 2026-08-09): uma vez
+  /// que o timer esteja ativo (botão laranja, "Toque: desarmar"), o
+  /// toque NUNCA cancela o cronômetro diretamente — em vez disso, abre
+  /// IMEDIATAMENTE o teclado numérico de PIN (ver [_abrirDialogoDesarme]).
+  /// O cronômetro principal CONTINUA rodando normalmente em segundo
+  /// plano por trás do diálogo: só o PIN correto o cancela, ou o próprio
+  /// tempo se esgotando dispara o alerta. O ALARME NATIVO agendado via
+  /// AlarmeService só é cancelado quando o PIN correto for digitado com
+  /// sucesso — abrir o diálogo, por si só, NUNCA cancela o alarme nativo.
   void _alternarTimer() {
     if (_isTimerAtivo) {
-      // Tentativa de desarme manual (toque no botão antes do cronômetro
-      // zerar): o alarme sonoro NÃO deve tocar aqui — apenas quando o
-      // cronômetro chegar naturalmente a 00:00 (ver
-      // [_ativarBloqueioDeSeguranca]).
-      _ativarBloqueioDeSeguranca(tocarAlarmeSonoro: false);
+      _abrirDialogoDesarme();
     } else {
       _iniciarTimer();
     }
+  }
+
+  /// Abre o diálogo de PIN para tentativa de desarme (toque no botão
+  /// laranja). Exige o PIN correto ou 3 tentativas erradas consecutivas
+  /// para se resolver (ver [_aoConfirmarPinCorreto]/
+  /// [_aoAtingirTerceiraSenhaErrada]) — NÃO interrompe o cronômetro
+  /// principal, que continua contando em segundo plano por trás do
+  /// diálogo. Protegido por [_dialogoPinAberto] contra abertura em
+  /// duplicidade.
+  void _abrirDialogoDesarme() {
+    if (_dialogoPinAberto || !mounted) return;
+    _dialogoPinAberto = true;
+    exibirDialogoPin(
+      context: context,
+      pinEsperado: _pinRealConfirmado,
+      aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
+      // Regra de negócio: exatamente 3 tentativas de PIN erradas
+      // encerram o cronômetro imediatamente e disparam o alerta
+      // completo — ver [_aoAtingirTerceiraSenhaErrada]. Nas 2 primeiras
+      // tentativas erradas o diálogo apenas mostra o erro e permanece
+      // aberto para uma nova tentativa, sem disparar nada.
+      limiteErrosConsecutivos: 3,
+      aoAtingirLimiteDeErros: _aoAtingirTerceiraSenhaErrada,
+    ).then((_) {
+      _dialogoPinAberto = false;
+    });
+  }
+
+  /// Fecha o diálogo de PIN se estiver aberto — usado quando o próprio
+  /// cronômetro (não o usuário) precisa encerrar o ciclo: o tempo se
+  /// esgotou naturalmente, ou a 3ª tentativa de PIN errada disparou o
+  /// alerta. Devolve a interface ao estado normal (regra de negócio:
+  /// "libere a interface do aplicativo para uso normal").
+  void _fecharDialogoPinSeAberto() {
+    if (_dialogoPinAberto && mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    _dialogoPinAberto = false;
   }
 
 
@@ -300,13 +301,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
       return;
     }
 
-    // Cancela sistematicamente QUALQUER Timer principal ou de tolerância
-    // que ainda possa estar rodando de um ciclo anterior, antes de
-    // iniciar um novo — elimina a possibilidade de dois cronômetros
-    // concorrentes coexistirem.
+    // Cancela sistematicamente QUALQUER Timer principal que ainda possa
+    // estar rodando de um ciclo anterior, antes de iniciar um novo —
+    // elimina a possibilidade de dois cronômetros concorrentes
+    // coexistirem.
     _cancelarTimerPrincipal();
-    _cancelarTimerToleranciaBloqueio();
-    _bloqueioEmAndamento = false;
 
     // Novo ciclo de check-in: reseta a flag de disparo único, garantindo
     // que o próximo esgotamento de tolerância possa disparar novamente
@@ -322,13 +321,17 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
     // Registra no histórico ('seguranca') a ativação do cronômetro de
     // check-in, tornando a ação 100% transparente e auditável.
-    _db.inserirEventoHistorico(
-      titulo: 'Cronômetro ativado',
-      descricao: 'Check-in de segurança iniciado com duração de '
-          '${_horaSelecionada.toString().padLeft(2, '0')}h'
-          '${_minutoSelecionada.toString().padLeft(2, '0')}min.',
-      categoria: 'seguranca',
-    );
+    if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      _db.inserirEventoHistorico(
+        titulo: l10n.historicoCronometroAtivadoTitulo,
+        descricao: l10n.historicoCronometroAtivadoDescricao(
+          _horaSelecionada.toString().padLeft(2, '0'),
+          _minutoSelecionada.toString().padLeft(2, '0'),
+        ),
+        categoria: 'seguranca',
+      );
+    }
 
     // Regra de negócio 2 e 3 (Captura Proativa + Loop de Atualização):
     // no exato momento em que o cronômetro é iniciado, dispara IMEDIATAMENTE
@@ -340,14 +343,24 @@ class _SegurancaTabState extends State<SegurancaTab> {
 
     // Agenda o alarme NATIVO (android_alarm_manager_plus), que garante o
     // disparo de emergência mesmo que o app seja fechado ou fique em
-    // segundo plano. A duração agendada replica exatamente o mesmo
-    // comportamento em memória: tempo escolhido pelo usuário + 60s de
-    // tolerância da tela de bloqueio.
-    final duracaoTotalComTolerancia = Duration(
-      seconds: totalSegundos + _segundosToleranciaPadrao,
-    );
+    // segundo plano. Regra de negócio reespecificada em 2026-08-09: sem
+    // tolerância extra — dispara exatamente no fim do tempo escolhido
+    // pelo usuário, replicando o mesmo instante do cronômetro em memória.
     _alarmeService.agendarAlarmeEmergencia(
-      duracaoAteDisparo: duracaoTotalComTolerancia,
+      duracaoAteDisparo: Duration(seconds: totalSegundos),
+      contexto: _contextoController.text.trim(),
+    );
+
+    // Regra de negócio 4 (Rastreamento em segundo plano): registra este
+    // ciclo como um dead man's switch na nuvem, reaproveitando a mesma
+    // infraestrutura já validada para o alarme de rotina — dentro da
+    // janela de 120 minutos antes do fim, a localização passa a ser
+    // capturada e sobrescrita na nuvem a cada 1 minuto; se o aparelho
+    // ficar offline/desligado antes do fim, a Cloud Function agendada
+    // (`scheduledAlarmMonitor.js`) dispara o alerta usando a ÚLTIMA
+    // localização válida registrada, com seu horário exato.
+    BackgroundLocationHeartbeatService().registrarCheckinAtivo(
+      dataHoraDisparo: DateTime.now().add(Duration(seconds: totalSegundos)),
       contexto: _contextoController.text.trim(),
     );
 
@@ -366,23 +379,68 @@ class _SegurancaTabState extends State<SegurancaTab> {
           _segundosRestantes--;
         });
       } else {
-        _cancelarTimerPrincipal();
-        _ativarBloqueioDeSeguranca();
+        // Reespecificação do usuário (2026-08-10, Parte 3): o tempo
+        // chegou ao fim — a partir daqui, quem conduz o fluxo real é a
+        // tela dedicada [CronometroDisparadoScreen], aberta pelo alarme
+        // NATIVO agendado em [AlarmeService.agendarAlarmeEmergencia] para
+        // este MESMO instante (som + teclado de PIN com 60 segundos de
+        // tolerância, 3 tentativas). Este Timer visual só encerra a
+        // contagem local — NUNCA MAIS dispara o alerta diretamente (antes
+        // disparava aqui, sem nenhuma chance de PIN).
+        _finalizarTimerLocalAoZerar();
       }
     });
   }
 
+  /// Encerra apenas o Timer visual e o loop LOCAL de localização desta
+  /// tela (par do `iniciarCicloDeAtualizacao()` feito em [_iniciarTimer])
+  /// quando o cronômetro chega a zero — a partir daqui,
+  /// [CronometroDisparadoScreen] assume seu PRÓPRIO par
+  /// iniciar/parar de rastreamento pela duração da janela de 60s.
+  /// Propositalmente NÃO chama [_pararTimer]/[BackgroundLocationHeartbeatService.cancelarCheckinAtivo]:
+  /// o heartbeat de nuvem (dead man's switch) e o alarme nativo continuam
+  /// intactos até o fluxo ser realmente resolvido (PIN correto ou alerta
+  /// disparado), dentro da nova tela.
+  void _finalizarTimerLocalAoZerar() {
+    _cancelarTimerPrincipal();
+    _fecharDialogoPinSeAberto();
+    _locationService.pararCicloDeAtualizacao();
+    if (mounted) {
+      setState(() {
+        _isTimerAtivo = false;
+        _segundosRestantes = 0;
+      });
+    }
+  }
+
   void _pararTimer() {
     _cancelarTimerPrincipal();
-    _cancelarTimerToleranciaBloqueio();
-    _bloqueioEmAndamento = false;
+
+    // CORREÇÃO DE BUG REAL (2026-08-11): [_executarDisparoDeEmergencia]
+    // (3ª tentativa de PIN errada NUMA TENTATIVA MANUAL de desarme, ANTES
+    // do cronômetro zerar) chama [_pararTimer] mas nunca cancelava o
+    // alarme NATIVO agendado em [AlarmeService.agendarAlarmeEmergencia]
+    // — o cronômetro "ressuscitava" sozinho no horário original, minutos
+    // depois, tocando som e reabrindo o teclado de PIN de novo para um
+    // ciclo que já tinha sido resolvido (com o alerta real já enviado).
+    // Cancelar aqui é seguro mesmo no caminho de PIN correto
+    // ([_aoConfirmarPinCorreto], que já cancela antes de chegar aqui —
+    // chamada duplicada é inofensiva) e não enfraquece a regra de
+    // segurança original de [AlarmeService.cancelarAlarme] ("só cancela
+    // com o PIN correto"): nos dois casos que chegam aqui, o ciclo já
+    // está definitivamente resolvido — ou por PIN correto, ou porque o
+    // alerta de emergência JÁ foi disparado de verdade — nunca por um
+    // simples toque/abertura de tela sem prova de identidade.
+    unawaited(_alarmeService.cancelarAlarme());
+
     // O cronômetro foi parado/desarmado (por qualquer motivo): interrompe
     // o loop de atualização de localização a cada 2 minutos, já que ele
     // só deve rodar enquanto o check-in estiver ativo.
     _locationService.pararCicloDeAtualizacao();
-    // Garante que o alerta sonoro em loop nunca continue tocando além do
-    // ciclo de check-in atual, independentemente do motivo da parada.
-    _alarmeSonoroService.pararAlarme();
+    // Encerra o acompanhamento do dead man's switch na nuvem para este
+    // ciclo (ver [BackgroundLocationHeartbeatService.cancelarCheckinAtivo]) —
+    // não altera o status já gravado, apenas para de atualizá-lo.
+    BackgroundLocationHeartbeatService().cancelarCheckinAtivo();
 
     if (!mounted) return;
     setState(() {
@@ -393,149 +451,38 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // NOTA: o fechamento do diálogo de PIN (Navigator.pop) é tratado
     // explicitamente em cada ponto de chamada específico (dentro do
     // próprio PinDialogContent ao confirmar o PIN, e em
-    // _ativarBloqueioDeSeguranca quando a tolerância esgota) — NUNCA
-    // aqui, pois _pararTimer() também é chamado pelo fluxo de disparo
-    // automático de emergência, onde um pop indevido poderia fechar a
-    // rota errada ou falhar silenciosamente.
+    // [_fecharDialogoPinSeAberto] quando o disparo de emergência
+    // acontece) — NUNCA aqui, pois _pararTimer() também é chamado por
+    // esses fluxos, onde um pop indevido poderia fechar a rota errada ou
+    // falhar silenciosamente.
   }
 
-
-
-  /// Ativa a etapa de tolerância (60s) antes do disparo automático de
-  /// emergência. IMPORTANTE (correção do erro de design original): esta
-  /// etapa NÃO substitui mais a tela inteira por uma TelaBloqueioPin — a
-  /// UI normal (SegurancaTab, HomeScreen, BottomNavigationBar) permanece
-  /// totalmente visível e navegável. Um AlertDialog leve com o teclado
-  /// de PIN é aberto POR CIMA da tela atual, evitando os conflitos de
-  /// ciclo de vida relatados. Se o tempo esgotar SEM o PIN correto, o
-  /// disparo de emergência é executado exatamente UMA vez (ver
-  /// [_dispararUmaVezSeNecessario]), sem loop e sem travar a interface.
-  ///
-  /// CORREÇÃO DE RACE CONDITION: esta função agora é protegida pela flag
-  /// [_bloqueioEmAndamento], impedindo que seja executada mais de uma vez
-  /// simultaneamente — cenário que antes podia ocorrer quando o [_timer]
-  /// principal chegava a zero e, quase ao mesmo tempo, o usuário tocava
-  /// manualmente no botão (via [_alternarTimer]). Antes dessa proteção,
-  /// isso podia criar DOIS [_timerToleranciaBloqueio] concorrentes: o
-  /// mais antigo nunca era cancelado antes do novo sobrescrever sua
-  /// referência, continuando a rodar "invisível" em paralelo e
-  /// disparando o SOS de forma prematura/inesperada (o efeito relatado:
-  /// o botão fica laranja por ~1s e o alerta já dispara).
-  /// [tocarAlarmeSonoro] controla se o som de alarme deve tocar em loop
-  /// assim que a tela de bloqueio de PIN abrir. Regra de negócio: o som
-  /// só deve tocar quando o cronômetro chega naturalmente a 00:00 (chamado
-  /// do `Timer.periodic` do cronômetro principal, valor padrão `true`) —
-  /// NUNCA quando o próprio usuário toca no botão para tentar desarmar
-  /// antecipadamente (ver [_alternarTimer], que passa `false`).
-  void _ativarBloqueioDeSeguranca({bool tocarAlarmeSonoro = true}) {
-    if (_bloqueioEmAndamento) {
-      // Já existe um ciclo de tolerância em andamento: ignora esta nova
-      // chamada por completo, em vez de criar um segundo Timer
-      // concorrente.
-      return;
-    }
-    _bloqueioEmAndamento = true;
-
-    // Cancela sistematicamente qualquer Timer de tolerância remanescente
-    // antes de criar um novo (defesa em profundidade, mesmo com a flag
-    // acima já impedindo reentrância).
-    _cancelarTimerToleranciaBloqueio();
-
-    if (!mounted) return;
-    setState(() {
-      _segundosToleranciaBloqueio = _segundosToleranciaPadrao;
-    });
-
-    // ALERTA SONORO CUSTOMIZÁVEL (Etapa 1 - Expansão Global): dispara o
-    // som escolhido pelo usuário em LOOP, mas SOMENTE quando o cronômetro
-    // chegou naturalmente a 00:00 ([tocarAlarmeSonoro] == true) — nunca
-    // numa tentativa manual de desarme antecipado. Fire-and-forget para
-    // não atrasar a abertura do diálogo. Interrompido automaticamente
-    // após a duração configurada, ou imediatamente caso o PIN correto
-    // seja digitado antes (ver [_aoConfirmarPinCorreto]).
-    if (tocarAlarmeSonoro) {
-      _alarmeSonoroService.dispararAlarme();
-    }
-
-
-
-    // Exibe o diálogo de PIN por cima da tela atual. Não é aguardado
-    // (fire-and-forget) para não bloquear a contagem de tolerância, que
-    // continua rodando normalmente em paralelo via Timer.
-    if (mounted) {
-      exibirDialogoPin(
-        context: context,
-        pinEsperado: _pinRealConfirmado,
-        segundosTolerancia: _segundosToleranciaBloqueio,
-        aoConfirmarPinCorreto: _aoConfirmarPinCorreto,
-        // Regra de segurança: 3 tentativas de PIN erradas CONSECUTIVAS
-        // encerram o cronômetro imediatamente e disparam o alerta
-        // completo (localização + foto) de forma 100% silenciosa — ver
-        // [_encerrarEDispararEmergenciaPorPinIncorreto].
-        limiteErrosConsecutivos: 3,
-        aoAtingirLimiteDeErros: _encerrarEDispararEmergenciaPorPinIncorreto,
-      );
-    }
-
-
-    _timerToleranciaBloqueio = Timer.periodic(const Duration(seconds: 1), (t) {
-      // Guarda defensiva extra: garante que apenas o Timer de tolerância
-      // "atual" continue executando sua lógica, mesmo que uma referência
-      // antiga por algum motivo ainda não tenha sido totalmente
-      // finalizada pelo scheduler do Dart.
-      if (!identical(t, _timerToleranciaBloqueio)) {
-        t.cancel();
-        return;
-      }
-
-      if (_segundosToleranciaBloqueio > 0) {
-        if (!mounted) return;
-        setState(() {
-          _segundosToleranciaBloqueio--;
-        });
-      } else {
-        _cancelarTimerToleranciaBloqueio();
-        // BLINDAGEM DE SEGURANÇA: o diálogo de PIN NUNCA é fechado
-        // automaticamente pela expiração da tolerância — ele permanece
-        // aberto e travado na tela (teclado de PIN idêntico, mesma
-        // mensagem), exigindo o PIN CORRETO para ser fechado. Isso
-        // impede que um agressor, ao ver o diálogo desaparecer sozinho,
-        // conclua que o alerta foi disparado e destrua o aparelho antes
-        // que a vítima consiga confirmar sua segurança. O disparo de
-        // emergência ocorre normalmente em paralelo, SEM fechar o
-        // diálogo (ver [_dispararUmaVezSeNecessario] /
-        // [_aoConfirmarPinCorreto], o ÚNICO ponto que fecha o diálogo).
-        _dispararUmaVezSeNecessario();
-      }
-    });
-  }
-
-
-
-  /// Chamado pelo [PinDialogContent] quando o PIN correto é digitado.
-  /// Cancela o alarme NATIVO (só agora, com o PIN confirmado), interrompe
-  /// os timers locais e registra o desarme no histórico. Envolvido em
-  /// try/catch para NUNCA travar o diálogo/UI mesmo em caso de falha.
+  /// Chamado pelo [PinDialogContent] quando o PIN correto é digitado
+  /// (1ª ou 2ª tentativa). Regra de negócio: cancela o cronômetro
+  /// IMEDIATAMENTE e NENHUMA mensagem de alerta é enviada. Cancela o
+  /// alarme NATIVO (só agora, com o PIN confirmado), interrompe os
+  /// timers/heartbeat locais e registra o desarme no histórico. Envolvido
+  /// em try/catch para NUNCA travar o diálogo/UI mesmo em caso de falha.
   Future<void> _aoConfirmarPinCorreto() async {
     try {
-      _cancelarTimerToleranciaBloqueio();
-      // Interrompe IMEDIATAMENTE o alerta sonoro em loop, assim que o
-      // PIN correto for confirmado.
-      await _alarmeSonoroService.pararAlarme();
       await _alarmeService.cancelarAlarme();
       await _db.limparAguardandoConfirmacaoPin();
-
+      // Avisa a nuvem imediatamente que o check-in foi desarmado com
+      // sucesso (ver [BackgroundLocationHeartbeatService.confirmarCheckinSeguro]),
+      // antes que o dead man's switch agendado tenha qualquer chance de
+      // considerar o prazo vencido.
+      BackgroundLocationHeartbeatService().confirmarCheckinSeguro();
 
       _pararTimer();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         _db.inserirEventoHistorico(
-          titulo: 'Check-in desarmado com sucesso',
-          descricao: 'O cronômetro de segurança foi interrompido/desarmado '
-              'pelo usuário com o PIN correto.',
+          titulo: l10n.historicoCheckinDesarmadoTitulo,
+          descricao: l10n.historicoCheckinDesarmadoDescricao,
           categoria: 'seguranca',
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.segurancaCheckinDesarmado), backgroundColor: Colors.green),
+          SnackBar(content: Text(l10n.segurancaCheckinDesarmado), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -544,93 +491,204 @@ class _SegurancaTabState extends State<SegurancaTab> {
   }
 
   // Flag simples para garantir que, mesmo diante de eventuais chamadas
-  // concorrentes (ex.: Timer da tolerância + fechamento do diálogo quase
-  // simultâneos), o disparo de emergência ocorra NO MÁXIMO uma única vez
-  // por ciclo de tolerância — nunca em loop.
+  // concorrentes (ex.: o cronômetro chegando a zero E a 3ª tentativa de
+  // PIN errada quase ao mesmo tempo), o disparo de emergência ocorra NO
+  // MÁXIMO uma única vez por ciclo — nunca em loop, nunca duplicado.
   bool _disparoJaExecutadoNesteCiclo = false;
 
-  /// Garante (via flag [_disparoJaExecutadoNesteCiclo]) que o disparo de
-  /// emergência seja executado apenas UMA vez quando a tolerância
-  /// esgotar, e delega para [_executarDisparoDeEmergencia] o try/catch
-  /// completo em torno do EmergencyAlertService.
+  /// Ponto ÚNICO de disparo de emergência deste cronômetro — usado tanto
+  /// quando o tempo se esgota sem desarme (regra de negócio 3) quanto
+  /// quando o PIN é digitado errado pela 3ª vez consecutiva (regra de
+  /// negócio 2). Garante (via [_disparoJaExecutadoNesteCiclo]) que o
+  /// disparo ocorra apenas UMA vez por ciclo, fecha o diálogo de PIN se
+  /// estiver aberto (libera a interface para uso normal) e delega para
+  /// [_executarDisparoDeEmergencia] o disparo em si + o aviso na tela.
   Future<void> _dispararUmaVezSeNecessario() async {
     if (_disparoJaExecutadoNesteCiclo) return;
     _disparoJaExecutadoNesteCiclo = true;
+    // Idempotente mesmo se o cronômetro já tiver sido cancelado pelo
+    // chamador (ex: o próprio Timer.periodic ao chegar a zero) — cobre
+    // também o caminho da 3ª tentativa de PIN errada, onde o cronômetro
+    // ainda pode estar rodando neste exato instante.
+    _cancelarTimerPrincipal();
+    _fecharDialogoPinSeAberto();
+
+    // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
+    // logcat): mesmo com `cancelarAlarme()` chamado imediatamente (ver
+    // comentário abaixo), o alarme NATIVO ainda conseguia disparar
+    // depois — `AlarmManager.cancel()` não é garantidamente instantâneo
+    // para um alarme já muito próximo/prestes a entregar (limitação real
+    // do Android, não deste app) — abrindo [CronometroDisparadoScreen] do
+    // ZERO, sem NENHUMA pista de que este ciclo já tinha sido resolvido
+    // aqui: nem a trava nativa (só usada por aquela tela) nem
+    // [chaveCronometroFluxoResolvido] (só gravada por ela também) eram
+    // tocadas neste caminho de desarme MANUAL. Resultado observado ao
+    // vivo: um 3º disparo (`[TIMEOUT]`) completo — SMS+Firestore de novo
+    // para os mesmos contatos — quando os 60s de tolerância daquela tela
+    // se esgotaram sozinhos, minutos depois do desarme manual já
+    // resolvido aqui. Reivindicar a MESMA trava nativa E gravar a MESMA
+    // flag em disco que [CronometroDisparadoScreen] usa fecha as duas
+    // pontas: se a tela abrir mesmo assim, sua própria chamada a
+    // `reivindicarDisparoUnicoCronometro()` já encontra a trava tomada
+    // (aborta ANTES de qualquer SMS/rede) e, ainda que o polling dela
+    // leve até ~1s para reagir, a flag em disco garante que ela se
+    // autoencerre em seguida, sem depender só do cancelamento do alarme.
+    try {
+      await AlarmeService().reivindicarDisparoUnicoCronometro();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(chaveCronometroFluxoResolvido, true);
+    } catch (e) {
+      debugPrint('⚠️ Falha ao reivindicar trava/gravar flag de fluxo resolvido: $e');
+    }
+
+    // CORREÇÃO DE BUG REAL (2026-08-14, disparo duplicado): o alarme
+    // NATIVO (AlarmManager, agendado por
+    // [AlarmeService.agendarAlarmeEmergencia] para o instante em que o
+    // cronômetro original chegaria a zero) e o heartbeat de nuvem
+    // (dead man's switch) precisam ser cancelados AQUI, IMEDIATAMENTE —
+    // ANTES de [_executarDisparoDeEmergencia], que aguarda rede (GPS, SMS,
+    // Firestore, podendo levar vários segundos). Antes, esse cancelamento
+    // só acontecia no FINAL de [_executarDisparoDeEmergencia] (via
+    // [_pararTimer]), depois de toda aquela espera: se o horário original
+    // do cronômetro chegasse ENQUANTO essa espera ainda rodava, o alarme
+    // nativo (ainda agendado) disparava por conta própria, abrindo
+    // [CronometroDisparadoScreen] com som + teclado de PIN para um ciclo
+    // que já tinha sido resolvido (disparo duplicado real reportado pelo
+    // usuário). `cancelarAlarme()`/`cancelarCheckinAtivo()` chamados de
+    // novo mais tarde (dentro de [_pararTimer]) são inofensivos —
+    // idempotentes por natureza.
+    unawaited(_alarmeService.cancelarAlarme());
+    _locationService.pararCicloDeAtualizacao();
+
+    // CORREÇÃO DE BUG REAL (2026-08-15): antes, chamava só
+    // `cancelarCheckinAtivo()` — que só PARA o heartbeat LOCAL de
+    // atualizar o documento, sem nunca marcar `alarmes_agendados` como
+    // resolvido na nuvem. Como esta 3ª tentativa errada acontece durante
+    // um desarme MANUAL (ANTES do cronômetro principal chegar a zero), o
+    // `prazoFinalEpochMs` já gravado no Firestore ainda podia estar
+    // MINUTOS no futuro (tempo restante do cronômetro + 60s de
+    // tolerância) — o documento ficava PENDENTE por até alguns minutos
+    // mesmo com o alerta já enviado agora mesmo, e a Cloud Function
+    // agendada (`monitorarAlarmesAgendados`, a cada 2 min) disparava um
+    // SEGUNDO alerta duplicado quando esse prazo antigo vencia (sintoma
+    // real relatado: 2 a 6 minutos depois). `confirmarAlertaJaDisparado`
+    // grava ALERTA_DISPARADO no Firestore (tirando o documento da
+    // consulta da function) E chama `cancelarCheckinAtivo()`
+    // internamente — mesmo remédio já usado em
+    // `CronometroDisparadoScreen._dispararAlerta` para o disparo
+    // acontecendo DEPOIS do cronômetro zerar.
+    BackgroundLocationHeartbeatService().confirmarAlertaJaDisparado();
+
     await _executarDisparoDeEmergencia();
   }
 
-  /// Executa o disparo de emergência quando a tolerância expira com o
-  /// app ainda aberto (fluxo em memória). Reaproveita o
-  /// [EmergencyAlertService], compartilhado com o callback headless do
-  /// [AlarmeService]. Protegido por try/catch para que qualquer falha
-  /// (GPS, SMS, banco) jamais trave a interface do usuário ou dispare
-  /// novamente em loop — o [EmergencyAlertService] já é 100% silencioso
-  /// e não-repetitivo internamente.
+  /// Executa o disparo de emergência COMPLETO — SMS nativo, push/Firestore
+  /// para o app receptor (ver [EmergencyAlertService.dispararAlertaTentativaDesarmeIncorreto])
+  /// e registro no histórico local — e exibe IMEDIATAMENTE a confirmação
+  /// de envio em tela cheia, sem esperar a confirmação de rede do
+  /// SMS/nuvem, que roda em paralelo.
+  ///
+  /// Reespecificação do usuário (2026-08-14): unificado com o MESMO
+  /// pipeline e o MESMO componente visual ([ConfirmacaoAlertaEmergencia])
+  /// já usados pela 3ª tentativa de PIN errada e pelo timeout de 60s
+  /// DENTRO da janela final de tolerância (ver
+  /// `cronometro_disparado_screen.dart`) — antes, este método (disparo por
+  /// 3ª tentativa de PIN errada durante uma tentativa MANUAL de desarme,
+  /// ANTES do cronômetro zerar) usava o alerta genérico
+  /// ([EmergencyAlertService.dispararAlertaDeEmergencia]) e um simples
+  /// `AlertDialog` de aviso, divergindo do fluxo da janela final.
+  ///
+  /// Protegido por try/catch para que qualquer falha (GPS, SMS, banco)
+  /// jamais trave a interface do usuário ou dispare novamente em loop.
+  ///
+  /// Regra de negócio 7 (restrições obrigatórias): a CÂMERA nunca é
+  /// acionada em nenhum ponto deste fluxo. NOTA (reespecificação do
+  /// usuário, 2026-08-10): a restrição original também proibia qualquer
+  /// som de alarme — isso foi revertido DE PROPÓSITO, mas só para o novo
+  /// fluxo "ao zerar" (ver [CronometroDisparadoScreen], que toca o alarme
+  /// e abre o teclado de PIN por até 60s). Este método específico
+  /// continua sem tocar nenhum som — regra histórica preservada aqui, não
+  /// pedida para mudar.
   Future<void> _executarDisparoDeEmergencia() async {
-    _cancelarTimerToleranciaBloqueio();
+    final l10n = AppLocalizations.of(context)!;
+    _abrirConfirmacaoAlertaEnviado();
     try {
-      await _emergencyAlertService.dispararAlertaDeEmergencia(
-        contexto: _contextoController.text.trim(),
+      await _emergencyAlertService.dispararAlertaTentativaDesarmeIncorreto(
+        motivo: l10n.historicoCronometroPinIncorretoMotivo,
         posicaoEmMemoria: _locationService.ultimaPosicao,
       );
-      // Recurso de Captura e Dissuasão: disparado após o timeout
-      // automático do cronômetro de check-in não ser confirmado a
-      // tempo. Verifica o limite mensal de fotos do Plano Gratuito
-      // internamente antes de abrir a câmera.
-      await CapturaDissuasaoService().abrirCapturaSePermitido();
     } catch (e) {
       debugPrint('⚠️ Falha ao executar disparo de emergência: $e');
     }
     _pararTimer();
   }
 
+  /// Abre, em tela cheia, o MESMO componente de confirmação usado por
+  /// `cronometro_disparado_screen.dart` (ver [ConfirmacaoAlertaEmergencia])
+  /// — ícone e texto em vermelho, nunca aguardando a confirmação de rede
+  /// do SMS/nuvem para aparecer. Chamado uma única vez por ciclo, de
+  /// dentro de [_executarDisparoDeEmergencia].
+  void _abrirConfirmacaoAlertaEnviado() {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ConfirmacaoAlertaEmergencia(
+          aoFechar: () {
+            if (mounted && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+      ),
+    );
+  }
 
   // ==========================================================
-  // PIN DE COAÇÃO (gatilho discreto de emergência)
+  // 3ª TENTATIVA DE PIN ERRADA (gatilho de emergência)
   // ==========================================================
 
-  /// Callback silencioso passado ao [PinDialogContent] (ver
-  /// [_ativarBloqueioDeSeguranca]), acionado automaticamente quando o
-  /// usuário digita o PIN INCORRETO 3 VEZES CONSECUTIVAS durante uma
-  /// tentativa de desarme. Regra de negócio: o cronômetro/tolerância é
-  /// encerrado IMEDIATAMENTE e o alerta de emergência COMPLETO
-  /// (localização + foto, mesmo pacote descrito na FAQ sobre o botão de
-  /// pânico) é disparado de forma 100% SILENCIOSA — nenhum SnackBar,
-  /// nenhum som, nenhuma alteração visual no diálogo de PIN, nada que
-  /// possa denunciar o disparo a quem estiver observando a tela (ex: um
-  /// agressor coagindo o usuário a digitar o PIN).
+  /// Callback passado ao [PinDialogContent] (ver [_abrirDialogoDesarme]),
+  /// acionado automaticamente quando o usuário digita o PIN INCORRETO 3
+  /// VEZES CONSECUTIVAS durante uma tentativa de desarme. Regra de
+  /// negócio: o cronômetro é encerrado IMEDIATAMENTE, o diálogo de PIN é
+  /// fechado, o alerta na tela é exibido e o alerta de emergência
+  /// completo (Push App-para-App e SMS) é disparado.
   ///
   /// ORDEM CRÍTICA: o alerta prioritário para a nuvem (Firebase) é
   /// disparado e AGUARDADO PRIMEIRO, antes de qualquer outro
   /// processamento local — garantindo que, mesmo que o aparelho seja
   /// destruído/desligado nos segundos seguintes, a nuvem já tenha
-  /// recebido o alerta. Só depois disso o disparo completo local
-  /// (localização + foto) é executado.
+  /// recebido o alerta. Só depois disso o disparo completo local é
+  /// executado (ver [_dispararUmaVezSeNecessario]).
   ///
   /// Protegido por try/catch em cada etapa para nunca propagar exceção de
-  /// volta ao diálogo de PIN, mantendo seu comportamento visual
-  /// inalterado independentemente do resultado deste disparo.
-  Future<void> _encerrarEDispararEmergenciaPorPinIncorreto() async {
+  /// volta ao diálogo de PIN.
+  Future<void> _aoAtingirTerceiraSenhaErrada() async {
     debugPrint('🚨 [PIN INCORRETO 3x] 3 PINs incorretos consecutivos detectados. '
-        'Encerrando o cronômetro e disparando o alerta completo silenciosamente.');
+        'Encerrando o cronômetro e disparando o alerta completo.');
 
-    // Encerra imediatamente o cronômetro regressivo de tolerância — não
-    // espera mais pelo esgotamento natural do tempo.
-    _cancelarTimerToleranciaBloqueio();
-    // Garante silêncio total: nenhum som deve tocar neste fluxo, mesmo se
-    // o alarme natural (cronômetro chegou a 00:00) já estivesse em loop.
-    await _alarmeSonoroService.pararAlarme();
-
+    // CORREÇÃO DE BUG REAL (2026-08-15): esta chamada não informava
+    // [motivo], então a notificação Push recebida pelo contato de
+    // emergência caía no texto GENÉRICO de `functions/index.js`
+    // ("...incorretamente 2 vezes seguidas...") — um texto histórico de
+    // antes da unificação para 3 tentativas (ver
+    // `PinDialogContent.limiteErrosConsecutivos: 3` acima, em
+    // [_abrirDialogoDesarme]), e DIFERENTE do SMS local, que já usa o
+    // texto certo ("3 vezes", `l10n.historicoCronometroPinIncorretoMotivo`,
+    // ver [_executarDisparoDeEmergencia]). Passar o mesmo motivo aqui
+    // também deixa Push e SMS consistentes entre si para o mesmo evento.
     try {
-      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
+      final l10n = AppLocalizations.of(context)!;
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: l10n.historicoCronometroPinIncorretoMotivo,
+      );
     } catch (e) {
       debugPrint('⚠️ [PIN INCORRETO 3x] Falha ao disparar alerta prioritário na nuvem: $e');
     }
 
     // Reaproveita o mesmo guard de disparo único por ciclo
-    // ([_disparoJaExecutadoNesteCiclo]) e o pacote completo de emergência
-    // (localização + foto) já usado quando a tolerância se esgota
-    // naturalmente — mantendo o comportamento 100% silencioso.
+    // ([_disparoJaExecutadoNesteCiclo]), que também fecha o diálogo de
+    // PIN e cancela o cronômetro principal.
     await _dispararUmaVezSeNecessario();
   }
 
@@ -672,19 +730,13 @@ class _SegurancaTabState extends State<SegurancaTab> {
     if (confirmou != true || !mounted) return;
 
     try {
-      // P1 da sequência unificada de SOS (ver SosDisparoService): captura
-      // localização + timestamp e despacha IMEDIATAMENTE via App-para-App
-      // + WhatsApp (pipeline híbrido), com fallback automático para SMS
-      // nativo se não houver sessão autenticada.
-      await SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.segurancaSosDisparado),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // P1 (SMS + nuvem/Push) e P2 (abre a câmera) disparam EM
+      // PARALELO — P1 nunca deve atrasar o obturador (câmera física
+      // ~3s: nenhuma espera de rede/GPS entre o toque e a câmera
+      // abrindo). Também não exibimos mais nenhuma faixa/SnackBar de
+      // aviso por cima do botão/câmera: a tela vermelha de dissuasão
+      // exibida após a foto já confirma visualmente o disparo.
+      unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual'));
       // P2: abre a câmera (Recurso de Captura e Dissuasão) — checa o
       // limite mensal de fotos do Plano Gratuito internamente.
       await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: 'sos_manual');
@@ -707,11 +759,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
   Widget build(BuildContext context) {
     // Correção do erro de design original: a tela de bloqueio de PIN por
     // inatividade que substituía toda a rota foi removida. A UI normal
-    // (com o cronômetro em contagem regressiva ou já em tolerância) é
-    // SEMPRE exibida — o diálogo de PIN, quando necessário, é aberto por
-    // cima dela via [exibirDialogoPin] (ver [_ativarBloqueioDeSeguranca]),
-    // nunca bloqueando a navegação para as demais abas (Família,
-    // Histórico) nem a HomeScreen.
+    // (com o cronômetro em contagem regressiva) é SEMPRE exibida — o
+    // diálogo de PIN, quando necessário, é aberto por cima dela via
+    // [exibirDialogoPin] (ver [_abrirDialogoDesarme]), nunca bloqueando a
+    // navegação para as demais abas (Família, Histórico) nem a
+    // HomeScreen.
     return _buildTelaPrincipal();
   }
 

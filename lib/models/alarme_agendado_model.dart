@@ -114,14 +114,12 @@ class AlarmeAgendadoModel {
   /// mesmo `idAlarme` local de dois usuários diferentes.
   final String usuarioId;
 
-  /// Contatos de emergência no formato `{nome, telefone,
-  /// whatsappHabilitado}` — mesmo formato gravado em
-  /// `usuarios/{uid}.contatosEmergencia` (ver
+  /// Contatos de emergência no formato `{nome, telefone}` — mesmo formato
+  /// gravado em `usuarios/{uid}.contatosEmergencia` (ver
   /// `FirebaseSyncService.sincronizarContatosEmergencia`). A Cloud
   /// Function de disparo (`functions/alertaHibridoService.js`) resolve
   /// dinamicamente, por telefone, quais desses contatos têm conta no app
-  /// (Push FCM gratuito) e usa `whatsappHabilitado` + o saldo em USD do
-  /// usuário para decidir a contingência via WhatsApp.
+  /// e envia o Push FCM gratuito para quem for encontrado.
   final List<Map<String, dynamic>> contatosEmergencia;
 
   /// Etiqueta do alarme (ex: "Corrida no parque") e contexto

@@ -1,0 +1,165 @@
+import 'package:flutter/material.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
+
+import '../services/onboarding_service.dart';
+
+/// Card de status de UMA permissão (ex: Notificações, Localização),
+/// extraído do Assistente de Configuração Inicial (`OnboardingScreen`)
+/// para ser reaproveitado, IDÊNTICO, também na tela "Status de
+/// Permissões" acessível a qualquer momento em Configurações > Minha
+/// Conta > Status de Permissões — mesmo widget, dois pontos de entrada
+/// (onboarding + revisão avulsa posterior).
+///
+/// Widget propositalmente "burro": recebe o status já resolvido e
+/// callbacks prontos — quem o usa (`OnboardingScreen`/
+/// `PermissoesStatusScreen`) é responsável por checar/solicitar a
+/// permissão de verdade via [OnboardingService].
+class PermissaoStatusCard extends StatelessWidget {
+  const PermissaoStatusCard({
+    super.key,
+    required this.icone,
+    required this.titulo,
+    required this.descricao,
+    required this.essencial,
+    required this.status,
+    required this.aoConceder,
+    this.aoAbrirConfiguracoes,
+  });
+
+  final IconData icone;
+  final String titulo;
+  final String descricao;
+  final bool essencial;
+  final StatusPermissaoOnboarding status;
+  final VoidCallback aoConceder;
+  final VoidCallback? aoAbrirConfiguracoes;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final concedida = status == StatusPermissaoOnboarding.concedida;
+    final Color corStatus;
+    final String textoStatus;
+    switch (status) {
+      case StatusPermissaoOnboarding.concedida:
+        corStatus = Colors.green.shade600;
+        textoStatus = l10n.onboardingStatusConcedida;
+        break;
+      case StatusPermissaoOnboarding.parcial:
+        corStatus = Colors.orange.shade700;
+        textoStatus = l10n.onboardingStatusPendente;
+        break;
+      case StatusPermissaoOnboarding.pendente:
+        corStatus = Colors.grey.shade600;
+        textoStatus = l10n.onboardingStatusPendente;
+        break;
+    }
+    final corDestaque = essencial ? Colors.red.shade400 : Colors.blue.shade400;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: corDestaque.withValues(alpha: 0.12),
+                child: Icon(icone, color: corDestaque),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      titulo,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    _buildBadge(
+                      essencial ? l10n.onboardingBadgeEssencial : l10n.onboardingBadgeRecomendado,
+                      essencial,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            descricao,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                concedida ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                size: 17,
+                color: corStatus,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                textoStatus,
+                style: TextStyle(fontSize: 12.5, color: corStatus, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              if (!concedida)
+                ElevatedButton(
+                  onPressed: aoConceder,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                  child: Text(l10n.permissaoSmsPermitir),
+                ),
+            ],
+          ),
+          if (aoAbrirConfiguracoes != null) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: aoAbrirConfiguracoes,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  l10n.onboardingBotaoAbrirConfiguracoes,
+                  style: const TextStyle(fontSize: 12.5),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String texto, bool essencial) {
+    final cor = essencial ? Colors.red.shade400 : Colors.blue.shade400;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(fontSize: 10.5, color: cor, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}

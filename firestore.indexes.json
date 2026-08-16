@@ -15,6 +15,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "prazoTransbordoEpochMs", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "telefone", "order": "ASCENDING" },
+        { "fieldPath": "fcmTokenAtualizadoEm", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

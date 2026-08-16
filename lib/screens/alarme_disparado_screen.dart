@@ -2,13 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/alarme_rotina.dart';
+import '../services/alarme_agendado_cloud_service.dart';
 import '../services/rotina_alarme_service.dart';
 import '../services/database_helper.dart';
 import '../services/emergency_alert_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/l10n_headless_service.dart';
 import '../services/location_service.dart';
+import '../services/notificacao_service.dart';
 import '../widgets/pin_dialog.dart';
 import 'package:audioplayers/audioplayers.dart';
 
@@ -28,8 +32,26 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   static bool _instanciaGraficaAberta = false;
   bool _souDuplicada = false;
 
+  /// Instante em que [_instanciaGraficaAberta] foi marcada `true` pela
+  /// última vez — ver documentação completa em
+  /// [_tempoMaximoInstanciaTravada]/mesmo mecanismo de autorrecuperação
+  /// já aplicado em `CronometroDisparadoScreen`.
+  static DateTime? _instanciaAbertaDesde;
+
+  /// CORREÇÃO DE BUG REAL (2026-08-11): mesmo bug/correção do Cronômetro
+  /// (ver `cronometro_disparado_screen.dart`) — [_instanciaGraficaAberta]
+  /// é estático e só é zerado em [dispose]; se uma instância anterior
+  /// morrer sem passar por lá (processo morto, reinstalação durante
+  /// testes, etc.), fica travada em `true` para sempre e todo alarme de
+  /// rotina seguinte se autodestrói imediatamente, sem tocar o som nem
+  /// abrir o teclado. Nenhum ciclo real do Alarme de Rotina (tolerância +
+  /// janela final de 60s) dura mais que isto — passado esse tempo, trata
+  /// a flag como travada por uma instância morta, não uma duplicata
+  /// legítima.
+  static const Duration _tempoMaximoInstanciaTravada = Duration(minutes: 10);
+
   // ==========================================================
-  // FASE FINAL (última chance, 2 minutos, após a tolerância expirar)
+  // FASE FINAL (última chance, 60 segundos, após a tolerância expirar)
   // ==========================================================
   // Sinalizada em disco (SharedPreferences) pelo callback headless
   // [_callbackToleranciaExpirada] em rotina_alarme_service.dart, que roda
@@ -90,6 +112,17 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   void initState() {
     super.initState();
 
+    final DateTime? desde = _instanciaAbertaDesde;
+    final bool travadaHaMuitoTempo = _instanciaGraficaAberta &&
+        desde != null &&
+        DateTime.now().difference(desde) > _tempoMaximoInstanciaTravada;
+    if (travadaHaMuitoTempo) {
+      debugPrint('🛡️ [SINTONIA] Flag de instância única travada há mais de '
+          '${_tempoMaximoInstanciaTravada.inMinutes}min (instância anterior '
+          'morreu sem dispose) — tratando como nova instância legítima.');
+      _instanciaGraficaAberta = false;
+    }
+
     if (_instanciaGraficaAberta) {
       _souDuplicada = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -100,6 +133,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     }
 
     _instanciaGraficaAberta = true;
+    _instanciaAbertaDesde = DateTime.now();
 
     // Camada extra de resiliência (Firebase): enquanto esta tela estiver
     // aberta (alarme de rotina disparado, aguardando confirmação de PIN),
@@ -107,6 +141,51 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
     // "monitoramento ativo" já usada pelo cronômetro da aba Segurança.
     // Interrompido em dispose() assim que o alarme for desarmado/fechado.
     LocationService().iniciarCicloDeAtualizacao();
+
+    // PRIORIDADE MÁXIMA (item 4 — fechamento forçado): checa ANTES de
+    // qualquer outra coisa (som, polling normal) se esta reabertura da
+    // tela aconteceu porque o usuário arrastou o app para fora dos
+    // Recentes enquanto o alarme ainda tocava (ver
+    // `RotinaAlarmWakeService.onTaskRemoved`/[RotinaAlarmeService.
+    // consumirFechamentoForcado]). Se for o caso, dispara o alerta
+    // imediatamente em vez de seguir o fluxo normal — por isso este
+    // `await` bloqueia o resto do initState (é uma checagem local,
+    // rapidíssima, e queremos decidir isso antes de tocar qualquer som).
+    _verificarFechamentoForcadoEEntaoIniciar();
+  }
+
+  /// Ver comentário em [initState]. Se NÃO foi fechamento forçado, segue
+  /// o fluxo normal exatamente como antes (polling de sinalização +
+  /// tocar o som customizado).
+  Future<void> _verificarFechamentoForcadoEEntaoIniciar() async {
+    final bool fechamentoForcado = await RotinaAlarmeService.consumirFechamentoForcado();
+    if (!mounted || _fluxoEncerrado) return;
+
+    if (fechamentoForcado) {
+      debugPrint('🚨 [FECHAMENTO FORÇADO] App foi fechado enquanto o alarme '
+          'de rotina ainda tocava sem confirmação — disparando alerta '
+          'imediatamente, sem retomar o toque normal.');
+      _idAlarmeAtual ??= await _resolverIdAlarmeMaisRecente();
+      String? motivo;
+      try {
+        final l10n = await L10nHeadlessService.obter();
+        Map<String, dynamic>? dados;
+        if (_idAlarmeAtual != null) {
+          dados = await DatabaseHelper().buscarAlarmePorId(_idAlarmeAtual!);
+        }
+        final etiqueta = dados != null
+            ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
+            : l10n.familiaEtiquetaPadrao;
+        motivo = l10n.historicoCheckinRotinaFechamentoForcadoMotivo(etiqueta);
+      } catch (e) {
+        debugPrint('⚠️ Falha ao montar motivo de fechamento forçado: $e');
+      }
+      await _dispararAlertaDeFalhaDeDesarme(
+        motivo: motivo,
+        mostrarConfirmacaoEFechar: true,
+      );
+      return;
+    }
 
     // Verifica imediatamente se este disparo já nasceu na fase final (ou
     // com o alerta real já disparado — ex: a tela foi recriada após ter
@@ -125,6 +204,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   void dispose() {
     if (!_souDuplicada) {
       _instanciaGraficaAberta = false;
+      _instanciaAbertaDesde = null;
       // Encerra o ciclo de localização iniciado em initState() — mantém o
       // par iniciar/parar 1:1 exigido pela contagem de referências do
       // LocationService (ver [LocationService.pararCicloDeAtualizacao]).
@@ -311,7 +391,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   /// o som (Dart, garantido + nativo, melhor esforço), fecha o diálogo
   /// de PIN "normal" se ainda estiver aberto (não faz sentido mantê-lo,
   /// com o limite de 2 erros, por baixo do novo) e abre diretamente o
-  /// diálogo estrito de 2 minutos, sem exigir novo toque em "Interromper
+  /// diálogo estrito de 60 segundos, sem exigir novo toque em "Interromper
   /// Alarme".
   Future<void> _entrarNaFaseFinal() async {
     if (_faseFinal) return;
@@ -394,7 +474,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
   /// Ponto ÚNICO de abertura do teclado de PIN — usado tanto pelo toque
   /// no botão "Interromper Alarme" (fase inicial: limite de 2 erros
   /// consecutivos, sem prazo duro) quanto pela transição automática para
-  /// a janela final (limite de 1 erro + 2 minutos de prazo duro, ver
+  /// a janela final (limite de 1 erro + 60 segundos de prazo duro, ver
   /// [_entrarNaFaseFinal]). Consolida a resolução do alarme mais recente,
   /// a busca do PIN esperado e o fluxo de confirmação/erro/expiração.
   Future<void> _abrirTecladoPin() async {
@@ -454,9 +534,9 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
 
       // Calcula o tempo REALMENTE restante até o alarme nativo de
       // emergência da janela final disparar (ver [_deadlineEpochMs]), em
-      // vez de sempre começar do zero em 2 minutos — garante que o
-      // cronômetro visual reflita com precisão o prazo real, mesmo com o
-      // pequeno atraso do polling que detectou a fase final.
+      // vez de sempre começar do zero — garante que o cronômetro visual
+      // reflita com precisão o prazo real, mesmo com o pequeno atraso do
+      // polling que detectou a fase final.
       int segundosLimiteDuro = RotinaAlarmeService.duracaoJanelaFinal.inSeconds;
       if (ehFaseFinal && _deadlineEpochMs != null) {
         final restanteMs = _deadlineEpochMs! - DateTime.now().millisecondsSinceEpoch;
@@ -466,6 +546,21 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
             );
       }
 
+      // Etiqueta do alarme para as mensagens de motivo abaixo (l10n) —
+      // mesmo texto usado pelo callback headless equivalente
+      // ([_callbackJanelaFinalExpirada] em rotina_alarme_service.dart).
+      final l10nDialogo = AppLocalizations.of(context)!;
+      String etiquetaAlarme = l10nDialogo.familiaEtiquetaPadrao;
+      try {
+        if (idAlarme != null) {
+          final dadosAlarme = await DatabaseHelper().buscarAlarmePorId(idAlarme);
+          if (dadosAlarme != null) {
+            etiquetaAlarme = AlarmeRotina.fromMap(dadosAlarme).etiquetaExibida(l10nDialogo);
+          }
+        }
+      } catch (_) {}
+      if (!mounted) return;
+
       bool pinConfirmadoComSucesso = false;
 
       _dialogoPinAberto = true;
@@ -473,30 +568,26 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
         context: context,
         pinEsperado: pinReal,
         segundosTolerancia: null,
-        // Fase inicial: mantém o comportamento histórico (2 erros
-        // consecutivos disparam o alerta, sem prazo duro, SEM mostrar
-        // confirmação — mantém o disfarce de segurança). Fase final:
-        // ZERO margem — 1 único erro já dispara, há um prazo duro de até
-        // 2 minutos exibido ao vivo, e a falha AGORA é transparente
-        // (para o som, fecha o teclado e mostra confirmação).
-        limiteErrosConsecutivos: ehFaseFinal ? 1 : 2,
+        // UNIFICADO (especificação do usuário, 2026-08-07, item 3): 3
+        // tentativas de PIN incorreto SEMPRE disparam o alerta de
+        // imediato — sem disfarce, sem diferença entre fase inicial e
+        // fase final (tolerância vs. os 60s adicionais). As 2 primeiras
+        // tentativas erradas só mostram "PIN incorreto" e mantêm o
+        // alarme tocando normalmente; a 3ª desliga o alarme e dispara o
+        // alerta na hora.
+        limiteErrosConsecutivos: 3,
         segundosLimiteDuro: ehFaseFinal ? segundosLimiteDuro : null,
         aoAtingirLimiteDeErros: () => _dispararAlertaDeFalhaDeDesarme(
-          motivo: ehFaseFinal
-              ? 'O PIN foi digitado incorretamente ao tentar confirmar o '
-                  'check-in do alarme de rotina, mesmo após o tempo de '
-                  'tolerância já ter expirado.'
-              : null,
-          mostrarConfirmacaoEFechar: ehFaseFinal,
+          motivo: l10nDialogo.historicoCheckinRotinaPinIncorretoMotivo(etiquetaAlarme),
+          mostrarConfirmacaoEFechar: true,
         ),
         aoExpirarTempoLimite: ehFaseFinal
             ? () => _dispararAlertaDeFalhaDeDesarme(
-                  motivo: 'O check-in do alarme de rotina não foi confirmado '
-                      'dentro do prazo final de 2 minutos, mesmo após o '
-                      'tempo de tolerância já ter expirado.',
+                  motivo: l10nDialogo.historicoCheckinRotinaFalhaMotivo(etiquetaAlarme),
                   mostrarConfirmacaoEFechar: true,
                 )
             : null,
+        aoDescartarPorArraste: _descartarPorArraste,
         aoConfirmarPinCorreto: () async {
           pinConfirmadoComSucesso = true;
           _dialogoPinAberto = false;
@@ -607,6 +698,27 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       // (duplicando o alerta) alguns instantes depois.
       if (_idAlarmeAtual != null) {
         unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+
+        // CORREÇÃO DE BUG REAL (2026-08-15, mesma classe do duplo disparo
+        // do Cronômetro — ver `CronometroDisparadoScreen._dispararAlerta`):
+        // cancelar o alarme NATIVO acima não é suficiente. É preciso
+        // também avisar a nuvem que o alerta já foi disparado pelo
+        // aparelho, senão o documento `alarmes_agendados/{idAlarme}`
+        // continua PENDENTE, e a Cloud Function agendada
+        // (`monitorarAlarmesAgendados`), ao rodar minutos depois e
+        // encontrar o prazo original (`prazoFinalEpochMs`) já vencido
+        // nesse mesmo documento ainda PENDENTE, dispara um SEGUNDO alerta
+        // duplicado — mesmo cenário real relatado no Cronômetro (3ª senha
+        // errada dispara na hora, e a janela final nativa/a Cloud Function
+        // disparam de novo pouco depois). Ver
+        // [AlarmeAgendadoCloudService.marcarAlertaDisparado].
+        unawaited(AlarmeAgendadoCloudService()
+            .marcarAlertaDisparado(_idAlarmeAtual!.toString()));
+        // Ciclo definitivamente concluído (falha) — a PRÓXIMA ocorrência
+        // deste mesmo id deve nascer PENDENTE de novo. Ver
+        // [AlarmeAgendadoCloudService.sinalizarNovoCiclo] (débito técnico
+        // corrigido em 2026-08-15).
+        AlarmeAgendadoCloudService().sinalizarNovoCiclo(_idAlarmeAtual!.toString());
       }
     }
 
@@ -630,6 +742,130 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
 
     if (mostrarConfirmacaoEFechar) {
       await _finalizarComConfirmacao();
+    }
+  }
+
+  /// Aciona quando o usuário arrasta/joga o botão azul OU o teclado de
+  /// PIN para cima (gesto de DESCARTE, distinto do gesto de sistema
+  /// "tirar o app dos Recentes" já tratado por `onTaskRemoved` —
+  /// especificação do usuário). Ligado tanto ao [GestureDetector] da fase
+  /// "alarme ativo" no [build] quanto ao parâmetro
+  /// `aoDescartarPorArraste` passado a [exibirDialogoPin] em
+  /// [_abrirTecladoPin] (fase inicial e fase final).
+  ///
+  /// DIFERENTE de [_dispararAlertaDeFalhaDeDesarme] (PIN incorreto/tempo
+  /// esgotado): naqueles casos a tela mostra uma confirmação FIXA até o
+  /// usuário fechá-la. Aqui a exigência é o oposto — o controle da
+  /// tela/sistema precisa voltar 100% ao Android IMEDIATAMENTE (o botão e
+  /// o teclado somem, sem tentar redesenhar nada por cima do bloqueio) —
+  /// por isso a ORDEM das etapas é: 1) para o som, 2) fecha a
+  /// Activity/devolve o controle ao Android, e SÓ DEPOIS 3) dispara o
+  /// alerta com localização e 4) confirma o envio via uma NOTIFICAÇÃO do
+  /// sistema (ver [NotificacaoService.exibirNotificacaoAlertaEnviado]) —
+  /// não há mais nenhuma UI do app na tela para mostrar um diálogo
+  /// in-app neste ponto.
+  Future<void> _descartarPorArraste() async {
+    if (_alertaJaProcessado) return;
+    _alertaJaProcessado = true;
+    _fluxoEncerrado = true;
+    _pollFaseFinalTimer?.cancel();
+
+    // 1. Para o som imediatamente — nativo + Dart.
+    try {
+      const canalNativo = MethodChannel('com.example.security_check_app/rotina_alarme');
+      await canalNativo.invokeMethod('pararAlarme');
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar som nativo ao descartar por arraste: $e');
+    }
+    try {
+      await _player.stop();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao parar player Dart ao descartar por arraste: $e');
+    }
+
+    unawaited(RotinaAlarmeService.pararServicoForeground());
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stop_current_alarm', true);
+      await prefs.remove('alarme_disparando_no_momento');
+      // Sinaliza a QUALQUER outra instância desta tela (engine/isolate
+      // separado, ver documentação de [chaveAlarmeFluxoResolvido]) que o
+      // fluxo já foi resolvido aqui.
+      await prefs.setBool(chaveAlarmeFluxoResolvido, true);
+    } catch (_) {}
+
+    // 2. Devolve o controle 100% ao Android — a tela (botão/teclado) some
+    // AGORA, antes até do alerta ser efetivamente disparado.
+    if (mounted) {
+      if (widget.veioDoForeground) {
+        _fecharCaminhoTelaLigada(context);
+      } else {
+        await _fecharCaminhoTelaDesligada(context);
+      }
+    }
+
+    // 3. Dispara o alerta com localização (mesmo par de chamadas usado em
+    // [_dispararAlertaDeFalhaDeDesarme]) — cancela a janela final nativa
+    // primeiro, para que ela não dispare de novo (duplicando o alerta)
+    // alguns instantes depois.
+    if (_idAlarmeAtual != null) {
+      unawaited(RotinaAlarmeService.cancelarJanelaFinal(_idAlarmeAtual!));
+      // Ver documentação completa em [_dispararAlertaDeFalhaDeDesarme] —
+      // mesma correção contra o duplo disparo via Cloud Function agendada.
+      unawaited(AlarmeAgendadoCloudService()
+          .marcarAlertaDisparado(_idAlarmeAtual!.toString()));
+      // Ciclo definitivamente concluído (falha/descarte) — a PRÓXIMA
+      // ocorrência deste mesmo id deve nascer PENDENTE de novo. Ver
+      // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+      AlarmeAgendadoCloudService().sinalizarNovoCiclo(_idAlarmeAtual!.toString());
+    }
+
+    String? motivo;
+    String? eventoId;
+    try {
+      final l10n = await L10nHeadlessService.obter();
+      _idAlarmeAtual ??= await _resolverIdAlarmeMaisRecente();
+      Map<String, dynamic>? dados;
+      if (_idAlarmeAtual != null) {
+        dados = await DatabaseHelper().buscarAlarmePorId(_idAlarmeAtual!);
+      }
+      final etiqueta = dados != null
+          ? AlarmeRotina.fromMap(dados).etiquetaExibida(l10n)
+          : l10n.familiaEtiquetaPadrao;
+      motivo = l10n.historicoCheckinRotinaDescartadoPorArrasteMotivo(etiqueta);
+      final ultimoDisparoEpoch = dados?['ultimo_disparo_epoch'] as int?;
+      if (_idAlarmeAtual != null && ultimoDisparoEpoch != null) {
+        eventoId = 'rotina_${_idAlarmeAtual}_$ultimoDisparoEpoch';
+      }
+    } catch (e) {
+      debugPrint('⚠️ Falha ao montar motivo de descarte por arraste: $e');
+    }
+
+    try {
+      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem (descarte): $e');
+    }
+    try {
+      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto(
+        motivo: motivo,
+        eventoId: eventoId,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Falha ao disparar alerta de descarte por arraste: $e');
+    }
+
+    // 4. Confirmação de envio — via notificação do sistema, já que a
+    // tela do app não existe mais neste ponto (ver documentação do
+    // método).
+    try {
+      await NotificacaoService.exibirNotificacaoAlertaEnviado();
+    } catch (e) {
+      debugPrint('⚠️ Falha ao exibir notificação de confirmação de descarte: $e');
     }
   }
 
@@ -839,19 +1075,41 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
       ),
     );
 
-    // Gesto de deslizar para cima: só encerra a tela de confirmação
-    // (pós-alerta) — nas fases anteriores (alarme ativo / fase final) o
-    // fechamento continua exclusivo do fluxo de PIN, sem alteração.
-    if (!_alertaDisparado) return tela;
+    // Gesto de deslizar para cima:
+    // - Na tela de confirmação (pós-alerta): fecha a tela normalmente
+    //   (comportamento antigo, inalterado).
+    // - Na fase "alarme ativo" (botão azul, ANTES de abrir o teclado de
+    //   PIN): aciona o gesto de DESCARTE (ver [_descartarPorArraste]) —
+    //   especificação do usuário: arrastar o botão para cima sem digitar
+    //   o PIN é tratado como uma falha de confirmação, igual à 3ª
+    //   tentativa errada.
+    // - Durante a fase final/teclado de PIN aberto: o gesto é capturado
+    //   DENTRO do próprio diálogo (ver `pin_dialog.dart`,
+    //   `aoDescartarPorArraste`), não aqui.
+    if (_alertaDisparado) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragEnd: (details) {
+          if (details.velocity.pixelsPerSecond.dy < -250) {
+            _fecharTelaConfirmacao();
+          }
+        },
+        child: tela,
+      );
+    }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragEnd: (details) {
-        if (details.velocity.pixelsPerSecond.dy < -250) {
-          _fecharTelaConfirmacao();
-        }
-      },
-      child: tela,
-    );
+    if (!_faseFinal) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragEnd: (details) {
+          if (details.velocity.pixelsPerSecond.dy < -250) {
+            _descartarPorArraste();
+          }
+        },
+        child: tela,
+      );
+    }
+
+    return tela;
   }
 }

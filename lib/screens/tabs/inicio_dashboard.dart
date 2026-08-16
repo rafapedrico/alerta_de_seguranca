@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/database_helper.dart';
 import '../../services/locale_service.dart';
+import '../../services/premium_price_service.dart';
 import '../faq_screen.dart';
 import '../termos_privacidade_screen.dart';
 
@@ -17,8 +18,13 @@ class InicioDashboard extends StatelessWidget {
   const InicioDashboard({super.key});
 
   static const String _site = 'https://www.guardiaox.com.br';
+  // Número oficial de contato do WhatsApp (atualizado em 2026-08-08) —
+  // formato de exibição com código do país (+1, EUA/Canadá) para
+  // leitura humana, e formato só-dígitos (sem "+", espaços ou símbolos)
+  // exigido pelo link direto `wa.me`, com mensagem pré-preenchida.
   static const String _whatsappNumero = '+1 581 709 5728';
-  static const String _whatsappUrl = 'https://wa.me/15817095728';
+  static const String _whatsappUrl =
+      'https://wa.me/15817095728?text=Olá!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Guardião-X';
 
   // Pacote Android real ainda não publicado (usa o id placeholder do
   // template do projeto) — usado só para montar o link da Play Store.
@@ -32,9 +38,7 @@ class InicioDashboard extends StatelessWidget {
   static Future<void> _abrirUrl(String url) async {
     try {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('⚠️ [InicioDashboard] Falha ao abrir URL "$url": $e');
     }
@@ -104,12 +108,12 @@ class InicioDashboard extends StatelessWidget {
               LocaleService.imagemLoginPadrao,
               width: double.infinity,
               fit: BoxFit.fitWidth,
-              errorBuilder: (context, error, stackTrace) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
+              errorBuilder: (context, error, stackTrace) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
                 child: Center(
                   child: Text(
-                    'Guardião-X',
-                    style: TextStyle(
+                    AppLocalizations.of(context)!.marcaGuardiaoX,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -160,88 +164,100 @@ class InicioDashboard extends StatelessWidget {
                     descricao: l10n.dashboardPlanoFreeDescricao,
                     corPrincipal: Colors.white24,
                     destaque: false,
-                    onTap: () => _abrirModalFree(context),
+                    // Item 4: o Card Free não abre nenhum modal ao ser
+                    // tocado.
+                    onTap: null,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _CartaoPlano(
-                    titulo: l10n.planoPremiumTitulo,
-                    preco: '${l10n.precoMensal}${l10n.porMes}',
-                    descricao: l10n.dashboardPlanoPremiumDescricao,
-                    corPrincipal: _corDestaquePremium,
-                    destaque: true,
-                    selo: l10n.premiumBadge,
-                    onTap: () => _abrirModalPremium(context),
+                  // Preço 100% dinâmico, consultado direto da loja
+                  // (Google Play Billing/App Store — ver
+                  // PremiumPriceService), na moeda local da conta do
+                  // usuário. Enquanto a consulta assíncrona está em
+                  // andamento (ou se a loja/produto não estiverem
+                  // disponíveis), mostra um texto genérico SEM valor —
+                  // nunca um preço fixo/hardcoded.
+                  child: FutureBuilder<String?>(
+                    future: PremiumPriceService().obterPrecoFormatado(),
+                    builder: (context, snapshot) {
+                      final precoLoja = snapshot.data;
+                      final preco = precoLoja != null
+                          ? l10n.premiumPrecoMensalComValor(precoLoja)
+                          : l10n.premiumPrecoGenerico;
+                      return _CartaoPlano(
+                        titulo: l10n.planoPremiumTitulo,
+                        preco: preco,
+                        descricao: l10n.dashboardPlanoPremiumDescricao,
+                        corPrincipal: _corDestaquePremium,
+                        destaque: true,
+                        selo: l10n.premiumBadge,
+                        onTap: () => _abrirModalPremium(context),
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.info_outline, size: 14, color: Colors.white38),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.dashboardAvisoWhatsappCredito,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  void _abrirModalFree(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (ctx) => _ModalDetalhePlano(
-        icone: Icons.shield_outlined,
-        corPrincipal: Colors.white24,
-        titulo: l10n.dashboardPlanoFreeTitulo,
-        destaque: '7 envios de mensagens ou solicitações de localização por mês',
-        beneficios: const [
-          'Check-in de segurança com cronômetro e PIN',
-          'Botão de SOS manual com localização',
-          'Até 3 contatos de emergência',
-          'Monitoramento de localização entre familiares',
-          'Histórico completo de alertas',
-        ],
-        botaoPrincipalTexto: 'Permanecer no Plano Free',
-        onBotaoPrincipal: () => Navigator.of(ctx).pop(),
-      ),
-    );
+  /// Lê `user_config.tipo_plano` direto do banco — mesma fonte de verdade
+  /// usada por [PlanoLimiteService] — para saber se o usuário tem
+  /// atualmente o Plano Premium ativo. Qualquer falha de leitura resulta
+  /// em `false` (trata como Free), já que este método só controla a
+  /// exibição de um botão de UI, nunca uma regra de segurança.
+  Future<bool> _possuiPlanoPremiumAtivo() async {
+    try {
+      final config = await DatabaseHelper().getUserConfig();
+      final tipoPlano = (config?['tipo_plano'] as String?) ?? 'free';
+      return tipoPlano.trim().toLowerCase() != 'free';
+    } catch (e) {
+      debugPrint('⚠️ [InicioDashboard] Falha ao verificar tipo de plano: $e');
+      return false;
+    }
   }
 
-  void _abrirModalPremium(BuildContext context) {
+  Future<void> _abrirModalPremium(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
+    final bool premiumAtivo = await _possuiPlanoPremiumAtivo();
+    // Reaproveita o mesmo cache do PremiumPriceService (a consulta já
+    // deve ter sido feita pelo FutureBuilder do card, ver
+    // _buildSecaoPlanos) — mesmo texto/valor genérico de fallback caso a
+    // loja/produto não estejam disponíveis.
+    final String? precoLoja = await PremiumPriceService().obterPrecoFormatado();
+    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => _ModalDetalhePlano(
         icone: Icons.workspace_premium,
         corPrincipal: _corDestaquePremium,
         titulo: l10n.planoPremiumTitulo,
-        destaque: 'Todas as funções do Guardião-X, ILIMITADAS',
+        destaque: l10n.premiumModalDestaque,
         beneficios: [
-          l10n.beneficioAlertasNuvem,
-          l10n.beneficioMensagensWhatsapp,
-          l10n.beneficioGruposIlimitados,
-          l10n.beneficioChatsCriptografados,
-          l10n.beneficioBackupNuvem,
+          l10n.beneficioLocalizacaoTempoReal,
+          l10n.beneficioBotaoFisico,
+          l10n.beneficioModoSeguranca,
+          l10n.beneficioModoFamilia,
+          l10n.beneficioTresCamadas,
+          l10n.beneficioTempoEspera,
         ],
-        botaoPrincipalTexto: 'Assinar Premium — ${l10n.precoMensal}${l10n.porMes}',
+        botaoPrincipalTexto: precoLoja != null
+            ? l10n.premiumAssinarBotaoComPreco(precoLoja)
+            : l10n.premiumAssinarBotaoGenerico,
         onBotaoPrincipal: () {
           Navigator.of(ctx).pop();
           _abrirPlayStore();
         },
         botaoSecundarioTexto: l10n.agoraNao,
-        onCancelarPremium: () => _confirmarCancelamentoPremium(context),
+        // O botão "Cancelar Plano Premium" só é exibido quando o plano
+        // Premium está de fato ativo — no Plano Free, não há nada para
+        // cancelar, então o botão fica oculto (item 1 do pedido).
+        onCancelarPremium:
+            premiumAtivo ? () => _confirmarCancelamentoPremium(context) : null,
       ),
     );
   }
@@ -252,23 +268,21 @@ class InicioDashboard extends StatelessWidget {
   /// [DatabaseHelper.updateUserConfig] — o mesmo campo lido por
   /// [PlanoLimiteService] para decidir se o usuário tem plano pago.
   Future<void> _confirmarCancelamentoPremium(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final bool? confirmou = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancelar Plano Premium?'),
-        content: const Text(
-          'Você voltará imediatamente para o Plano Free, com os limites '
-          'mensais do plano gratuito.',
-        ),
+        title: Text(l10n.premiumCancelarConfirmTitulo),
+        content: Text(l10n.premiumCancelarConfirmConteudo),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Voltar'),
+            child: Text(l10n.voltar),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Cancelar Premium'),
+            child: Text(l10n.premiumCancelarConfirmBotao),
           ),
         ],
       ),
@@ -290,7 +304,7 @@ class InicioDashboard extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.of(context).pop(); // fecha o modal do Premium
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plano Premium cancelado. Você está no Plano Free.')),
+      SnackBar(content: Text(l10n.premiumCanceladoSnackbar)),
     );
   }
 
@@ -347,11 +361,11 @@ class InicioDashboard extends StatelessWidget {
 
           // A partir daqui (dados corporativos e central de atendimento)
           // todo o conteúdo fica centralizado, conforme pedido de UX.
-          const Center(
+          Center(
             child: Text(
-              'RMF Global LTDA',
+              l10n.footerEmpresaRazaoSocial,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -359,12 +373,22 @@ class InicioDashboard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          const Center(
+          Center(
             child: Text(
-              'Rua Rio de Janeiro, número 243, Centro, '
-              'Belo Horizonte, MG, CEP 30160-040',
+              // Endereço completo em uma única linha (inclui o CEP), sem
+              // quebra manual — o Text já faz o wrap automático se a tela
+              // for estreita demais.
+              l10n.footerEmpresaEndereco,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              l10n.footerEmpresaCnpj,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ),
 
@@ -394,7 +418,7 @@ class InicioDashboard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 elevation: 0,
               ),
-              icon: const Icon(FontAwesomeIcons.whatsapp, size: 22),
+              icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 22),
               label: const Text(
                 _whatsappNumero,
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -405,7 +429,11 @@ class InicioDashboard extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Links jurídicos: abrem a TermosPrivacidadeScreen já na aba
-          // correspondente.
+          // correspondente. `width: double.infinity` + `textAlign.center`
+          // garante a centralização mesmo quando o texto (mais longo em
+          // alguns idiomas) quebra em duas linhas — só o Center() do
+          // InkWell não bastava: sem textAlign, a 2ª linha ficava alinhada
+          // à esquerda da caixa de texto em vez de centralizada.
           Center(
             child: InkWell(
               onTap: () => Navigator.of(context).push(
@@ -413,12 +441,16 @@ class InicioDashboard extends StatelessWidget {
                   builder: (_) => const TermosPrivacidadeScreen(abaInicial: 0),
                 ),
               ),
-              child: const Text(
-                'Termos de Uso e Contrato de Consentimento',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  l10n.footerTermosLink,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
@@ -431,12 +463,16 @@ class InicioDashboard extends StatelessWidget {
                   builder: (_) => const TermosPrivacidadeScreen(abaInicial: 1),
                 ),
               ),
-              child: const Text(
-                'Política de Privacidade',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  l10n.termosTabPrivacidade,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
@@ -461,7 +497,7 @@ class _CartaoPlano extends StatelessWidget {
     required this.descricao,
     required this.corPrincipal,
     required this.destaque,
-    required this.onTap,
+    this.onTap,
     this.selo,
   });
 
@@ -470,7 +506,10 @@ class _CartaoPlano extends StatelessWidget {
   final String descricao;
   final Color corPrincipal;
   final bool destaque;
-  final VoidCallback onTap;
+  // Item 4: nullable — o Card Free não deve abrir nenhum modal ao ser
+  // tocado, então recebe `null` aqui (o InkWell fica com o efeito de
+  // toque desativado).
+  final VoidCallback? onTap;
   final String? selo;
 
   @override
@@ -566,8 +605,7 @@ class _CartaoPlano extends StatelessWidget {
 
 /// Modal de detalhes de um plano (Free ou Premium), aberto ao tocar no
 /// respectivo card. Estrutura compartilhada: ícone + título, banner de
-/// destaque, lista de benefícios, nota de rodapé sobre o custo do envio
-/// extra via WhatsApp, e ação(ões) no rodapé.
+/// destaque, lista de benefícios e ação(ões) no rodapé.
 class _ModalDetalhePlano extends StatelessWidget {
   const _ModalDetalhePlano({
     required this.icone,
@@ -594,13 +632,9 @@ class _ModalDetalhePlano extends StatelessWidget {
   /// "Cancelar Plano Premium" — reverte o usuário para o Plano Free.
   final VoidCallback? onCancelarPremium;
 
-  static const String _notaRodape =
-      '* O envio adicional para WhatsApp é um recurso opcional que pode ser '
-      'ativado na página "Configurações" e possui o custo de US\$ 0,10 por '
-      'mensagem.';
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
       title: Row(
         children: [
@@ -645,11 +679,6 @@ class _ModalDetalhePlano extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              _notaRodape,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-            ),
             if (onCancelarPremium != null) ...[
               const SizedBox(height: 14),
               const Divider(),
@@ -658,9 +687,9 @@ class _ModalDetalhePlano extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: onCancelarPremium,
                   icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
-                  label: const Text(
-                    'Cancelar Plano Premium',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                  label: Text(
+                    l10n.premiumCancelarBotaoModal,
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

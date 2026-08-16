@@ -53,16 +53,26 @@ private const val TAG = "RotinaAlarmWakeService"
  * NUNCA ficar preso indefinidamente drenando bateria caso esse sinal de
  * conclusão falhe por qualquer motivo.
  *
- * PERSISTÊNCIA CONTRA SWIPE/DESBLOQUEIO (nova regra de segurança): o
- * alarme NUNCA deve parar de tocar/exigir o PIN só porque o usuário
- * arrastou o app para fora dos Recentes ou desbloqueou o aparelho — só o
- * PIN correto ou o esgotamento da tolerância podem encerrá-lo.
- * `android:stopWithTask="false"` no manifest garante que este Service
- * (que já roda em primeiro plano) não seja parado automaticamente por
- * remoção de tarefa, e o [BroadcastReceiver] registrado dinamicamente
- * abaixo reabre [RotinaCheckinAlarmActivity] sempre que o aparelho for
- * desbloqueado ([Intent.ACTION_USER_PRESENT]) enquanto o fluxo
- * ([RotinaAlarmFluxoState]) ainda não tiver sido resolvido.
+ * DESBLOQUEIO DO APARELHO: o alarme não para de tocar/exigir o PIN só
+ * porque a tela foi desbloqueada — `android:stopWithTask="false"` no
+ * manifest garante que este Service (que já roda em primeiro plano) não
+ * seja parado automaticamente por remoção de tarefa, e o
+ * [BroadcastReceiver] registrado dinamicamente abaixo reabre
+ * [RotinaCheckinAlarmActivity] sempre que o aparelho for desbloqueado
+ * ([Intent.ACTION_USER_PRESENT]) enquanto o fluxo ([RotinaAlarmFluxoState])
+ * ainda não tiver sido resolvido.
+ *
+ * FECHAMENTO FORÇADO ("jogar para cima"/force close) — especificação do
+ * usuário (2026-08-07, item 4), COMPORTAMENTO INVERTIDO em relação à
+ * versão anterior: antes, [onTaskRemoved] reabria a tela e deixava o
+ * alarme continuar tocando normalmente (tratava o swipe como um gesto
+ * sem consequência). Agora, esse gesto — enquanto o fluxo ainda
+ * está em andamento (sem PIN confirmado) — é tratado como uma falha de
+ * confirmação: a tela É reaberta (só para ter um engine Flutter vivo
+ * capaz de rodar o disparo real, ver [RotinaAlarmFluxoState.marcarFechamentoForcado]/
+ * `RotinaAlarmeService.consumirFechamentoForcado`), mas
+ * [AlarmeDisparadoScreen] detecta esse motivo específico e dispara o
+ * alerta de emergência IMEDIATAMENTE em vez de retomar o toque normal.
  */
 class RotinaAlarmWakeService : Service() {
 
@@ -83,20 +93,29 @@ class RotinaAlarmWakeService : Service() {
             // reabrir uma tela de alarme já encerrado por qualquer
             // desbloqueio/tela-ligada subsequente e não relacionado.
             if (emAndamento) {
-                iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+                iniciarTelaDoAlarme(
+                    RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
+                    RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
+                )
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)}")
+        val tipoAlarme = intent?.getStringExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME)
+            ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+        Log.d(
+            TAG,
+            "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)} " +
+                "tipoAlarme=$tipoAlarme",
+        )
         iniciarEmForeground()
         adquirirWakeLock()
         registrarReceiverDeDesbloqueio()
 
         idAlarmeAtual = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
-        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual)
-        iniciarTelaDoAlarme(idAlarmeAtual)
+        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual, tipoAlarme)
+        iniciarTelaDoAlarme(idAlarmeAtual, tipoAlarme)
 
         // START_NOT_STICKY: não faz sentido o Android recriar este Service
         // sozinho sem o extra do idAlarme — o próprio alarme nativo (ou o
@@ -106,25 +125,31 @@ class RotinaAlarmWakeService : Service() {
     }
 
     /**
-     * CORREÇÃO (persistência contra swipe): se o Android remover a
-     * TAREFA (task) associada a este Service — ex: usuário arrastou o
-     * app para cima nos Recentes — enquanto o fluxo ainda estiver em
-     * andamento, reagenda a reabertura da tela do alarme logo em
-     * seguida, em vez de deixar o alerta "sumir" silenciosamente. O
-     * Service em si (`stopWithTask="false"`) já sobrevive à remoção da
-     * tarefa; isto cobre também a Activity, que É destruída nesse
-     * evento.
+     * FECHAMENTO FORÇADO (item 4, ver comentário da classe): se o
+     * Android remover a TAREFA (task) associada a este Service — ex:
+     * usuário arrastou o app para cima nos Recentes — enquanto o fluxo
+     * ainda estiver em andamento (PIN não confirmado), marca a flag
+     * [RotinaAlarmFluxoState.marcarFechamentoForcado] ANTES de reabrir a
+     * tela, para que [AlarmeDisparadoScreen] (assim que seu engine
+     * reiniciar) saiba que deve disparar o alerta de emergência de
+     * imediato, em vez de retomar o toque/teclado normal. O Service em
+     * si (`stopWithTask="false"`) já sobrevive à remoção da tarefa; isto
+     * cobre a Activity, que É destruída nesse evento.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         val emAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
-        Log.d(TAG, "onTaskRemoved: emAndamento=$emAndamento — ${if (emAndamento) "reagendando reabertura em 500ms" else "nada a fazer (fluxo já resolvido)"}")
+        Log.d(TAG, "onTaskRemoved: emAndamento=$emAndamento — ${if (emAndamento) "fechamento forçado: marcando flag e reabrindo só para disparar o alerta" else "nada a fazer (fluxo já resolvido)"}")
         if (emAndamento) {
+            RotinaAlarmFluxoState.marcarFechamentoForcado(applicationContext)
             Handler(Looper.getMainLooper()).postDelayed({
                 val aindaEmAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
                 Log.d(TAG, "onTaskRemoved (delayed 500ms): aindaEmAndamento=$aindaEmAndamento")
                 if (aindaEmAndamento) {
-                    iniciarTelaDoAlarme(RotinaAlarmFluxoState.idAlarmeAtual(applicationContext))
+                    iniciarTelaDoAlarme(
+                        RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
+                        RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
+                    )
                 }
             }, 500L)
         }
@@ -162,8 +187,11 @@ class RotinaAlarmWakeService : Service() {
         }
     }
 
-    private fun iniciarTelaDoAlarme(idAlarme: Int) {
-        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme")
+    private fun iniciarTelaDoAlarme(
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ) {
+        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
         try {
             val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
                 addFlags(
@@ -172,6 +200,7 @@ class RotinaAlarmWakeService : Service() {
                         Intent.FLAG_ACTIVITY_SINGLE_TOP,
                 )
                 putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
             }
             startActivity(intent)
         } catch (e: Exception) {
@@ -314,16 +343,43 @@ object RotinaAlarmFluxoState {
     private const val PREFS_NAME = "rotina_alarme_wake_state"
     private const val CHAVE_EM_ANDAMENTO = "em_andamento"
     private const val CHAVE_ID_ALARME = "id_alarme_atual"
+    private const val CHAVE_FECHAMENTO_FORCADO = "fechamento_forcado"
 
-    fun marcarEmAndamento(context: Context, idAlarme: Int) {
+    /**
+     * Tipo do alarme atualmente em andamento — [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA]
+     * (padrão, retrocompatível) ou [RotinaCheckinAlarmActivity.TIPO_ALARME_CRONOMETRO].
+     * Generalização que permite este MESMO estado nativo (e o restante da
+     * infraestrutura de [RotinaAlarmWakeService]) ser compartilhado pelo
+     * Cronômetro Regressivo da aba Segurança, sem duplicar nenhuma classe.
+     */
+    private const val CHAVE_TIPO_ALARME = "tipo_alarme_atual"
+
+    fun marcarEmAndamento(
+        context: Context,
+        idAlarme: Int,
+        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
+    ) {
         try {
-            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme")
+            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(CHAVE_EM_ANDAMENTO, true)
                 .putInt(CHAVE_ID_ALARME, idAlarme)
+                .putString(CHAVE_TIPO_ALARME, tipoAlarme)
                 .apply()
         } catch (_: Exception) {
+        }
+    }
+
+    /** Tipo do alarme atualmente em andamento (ver [CHAVE_TIPO_ALARME]) —
+     * [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA] se ausente/erro. */
+    fun tipoAlarmeAtual(context: Context): String {
+        return try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(CHAVE_TIPO_ALARME, RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA)
+                ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+        } catch (_: Exception) {
+            RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
         }
     }
 
@@ -353,6 +409,54 @@ object RotinaAlarmFluxoState {
                 .getInt(CHAVE_ID_ALARME, -1)
         } catch (_: Exception) {
             -1
+        }
+    }
+
+    /**
+     * Marca que a próxima reabertura da tela do alarme aconteceu por
+     * FECHAMENTO FORÇADO (ver [RotinaAlarmWakeService.onTaskRemoved]) —
+     * consumida (lida E limpa) uma única vez pelo lado Dart via
+     * [consumirFechamentoForcado]/`RotinaAlarmPlugin`
+     * ("consumirFechamentoForcado").
+     */
+    fun marcarFechamentoForcado(context: Context) {
+        try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(CHAVE_FECHAMENTO_FORCADO, true)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * Lê e IMEDIATAMENTE limpa a flag de fechamento forçado — chamada
+     * pelo lado Dart assim que o engine desta reabertura inicia (ver
+     * `AlarmeDisparadoScreen.initState`), garantindo que o sinal só seja
+     * processado uma única vez, mesmo que a tela seja recriada depois
+     * por outro motivo (ex: desbloqueio de tela) antes do fluxo terminar.
+     */
+    /**
+     * [tipoEsperado]: só consome (lê E limpa) a flag se o tipo do alarme
+     * ATUALMENTE em andamento (ver [tipoAlarmeAtual]) bater com o
+     * chamador — evita que uma instância de [RotinaCheckinAlarmActivity]
+     * do Alarme de Rotina consuma por engano um fechamento forçado que
+     * era, na verdade, do Cronômetro (ou vice-versa), no raro caso dos
+     * dois estarem ativos ao mesmo tempo. Retrocompatível: chamadores que
+     * não informam [tipoEsperado] (`null`) continuam consumindo a flag
+     * incondicionalmente, como antes.
+     */
+    fun consumirFechamentoForcado(context: Context, tipoEsperado: String? = null): Boolean {
+        return try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (tipoEsperado != null && tipoAlarmeAtual(context) != tipoEsperado) return false
+            val valor = prefs.getBoolean(CHAVE_FECHAMENTO_FORCADO, false)
+            if (valor) {
+                prefs.edit().putBoolean(CHAVE_FECHAMENTO_FORCADO, false).apply()
+            }
+            valor
+        } catch (_: Exception) {
+            false
         }
     }
 }

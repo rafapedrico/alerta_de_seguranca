@@ -2,16 +2,28 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../app_navigator.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
 import '../services/contatos_emergencia_service.dart';
 import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/firebase_sync_service.dart';
+import '../services/onboarding_service.dart';
+import '../widgets/recuperar_senha_dialog.dart';
+import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
 import '../services/notificacao_service.dart';
+import '../services/social_auth_service.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
 import 'cadastro_screen.dart';
+
+/// Provedores de login social suportados (ver [SocialAuthService]) — usado
+/// só para saber QUAL botão mostra o spinner de carregamento na
+/// [LoginScreen], já que os 3 ficam desabilitados juntos durante qualquer
+/// autenticação em andamento.
+enum _ProvedorSocial { google, facebook, apple }
 
 /// Tela de Login do "SOS Security Personal".
 ///
@@ -24,8 +36,12 @@ import 'cadastro_screen.dart';
 /// reenviar a mensagem de verificação — em NENHUMA hipótese de erro ou
 /// e-mail não verificado a navegação para a Home acontece.
 ///
-/// Não há login social (Google/Facebook) implementado — nenhum atalho de
-/// autenticação deve existir nesta tela.
+/// Login social (Google/Facebook/Apple, ver [SocialAuthService]) abaixo
+/// da opção de e-mail/senha: como são identidades federadas em que o
+/// próprio provedor já garante a posse do e-mail, o Firebase marca
+/// `emailVerified == true` automaticamente nessas contas — a barreira de
+/// e-mail verificado acima é específica do cadastro por e-mail/senha
+/// (onde o Firebase NÃO garante isso sozinho) e não se aplica aqui.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -44,6 +60,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _senhaController = TextEditingController();
   bool _senhaVisivel = false;
   bool _fazendoLogin = false;
+
+  /// Provedor social com autenticação em andamento no momento (`null` se
+  /// nenhum) — controla tanto QUAL botão mostra o spinner quanto o
+  /// desabilitar dos 3 botões (e do botão "Entrar" padrão) enquanto dura.
+  _ProvedorSocial? _provedorSocialCarregando;
+
+  /// Verdadeiro durante QUALQUER autenticação em andamento (e-mail/senha
+  /// OU social) — usado para desabilitar todos os botões de login juntos,
+  /// evitando dois fluxos de autenticação concorrentes.
+  bool get _autenticando => _fazendoLogin || _provedorSocialCarregando != null;
 
   @override
   void dispose() {
@@ -89,20 +115,17 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      unawaited(FcmService().inicializar());
-
       // CORREÇÃO (Bug de entrega): a política "Opção A" desloga a sessão
       // a cada cold start (ver `main.dart`), então o único momento em que
       // sabemos o `uid` correto é logo após um login bem-sucedido como
-      // este — sincroniza aqui os contatos de emergência já cadastrados
-      // no SQLite local com `usuarios/{uid}.contatosEmergencia`, sem
-      // depender de o usuário editar algo primeiro. Sem isto, a Cloud
-      // Function de alerta (`functions/index.js`) podia ler uma lista
-      // vazia/desatualizada e não disparar nem o Push nem o WhatsApp.
-      unawaited(ContatosEmergenciaService.sincronizarAgora());
-
+      // este — [_finalizarLoginComSucesso] sincroniza aqui os contatos de
+      // emergência já cadastrados no SQLite local com
+      // `usuarios/{uid}.contatosEmergencia`, sem depender de o usuário
+      // editar algo primeiro. Sem isto, a Cloud Function de alerta
+      // (`functions/index.js`) podia ler uma lista vazia/desatualizada e
+      // não disparar o Push.
       if (!mounted) return;
-      _navegarParaFluxoPrincipal();
+      await _finalizarLoginComSucesso();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,6 +147,100 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } finally {
       if (mounted) setState(() => _fazendoLogin = false);
+    }
+  }
+
+  /// Ponto único de entrada dos 3 botões sociais — [acao] é o método
+  /// correspondente de [SocialAuthService]. Cuida do estado de
+  /// carregamento (desabilita os botões, mostra o spinner no botão
+  /// certo), do cancelamento pelo usuário (contrato: `null` = cancelado,
+  /// sem crash e sem mensagem de erro) e do tratamento de exceções, e no
+  /// sucesso segue EXATAMENTE o mesmo caminho pós-login do e-mail/senha
+  /// ([_finalizarLoginComSucesso]).
+  Future<void> _fazerLoginSocial(
+    _ProvedorSocial provedor,
+    Future<UserCredential?> Function() acao,
+  ) async {
+    if (_autenticando) return;
+
+    setState(() => _provedorSocialCarregando = provedor);
+    try {
+      final credencial = await acao();
+      if (credencial == null) {
+        // Cancelado pelo usuário (fechou o seletor de conta/diálogo) —
+        // não é erro, não mostra mensagem nenhuma.
+        return;
+      }
+      if (!mounted) return;
+      await _finalizarLoginComSucesso();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_mensagemErroLoginSocial(e)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      debugPrint('⚠️ [LoginScreen] Falha inesperada no login social ($provedor): $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.erroLoginGenerico),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _provedorSocialCarregando = null);
+    }
+  }
+
+  String _mensagemErroLoginSocial(FirebaseAuthException e) {
+    if (e.code == 'account-exists-with-different-credential') {
+      return AppLocalizations.of(context)!.loginSocialContaExistente;
+    }
+    return AppLocalizations.of(context)!.erroLoginGenerico;
+  }
+
+  /// Passos comuns pós-login bem-sucedido, compartilhados entre o login
+  /// por e-mail/senha ([_fazerLogin]) e os 3 sociais ([_fazerLoginSocial]):
+  /// inicializa o FCM, sincroniza os contatos de emergência locais com o
+  /// Firestore (ver comentário original em [_fazerLogin]), grava
+  /// nome/e-mail do login social em `usuarios/{uid}` (ver
+  /// [FirebaseSyncService.sincronizarPerfilSocial] — no-op inofensivo para
+  /// o login por e-mail/senha, que já grava isso via [CadastroScreen]) e
+  /// navega para o fluxo principal — passando primeiro pelo Assistente de
+  /// Configuração Inicial ([OnboardingScreen]), se ainda não concluído
+  /// nesta instalação (reespecificação do usuário, 2026-08-16: "logo após
+  /// o primeiro login").
+  Future<void> _finalizarLoginComSucesso() async {
+    unawaited(FcmService().inicializar());
+    unawaited(ContatosEmergenciaService.sincronizarAgora());
+    unawaited(FirebaseSyncService().sincronizarPerfilSocial(
+      nome: FirebaseAuthService().usuarioAtual?.displayName,
+      email: FirebaseAuthService().usuarioAtual?.email,
+    ));
+    if (!mounted) return;
+
+    final onboardingConcluido = await OnboardingService().jaConcluido();
+    if (!mounted) return;
+
+    if (onboardingConcluido) {
+      _navegarParaFluxoPrincipal();
+    } else {
+      // Substitui a PRÓPRIA LoginScreen (não empilha por cima) — igual ao
+      // padrão já usado por [_navegarParaFluxoPrincipal] — para que o
+      // botão "voltar" do sistema, no Assistente, nunca volte pra tela de
+      // login. `aoConcluir` é chamado pelo próprio Assistente ao tocar em
+      // "Continuar" (sempre disponível, mesmo com permissões pendentes —
+      // ver documentação completa em [OnboardingScreen]).
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => OnboardingScreen(aoConcluir: _navegarParaFluxoPrincipal),
+        ),
+      );
     }
   }
 
@@ -201,10 +318,23 @@ class _LoginScreenState extends State<LoginScreen> {
   /// [NotificacaoService.consumirPayloadSolicitacaoPendente]): em vez de o
   /// usuário precisar navegar manualmente até a aba Monitoramento depois de
   /// logar, o modal de decisão já abre direto por cima da Home.
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-16): usa [appNavigatorKey] (mesmo
+  /// padrão já usado por [_abrirModalDecisaoAposLogin] logo abaixo) em vez
+  /// de `Navigator.of(context)` — necessário desde que este método passou
+  /// a também ser usado como o callback `aoConcluir` de [OnboardingScreen]
+  /// (ver `_finalizarLoginComSucesso`): quando chamado a partir de lá,
+  /// `_LoginScreenState` (e seu `context`) já foi DESCARTADO havia muito
+  /// tempo (a troca de rota `pushReplacement` para o Assistente já
+  /// aconteceu antes, e o usuário pode levar minutos decidindo as
+  /// permissões) — usar o `context` antigo lançaria
+  /// `FlutterError: This widget has been unmounted`. `appNavigatorKey`
+  /// aponta para o Navigator RAIZ do app, sempre válido independente de
+  /// qual tela specific o chamou.
   void _navegarParaFluxoPrincipal() {
     final payloadPendente = NotificacaoService.consumirPayloadSolicitacaoPendente();
 
-    Navigator.of(context).pushReplacement(
+    appNavigatorKey.currentState?.pushReplacement(
       MaterialPageRoute(
         builder: (context) =>
             const TelaInicialComPossivelDialogoPin(aguardandoConfirmacaoPin: false),
@@ -237,9 +367,14 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  /// Abre o modal de recuperação de senha real via Firebase Auth (ver
+  /// [RecuperarSenhaDialog]) — reespecificação do usuário (2026-08-16):
+  /// antes só mostrava um SnackBar de placeholder. Pré-preenche o e-mail
+  /// com o que o usuário já tiver digitado no formulário de login.
   void _abrirEsqueciMinhaSenha() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.recuperacaoSenhaEmBreve)),
+    showDialog<void>(
+      context: context,
+      builder: (_) => RecuperarSenhaDialog(emailInicial: _emailController.text),
     );
   }
 
@@ -280,7 +415,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   _buildBotaoEntrar(),
+                  const SizedBox(height: 28),
+                  _buildDivisorLoginSocial(),
                   const SizedBox(height: 20),
+                  _buildBotoesLoginSocial(),
+                  const SizedBox(height: 8),
+                  _buildBotaoLimparSessao(),
+                  const SizedBox(height: 12),
                   _buildLinkCadastro(),
                 ],
               ),
@@ -369,10 +510,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return SizedBox(
       height: 52,
       child: ElevatedButton(
-        onPressed: _fazendoLogin ? null : _fazerLogin,
+        onPressed: _autenticando ? null : _fazerLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: _corPrincipal,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: _corPrincipal.withOpacity(0.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
@@ -388,6 +530,133 @@ class _LoginScreenState extends State<LoginScreen> {
             : Text(
           AppLocalizations.of(context)!.botaoEntrar,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  /// Divisor "── ou entre com ──" entre o login por e-mail/senha e os
+  /// botões de login social, mantendo o tema escuro da tela.
+  Widget _buildDivisorLoginSocial() {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            AppLocalizations.of(context)!.loginSocialDivisor,
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+        ),
+        const Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+      ],
+    );
+  }
+
+  /// Os 3 botões de login social (Google, Facebook, Apple), centralizados
+  /// lado a lado — círculos escuros com o ícone da marca, mesmo tema da
+  /// tela. Desabilitados juntos (ver [_autenticando]) enquanto qualquer
+  /// autenticação estiver em andamento; o botão do provedor em voo mostra
+  /// um spinner discreto no lugar do ícone.
+  Widget _buildBotoesLoginSocial() {
+    final l10n = AppLocalizations.of(context)!;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildBotaoSocial(
+          provedor: _ProvedorSocial.google,
+          tooltip: l10n.loginSocialGoogleTooltip,
+          icone: const FaIcon(FontAwesomeIcons.google, color: Color(0xFFEA4335), size: 22),
+          onPressed: () => _fazerLoginSocial(
+            _ProvedorSocial.google,
+            SocialAuthService().signInWithGoogle,
+          ),
+        ),
+        const SizedBox(width: 20),
+        _buildBotaoSocial(
+          provedor: _ProvedorSocial.facebook,
+          tooltip: l10n.loginSocialFacebookTooltip,
+          icone: const FaIcon(FontAwesomeIcons.facebook, color: Color(0xFF1877F2), size: 22),
+          onPressed: () => _fazerLoginSocial(
+            _ProvedorSocial.facebook,
+            SocialAuthService().signInWithFacebook,
+          ),
+        ),
+        const SizedBox(width: 20),
+        _buildBotaoSocial(
+          provedor: _ProvedorSocial.apple,
+          tooltip: l10n.loginSocialAppleTooltip,
+          icone: const FaIcon(FontAwesomeIcons.apple, color: Colors.white, size: 24),
+          onPressed: () => _fazerLoginSocial(
+            _ProvedorSocial.apple,
+            SocialAuthService().signInWithApple,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Botão utilitário de diagnóstico/teste — pedido do usuário
+  /// (2026-08-10) para conseguir testar o login social do zero sem
+  /// reaproveitar uma conta já em cache no aparelho (ver
+  /// [SocialAuthService.encerrarSessoesSociais]). Deliberadamente
+  /// discreto (texto pequeno, cinza) por não ser um botão de fluxo normal
+  /// — só uma ferramenta de teste/depuração.
+  Widget _buildBotaoLimparSessao() {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _autenticando ? null : _limparSessaoDeLoginSocial,
+        icon: const Icon(Icons.logout, size: 16, color: Colors.white38),
+        label: Text(
+          AppLocalizations.of(context)!.loginLimparSessaoBotao,
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _limparSessaoDeLoginSocial() async {
+    await SocialAuthService().encerrarSessoesSociais();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.loginLimparSessaoConfirmacao),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildBotaoSocial({
+    required _ProvedorSocial provedor,
+    required String tooltip,
+    required Widget icone,
+    required VoidCallback onPressed,
+  }) {
+    final bool carregandoEste = _provedorSocialCarregando == provedor;
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 52,
+        height: 52,
+        child: Material(
+          color: _corCampoFundo,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: _autenticando ? null : onPressed,
+            child: Center(
+              child: carregandoEste
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(_corAcentoClaro),
+                      ),
+                    )
+                  : Opacity(opacity: _autenticando ? 0.4 : 1, child: icone),
+            ),
+          ),
         ),
       ),
     );

@@ -9,29 +9,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /usuarios/{usuarioId} {
       // Documento por usuário: perfil (nome/email/telefone/fcmToken),
-      // localização atual, contatos de emergência sincronizados (ver
-      // FirebaseSyncService), saldo da Carteira em USD e a chave global
-      // `enviarWhatsappSimultaneo` ("Enviar também via WhatsApp", ver
-      // ConfiguracoesTab/functions/alertaHibridoService.js) — este campo
-      // booleano É gravável pelo próprio dono na regra `update` abaixo
-      // (só `saldoUsd` é travado).
+      // localização atual e contatos de emergência sincronizados (ver
+      // FirebaseSyncService).
       allow read: if request.auth != null && request.auth.uid == usuarioId;
 
       // Criação do perfil (cadastro, ver
-      // FirebaseSyncService.criarPerfilInicial) — só o próprio dono, sem
-      // restrição extra de campos (é o único momento em que `saldoUsd`
-      // pode ser gravado pelo cliente, sempre com valor inicial 0).
+      // FirebaseSyncService.criarPerfilInicial) — só o próprio dono.
       allow create: if request.auth != null && request.auth.uid == usuarioId;
 
       // Atualizações do próprio dono (localização periódica, contatos de
-      // emergência, fcmToken, etc.) — TRAVA CRÍTICA: `saldoUsd` nunca pode
-      // mudar de valor numa escrita originada pelo cliente. Todo crédito
-      // (compra verificada) ou débito (contingência WhatsApp) de saldo é
-      // feito exclusivamente pelas Cloud Functions via Admin SDK, que
-      // ignora estas regras.
-      allow update: if request.auth != null &&
-          request.auth.uid == usuarioId &&
-          request.resource.data.saldoUsd == resource.data.saldoUsd;
+      // emergência, fcmToken, etc.).
+      allow update: if request.auth != null && request.auth.uid == usuarioId;
 
       allow delete: if false;
 
@@ -46,22 +34,13 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      match /historicoCreditos/{registroId} {
-        // Extrato da Carteira (recargas e descontos de $0.10 por envio de
-        // WhatsApp) — só leitura para o dono; toda escrita é feita pelas
-        // Cloud Functions (ver functions/walletService.js), nunca pelo
-        // cliente, evitando saldo/histórico fraudulento.
-        allow read: if request.auth != null && request.auth.uid == usuarioId;
-        allow write: if false;
-      }
-
       match /monitoramento/atual {
         // Espelho GRAVADO PELO PRÓPRIO DONO (mesmo heartbeat de
         // localização já usado pelo alarme de pânico, ver
         // FirebaseSyncService.atualizarLocalizacaoAtual) num documento
         // SEPARADO do `usuarios/{usuarioId}` principal — necessário
         // porque aquele documento tem campos estritamente privados
-        // (saldoUsd, fcmToken) que NUNCA podem ser lidos por terceiros,
+        // (fcmToken) que NUNCA podem ser lidos por terceiros,
         // enquanto este espelho existe justamente para ser lido por quem
         // tiver uma permissão "aprovado" na aba Monitoramento.
         allow read: if request.auth != null &&
@@ -90,11 +69,10 @@ service cloud.firestore {
     }
 
     match /entregas_alerta/{idEntrega} {
-      // Rastreamento do pipeline híbrido de alerta (Push FCM + transbordo
-      // condicional para WhatsApp, ver functions/alertaHibridoService.js
-      // e functions/transbordoWhatsappMonitor.js) — inteiramente gerido
-      // pelas Cloud Functions via Admin SDK. O cliente nunca lê nem
-      // escreve o documento principal diretamente.
+      // Rastreamento do pipeline de alerta via Push FCM (ver
+      // functions/alertaHibridoService.js) — inteiramente gerido pelas
+      // Cloud Functions via Admin SDK. O cliente nunca lê nem escreve o
+      // documento principal diretamente.
       allow read, write: if false;
 
       match /confirmacoes/{uidDestino} {
@@ -102,8 +80,6 @@ service cloud.firestore {
         // "guardião" que recebeu o Push grava aqui a confirmação de
         // entrega (ver FcmService/FirebaseSyncService.confirmarEntregaAlerta)
         // — só o próprio destinatário pode confirmar a própria entrega.
-        // É essa confirmação que o job de transbordo (a cada 1 min)
-        // verifica antes de decidir se cobra o WhatsApp de contingência.
         allow create, update: if request.auth != null &&
             request.auth.uid == uidDestino;
         allow read, delete: if false;
@@ -150,6 +126,15 @@ service cloud.firestore {
           request.resource.data.status in ['aprovado', 'negado', 'bloqueado'];
 
       allow delete: if false;
+    }
+
+    match /contas_excluidas/{usuarioId} {
+      // Marcador PERMANENTE de revogação, gravado exclusivamente pela
+      // Cloud Function `excluirContaCompleta` (Admin SDK, ignora estas
+      // regras) — ver exclusaoContaService.js. Nunca acessível ao
+      // cliente, nem para o próprio ex-titular (que, a essa altura, nem
+      // tem mais uma sessão autenticada válida).
+      allow read, write: if false;
     }
   }
 }

@@ -76,6 +76,22 @@ class VolumeSosPlugin : FlutterPlugin {
         methodChannel = null
         eventChannel?.setStreamHandler(null)
         eventChannel = null
+
+        // CORREÇÃO (bug real: botão físico "parava de responder" depois
+        // que o usuário fechava o app pelos Recentes): sem isto,
+        // VolumeSosEventBridge.eventSink continuava com uma referência
+        // MORTA/STALE do engine recém-destruído em vez de `null` — o
+        // `onCancel` do StreamHandler acima só dispara quando o lado
+        // Dart CANCELA a assinatura explicitamente, não quando o engine
+        // inteiro é destruído de forma abrupta (ex: swipe do app nos
+        // Recentes, engine encerrado pelo Android). Um `eventSink` stale
+        // não-nulo fazia `VolumeSosService.aparelhoBloqueadoOuSemEngineDartVivo()`
+        // acreditar que ainda havia um engine Dart vivo para entregar o
+        // evento — e por isso NUNCA cair no fallback nativo
+        // (`forcarAberturaLockscreenCameraActivity`), silenciando o
+        // gatilho físico por completo nesse cenário (tela desbloqueada,
+        // app fechado).
+        VolumeSosEventBridge.eventSink = null
     }
 
     companion object {
@@ -107,7 +123,15 @@ object VolumeSosEventBridge {
      * despachada na main thread do Android. */
     fun notificarSosDisparado() {
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            eventSink?.success("sos_disparado")
+            try {
+                eventSink?.success("sos_disparado")
+            } catch (_: Exception) {
+                // Canal morto/engine destruído numa janela de corrida
+                // (defesa extra, além da limpeza em
+                // VolumeSosPlugin.onDetachedFromEngine acima) — o
+                // chamador (VolumeSosService) decide separadamente se
+                // precisa do fallback nativo.
+            }
         }
     }
 }

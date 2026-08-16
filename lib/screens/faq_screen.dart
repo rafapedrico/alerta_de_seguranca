@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:security_check_app/l10n/app_localizations.dart';
 
 /// Tela dedicada de Perguntas Frequentes (FAQ), acessada a partir do
 /// botão "Perguntas Frequentes (FAQ)" na Tela de Início (Dashboard) — ver
@@ -6,6 +7,10 @@ import 'package:flutter/material.dart';
 /// filtra as perguntas/respostas em tempo real e uma lista de
 /// [ExpansionTile] estilizados no mesmo padrão visual escuro do restante
 /// do app.
+///
+/// Todo o conteúdo (título, dica de busca, perguntas e respostas) vem de
+/// [AppLocalizations] — nenhum texto fica preso em português, exibindo
+/// sempre o idioma selecionado pelo usuário.
 class FaqScreen extends StatefulWidget {
   const FaqScreen({super.key});
 
@@ -23,10 +28,10 @@ class _FaqScreenState extends State<FaqScreen> {
     super.dispose();
   }
 
-  List<_FaqItem> get _itensFiltrados {
-    if (_termoBusca.trim().isEmpty) return _todasAsPerguntas;
+  List<_FaqItem> _itensFiltrados(List<_FaqItem> todasAsPerguntas) {
+    if (_termoBusca.trim().isEmpty) return todasAsPerguntas;
     final termo = _termoBusca.trim().toLowerCase();
-    return _todasAsPerguntas
+    return todasAsPerguntas
         .where((item) =>
             item.pergunta.toLowerCase().contains(termo) ||
             item.resposta.toLowerCase().contains(termo))
@@ -35,7 +40,8 @@ class _FaqScreenState extends State<FaqScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final itens = _itensFiltrados;
+    final l10n = AppLocalizations.of(context)!;
+    final itens = _itensFiltrados(_todasAsPerguntas(l10n));
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -44,10 +50,10 @@ class _FaqScreenState extends State<FaqScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.home_outlined),
-          tooltip: 'Início',
+          tooltip: l10n.faqTooltipInicio,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Perguntas Frequentes (FAQ)'),
+        title: Text(l10n.faqAppBarTitulo),
       ),
       body: Column(
         children: [
@@ -58,7 +64,7 @@ class _FaqScreenState extends State<FaqScreen> {
               onChanged: (valor) => setState(() => _termoBusca = valor),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Buscar em perguntas e respostas...',
+                hintText: l10n.faqBuscaHint,
                 hintStyle: const TextStyle(color: Colors.white38),
                 prefixIcon: const Icon(Icons.search, color: Colors.white38),
                 suffixIcon: _termoBusca.isEmpty
@@ -82,10 +88,10 @@ class _FaqScreenState extends State<FaqScreen> {
           ),
           Expanded(
             child: itens.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'Nenhuma pergunta encontrada.',
-                      style: TextStyle(color: Colors.white54),
+                      l10n.faqNenhumaEncontrada,
+                      style: const TextStyle(color: Colors.white54),
                     ),
                   )
                 : ListView.separated(
@@ -132,145 +138,27 @@ class _FaqScreenState extends State<FaqScreen> {
     );
   }
 
-  static final List<_FaqItem> _todasAsPerguntas = [
-    const _FaqItem(
-      pergunta:
-          'Os alertas de emergência são enviados para os números cadastrados '
-          'mesmo se meu celular estiver desligado ou sem sinal de internet?',
-      resposta:
-          'Sim, os alarmes da página "Família" e o cronômetro regressivo da '
-          'página "Segurança" são agendados no servidor do banco de dados do '
-          'aplicativo Guardião-X. Se o cronômetro estourar o tempo de '
-          'tolerância sem o desarme com a senha do PIN, ou o alarme da '
-          'página "Família" não for desarmado após o tempo de tolerância, '
-          'imediatamente é enviado um alerta de segurança com a última '
-          'localização registrada na nuvem.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'A partir de quantos minutos se começa o envio da localização para '
-          'o banco de dados do Guardião-X?',
-      resposta:
-          'A localização começa a ser enviada 120 minutos antes do fim do '
-          'cronômetro ou do tempo programado do despertador da página '
-          'Família.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'Por que se exige um tempo programado para a efetivação da nova '
-          'senha ou para a exclusão dos contatos de emergência?',
-      resposta:
-          'Como o aplicativo Guardião-X tem o objetivo de proteger a '
-          'segurança do usuário, este tempo de espera tem como finalidade '
-          'evitar que pessoas não autorizadas desbloqueiem algumas das '
-          'funções programadas que estão esperando o tempo para ser enviado '
-          'o alerta de emergência para os números cadastrados.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'Por que na página "Histórico" foi colocada a opção de tempo de '
-          'espera caso o usuário decida restringir a visualização imediata '
-          'das informações contidas sobre as mensagens de alertas enviadas?',
-      resposta:
-          'Em casos extremos onde a integridade física do usuário esteja em '
-          'risco, talvez o usuário decida que nenhuma outra pessoa saiba que '
-          'sua localização ou foto tenha sido enviada para algum número '
-          'cadastrado.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'Por que quando são utilizados os botões de pânico físico ou da '
-          'página de "Segurança" são enviadas duas mensagens de alerta?',
-      resposta:
-          'Esta função do botão de pânico tem como prioridade máxima a '
-          'segurança do usuário. Quando o botão de pânico físico ou da '
-          'página "Segurança" é acionado, imediatamente é enviada uma '
-          'mensagem de alerta de emergência para os números cadastrados '
-          'contendo a localização. Em seguida, após abrir a câmera do '
-          'aparelho e a foto ser registrada pelo usuário, uma segunda '
-          'mensagem de alerta de emergência é enviada contendo a foto. Isto '
-          'garante que a localização chegará ao número cadastrado mesmo se '
-          'o usuário demorar ou não registrar a foto.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'É possível rastrear e acompanhar a localização de algum aparelho '
-          'que não tenha o aplicativo Guardião-X instalado no celular?',
-      resposta:
-          'Não é possível. A localização só pode ser compartilhada de '
-          'aplicativo para aplicativo e apenas com o consentimento e '
-          'permissão de ambos os usuários.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'É seguro fazer o pagamento para contratar o plano premium ou '
-          'depositar dinheiro na carteira de crédito?',
-      resposta:
-          'Sim, é seguro. Nenhum pagamento é efetuado direto para a empresa '
-          'RMF GLOBAL. Todos os pagamentos são efetuados direto na '
-          'plataforma do Google Play Store ou Apple App Store, com total '
-          'garantia das plataformas.',
-    ),
-    const _FaqItem(
-      pergunta: 'Posso resgatar o dinheiro depositado na carteira de crédito?',
-      resposta:
-          'Sim, conforme regulamento do Google Play Store e Apple, todos os '
-          'valores financeiros depositados como fundo de crédito podem ser '
-          'reembolsados pelo usuário. Esta devolução é feita diretamente '
-          'pela instituição financeira e pelas plataformas Google Play '
-          'Store e Apple seguindo a política de proteção ao crédito do '
-          'consumidor. Em caso de resgate de qualquer valor da carteira de '
-          'crédito será debitado o valor de US\$ 0,50 (cinquenta centavos de '
-          'dólar).',
-    ),
-    const _FaqItem(
-      pergunta: 'Como é feito o compartilhamento dos alertas de emergência?',
-      resposta:
-          'Todas as mensagens de alerta de segurança são enviadas de duas '
-          'formas padrão: de aplicativo para aplicativo e por SMS para os '
-          'números de celular cadastrados na página de "Configurações".',
-    ),
-    const _FaqItem(
-      pergunta:
-          'Como funciona o envio adicional de alerta de emergência para o '
-          'WhatsApp?',
-      resposta:
-          'O envio de mensagem para o WhatsApp é uma forma adicional de '
-          'segurança, sendo a terceira camada de proteção como garantia '
-          'extra de que o número cadastrado terá uma garantia a mais de que '
-          'o alerta de emergência chegará ao destino e será visualizado '
-          'pelo usuário. Cada mensagem enviada para cada número de WhatsApp '
-          'será cobrada uma taxa de serviço de US\$ 0,10 (dez centavos de '
-          'dólar). As mensagens para o WhatsApp só serão enviadas se houver '
-          'fundos na carteira de crédito, se estiver ativada a autorização '
-          'para o envio de mensagens para o WhatsApp (na página de '
-          'Configurações) e se algum número de celular estiver ativado para '
-          'receber estas mensagens.',
-    ),
-    const _FaqItem(
-      pergunta: 'Como funciona o serviço de atendimento ao consumidor?',
-      resposta:
-          'O chat do WhatsApp foi programado para responder de maneira '
-          'automática a maioria das dúvidas e solicitações do usuário. As '
-          'solicitações feitas no menu "Falar com o atendente físico" '
-          'seguirão as normas dos regulamentos da política estabelecida '
-          'pela empresa RMF GLOBAL, onde os usuários do plano Premium serão '
-          'atendidos prioritariamente em até 24 horas e os usuários do '
-          'plano Free serão atendidos por um atendente físico em até 72 '
-          'horas.',
-    ),
-    const _FaqItem(
-      pergunta:
-          'As mensagens de alerta de emergência só serão enviadas para os '
-          'números cadastrados que tiverem o aplicativo Guardião-X '
-          'instalado no celular?',
-      resposta:
-          'Não. Recomendamos que ambos os celulares tenham o aplicativo '
-          'instalado, mas mesmo se o celular de destino não tiver o '
-          'Guardião-X, o alerta de emergência é enviado por meio de SMS ou '
-          'pelo WhatsApp.',
-    ),
-  ];
+  /// Monta a lista de perguntas/respostas a partir de [AppLocalizations],
+  /// garantindo que todo o conteúdo do FAQ acompanhe o idioma selecionado
+  /// pelo usuário (item 0 do pedido de ajustes de i18n).
+  List<_FaqItem> _todasAsPerguntas(AppLocalizations l10n) => [
+        _FaqItem(pergunta: l10n.faqPergunta1, resposta: l10n.faqResposta1),
+        _FaqItem(pergunta: l10n.faqPergunta2, resposta: l10n.faqResposta2),
+        _FaqItem(pergunta: l10n.faqPergunta3, resposta: l10n.faqResposta3),
+        _FaqItem(pergunta: l10n.faqPergunta4, resposta: l10n.faqResposta4),
+        _FaqItem(pergunta: l10n.faqPergunta5, resposta: l10n.faqResposta5),
+        _FaqItem(pergunta: l10n.faqPergunta6, resposta: l10n.faqResposta6),
+        _FaqItem(pergunta: l10n.faqPergunta7, resposta: l10n.faqResposta7),
+        _FaqItem(pergunta: l10n.faqPergunta9, resposta: l10n.faqResposta9),
+        // Item 7 do pedido original (2026-08-XX): resposta sobre o
+        // atendimento ao consumidor — atualizada em 2026-08-11 (remoção
+        // do WhatsApp) para não mais descrever um chat automático; agora
+        // reflete o link direto de WhatsApp da Tela de Início (suporte
+        // humano) + atendente físico conforme a política da RMF Global,
+        // com exclusividade de até 48h para o Plano Premium.
+        _FaqItem(pergunta: l10n.faqPergunta11, resposta: l10n.faqResposta11),
+        _FaqItem(pergunta: l10n.faqPergunta12, resposta: l10n.faqResposta12),
+      ];
 }
 
 class _FaqItem {

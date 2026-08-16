@@ -2,15 +2,6 @@ class UserConfig {
   final int? id;
   final String? pinReal;
   final int? tempoPadraoTimer;
-
-  /// Chave GLOBAL "Enviar também via WhatsApp" (ver ConfiguracoesTab):
-  /// quando ligada e o contato tiver "Notificar via WhatsApp" habilitado
-  /// (ver `contatos_emergencia.whatsapp_habilitado`), o alerta é enviado
-  /// de forma SIMULTÂNEA (App + WhatsApp), sem aguardar os 60s normais de
-  /// transbordo — ver `enviarWhatsappSimultaneo` em
-  /// `functions/alertaHibridoService.js`. Sincronizada com o Firestore
-  /// por [FirebaseSyncService.atualizarEnviarWhatsappSimultaneo].
-  final bool enviarWhatsappSimultaneo;
   final String tipoPlano;
   final String? planoDeFundoUrl;
   final String? senhaPendente;
@@ -24,7 +15,6 @@ class UserConfig {
     this.id,
     this.pinReal,
     this.tempoPadraoTimer,
-    this.enviarWhatsappSimultaneo = false,
     this.tipoPlano = 'free',
     this.planoDeFundoUrl,
     this.senhaPendente,
@@ -39,7 +29,6 @@ class UserConfig {
         'id': id,
         'pin_real': pinReal,
         'tempo_padrao_timer': tempoPadraoTimer,
-        'enviar_whatsapp_simultaneo': enviarWhatsappSimultaneo ? 1 : 0,
         'tipo_plano': tipoPlano,
         'plano_de_fundo_url': planoDeFundoUrl,
         'senha_pendente': senhaPendente,
@@ -54,7 +43,6 @@ class UserConfig {
         id: map['id'] as int?,
         pinReal: map['pin_real'] as String?,
         tempoPadraoTimer: map['tempo_padrao_timer'] as int?,
-        enviarWhatsappSimultaneo: (map['enviar_whatsapp_simultaneo'] as int?) == 1,
         tipoPlano: map['tipo_plano'] as String? ?? 'free',
         planoDeFundoUrl: map['plano_de_fundo_url'] as String?,
         senhaPendente: map['senha_pendente'] as String?,

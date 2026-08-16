@@ -7,15 +7,22 @@ plugins {
 
 android {
     namespace = "com.example.security_check_app"
-    // Fixado em 35 (em vez de flutter.compileSdkVersion) para atender ao
-    // requisito mínimo de compileSdk do plugin audioplayers.
-    compileSdk = 35
+    // Fixado em 36 (em vez de flutter.compileSdkVersion) — 35 atendia o
+    // requisito mínimo do plugin audioplayers, mas o flutter_secure_storage
+    // (dependência transitiva do flutter_facebook_auth, ver
+    // social_auth_service.dart) pede 36.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Exigido pelo flutter_local_notifications sob o AGP 8.7 (ver
+        // erro de build "requires core library desugaring to be enabled")
+        // — habilita o backport de APIs Java 8+ (java.time etc.) para o
+        // minSdk 23 deste app.
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -27,9 +34,22 @@ android {
         applicationId = "com.example.security_check_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        // Fixado em 35 para acompanhar o compileSdk acima.
-        targetSdk = 35
+        // Fixado em 23 (em vez de flutter.minSdkVersion, que resolvia 21)
+        // — exigido pelo flutter_secure_storage (dependência transitiva do
+        // flutter_facebook_auth, ver pubspec.yaml/social_auth_service.dart):
+        // a lib usa APIs indisponíveis abaixo do Android 6.0 (API 23) e o
+        // merge do manifest falha sem isso. Único efeito colateral: o app
+        // deixa de instalar em Android 5.0/5.1 (API 21-22).
+        minSdkVersion = flutter.minSdkVersion
+        // CORREÇÃO (2026-08-14): este valor tinha ficado divergente do
+        // próprio comentário original ("acompanhar o compileSdk acima") —
+        // estava fixo em 35 enquanto compileSdk já é 36. Um targetSdk
+        // abaixo da versão de plataforma do aparelho é exatamente o que
+        // faz o Android exibir o aviso nativo "Este app não é compatível
+        // com a versão mais recente do Android" (reportado em um Motorola
+        // Razr 40 Ultra rodando Android 16/API 36). Corrigido para 36,
+        // igual ao compileSdk, como o comentário sempre pretendeu.
+        targetSdk = 36
 
         versionCode 1
         versionName "1.0.0"
@@ -67,6 +87,8 @@ dependencies {
     // (interceptação nativa do broadcast do FCM, ver essa classe).
     implementation platform("com.google.firebase:firebase-bom:${getRootProjectExtOrDefaultProperty("FirebaseSDKVersion")}")
     implementation "com.google.firebase:firebase-messaging"
+    // Ver comentário em compileOptions/coreLibraryDesugaringEnabled acima.
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
 }
 
 flutter {

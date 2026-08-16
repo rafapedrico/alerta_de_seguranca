@@ -1,51 +1,93 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
-import 'emergency_alert_service.dart';
+import '../screens/cronometro_disparado_screen.dart' show chaveCronometroFluxoResolvido;
 
-/// Serviço responsável por agendar/cancelar o alarme NATIVO de disparo
-/// de emergência via [AndroidAlarmManager] (android_alarm_manager_plus).
+/// Mesmo canal nativo já usado pelo Alarme de Rotina (`RotinaAlarmPlugin.kt`)
+/// — reaproveitado aqui, com o extra `tipoAlarme: 'cronometro'`, em vez de
+/// duplicar um canal/Activity/Service nativo só para o Cronômetro (ver
+/// documentação completa em [AlarmeService.agendarAlarmeEmergencia]).
+const MethodChannel _canalRotinaAlarme =
+    MethodChannel('com.example.security_check_app/rotina_alarme');
+
+/// Serviço responsável pelo alarme do Cronômetro Regressivo (aba
+/// Segurança).
 ///
-/// Diferente de um simples `Timer` do Dart (que morre junto com o
-/// processo do app quando ele é fechado/removido da lista de recentes),
-/// o AndroidAlarmManager agenda o disparo diretamente no sistema
-/// operacional Android, garantindo que o callback [_callbackDeAlarme]
-/// seja executado no horário exato mesmo que o app esteja completamente
-/// fechado — o próprio Android acorda um FlutterEngine headless
-/// (sem UI/Activity) só para rodar esse callback.
-///
-/// IMPORTANTE: [_callbackDeAlarme] precisa ser uma função de nível
-/// top-level ou `static`, anotada com [pragma('vm:entry-point')], pois é
-/// invocada pelo Android fora do ciclo de vida normal do app.
+/// [inicializar] continua responsável por inicializar o plugin
+/// `android_alarm_manager_plus` — usado extensivamente pelo Alarme de
+/// Rotina (`rotina_alarme_service.dart`), por isso permanece aqui mesmo
+/// após [agendarAlarmeEmergencia] ter deixado de usá-lo diretamente (ver
+/// abaixo).
 class AlarmeService {
   AlarmeService._internal();
   static final AlarmeService _instance = AlarmeService._internal();
   factory AlarmeService() => _instance;
 
-  /// ID fixo usado para identificar o alarme de emergência único do app
-  /// (não há múltiplos alarmes concorrentes: cada novo agendamento
-  /// cancela/substitui o anterior).
-  static const int _alarmeEmergenciaId = 9001;
+  /// Id reservado (sentinel) usado para identificar, no lado nativo
+  /// (Activity/Service/Receiver compartilhados com o Alarme de Rotina —
+  /// ver `RotinaAlarmPlugin.kt`/`RotinaCheckinAlarmActivity.kt`), o
+  /// alarme ÚNICO do Cronômetro Regressivo da aba Segurança. Fixo e
+  /// reaproveitado entre ciclos (só um cronômetro ativo por vez — mesmo
+  /// espírito do id fixo `'checkin_seguranca'` já usado do lado Firestore
+  /// em `BackgroundLocationHeartbeatService`), escolhido bem acima da
+  /// faixa de autoincrement do SQLite usada pelos alarmes de rotina, para
+  /// nunca colidir com eles no mesmo `AlarmManager`/`PendingIntent`.
+  static const int idAlarmeCronometroSeguranca = 999999;
+
+  /// Tolerância sonora após o cronômetro zerar — especificação do
+  /// usuário (2026-08-10, ajustada para 60s em 2026-08-11): ao zerar, o
+  /// alarme toca e exibe o teclado de PIN por até 60 segundos (3
+  /// tentativas incorretas OU o tempo se esgotando disparam o alerta de
+  /// emergência com localização; qualquer tentativa CORRETA cancela
+  /// tudo, sem enviar nada). Usado tanto pela tela
+  /// `CronometroDisparadoScreen` (limite duro do teclado de PIN) quanto
+  /// pelo prazo final registrado no heartbeat de nuvem — ver
+  /// `seguranca_tab.dart`/`BackgroundLocationHeartbeatService`.
+  static const Duration duracaoJanelaFinalCronometro = Duration(seconds: 60);
+
+  /// Chave fixa usada na trava atômica nativa contra disparo duplo (ver
+  /// [reivindicarDisparoUnicoCronometro]/[RotinaAlarmPlugin.kt]) — um
+  /// único cronômetro ativo por vez, mesmo espírito de
+  /// [idAlarmeCronometroSeguranca] acima.
+  static const String _chaveDisparoUnicoCronometro = 'cronometro';
 
   /// Deve ser chamado uma única vez, bem no início do main.dart, ANTES
-  /// de runApp(), para inicializar o plugin android_alarm_manager_plus.
+  /// de runApp(), para inicializar o plugin android_alarm_manager_plus
+  /// (usado pelo Alarme de Rotina — ver `rotina_alarme_service.dart`).
   static Future<void> inicializar() async {
     await AndroidAlarmManager.initialize();
   }
 
-  /// Agenda o disparo automático de emergência para acontecer em
+  /// Agenda o disparo do Cronômetro Regressivo para acontecer em
   /// [duracaoAteDisparo] a partir de agora. Antes de agendar, salva no
   /// SQLite (via [DatabaseHelper.salvarContextoTimerAtivo]) a dica de
-  /// contexto atual e o timestamp de expiração, para que o callback
-  /// headless — que não tem acesso a nenhum estado em memória do app —
-  /// consiga montar a mesma mensagem de SMS.
+  /// contexto atual e o timestamp de expiração.
   ///
-  /// Regra de negócio: [duracaoAteDisparo] já deve incluir o tempo total
-  /// escolhido pelo usuário no picker de horas/minutos SOMADO aos 60
-  /// segundos fixos de tolerância da tela de bloqueio, replicando
-  /// exatamente o comportamento hoje feito em memória (Timer + Timer de
-  /// tolerância).
+  /// GENERALIZAÇÃO (reespecificação do usuário, 2026-08-10): antes, este
+  /// método agendava um alarme 100% Dart (`android_alarm_manager_plus`)
+  /// cujo callback headless disparava o alerta de emergência IMEDIATAMENTE,
+  /// sem nenhuma UI/chance de PIN — se o app estivesse em segundo plano
+  /// ou fechado, não havia como pedir a senha antes de enviar o alerta.
+  /// Agora reaproveita a MESMA infraestrutura nativa já validada do
+  /// Alarme de Rotina (Activity/Service/Receiver — ver
+  /// `RotinaAlarmPlugin.kt`, extra `tipoAlarme: 'cronometro'`), que abre
+  /// uma tela dedicada com som + teclado de PIN por cima do Keyguard
+  /// mesmo com o app fechado/bloqueado (Doze-proof, via
+  /// `AlarmManager.setExactAndAllowWhileIdle` nativo) — ver
+  /// `cronometro_disparado_screen.dart`.
+  ///
+  /// Diferente do Alarme de Rotina, propositalmente NÃO há um segundo
+  /// alarme Dart headless em paralelo aqui: o caminho nativo acima já é
+  /// o mesmo mecanismo Doze-proof usado lá (o motivo original de existir
+  /// dessa redundância), e a rede de segurança para o caso do aparelho
+  /// estar desligado/sem internet no momento do disparo já é coberta,
+  /// de forma totalmente independente, pelo heartbeat de nuvem +
+  /// `functions/scheduledAlarmMonitor.js` (ver
+  /// `BackgroundLocationHeartbeatService.registrarCheckinAtivo`, chamado
+  /// por `SegurancaTab._iniciarTimer`).
   Future<void> agendarAlarmeEmergencia({
     required Duration duracaoAteDisparo,
     required String contexto,
@@ -57,60 +99,104 @@ class AlarmeService {
       timestampExpiracao: timestampExpiracao,
     );
 
-    await AndroidAlarmManager.oneShot(
-      duracaoAteDisparo,
-      _alarmeEmergenciaId,
-      _callbackDeAlarme,
-      exact: true,
-      wakeup: true,
-      rescheduleOnReboot: false,
-    );
+    // BUG REAL CONFIRMADO (2026-08-12): diferente de
+    // `chaveAlarmeFluxoResolvido` (Alarme de Rotina), que é resetada a
+    // cada novo disparo dentro do próprio callback headless
+    // (`_callbackCheckinRotina`, ver `rotina_alarme_service.dart`),
+    // `chaveCronometroFluxoResolvido` NUNCA era resetada em lugar nenhum
+    // — o Cronômetro não tem um callback Dart equivalente (ver
+    // documentação da classe acima: propositalmente não há alarme Dart
+    // headless em paralelo aqui). Resultado: assim que UM ciclo do
+    // Cronômetro terminava (PIN certo OU alerta disparado), a flag
+    // ficava gravada em `true` PARA SEMPRE. No PRÓXIMO ciclo,
+    // `CronometroDisparadoScreen._iniciarPollingDeFluxoResolvido` lia
+    // esse `true` residual do ciclo ANTERIOR já no primeiro tick
+    // (~1s) e se autoencerrava imediatamente — parando o som e fechando
+    // o teclado de PIN antes do usuário conseguir digitar nada. Sintoma
+    // real reportado: "o teclado surge por menos de 1 segundo e é
+    // destruído/fechado imediatamente". Resetar aqui, no início de CADA
+    // novo ciclo (chamado por `SegurancaTab._iniciarTimer` sempre que o
+    // cronômetro é armado), garante que a flag só reflita o ciclo atual.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(chaveCronometroFluxoResolvido);
+    } catch (e) {
+      debugPrint(
+          '⚠️ Falha ao resetar chaveCronometroFluxoResolvido no novo ciclo: $e');
+    }
+
+    // Libera a trava atômica nativa contra disparo duplo (ver
+    // [reivindicarDisparoUnicoCronometro]) para o NOVO ciclo — mesmo
+    // motivo/mesmo lugar do reset acima: sem isto, a partir do 2º ciclo
+    // a reivindicação ficaria presa em "já reivindicado" do ciclo
+    // anterior, bloqueando o disparo de verdade deste novo ciclo.
+    try {
+      await _canalRotinaAlarme.invokeMethod('liberarReivindicacaoDisparo', {
+        'chave': _chaveDisparoUnicoCronometro,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao liberar reivindicação de disparo único do novo ciclo: $e');
+    }
+
+    try {
+      await _canalRotinaAlarme.invokeMethod('agendarAlarmeNativo', {
+        'idAlarme': idAlarmeCronometroSeguranca,
+        'epochMillis': timestampExpiracao.millisecondsSinceEpoch,
+        'tipoAlarme': 'cronometro',
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao agendar alarme nativo do Cronômetro de Segurança: $e');
+    }
 
     debugPrint(
-        '⏰ Alarme nativo de emergência agendado para ${timestampExpiracao.toIso8601String()}');
+        '⏰ Alarme nativo do Cronômetro de Segurança agendado para ${timestampExpiracao.toIso8601String()}');
   }
 
-  /// Cancela o alarme nativo agendado. Deve ser chamado SOMENTE quando o
-  /// PIN correto for digitado com sucesso (regra de segurança: o simples
-  /// toque no botão de desarmar, ou a abertura da tela de bloqueio, NÃO
-  /// cancela o alarme nativo — apenas o PIN correto o faz).
+  /// Cancela o alarme nativo agendado. Regra de segurança original: o
+  /// simples toque no botão de desarmar, ou a abertura da tela de
+  /// bloqueio, NUNCA cancela o alarme nativo sozinho — só duas coisas o
+  /// fazem: o PIN correto sendo digitado, OU o alerta de emergência já
+  /// tendo sido realmente disparado (3ª tentativa de PIN errada/tempo
+  /// esgotado — ver `SegurancaTab._pararTimer`) — nos dois casos o ciclo
+  /// já está definitivamente resolvido, nunca por uma ação sem prova de
+  /// identidade.
+  /// Trava atômica NATIVA contra disparo duplo do Cronômetro Regressivo
+  /// (item 1, reespecificação do usuário, 2026-08-15) — ver documentação
+  /// completa em `RotinaAlarmPlugin.kt` (seção "TRAVA ATÔMICA CONTRA
+  /// DISPARO DUPLO"). Deve ser chamado (e aguardado) como o PRIMEIRO
+  /// passo de qualquer disparo de emergência do Cronômetro — só quando
+  /// retornar `true` o chamador pode prosseguir com o pipeline real
+  /// (SMS/Firestore/histórico); `false` significa que OUTRA
+  /// instância/engine já reivindicou este mesmo ciclo, e o chamador deve
+  /// abortar silenciosamente.
+  ///
+  /// Em caso de falha na própria chamada nativa (MethodChannel
+  /// indisponível por qualquer motivo), retorna `true` (permissivo) — um
+  /// disparo de segurança crítico nunca deve ser bloqueado por uma falha
+  /// técnica na trava em si; nesse cenário raro, a trava antiga baseada
+  /// em `chaveCronometroFluxoResolvido` (polling em SharedPreferences)
+  /// continua atuando como rede de segurança secundária.
+  Future<bool> reivindicarDisparoUnicoCronometro() async {
+    try {
+      final reivindicado = await _canalRotinaAlarme.invokeMethod<bool>(
+        'reivindicarDisparoUnico',
+        {'chave': _chaveDisparoUnicoCronometro},
+      );
+      return reivindicado ?? true;
+    } catch (e) {
+      debugPrint('⚠️ Falha ao reivindicar disparo único do cronômetro (permitindo por padrão): $e');
+      return true;
+    }
+  }
+
   Future<void> cancelarAlarme() async {
-    await AndroidAlarmManager.cancel(_alarmeEmergenciaId);
-    debugPrint('⏰ Alarme nativo de emergência cancelado.');
-  }
-}
-
-/// Callback estático executado pelo Android em um FlutterEngine
-/// headless (sem Activity/UI), possivelmente com o app totalmente
-/// fechado. Roda TODO o fluxo de disparo de emergência (GPS, montagem de
-/// mensagem e envio de SMS via MethodChannel nativo, registrado pelo
-/// MainApplication.kt no engine headless) e, ao final, marca no SQLite
-/// que o app deve exibir a tela de bloqueio de PIN assim que for
-/// reaberto.
-///
-/// Precisa ser uma função top-level (fora de qualquer classe) e anotada
-/// com `@pragma('vm:entry-point')` para que o Flutter não a remova via
-/// tree-shaking e para que o Android consiga localizá-la pelo seu
-/// handle/callback registrado.
-@pragma('vm:entry-point')
-void _callbackDeAlarme() async {
-  debugPrint('🚨 [HEADLESS] Alarme de emergência disparado em segundo plano!');
-
-  try {
-    // Executa o disparo completo: GPS + contatos + montagem da mensagem
-    // + envio via MethodChannel nativo (SmsManager, registrado pelo
-    // MainApplication.kt neste FlutterEngine headless).
-    await EmergencyAlertService().dispararAlertaDeEmergencia();
-  } catch (e) {
-    debugPrint('⚠️ [HEADLESS] Falha durante o disparo de emergência: $e');
-  }
-
-  try {
-    // Marca no SQLite que o app deve exibir a tela de bloqueio de PIN
-    // assim que for reaberto (cold start), até que o PIN correto seja
-    // digitado.
-    await DatabaseHelper().marcarAguardandoConfirmacaoPin();
-  } catch (e) {
-    debugPrint('⚠️ [HEADLESS] Falha ao marcar aguardando_confirmacao_pin: $e');
+    try {
+      await _canalRotinaAlarme.invokeMethod('cancelarAlarmeNativo', {
+        'idAlarme': idAlarmeCronometroSeguranca,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Falha ao cancelar alarme nativo do Cronômetro de Segurança: $e');
+    }
+    debugPrint('⏰ Alarme nativo do Cronômetro de Segurança cancelado.');
   }
 }

@@ -1,8 +1,7 @@
 {
   "@@locale": "ar",
-
+  "marcaGuardiaoX": "حارس-X",
   "appTituloConfiguracoes": "الإعدادات",
-
   "campoEmailLabel": "البريد الإلكتروني",
   "campoEmailObrigatorio": "أدخل بريدك الإلكتروني",
   "campoEmailInvalido": "بريد إلكتروني غير صالح",
@@ -12,10 +11,21 @@
   "campoConfirmarSenhaLabel": "تأكيد كلمة المرور",
   "campoConfirmarSenhaObrigatoria": "أكّد كلمة المرور",
   "senhasNaoCoincidem": "كلمتا المرور غير متطابقتين",
-
   "botaoEntrar": "تسجيل الدخول",
   "esqueciMinhaSenha": "نسيت كلمة المرور",
-  "recuperacaoSenhaEmBreve": "استعادة كلمة المرور ستكون متاحة قريبًا.",
+  "recuperacaoSenhaTitulo": "استعادة كلمة المرور",
+  "recuperacaoSenhaDescricao": "أدخل بريدك الإلكتروني المسجل. سنرسل لك رابطًا لإعادة تعيين كلمة المرور.",
+  "recuperacaoSenhaBotaoEnviar": "إرسال الرابط",
+  "recuperacaoSenhaSucesso": "تم إرسال رابط إعادة التعيين! تحقق من صندوق الوارد (والبريد العشوائي) الخاص بـ {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "لم نتمكن من العثور على حساب بهذا البريد الإلكتروني.",
+  "recuperacaoSenhaErroRede": "فشل الاتصال. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
   "erroLoginCredenciaisInvalidas": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
   "erroLoginMuitasTentativas": "محاولات كثيرة جدًا. حاول مرة أخرى لاحقًا",
   "erroLoginGenerico": "تعذر تسجيل الدخول. حاول مرة أخرى",
@@ -28,19 +38,21 @@
   "emailNaoVerificadoReenviar": "إعادة إرسال البريد الإلكتروني",
   "emailVerificacaoReenviada": "تمت إعادة إرسال بريد التحقق.",
   "emailVerificacaoReenvioFalhou": "تعذرت إعادة إرسال البريد الإلكتروني. حاول مرة أخرى لاحقًا.",
-
+  "meuPerfilTitulo": "ملفي الشخصي",
+  "meuPerfilTelefoneTitulo": "رقم هاتف التواصل",
+  "meuPerfilTelefoneDescricao": "يستخدمه جهات اتصال الطوارئ الخاصة بك لتحديد حسابك وتلقي التنبيهات.",
+  "meuPerfilTelefoneNaoCadastrado": "لا يوجد رقم هاتف مسجل — اضغط للإضافة",
+  "meuPerfilTelefoneAtualizado": "تم تحديث رقم الهاتف بنجاح.",
+  "meuPerfilFalhaAtualizarTelefone": "فشل تحديث رقم الهاتف. حاول مرة أخرى.",
   "sairDaContaTitulo": "تسجيل الخروج",
   "sairDaContaConfirmar": "تسجيل الخروج",
-
-  "contatoWhatsappSwitchLabel": "الإشعار عبر واتساب (0.10 دولار أمريكي)",
-  "whatsappSimultaneoTitulo": "إرسال أيضًا عبر واتساب",
-  "whatsappSimultaneoDescricao": "يرسل التنبيه فورًا عبر واتساب إلى جانب الإشعار الفوري، دون انتظار تأكيد التسليم، ويخصم المبلغ من المحفظة لكل جهة اتصال مُفعّلة.",
-
   "alertaRecebidoTitulo": "تم استلام تنبيه أمني",
   "alertaRecebidoDe": "قد يكون {nome} في خطر",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "عرض الموقع على الخريطة",
@@ -52,32 +64,11 @@
   "alertaRecebidoFalhaCompartilhar": "تعذرت مشاركة الصورة.",
   "alertaRecebidoFotoIndisponivel": "تعذر تحميل الصورة.",
   "alertaRecebidoTentarNovo": "إعادة المحاولة",
-
-  "carteiraTitulo": "محفظة الأرصدة",
-  "carteiraMenuItem": "محفظة الأرصدة",
-  "carteiraSaldoAtual": "الرصيد الحالي",
-  "carteiraAteNEnvios": "حتى {n} إرسال",
-  "@carteiraAteNEnvios": {
-    "placeholders": {
-      "n": {"type": "int"}
-    }
-  },
-  "carteiraNotaExplicativa": "التنبيهات عبر التطبيق مجانية بنسبة 100٪. رسائل واتساب الاحتياطية تكلف 0.10 دولار أمريكي لكل رسالة.",
-  "carteiraRecarregarTitulo": "إعادة الشحن",
-  "carteiraHistoricoTitulo": "السجل",
-  "carteiraHistoricoVazio": "لا توجد حركات بعد.",
-  "carteiraTipoRecarga": "شحن",
-  "carteiraTipoDesconto": "إرسال واتساب",
-  "carteiraCompraSucesso": "تمت إضافة الرصيد بنجاح!",
-  "carteiraCompraFalhaVerificacao": "تعذر تأكيد عملية الشراء. حاول مرة أخرى.",
-  "carteiraCompraErro": "تعذر إتمام عملية الشراء.",
-  "carteiraLojaIndisponivel": "المتجر غير متاح حاليًا.",
   "ouEntreCom": "أو سجّل الدخول باستخدام",
   "loginGoogle": "جوجل",
   "loginFacebook": "فيسبوك",
   "naoTemConta": "ليس لديك حساب؟",
   "cadastreSe": "إنشاء حساب",
-
   "cadastroSubtitulo": "أنشئ حسابك للبدء",
   "campoNomeLabel": "الاسم الكامل",
   "campoNomeObrigatorio": "أدخل اسمك",
@@ -87,35 +78,41 @@
   "botaoCriarConta": "إنشاء حساب",
   "jaTemConta": "لديك حساب بالفعل؟",
   "facaLogin": "تسجيل الدخول",
-
   "configuracoesIdiomaTitulo": "اللغة",
   "configuracoesIdiomaDescricao": "اختر لغة التطبيق. الدعم جاهز لـ 11 لغة عالمية.",
   "configuracoesIdiomaLabel": "لغة التطبيق",
   "idiomaAlteradoSnackbar": "🌐 تم تغيير اللغة إلى {idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "الأمان",
   "tabFamilia": "العائلة",
   "tabMonitoramento": "المراقبة",
   "tabHistorico": "السجل",
   "tooltipAdicionarAlarme": "إضافة منبه",
   "tooltipAuditoriaSensivel": "مراجعة الأحداث الحساسة",
-
   "cancelar": "إلغاء",
   "confirmar": "تأكيد",
   "salvar": "حفظ",
   "excluir": "حذف",
   "fechar": "إغلاق",
   "voltar": "رجوع",
-
   "segurancaSelecioneTempo": "الرجاء اختيار وقت أكبر من صفر!",
   "segurancaCheckinDesarmado": "✅ تم إلغاء تفعيل تسجيل الوصول بنجاح!",
   "segurancaConfirmarSosTitulo": "تأكيد نداء الاستغاثة؟",
   "segurancaConfirmarSosConteudo": "سيؤدي هذا إلى إرسال رسالة نصية طارئة وتنبيه فورًا إلى جهات الاتصال المسجلة مع موقعك الحالي. هل تريد المتابعة؟",
   "segurancaConfirmarSosBotao": "تأكيد نداء الاستغاثة",
   "segurancaSosDisparado": "🚨 تم إطلاق نداء الاستغاثة! تم إخطار جهات الاتصال الطارئة.",
+  "segurancaAlertaEnviadoTitulo": "تم إرسال التنبيه",
+  "segurancaAlertaEnviadoConteudo": "تم إرسال رسالة تحتوي على الموقع إلى الأرقام المسجلة.",
+  "cronometroAtivoDescricao": "تم تشغيل مؤقت الأمان.\nأدخل كلمة المرور لإلغاء التفعيل.",
+  "historicoCronometroFalhaMotivo": "لم يتم إلغاء تفعيل مؤقت الأمان خلال 60 ثانية من فترة السماح بعد التشغيل.",
+  "historicoCronometroPinIncorretoMotivo": "تم إدخال رمز PIN بشكل غير صحيح 3 مرات متتالية أثناء محاولة إلغاء تفعيل مؤقت الأمان.",
+  "historicoCronometroFechamentoForcadoMotivo": "تم إغلاق التطبيق بالقوة بينما كان مؤقت الأمان لا يزال يرن، دون تأكيد إلغاء التفعيل.",
   "segurancaTituloSecaoTempo": "كم من الوقت حتى أصل",
   "segurancaServidorVerificando": "جارٍ التحقق من الخادم...",
   "segurancaServidorOnline": "الخادم متصل",
@@ -132,7 +129,6 @@
   "deviceAdminDescricaoInativo": "يتيح للتطبيق قفل الشاشة تلقائيًا في نهاية نداء الاستغاثة الطارئ. يتطلب إذنًا خاصًا من Android يُمنح مرة واحدة فقط.",
   "deviceAdminDescricaoAtivo": "مفعّل — سيتم قفل الشاشة تلقائيًا في نهاية تسلسل نداء الاستغاثة.",
   "deviceAdminBotaoAtivar": "تفعيل",
-
   "familiaAlarmeRemovido": "🗑️ تم حذف المنبه بنجاح.",
   "familiaAlarmePausadoAte": "⏸️ تم إيقاف المنبه مؤقتًا حتى منتصف الليل اليوم.",
   "familiaAdicionarAlarme": "إضافة منبه",
@@ -148,7 +144,11 @@
   "familiaToleranciaLabel": "مهلة تأكيد \"وصلت بأمان\"",
   "familiaMinutosAbrev": "{minutos} دقيقة",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "حفظ المنبه",
   "familiaAlarmesRotinaTitulo": "المنبهات الروتينية",
@@ -158,30 +158,57 @@
   "familiaExcluirAlarmeTitulo": "حذف المنبه نهائيًا؟",
   "familiaExcluirAlarmeConteudo": "هل تريد حذف المنبه \"{etiqueta}\" ({horario}) نهائيًا؟",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "إيقاف المنبه مؤقتًا لليوم؟",
   "familiaPausarAlarmeConteudo": "هل تريد إيقاف المنبه \"{etiqueta}\" ({horario}) مؤقتًا حتى منتصف الليل؟ سيعود إلى التفعيل تلقائيًا غدًا.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "إيقاف مؤقت",
   "familiaPausadoAte0000": "متوقف مؤقتًا حتى منتصف الليل",
   "familiaRetorna": "يعود: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ اضغط لإعادة تفعيل المنبه",
   "familiaContatosEmergenciaTitulo": "جهات اتصال الطوارئ",
   "familiaContatosEmergenciaDescricao": "تتلقى جهات الاتصال هذه تنبيهات الطوارئ. أدرها من تبويب الإعدادات.",
   "familiaNenhumContato": "لا توجد جهة اتصال طوارئ مسجلة بعد.",
-  "familiaRemovendoEm24h": "سيتم الحذف خلال 24 ساعة...",
+  "familiaRemovendoEmCarencia": "سيتم الحذف خلال ساعتين...",
   "familiaSemNome": "بدون اسم",
   "familiaReativadoComSucesso": "تم إعادة تفعيل {etiqueta} ({horario}) بنجاح.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "السماح بإرسال موقعي",
   "monitoramentoSecaoVerLocalizacao": "موقع أفراد العائلة",
   "monitoramentoAdicionarContato": "إضافة جهة اتصال",
@@ -193,123 +220,214 @@
   "monitoramentoExcluirContatoTooltip": "حذف جهة الاتصال",
   "monitoramentoExcluirContatoTitulo": "حذف جهة الاتصال؟",
   "monitoramentoExcluirContatoConteudo": "هل تريد إزالة \"{nome}\" من قائمة المراقبة الخاصة بك؟",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "لم تتم إضافة أي جهات اتصال للمراقبة بعد.\nاضغط على \"+\" لإضافة الأولى.",
   "monitoramentoSolicitarLocalizacao": "طلب الموقع",
   "monitoramentoVerNoMapa": "عرض على الخريطة",
   "monitoramentoAtualizadoHaMinutos": "تم التحديث قبل {minutos} دقيقة",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "لم يُطلب",
   "monitoramentoStatusAguardandoAprovacao": "بانتظار الموافقة",
   "monitoramentoStatusAprovado": "تمت الموافقة",
   "monitoramentoStatusBloqueado": "محظور",
   "monitoramentoStatusNegado": "تم رفض الطلب",
   "monitoramentoStatusExpirado": "انتهت صلاحية الطلب",
+  "monitoramentoAguardandoPrimeiraLocalizacao": "في انتظار أول موقع...",
+  "monitoramentoLocalizacaoSendoAtualizada": "لا يزال الموقع قيد التحديث. حاول مرة أخرى بعد لحظات.",
   "monitoramentoSolicitacaoEnviada": "تم إرسال الطلب. بانتظار الموافقة.",
   "monitoramentoJaAprovado": "يمكنك بالفعل رؤية موقع جهة الاتصال هذه.",
-  "monitoramentoNumeroNaoEncontrado": "هذا الرقم ليس لديه حساب في Guardião X بعد.",
+  "monitoramentoNumeroNaoEncontrado": "هذا الرقم ليس لديه حساب في حارس X بعد.",
   "monitoramentoProprioNumero": "لا يمكنك طلب موقعك الخاص.",
   "monitoramentoErroSolicitar": "تعذر إرسال الطلب. حاول مرة أخرى.",
   "monitoramentoSolicitacaoRecebidaTitulo": "طلب الموقع",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} يطلب موقعك. السماح أم الحظر؟",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "سماح",
   "monitoramentoBloquearRecusar": "حظر/رفض",
-
+  "monitoramentoBloquear": "حظر",
+  "monitoramentoBloquearContatoTitulo": "حظر جهة الاتصال؟",
+  "monitoramentoBloquearContatoConteudo": "لن يتمكن \"{nome}\" بعد الآن من إرسال طلبات الموقع إليك.",
+  "@monitoramentoBloquearContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "monitoramentoContatoBloqueadoSucesso": "تم حظر جهة الاتصال. لن يتمكن بعد الآن من طلب موقعك.",
+  "monitoramentoContatoDesbloqueadoSucesso": "تم إلغاء حظر جهة الاتصال.",
+  "monitoramentoPermitirOuBloquearSolicitacoes": "السماح أو حظر طلبات الموقع",
+  "monitoramentoIndicadorBloqueado": "محظور",
+  "monitoramentoIndicadorLiberado": "مسموح",
+  "monitoramentoContatoIndisponivel": "جهة الاتصال هذه غير متاحة في الوقت الحالي.",
   "historicoFiltroTodos": "الكل",
   "historicoFiltroSistema": "النظام",
   "historicoAgoraMesmo": "الآن",
   "historicoHaMinutos": "منذ {minutos} دقيقة",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "منذ {horas} ساعة",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "أمس",
   "historicoHaDias": "منذ {dias} يوم",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "لم يتم العثور على أي حدث لهذا الفلتر.",
   "historicoLimparBotao": "مسح السجل",
   "historicoLimparConfirmarTitulo": "مسح السجل؟",
   "historicoLimparConfirmarConteudo": "يؤدي هذا الإجراء إلى إزالة رسائل هذه الفئة نهائيًا. لا يمكن التراجع عنه.",
-
   "contatosMaximoAtingido": "⚠️ لقد سجلت بالفعل الحد الأقصى وهو {max} من جهات الاتصال.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ تم رفض إذن الوصول إلى جهات الاتصال.",
   "contatoSemTelefone": "⚠️ لا يحتوي جهة الاتصال هذه على رقم هاتف مسجل.",
   "telefoneInvalido": "⚠️ رقم هاتف غير صالح.",
   "contatoAdicionado": "✅ تمت إضافة {nome} إلى جهات اتصال الطوارئ!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
-  "contatoRemocaoSolicitada": "⏳ تم استلام الطلب. سيتم حذف {nome} خلال 24 ساعة.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoRemocaoSolicitada": "⏳ تم استلام الطلب. سيتم حذف {nome} خلال ساعتين.",
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoApagarConfirmacaoTitulo": "حذف جهة الاتصال",
+  "contatoApagarConfirmacaoMensagem": "في حال الموافقة، سيتم التنفيذ خلال 2h00",
+  "historicoLatitudeLabel": "خط العرض",
+  "historicoLongitudeLabel": "خط الطول",
+  "permissaoSmsTitulo": "إذن الرسائل النصية للطوارئ",
+  "permissaoSmsConteudo": "يرسل حارس-X رسالة نصية مباشرة من شريحة الاتصال عند تفعيل زر الذعر — وهي القناة الوحيدة التي تعمل حتى بدون إنترنت. بدون هذا الإذن، لا يمكن إرسال رسالة الطوارئ النصية. هل تريد السماح الآن؟",
+  "permissaoSmsAgoraNao": "ليس الآن",
+  "permissaoSmsPermitir": "سماح",
+  "batteriaOtimizacaoTitulo": "تحسين البطارية",
+  "batteriaOtimizacaoDescricaoInativo": "استثنِ حارس-X من تحسين البطارية في الجهاز حتى يستمر زر الذعر الفعلي في العمل حتى في الخلفية لفترات طويلة. يتطلب إذنًا خاصًا من أندرويد يُمنح مرة واحدة فقط.",
+  "batteriaOtimizacaoBotaoAtivar": "تفعيل",
+  "permissaoBateriaTitulo": "إبقاء المراقبة نشطة دائمًا",
+  "permissaoBateriaConteudo": "بعض الأجهزة تغلق التطبيقات في الخلفية لتوفير البطارية، مما قد يمنع زر الذعر الفعلي من العمل. استثناء حارس-X من هذا التحسين يبقي المراقبة نشطة. هل تريد السماح الآن؟",
   "pinRealTitulo": "رمز PIN الحقيقي",
   "pinRealDescricao": "حدد رمز PIN مكونًا من 4 أرقام للوصول العادي إلى التطبيق.",
   "pinRealHint": "أدخل 4 أرقام",
   "pinInformarObrigatorio": "أدخل رمز PIN",
   "pinDeveTer4Digitos": "يجب أن يتكون من 4 أرقام بالضبط",
   "pinApenasNumeros": "أرقام فقط",
-  "pinNovaSenhaPendente": "⏳ كلمة المرور الجديدة قيد الانتظار (24 ساعة قبل التفعيل)",
+  "pinNovaSenhaPendente": "⏳ كلمة المرور الجديدة قيد الانتظار (ساعتان قبل التفعيل)",
   "pinDefinido": "✅ تم التحديد",
   "pinNaoDefinido": "⚠️ غير محدد",
   "pinDefinidoComSucesso": "🔒 تم تحديد رمز PIN بنجاح!",
-  "pinNovaSenhaEmVigor24h": "🔒 تم استلام الطلب. ستدخل كلمة المرور الجديدة حيز التنفيذ خلال 24 ساعة.",
-
+  "pinNovaSenhaEmVigorCarencia": "🔒 تم استلام الطلب. ستدخل كلمة المرور الجديدة حيز التنفيذ خلال ساعتين.",
   "alterarPlanoFundo": "تغيير الخلفية",
   "planoFundoAlterado": "🎨 تم تغيير الخلفية!",
   "planoFundoPadrao": "الإضاءة الكلاسيكية (افتراضي)",
   "tamanhoLetrasTitulo": "حجم الخط",
   "tamanhoLetrasAlterado": "🔤 حجم الخط: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "الخطة المميزة",
-  "beneficioAlertasNuvem": "تنبيهات سحابية فورية",
-  "beneficioMensagensWhatsapp": "حتى 10 رسائل احتياطية عبر واتساب",
-  "beneficioGruposIlimitados": "إنشاء مجموعات تنبيهات غير محدودة",
-  "beneficioChatsCriptografados": "محادثات مشفرة بالصوت والفيديو",
-  "beneficioBackupNuvem": "نسخ احتياطي تلقائي على السحابة",
+  "premiumModalDestaque": "جميع وظائف حارس-X، بلا حدود",
+  "beneficioLocalizacaoTempoReal": "مشاركة الموقع في الوقت الفعلي.",
+  "beneficioBotaoFisico": "زر مادي يرسل الموقع والصورة إلى قاعدة بيانات حارس-X والهواتف المسجّلة.",
+  "beneficioModoSeguranca": "وضع الأمان بزر ذعر يسجّل موقعك كل دقيقة في قاعدة بيانات حارس-X ويُطلق تنبيه طوارئ. هذا يضمن إرسال آخر موقع لك إلى الأرقام المسجّلة عند انتهاء المؤقت حتى لو كان جهازك مغلقًا.",
+  "beneficioModoFamilia": "وضع العائلة بمنبّه لجدولة أسبوعية أو يومية وتسجيل دخول لتأكيد الأمان، مع إرسال مسبق للموقع إلى قاعدة بيانات حارس-X لضمان استلام فرد العائلة لتنبيه الطوارئ في الوقت واليوم المحددين إذا لم يتم تأكيد تسجيل الدخول.",
+  "beneficioTresCamadas": "طبقتا حماية لضمان وصول تنبيهات الطوارئ مع الموقع والصور. (التطبيق والرسائل القصيرة).",
+  "beneficioTempoEspera": "فترة انتظار للتغييرات وعرض البيانات الحساسة.",
   "agoraNao": "ليس الآن",
   "assinarPreco": "اشترك 9.90 ريال/شهريًا",
   "planoPremiumAtivado": "🎉 تم تفعيل الخطة المميزة!",
-
   "visualDoChatTitulo": "مظهر المحادثة",
   "alertaSonoroTitulo": "التنبيه الصوتي",
   "planoTitulo": "الخطة",
   "contatosDescricao": "سجّل حتى {max} من أفراد العائلة الذين سيتلقون تنبيه الطوارئ.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "حذف جهة الاتصال",
   "adicionarContatoAgenda": "+ إضافة جهة اتصال من دفتر العناوين",
   "alertaSonoroDescricao": "اختر الصوت ومدة المنبه الذي يُشغَّل عند انتهاء العد التنازلي لتسجيل الوصول.",
   "somAlarmeLabel": "صوت المنبه",
   "tooltipTestarSom": "اختبار/استماع الصوت",
   "somTesteVazio": "🔇 ملف الصوت التجريبي فارغ. استبدل العنصر النائب في مجلد assets/sounds.",
-
   "planoFamiliarAtivo": "الخطة العائلية نشطة",
   "recursosPremiumDisponiveis": "جميع الميزات المميزة متاحة",
   "premiumBadge": "مميز",
   "protejaQuemVoceAma": "احمِ من تحب",
   "mudeParaPremium": "الترقية إلى الخطة المميزة",
-  "precoMensal": "9.90 ريال",
-  "porMes": "/شهريًا",
+  "premiumPrecoGenerico": "اشترك في بريميوم",
+  "premiumAssinarBotaoGenerico": "الاشتراك في بريميوم",
+  "premiumPrecoMensalComValor": "{preco}/شهريًا",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "عرض المزيد",
-
   "alarmeRotinaAtivoDescricao": "المنبه الروتيني نشط.\nأكّد سلامتك لإيقافه مؤقتًا.",
-  "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال دقيقتين وإلا سيتم إرسال تنبيه طوارئ.",
+  "alarmeRotinaFaseFinalDescricao": "الفرصة الأخيرة! رنّ المنبه مرة أخرى.\nأدخل رمز PIN خلال 60 ثانية وإلا سيتم إرسال تنبيه طوارئ.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ تم إرسال تنبيه الطوارئ!\nتم إرسال موقعك والرسالة إلى السحابة وإلى جهات الاتصال المسجلة.",
   "desligarAlarmeBotao": "إيقاف المنبه",
   "fecharConfirmacaoBotao": "إغلاق",
   "fecharConfirmacaoDica": "اسحب لأعلى أو اضغط على إغلاق للمتابعة",
-
   "cameraToqueOuVolume": "📸 اضغط على الزر أو اضغط على زر مستوى الصوت لالتقاط الصورة",
   "enviando": "جارٍ الإرسال...",
   "atencaoMaiuscula": "تنبيه",
   "mensagemEnviadaAviso": "تنبيه، تم إرسال رسالة إلى العائلة تحتوي على الصورة والموقع. لا يمكن التراجع عن هذا الإجراء.",
   "deslizeParaFechar": "اسحب لأعلى للإغلاق",
-
   "auditoriaSolicitacaoAprovada": "تمت الموافقة على الطلب. لأسباب أمنية وحماية الخصوصية، سيتم إطلاق السجلات خلال ساعتين.",
   "auditoriaBloquearNovamenteTitulo": "قفل مرة أخرى؟",
   "auditoriaBloquearNovamenteConteudo": "عند التأكيد، سيتم قفل الوصول إلى السجلات الحساسة فورًا. لعرضها مرة أخرى، ستحتاج إلى تقديم طلب جديد والانتظار ساعتين إضافيتين من فترة الأمان.",
@@ -324,12 +442,301 @@
   "auditoriaSolicitarLiberacaoBotao": "طلب إطلاق السجل الحساس",
   "auditoriaNenhumEvento": "تم إطلاق العرض. لا توجد أحداث حساسة مسجلة بعد.",
   "auditoriaPrazoLiberado": "اكتملت فترة الأمان. تم إطلاق السجلات لهذه الجلسة.",
-
   "pinAlarmeDesligado": "تم إيقاف المنبه",
   "pinSenhaIncorreta": "كلمة مرور غير صحيحة",
   "pinConfirmeSeuPin": "أكّد رمز PIN الخاص بك",
   "pinDigiteParaDesarmar": "أدخل رمز PIN لإلغاء تفعيل تسجيل الوصول.",
   "pinDigiteParaContinuar": "أدخل رمز PIN للمتابعة.",
   "pinTempoTolerancia": "وقت السماح: {segundos} ثانية",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } }
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTooltipInicio": "العودة إلى الصفحة الرئيسية",
+  "historicoFiltroAlertasEnviados": "التنبيهات المرسلة",
+  "dashboardSecaoPlanosTitulo": "اختر خطتك",
+  "dashboardPlanoFreeTitulo": "مجاني",
+  "dashboardPlanoFreeDescricao": "جميع ميزات النسخة المميزة مفتوحة لمدة 10 أيام شهريًا",
+  "dashboardPlanoPremiumDescricao": "اضغط هنا لمعرفة مزايا النسخة المميزة.",
+  "dashboardFaqTitulo": "الأسئلة الشائعة",
+  "dashboardCentralAtendimentoTitulo": "مركز خدمة العملاء",
+  "faqAppBarTitulo": "الأسئلة الشائعة (FAQ)",
+  "faqTooltipInicio": "الرئيسية",
+  "faqBuscaHint": "ابحث في الأسئلة والأجوبة...",
+  "faqNenhumaEncontrada": "لم يتم العثور على أي سؤال.",
+  "faqPergunta1": "هل تُرسل تنبيهات الطوارئ إلى الأرقام المسجّلة حتى لو كان هاتفي مغلقًا أو بدون إشارة إنترنت؟",
+  "faqResposta1": "نعم، يتم جدولة المنبّهات في صفحة \"العائلة\" والمؤقت التنازلي في صفحة \"الأمان\" على خادم قاعدة بيانات تطبيق حارس-X. إذا انتهى وقت السماح للمؤقت دون إلغاء التفعيل برمز PIN، أو لم يتم إلغاء تفعيل منبّه صفحة \"العائلة\" بعد وقت السماح، يُرسل فورًا تنبيه أمان يتضمن آخر موقع مسجّل في السحابة.",
+  "faqPergunta2": "بعد كم دقيقة يبدأ إرسال الموقع إلى قاعدة بيانات حارس-X؟",
+  "faqResposta2": "يبدأ إرسال الموقع قبل 120 دقيقة من انتهاء المؤقت أو من الوقت المجدول لمنبّه صفحة العائلة.",
+  "faqPergunta3": "لماذا يُطلب وقت مجدول لتفعيل كلمة المرور الجديدة أو حذف جهات اتصال الطوارئ؟",
+  "faqResposta3": "بما أن تطبيق حارس-X يهدف إلى حماية أمان المستخدم، فإن فترة الانتظار هذه تهدف إلى منع الأشخاص غير المصرح لهم من إلغاء تأمين بعض الوظائف المجدولة أثناء انتظار إرسال تنبيه الطوارئ إلى الأرقام المسجّلة.",
+  "faqPergunta4": "لماذا تحتوي صفحة \"السجل\" على خيار فترة انتظار في حال قرر المستخدم تقييد العرض الفوري للمعلومات المتعلقة برسائل التنبيهات المرسلة؟",
+  "faqResposta4": "في الحالات القصوى التي تكون فيها سلامة المستخدم الجسدية معرّضة للخطر، قد يقرر المستخدم ألا يعرف أي شخص آخر أن موقعه أو صورته قد أُرسلا إلى رقم مسجّل.",
+  "faqPergunta5": "لماذا تُرسل رسالتا تنبيه عند استخدام زر الذعر المادي أو زر صفحة \"الأمان\"؟",
+  "faqResposta5": "تهدف وظيفة زر الذعر هذه في المقام الأول إلى حماية سلامة المستخدم. عند تفعيل زر الذعر المادي أو زر صفحة \"الأمان\"، تُرسل فورًا رسالة تنبيه طوارئ تحتوي على الموقع إلى الأرقام المسجّلة. بعد ذلك، وبعد فتح كاميرا الجهاز والتقاط المستخدم للصورة، تُرسل رسالة تنبيه طوارئ ثانية تحتوي على الصورة. هذا يضمن وصول الموقع إلى الرقم المسجّل حتى لو تأخر المستخدم أو لم يلتقط الصورة.",
+  "faqPergunta6": "هل يمكن تتبع ومتابعة موقع جهاز لا يحتوي على تطبيق حارس-X مُثبّتًا؟",
+  "faqResposta6": "لا، هذا غير ممكن. لا يمكن مشاركة الموقع إلا من تطبيق إلى تطبيق وفقط بموافقة وإذن كلا المستخدمين.",
+  "faqPergunta7": "هل من الآمن الدفع للاشتراك في الخطة المميزة؟",
+  "faqResposta7": "نعم، إنه آمن. لا يتم أي دفع مباشرة لشركة RMF GLOBAL. تُعالج جميع المدفوعات مباشرة عبر منصة Google Play Store أو Apple App Store، بضمان كامل من هذه المنصات.",
+  "faqPergunta9": "كيف تتم مشاركة تنبيهات الطوارئ؟",
+  "faqResposta9": "تُرسل جميع رسائل تنبيه الأمان بطريقتين قياسيتين: من تطبيق إلى تطبيق، وعبر الرسائل القصيرة إلى أرقام الهواتف المسجّلة في صفحة \"الإعدادات\".",
+  "faqPergunta11": "كيف تعمل خدمة رعاية العملاء؟",
+  "faqResposta11": "تُقدَّم خدمة رعاية العملاء عبر واتساب — اضغط على زر التواصل في الشاشة الرئيسية للتحدث مباشرة مع فريق الدعم لدينا. أما الطلبات المقدَّمة عبر قائمة \"التحدث إلى موظف خدمة فعلي\" فتخضع لقواعد السياسة التي وضعتها شركة RMF Global، حيث يحصل مستخدمو الخطة المميزة على أولوية حصرية لهذه الخدمة خلال مدة أقصاها 48 ساعة.",
+  "faqPergunta12": "هل تُرسل رسائل تنبيه الطوارئ فقط إلى الأرقام المسجّلة التي لديها تطبيق حارس-X مُثبّتًا؟",
+  "faqResposta12": "لا. نوصي بأن يكون التطبيق مُثبّتًا على كلا الهاتفين، لكن حتى لو لم يكن هاتف الوجهة يحتوي على حارس-X، يُرسل تنبيه الطوارئ عبر الرسائل القصيرة على أي حال.",
+  "termosAppBarTitulo": "الشروط والخصوصية",
+  "termosTabContrato": "عقد الموافقة",
+  "termosTabPrivacidade": "سياسة الخصوصية",
+  "termosAvisoRodape": "يلخّص هذا المستند عقد الموافقة وسياسة الخصوصية الخاصين بتطبيق حارس-X. في حال وجود أي استفسار، تواصل معنا عبر قنوات الدعم الموضحة داخل التطبيق.",
+  "termosContratoTitulo1": "1. الغرض وحدود الخدمة",
+  "termosContratoCorpo1": "ينظّم عقد الموافقة هذا استخدام تطبيق حارس-X، الذي طورته وتديره شركة RMF Global LTDA (\"RMF Global\")، والمخصص لمساعدة المستخدم في حالات الطوارئ الشخصية من خلال تسجيل الدخول الأمني، والتنبيهات التلقائية، ومشاركة الموقع بين أفراد العائلة وجهات الاتصال الموثوقة، والتقاط أدلة فوتوغرافية. يُعد حارس-X أداة مساعدة ودعم للسلامة الشخصية ولا يحل محل جهات الطوارئ الرسمية (الشرطة، الدفاع المدني، الإسعاف، أو أرقام الطوارئ المكافئة في بلدك) أو أي خدمة طوارئ عامة أخرى. في حالة وجود خطر مباشر، يجب على المستخدم دائمًا الاتصال أولاً بأرقام الطوارئ الرسمية.",
+  "termosContratoTitulo2": "2. الموافقة على استخدام الموقع (GPS والموقع في الخلفية)",
+  "termosContratoCorpo2": "بتفعيل مؤقت تسجيل الدخول، أو زر SOS، أو مراقبة العائلة، يوافق المستخدم صراحةً على جمع وإرسال موقعه الجغرافي (GPS) في الوقت الفعلي، بما في ذلك في الخلفية (Background Location) عندما لا يكون التطبيق قيد الاستخدام النشط، وذلك حصريًا لتمكين إرسال وحفظ التنبيهات الوقائية وتنبيهات الذعر إلى خوادم حارس-X وإلى جهات اتصال الطوارئ المسجّلة، بما في ذلك تلقائيًا في حال عدم تأكيد تسجيل الدخول خلال المدة المحددة.",
+  "termosContratoTitulo3": "3. الموافقة على إرسال الرسائل (الرسائل القصيرة/التطبيق)",
+  "termosContratoCorpo3": "يوافق المستخدم على إرسال رسائل التنبيه (التي تتضمن الموقع والسياق المُدخل، وعند الاقتضاء، صورة) إلى أرقام الهواتف والحسابات المسجّلة كجهات اتصال للطوارئ، عبر الرسائل القصيرة والإشعارات بين التطبيقات.",
+  "termosContratoTitulo4": "4. الموافقة على استخدام الكاميرا والتقاط الوسائط",
+  "termosContratoCorpo4": "يوافق المستخدم على أنه، في بعض سيناريوهات الطوارئ (انتهاء المؤقت دون تأكيد، تفعيل زر الذعر، أو محاولة إلغاء تفعيل فاشلة)، قد يفتح التطبيق تلقائيًا كاميرا الجهاز لالتقاط صورة، تُرسل كدليل إضافي إلى جهات اتصال الطوارئ المسجّلة وتُحفظ في قاعدة بيانات حارس-X.",
+  "termosContratoTitulo5": "5. فترات الأمان (فترة الانتظار)",
+  "termosContratoCorpo5": "تخضع بعض الإجراءات الحساسة (تغيير كلمة المرور/رمز PIN، حذف جهات اتصال الطوارئ، العرض الفوري للسجل) لفترة انتظار قبل أن تصبح سارية المفعول، بهدف منع أطراف ثالثة غير مصرح لها من إلغاء تفعيل وظائف أمان المستخدم تحت الإكراه.",
+  "termosContratoTitulo6": "6. الخطط والأسعار والمدفوعات",
+  "termosContratoCorpo6": "تتيح الخطة المجانية جميع ميزات النسخة المميزة لمدة تصل إلى 10 (عشرة) أيام شهريًا، وتخضع بقية الأيام لحدود الخطة المجانية. تبلغ تكلفة الخطة المميزة القيمة المعروضة في التطبيق وقت الاشتراك، وتُحصَّل شهريًا، مع وصول غير محدود لجميع ميزات التطبيق. تتم معالجة اشتراكات الخطة المميزة حصريًا عبر منصتَي Google Play Store وApple App Store، وتخضع لسياسات الفوترة والاسترداد وحماية المستهلك الخاصة بهاتين المنصتين — ولا تستلم RMF Global أو تعالج المدفوعات مباشرة.",
+  "termosContratoTitulo7": "7. الإلغاء والاسترداد",
+  "termosContratoCorpo7": "يخضع إلغاء الخطة المميزة وأي مبالغ مستردة بشكل صارم للسياسات الرسمية لمتجر Google Play أو Apple App Store، حسب المنصة المستخدمة في الاشتراك — لا تقوم RMF Global بمعالجة الإلغاءات أو المبالغ المستردة مباشرةً.",
+  "termosContratoTitulo8": "8. خدمة رعاية العملاء (SAC)",
+  "termosContratoCorpo8": "تُقدَّم خدمة رعاية العملاء عبر واتساب — يفتح زر التواصل في الشاشة الرئيسية محادثة مباشرة مع فريق الدعم لدينا. تخضع طلبات الدعم من موظف بشري لقواعد السياسة التي وضعتها RMF Global، حيث يحصل مستخدمو الخطة المميزة على وصول حصري لهذا الدعم البشري خلال مدة أقصاها 48 (ثمانية وأربعين) ساعة.",
+  "termosContratoTitulo9": "9. الموافقة الحرة وغير الملتبسة وإلغاؤها",
+  "termosContratoCorpo9": "باستخدام تطبيق حارس-X وتفعيل وظائفه الأمنية، يقر المستخدم بموافقته بحرية وعلم ودون لبس على جمع واستخدام بيانات GPS وبياناته الشخصية والوسائط (الصور) في حالات الطوارئ، وفقًا لما هو موضح في هذا العقد. يجوز للمستخدم إلغاء هذه الموافقة في أي وقت عن طريق إلغاء تثبيت التطبيق أو طلب حذف حسابه والبيانات المرتبطة به عبر قنوات الدعم الموضحة في التطبيق، مع مراعاة فترات انتظار الأمان الموضحة في القسم 5.",
+  "termosPrivacidadeTitulo1": "1. البيانات التي يتم جمعها والغرض منها",
+  "termosPrivacidadeCorpo1": "لتمكين ميزات الأمان في حارس-X، نجمع: (أ) الموقع الجغرافي (GPS) في الوقت الفعلي وفي الخلفية (Background Location)، حصريًا لإرسال وحفظ التنبيهات الوقائية وتنبيهات الذعر؛ (ب) الصور والوسائط الأخرى التي يتم التقاطها تلقائيًا عند تفعيل زر الذعر أو ميزة الالتقاط والردع؛ (ج) بيانات تسجيل المستخدم وجهات اتصال الطوارئ المُدخلة (الاسم والهاتف)؛ و(د) البيانات التقنية للجهاز اللازمة لعمل التنبيهات (حالة الاتصال، إصدار التطبيق).",
+  "termosPrivacidadeTitulo2": "2. الغرض من استخدام البيانات",
+  "termosPrivacidadeCorpo2": "تُستخدم البيانات المجمّعة حصريًا لتمكين ميزات الأمان في التطبيق: إطلاق تنبيهات الطوارئ، ومشاركة الموقع بموافقة بين المستخدمين، وإرسال الأدلة الفوتوغرافية، والحفاظ على سجل أحداث الأمان الخاص بحساب المستخدم نفسه.",
+  "termosPrivacidadeTitulo3": "3. التخزين والسحابة",
+  "termosPrivacidadeCorpo3": "يتم تخزين جزء من البيانات محليًا على الجهاز (قاعدة بيانات محلية مشفّرة)، بينما تتم مزامنة جزء آخر مع خدمات سحابية (Firebase/Firestore وتخزين الوسائط) تديرها RMF Global، بهدف ضمان وصول تنبيهات الطوارئ حتى لو تم إيقاف تشغيل جهاز المستخدم أو تدميره أو فقدان الاتصال بعد الإطلاق.",
+  "termosPrivacidadeTitulo4": "4. المشاركة مع أطراف ثالثة",
+  "termosPrivacidadeCorpo4": "لا تتم مشاركة الموقع والأدلة الفوتوغرافية إلا مع جهات اتصال الطوارئ المسجّلة صراحةً من قِبل المستخدم نفسه، وفي حالة مراقبة العائلة، فقط بموافقة صريحة من الطرفين. نحن لا نبيع أو نشارك البيانات الشخصية مع أطراف ثالثة لأغراض إعلانية.",
+  "termosPrivacidadeTitulo5": "5. أمان البيانات",
+  "termosPrivacidadeCorpo5": "يتم تخزين كلمات المرور وأرقام PIN بشكل مشفّر. يتم حماية الوصول إلى الوظائف الحساسة (تغيير كلمة المرور، حذف جهات الاتصال، سجل التنبيهات) بفترات انتظار وتأكيد برمز PIN، كما هو موضح في عقد الموافقة.",
+  "termosPrivacidadeTitulo6": "6. حقوق المستخدم (حماية البيانات)",
+  "termosPrivacidadeCorpo6": "وفقًا لقانون حماية البيانات المعمول به (مثل قانون LGPD البرازيلي رقم 13.709/2018)، يجوز للمستخدم في أي وقت طلب الوصول إلى بياناته الشخصية، وتصحيح بيانات التسجيل غير الصحيحة، وحذف حسابه والبيانات الشخصية المخزّنة، وإلغاء الأذونات الممنوحة لجهات اتصال المراقبة، عبر قنوات الدعم الموضحة في التطبيق.",
+  "termosPrivacidadeTitulo7": "7. التواصل",
+  "termosPrivacidadeCorpo7": "يمكن توجيه أي استفسارات حول سياسة الخصوصية هذه إلى شركة RMF Global LTDA (رقم السجل الضريبي CNPJ 68.358.210/0001-90)، عبر قنوات الدعم الموضحة في الشاشة الرئيسية للتطبيق (واتساب والعنوان المؤسسي).",
+  "footerTermosLink": "شروط الاستخدام واتفاقية الموافقة",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA (آر إم إف غلوبال ذ.م.م)",
+  "footerEmpresaEndereco": "شارع ريو دي جانيرو، رقم 243، الغرفة 802، حي سنترو، بيلو هوريزونتي - ولاية ميناس جيرايس، البرازيل، الرمز البريدي 30160-040",
+  "footerEmpresaCnpj": "رقم تسجيل الشركة (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "هل تريد إلغاء الخطة المميزة؟",
+  "premiumCancelarConfirmConteudo": "ستعود فورًا إلى الخطة المجانية، مع الحدود الشهرية للخطة المجانية.",
+  "premiumCancelarConfirmBotao": "إلغاء المميزة",
+  "premiumCanceladoSnackbar": "تم إلغاء الخطة المميزة. أنت الآن على الخطة المجانية.",
+  "premiumAssinarBotaoComPreco": "اشترك في المميزة — {preco}",
+  "premiumCancelarBotaoModal": "إلغاء الخطة المميزة",
+  "familiaEtiquetaPadrao": "منبه روتيني",
+  "familiaDiasNuncaLabel": "أبدًا",
+  "familiaDiasTodosLabel": "كل يوم",
+  "familiaDiasSegASexLabel": "الإثنين إلى الجمعة",
+  "familiaDiaAbrevSeg": "إثن",
+  "familiaDiaAbrevTer": "ثلا",
+  "familiaDiaAbrevQua": "أرب",
+  "familiaDiaAbrevQui": "خمي",
+  "familiaDiaAbrevSex": "جمع",
+  "familiaDiaAbrevSab": "سبت",
+  "familiaDiaAbrevDom": "أحد",
+  "familiaDiaInicialSeg": "ن",
+  "familiaDiaInicialTer": "ث",
+  "familiaDiaInicialQua": "ر",
+  "familiaDiaInicialQui": "خ",
+  "familiaDiaInicialSex": "ج",
+  "familiaDiaInicialSab": "س",
+  "familiaDiaInicialDom": "ح",
+  "familiaAcaoPausar": "إيقاف مؤقت",
+  "familiaAcaoExcluir": "حذف",
+  "familiaAcaoEditar": "تعديل",
+  "familiaPinMotivoTexto": "تم إدخال رمز PIN بشكل غير صحيح مرتين متتاليتين أثناء محاولة {acao} منبه روتيني في تبويب العائلة.",
+  "historicoAlarmeAtivadoTitulo": "تم تفعيل المنبه الروتيني",
+  "historicoAlarmeDesativadoTitulo": "تم إيقاف المنبه الروتيني",
+  "historicoAlarmeAtivadoDescricao": "تم تفعيل {etiqueta} ({horario}).",
+  "historicoAlarmeDesativadoDescricao": "تم إيقاف {etiqueta} ({horario}).",
+  "historicoAlarmeRemovidoTitulo": "تم حذف المنبه الروتيني",
+  "historicoAlarmeRemovidoDescricao": "تم حذف {etiqueta} ({horario}).",
+  "historicoAlarmePausadoTitulo": "تم إيقاف المنبه الروتيني مؤقتًا",
+  "historicoAlarmePausadoDescricao": "تم إيقاف {etiqueta} ({horario}) مؤقتًا حتى الساعة 00:00.",
+  "historicoAlarmeReativadoTitulo": "تمت إعادة تفعيل المنبه الروتيني",
+  "historicoAlarmeReativadoDescricao": "أعاد المستخدم تفعيل {etiqueta} ({horario}).",
+  "historicoAlarmeCriadoTitulo": "تم إنشاء المنبه الروتيني",
+  "historicoAlarmeEditadoTitulo": "تم تعديل المنبه الروتيني",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} في {horario} ({dias}).",
+  "historicoContatoAdicionadoTitulo": "تمت إضافة جهة اتصال للطوارئ",
+  "historicoContatoAdicionadoDescricao": "تم تسجيل {nome} كجهة اتصال للطوارئ.",
+  "historicoContatoExclusaoSolicitadaTitulo": "تم طلب حذف جهة الاتصال",
+  "historicoContatoExclusaoSolicitadaDescricao": "سيتم حذف {nome} نهائيًا خلال ساعتين.",
+  "historicoPinDefinidoTitulo": "تم تعيين رمز PIN للوصول",
+  "historicoPinDefinidoDescricao": "تم تسجيل رمز PIN للوصول وتفعيله فورًا (أول تسجيل، دون فترة أمان انتظار).",
+  "historicoPinAlteracaoSolicitadaTitulo": "تم طلب تغيير رمز PIN",
+  "historicoPinAlteracaoSolicitadaDescricao": "كلمة مرور الوصول الجديدة معلّقة، وستصبح سارية خلال ساعتين.",
+  "historicoPlanoFundoAlteradoTitulo": "تم تغيير الخلفية",
+  "historicoPlanoFundoAlteradoDescricao": "تم تحديد خلفية جديدة: {nome}.",
+  "historicoCronometroAtivadoTitulo": "تم تفعيل المؤقت",
+  "historicoCronometroAtivadoDescricao": "بدأ تسجيل الوصول الأمني بمدة {horas} ساعة و{minutos} دقيقة.",
+  "historicoCheckinDesarmadoTitulo": "تم إلغاء تفعيل تسجيل الوصول بنجاح",
+  "historicoCheckinDesarmadoDescricao": "أوقف المستخدم/ألغى تفعيل مؤقت الأمان باستخدام رمز PIN الصحيح.",
+  "historicoCheckinRotinaConfirmadoTitulo": "تم تأكيد تسجيل الوصول الروتيني",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: أكد المستخدم بنجاح \"وصلت بأمان\".",
+  "historicoCheckinRotinaUltimaChanceTitulo": "تسجيل الوصول الروتيني — الفرصة الأخيرة",
+  "historicoCheckinRotinaUltimaChanceDescricao": "انتهت مهلة التسامح دون تأكيد. المنبه يرن مرة أخرى، مع مهلة أخيرة مدتها 60 ثانية قبل إطلاق تنبيه الطوارئ.",
+  "historicoAlertaEmergenciaRotinaTitulo": "تم إطلاق تنبيه الطوارئ (روتيني)",
+  "historicoAlertaEmergenciaTitulo": "تم إطلاق تنبيه الطوارئ",
+  "historicoAlertaEmergenciaDescricao": "تم إرسال رسالة نصية للطوارئ إلى جهات الاتصال المسجلة. الموقع: {localizacao}",
+  "historicoTentativaDesarmeTitulo": "محاولة إلغاء تفعيل برمز PIN غير صحيح",
+  "historicoTentativaDesarmeDescricao": "{motivo} تم إرسال التنبيه إلى جهات اتصال الطوارئ. الموقع: {localizacao}",
+  "historicoSosCacheTitulo": "تم إطلاق نداء الاستغاثة عبر الزر الفعلي (موقع مخزّن مؤقتًا)",
+  "historicoSosCacheDescricao": "تم إرسال رسالة نصية فورية للطوارئ تتضمن آخر موقع معروف مخزّن مؤقتًا. الموقع: {localizacao}",
+  "historicoSosAtualizadoTitulo": "نداء الاستغاثة عبر الزر الفعلي — تم تحديث الموقع",
+  "historicoSosAtualizadoDescricao": "تم إرسال رسالة نصية ثانية للطوارئ تتضمن الموقع الفوري. الموقع: {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "تم تسجيل دليل مصور",
+  "historicoEvidenciaFotograficaDescricao": "تم إرسال رسالة نصية تتضمن بيانات الإنقاذ إلى جهات اتصال الطوارئ.",
+  "historicoFotoSosSmsTitulo": "تم إرسال صورة الاستغاثة عبر رسالة نصية",
+  "historicoFotoSosSmsDescricao": "تم إرسال رسالة نصية تتضمن رابط الصورة والموقع إلى جهات اتصال الطوارئ. الصورة: {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "الموقع غير متاح (خدمة GPS معطّلة على الجهاز).",
+  "smsLocalizacaoIndisponivelPermissao": "الموقع غير متاح (تم رفض إذن الموقع).",
+  "smsLocalizacaoIndisponivelFalha": "تعذّر الحصول على الموقع الحالي للجهاز.",
+  "smsContextoNaoInformado": "لم يقدّم المستخدم أي ملاحظة سياقية.",
+  "smsAlertaEmergenciaCorpo": "تنبيه طوارئ! لم أقم بتسجيل الوصول الأمني الخاص بي.\nالموقع: {localizacao}\nالسياق: {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "تم إدخال رمز PIN بشكل غير صحيح مرتين متتاليتين أثناء محاولة إلغاء تفعيل نظام الأمان مسبقًا.",
+  "smsTentativaDesarmeCorpo": "⚠️ تنبيه أمني: محاولة إلغاء تفعيل بكلمة مرور غير صحيحة!\n{motivo}\nالموقع: {localizacao}",
+  "smsSosContextoPadrao": "تم إطلاق نداء الاستغاثة عبر زر الطوارئ الفعلي (رفع الصوت).",
+  "smsSosImediatoCorpo": "🚨 نداء استغاثة طارئ (زر فعلي)!\nالموقع (آخر موقع معروف): {localizacao}\nالسياق: {contexto}\n(سيتم إرسال تحديث بالموقع الفوري لاحقًا.)",
+  "smsLocalizacaoCacheIndisponivel": "الموقع المخزّن مؤقتًا غير متاح — بانتظار تحديث فوري.",
+  "smsSosAtualizadoCorpo": "🚨 نداء استغاثة طارئ (تحديث فوري)!\nالموقع المحدث: {localizacao}\nالسياق: {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "الموقع غير متاح وقت الإرسال.",
+  "smsFotoCorpo": "📷 تم تسجيل دليل مصور أثناء الاستغاثة!\nالصورة: {fotoUrl}\nالموقع: {localizacao}",
+  "smsResgateCorpo": "🚨 تم تسجيل دليل مصور!\nتم إرسال الصور والموقع إلى السحابة.\nالوصول: {link}\nاسم الدخول: {login}\nكلمة المرور: {senha}\nهذه العملية لا رجعة فيها.",
+  "temaAzulProfundo": "أزرق عميق",
+  "temaCinzaPlatina": "رمادي بلاتيني",
+  "temaLuzDoAmanhecer": "ضوء الفجر",
+  "temaVerdeBotanico": "أخضر نباتي",
+  "temaRosaClaro": "وردي فاتح",
+  "temaLuzClassica": "الضوء الكلاسيكي",
+  "fontTamanhoPequeno": "صغير",
+  "fontTamanhoPadrao": "افتراضي",
+  "fontTamanhoGrande": "كبير",
+  "somNome1": "صفارة كلاسيكية",
+  "somNome2": "صفارة تكتيكية",
+  "somNome3": "إنذار طوارئ",
+  "somNome4": "تنبيه صاخب",
+  "somNome5": "نغمة حضرية",
+  "somNome6": "جرس التنبيه",
+  "somNome7": "بوق الأمان",
+  "somNome8": "إنذار صناعي",
+  "somNome9": "صفارة الشرطة",
+  "somNome10": "نغمة صامتة",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: لم يتم تأكيد تسجيل الوصول الروتيني خلال المهلة الأخيرة البالغة 60 ثانية، حتى بعد انتهاء وقت التسامح بالفعل.",
+  "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: تم إدخال رمز PIN بشكل غير صحيح 3 مرات متتالية أثناء محاولة تأكيد تسجيل الوصول لمنبه الروتين.",
+  "@historicoCheckinRotinaPinIncorretoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaFechamentoForcadoMotivo": "{etiqueta}: تم إغلاق التطبيق بالقوة بينما كان منبه الروتين لا يزال يرن، دون تأكيد تسجيل الوصول.",
+  "@historicoCheckinRotinaFechamentoForcadoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: تم تجاهل منبه الروتين (بالسحب لأعلى) دون تأكيد رمز PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCanalCheckinNome": "تسجيل الوصول الروتيني",
+  "notifCanalCheckinDescricao": "تذكيرات تسجيل الوصول الأمني لمنبهات الروتين المسجلة.",
+  "notifCanalAlertaRecebidoNome": "تنبيه طوارئ مستلم",
+  "notifCanalAlertaRecebidoDescricao": "تنبيهات أمان من جهات اتصال سجّلت هذا الجهاز كجهة اتصال للطوارئ.",
+  "notifCanalMonitoramentoNome": "مراقبة الموقع",
+  "notifCanalMonitoramentoDescricao": "ردود على طلبات مشاركة الموقع المرسلة من تبويب المراقبة.",
+  "notifCanalSolicitacaoMonitoramentoNome": "طلب موقع مستلم",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "تنبيه ذو أولوية عندما يطلب أحد أفراد العائلة رؤية موقعك الفوري — يتطلب قبول أو رفض.",
+  "notifCanalAlertaEnviadoNome": "تأكيد إرسال التنبيه",
+  "notifCanalAlertaEnviadoDescricao": "يؤكد أن تنبيه الطوارئ مع الموقع قد أُرسل إلى جهات الاتصال المسجلة.",
+  "notifDescarteAlertaEnviadoTitulo": "تم إرسال التنبيه",
+  "notifDescarteAlertaEnviadoCorpo": "تم إرسال رسالة التنبيه مع موقعك إلى جهات الاتصال المسجلة.",
+  "notifCheckinCorpo": "اضغط لإلغاء المنبه.",
+  "notifAlarmeSegurancaTitulo": "منبه الأمان",
+  "notifAlarmeSegurancaCorpo": "أكد سلامتك أو أوقف المنبه مؤقتًا!",
+  "notifPausarAlarmeAcao": "⏸️ إيقاف المنبه مؤقتًا",
+  "notifAlertaDeNome": "🚨 تنبيه من {nome}",
+  "notifAlertaSegurancaGenerico": "🚨 تنبيه أمني",
+  "notifMonitSolicitacaoTitulo": "📍 طلب الموقع",
+  "notifMonitSolicitacaoCorpo": "{nome} يطلب موقعك.",
+  "notifMonitAprovadoTitulo": "📍 تم إتاحة الموقع",
+  "notifMonitAprovadoCorpo": "سمح لك {nome} برؤية موقعه.",
+  "notifMonitNegadoTitulo": "📍 تم رفض الطلب",
+  "notifMonitNegadoCorpo": "رفض {nome} طلب موقعك.",
+  "notifMonitBloqueadoTitulo": "📍 تم حظر المشاركة",
+  "notifMonitBloqueadoCorpo": "حظر {nome} مشاركة الموقع معك.",
+  "notifMonitExpiradoTitulo": "📍 انتهت صلاحية الطلب",
+  "notifMonitExpiradoCorpo": "انتهت صلاحية طلب الموقع الذي أرسلته إلى {nome} دون رد.",
+  "notifMonitContatoGenerico": "أحد جهات الاتصال",
+  "notifCheckinCanceladoCorpo": "تم إلغاء المنبه.",
+  "splashFrase1": "حارس X\nدائمًا\nإلى جانبك",
+  "splashFrase2": "حارس X\nأمانك\nهو هدفنا",
+  "splashFrase3": "حارس X\nحاميك\nالشخصي",
+  "splashFrase4": "حارس X\nالحماية\nهي هدفنا",
+  "splashFrase5": "كن محميًا\nمع\nحارس X",
+  "splashFrase6": "حارس X\nلكل لحظة",
+  "loginSocialDivisor": "أو سجّل الدخول باستخدام",
+  "loginSocialGoogleTooltip": "تسجيل الدخول عبر Google",
+  "loginSocialFacebookTooltip": "تسجيل الدخول عبر Facebook",
+  "loginSocialAppleTooltip": "تسجيل الدخول عبر Apple",
+  "loginLimparSessaoBotao": "مسح جلسة الدخول",
+  "loginLimparSessaoConfirmacao": "تم مسح جلسة الدخول الاجتماعي. حاول تسجيل الدخول مرة أخرى.",
+  "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة.",
+  "onboardingTitulo": "إعداد الأمان",
+  "onboardingIntroducao": "لكي يعمل زر الذعر والتنبيهات بشكل موثوق، حتى مع قفل الشاشة، امنح الأذونات أدناه. يمكنك تعديل هذه الأذونات في أي وقت من إعدادات نظام تشغيل الجهاز.",
+  "onboardingBadgeEssencial": "أساسي",
+  "onboardingBadgeRecomendado": "موصى به",
+  "onboardingStatusConcedida": "ممنوح",
+  "onboardingStatusPendente": "معلّق",
+  "onboardingBotaoAbrirConfiguracoes": "فتح الإعدادات",
+  "onboardingBotaoContinuar": "متابعة",
+  "onboardingAvisoEssenciaisPendentes": "امنح الأذونات الأساسية لإكمال الإعداد.",
+  "onboardingNotificacoesTitulo": "الإشعارات والمنبهات",
+  "onboardingNotificacoesConteudo": "يسمح بظهور تنبيهات الطوارئ فورًا مع صوت، وبتشغيل التذكيرات المجدولة (تسجيلات الوصول، المؤقت) في الوقت المحدد بالضبط.",
+  "onboardingLocalizacaoTitulo": "الموقع نشط دائمًا",
+  "onboardingLocalizacaoConteudo": "باستخدام \"السماح طوال الوقت\"، يتم إرسال موقعك إلى جهات اتصال الطوارئ حتى مع إغلاق التطبيق أو إطفاء الشاشة — أمر أساسي في حالة طوارئ حقيقية.",
+  "onboardingCameraTitulo": "الوصول إلى الكاميرا",
+  "onboardingCameraConteudo": "تُستخدم فقط في زر الذعر، لإرفاق صورة للموقع بالتنبيه المرسل إلى جهات اتصال الطوارئ.",
+  "onboardingTelaCheiaTitulo": "تنبيهات ملء الشاشة",
+  "onboardingTelaCheiaConteudo": "يسمح لتنبيه وارد من جهة اتصال بتشغيل الشاشة وعرضه فوق شاشة القفل، مثل مكالمة واردة.",
+  "statusPermissoesTitulo": "حالة الأذونات",
+  "statusPermissoesSubtitulo": "اطّلع على الممنوح واطلب مرة أخرى ما هو ناقص",
+  "statusPermissoesIntroducao": "تابع في الوقت الفعلي الأذونات التي يملكها Guardião X بالفعل على جهازك. يمكنك طلب أي إذن معلّق مرة أخرى أو فتح إعدادات النظام الأصلية في أي وقت.",
+  "excluirContaTitulo": "حذف الحساب والبيانات",
+  "excluirContaSubtitulo": "حذف نهائي لحسابك وبياناتك",
+  "excluirContaAvisoPrincipal": "يؤدي هذا الإجراء إلى حذف حسابك وجهات اتصال الطوارئ وسجل التنبيهات والمواقع والصور المحفوظة في السحابة نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+  "excluirContaAvisoRescisaoContrato": "بتأكيدك لهذا الحذف، فإنك تقر بعلمك بأن هذا الإجراء ينهي بالكامل اتفاقية الموافقة وشروط الاستخدام المبرمة مع RMF Global LTDA، مما يُنهي على الفور وبشكل نهائي تقديم الخدمة وجميع الالتزامات المتبادلة بينك وبين RMF Global.",
+  "excluirContaAvisoAssinatura": "إذا كان لديك اشتراك Premium نشط، فألغه بشكل منفصل من متجر Google Play أو Apple App Store — حذف الحساب لا يلغي الرسوم تلقائيًا.",
+  "excluirContaBotaoGerenciarAssinatura": "إدارة / إلغاء الاشتراك من المتجر",
+  "excluirContaListaTitulo": "ما سيتم حذفه:",
+  "excluirContaItemConta": "بيانات تسجيلك وتسجيل الدخول (البريد الإلكتروني، الهاتف، كلمة المرور/رمز PIN)",
+  "excluirContaItemContatos": "جهات اتصال الطوارئ المسجَّلة لديك",
+  "excluirContaItemHistorico": "سجل التنبيهات والمواقع والصور المُرسَلة",
+  "excluirContaItemMonitoramento": "روابط المراقبة بينك وبين أفراد الأسرة",
+  "excluirContaBotaoExcluir": "حذف حسابي وجميع بياناتي",
+  "excluirContaDialogTitulo": "هل أنت متأكد؟",
+  "excluirContaDialogConteudo": "بعد التأكيد برمز PIN، لا يمكن التراجع عن هذه العملية. هل تريد المتابعة؟",
+  "excluirContaSemPinTitulo": "قم بإعداد رمز PIN أولاً",
+  "excluirContaSemPinConteudo": "لأسباب أمنية، يتطلب حذف الحساب تأكيد رمز PIN الخاص بك. قم بإعداد رمز PIN في علامة التبويب الأمان قبل المتابعة.",
+  "excluirContaProcessando": "جارٍ حذف حسابك وبياناتك...",
+  "excluirContaSucessoMensagem": "تم حذف حسابك بنجاح.",
+  "excluirContaErroMensagem": "تعذّر حذف حسابك الآن. تحقق من اتصالك وحاول مرة أخرى، أو تواصل مع الدعم."
 }

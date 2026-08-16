@@ -30,7 +30,7 @@ const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
-const {normalizarTelefoneE164} = require("./smsGateway");
+const {normalizarTelefoneE164} = require("./telefoneUtils");
 const {JANELA_EXPIRACAO_MONITORAMENTO_MS} = require("./constantes");
 
 const db = getFirestore();

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/alarme_agendado_model.dart';
 import 'alarme_agendado_cloud_service.dart';
+import 'alarme_service.dart';
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 import 'location_service.dart';
@@ -25,8 +26,10 @@ const Duration janelaRegistro48h = Duration(hours: 48);
 const Duration janelaLocalizacao2h = Duration(hours: 2);
 
 /// Intervalo entre cada ciclo do heartbeat (registro de 48h +,
-/// opcionalmente, localização de 2h).
-const Duration intervaloHeartbeat = Duration(minutes: 2);
+/// opcionalmente, localização de 2h) — 1 minuto por especificação do
+/// usuário (2026-08-07, item 7: "a cada 1 minuto" dentro da janela de
+/// 120 minutos antes do horário agendado). Antes era 2 minutos.
+const Duration intervaloHeartbeat = Duration(minutes: 1);
 
 /// Serviço em segundo plano, TOTALMENTE independente do alarme local
 /// (`android_alarm_manager_plus` + `RotinaAlarmeService`), com DUAS
@@ -58,6 +61,25 @@ class BackgroundLocationHeartbeatService {
 
   Timer? _timer;
 
+  /// Id fixo (namespaced por usuário dentro de
+  /// [AlarmeAgendadoCloudService]) usado para o documento de dead man's
+  /// switch do cronômetro de check-in da aba Segurança — REAPROVEITADO a
+  /// cada novo ciclo, diferente dos ids numéricos (autoincrement do
+  /// SQLite) dos alarmes de rotina. Por isso todo novo ciclo precisa
+  /// reiniciar explicitamente o documento como PENDENTE (ver
+  /// [registrarCheckinAtivo]/[AlarmeAgendadoCloudService.reiniciarCicloComoPendente])
+  /// — sem isso, um ciclo novo herdaria o status (CONFIRMADO_SEGURA ou
+  /// ALERTA_DISPARADO) de um ciclo anterior já concluído.
+  static const String idAlarmeCheckinSeguranca = 'checkin_seguranca';
+
+  // Estado do cronômetro de check-in ATIVO (aba Segurança), se houver —
+  // ver [registrarCheckinAtivo]/[cancelarCheckinAtivo]. `null` em
+  // [_checkinDataHoraDisparoAtiva] significa "nenhum check-in ativo no
+  // momento", omitindo completamente esse candidato do ciclo.
+  DateTime? _checkinDataHoraDisparoAtiva;
+  String _checkinContextoAtivo = '';
+  bool _checkinPrecisaReiniciarCiclo = false;
+
   /// Inicia o ciclo de heartbeat, se ainda não estiver rodando —
   /// idempotente (chamadas repetidas são ignoradas). Não bloqueia quem
   /// chama: o primeiro ciclo roda em segundo plano (fire-and-forget).
@@ -75,6 +97,79 @@ class BackgroundLocationHeartbeatService {
     _timer = null;
   }
 
+  /// Registra o cronômetro de check-in ATIVO da aba Segurança como
+  /// candidato a dead man's switch neste heartbeat, reaproveitando a
+  /// MESMA infraestrutura já validada para os alarmes de rotina
+  /// ([AlarmeAgendadoCloudService] + `scheduledAlarmMonitor.js`). Chamado
+  /// uma única vez ao iniciar o cronômetro (`SegurancaTab._iniciarTimer`).
+  ///
+  /// Diferente dos alarmes de rotina (que somam tolerância + janela
+  /// final ao horário bruto para calcular o prazo), [dataHoraDisparo] JÁ
+  /// é o prazo final: o cronômetro de check-in deve disparar exatamente
+  /// no fim do tempo escolhido pelo usuário, sem tolerância extra (regra
+  /// de negócio reespecificada em 2026-08-09).
+  ///
+  /// Dispara imediatamente um ciclo extra (sem esperar o próximo tick de
+  /// até 1 minuto) para que o documento na nuvem exista o quanto antes, e
+  /// marca [_checkinPrecisaReiniciarCiclo] para que esse primeiro ciclo
+  /// reinicie o documento como um ciclo NOVO (nunca herdando o status de
+  /// um check-in anterior já concluído).
+  void registrarCheckinAtivo({
+    required DateTime dataHoraDisparo,
+    required String contexto,
+  }) {
+    _checkinDataHoraDisparoAtiva = dataHoraDisparo;
+    _checkinContextoAtivo = contexto;
+    _checkinPrecisaReiniciarCiclo = true;
+    unawaited(_executarCiclo());
+  }
+
+  /// Encerra o acompanhamento do check-in ativo (desarmado com sucesso OU
+  /// alerta já disparado localmente) — o heartbeat para de atualizar esse
+  /// documento. Propositalmente NÃO altera o status na nuvem aqui: mesma
+  /// filosofia já usada pelos alarmes de rotina — se o disparo local já
+  /// aconteceu, o documento simplesmente para de ser atualizado; a Cloud
+  /// Function agendada continua sendo a rede de segurança final mesmo sem
+  /// essa chamada (redundância deliberada, nunca risco de "esquecer" de
+  /// alertar).
+  void cancelarCheckinAtivo() {
+    _checkinDataHoraDisparoAtiva = null;
+    _checkinContextoAtivo = '';
+    _checkinPrecisaReiniciarCiclo = false;
+  }
+
+  /// Marca o check-in ativo como desarmado com sucesso (PIN correto) —
+  /// avisa a nuvem IMEDIATAMENTE (ver
+  /// [AlarmeAgendadoCloudService.marcarConfirmadoSeguro]) e encerra o
+  /// acompanhamento local, chamado por `SegurancaTab._aoConfirmarPinCorreto`.
+  void confirmarCheckinSeguro() {
+    unawaited(AlarmeAgendadoCloudService()
+        .marcarConfirmadoSeguro(idAlarmeCheckinSeguranca));
+    cancelarCheckinAtivo();
+  }
+
+  /// Marca o check-in ativo como ALERTA JÁ DISPARADO localmente (3ª
+  /// tentativa de PIN incorreta OU os 60s de tolerância se esgotando, ver
+  /// `CronometroDisparadoScreen._dispararAlerta`) — avisa a nuvem
+  /// IMEDIATAMENTE (ver [AlarmeAgendadoCloudService.marcarAlertaDisparado])
+  /// e encerra o acompanhamento local, mesmo papel de
+  /// [confirmarCheckinSeguro] para o outro desfecho possível do ciclo.
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-15, duplo disparo do Cronômetro): sem
+  /// isto, o documento `alarmes_agendados/checkin_seguranca` continuava
+  /// PENDENTE mesmo após o alerta já ter sido enviado pelo aparelho (3ª
+  /// senha errada, antes do fim natural dos 60s) — e a Cloud Function
+  /// `monitorarAlarmesAgendados`, ao rodar minutos depois e ver o prazo
+  /// original já vencido num documento ainda PENDENTE, disparava um
+  /// SEGUNDO alerta duplicado. Chamar isto no mesmo instante do disparo
+  /// local (`_dispararAlerta`, cobrindo tanto a 3ª senha errada quanto o
+  /// timeout natural) tira o documento da consulta da function.
+  void confirmarAlertaJaDisparado() {
+    unawaited(AlarmeAgendadoCloudService()
+        .marcarAlertaDisparado(idAlarmeCheckinSeguranca));
+    cancelarCheckinAtivo();
+  }
+
   Future<void> _executarCiclo() async {
     try {
       final usuarioId = FirebaseAuthService().uidAtual;
@@ -84,10 +179,13 @@ class BackgroundLocationHeartbeatService {
       final agora = DateTime.now();
 
       final candidatos = <({
-        Map<String, dynamic> alarme,
+        String idAlarme,
         DateTime proximoDisparo,
         DateTime prazoFinal,
         bool dentroDaJanelaDeLocalizacao,
+        String etiqueta,
+        String contextoPersonalizado,
+        bool reiniciarComoPendente,
       })>[];
 
       for (final alarme in alarmes) {
@@ -100,17 +198,63 @@ class BackgroundLocationHeartbeatService {
         final faltam = proximoDisparo.difference(agora);
         if (faltam.isNegative || faltam > janelaRegistro48h) continue;
 
+        final idAlarme = (alarme['id'] as int?)?.toString();
+        if (idAlarme == null) continue;
+
         final minutosTolerancia = alarme['minutos_tolerancia'] as int? ?? 10;
         final prazoFinal = proximoDisparo
             .add(Duration(minutes: minutosTolerancia))
             .add(RotinaAlarmeService.duracaoJanelaFinal);
 
         candidatos.add((
-          alarme: alarme,
+          idAlarme: idAlarme,
           proximoDisparo: proximoDisparo,
           prazoFinal: prazoFinal,
           dentroDaJanelaDeLocalizacao: faltam <= janelaLocalizacao2h,
+          etiqueta: (alarme['etiqueta'] as String?) ?? '',
+          contextoPersonalizado:
+              (alarme['contexto_personalizado'] as String?) ?? '',
+          // CORREÇÃO DE DÉBITO TÉCNICO (2026-08-15): antes, sempre `false`
+          // — o documento deste alarme (id FIXO, reaproveitado a cada
+          // repetição) nunca voltava a PENDENTE depois do primeiro ciclo,
+          // desarmando a proteção da Cloud Function para as ocorrências
+          // seguintes. Consome (lê E remove) a sinalização gravada pelos
+          // caminhos de resolução de ciclo (PIN correto, alerta disparado,
+          // reativação manual) — ver
+          // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+          reiniciarComoPendente: AlarmeAgendadoCloudService()
+              .consumirSinalizacaoDeNovoCiclo(idAlarme),
         ));
+      }
+
+      // Cronômetro de check-in ATIVO da aba Segurança (ver
+      // [registrarCheckinAtivo]), se houver — mesma janela de registro
+      // (48h) e de localização (2h) usada pelos alarmes de rotina.
+      // [prazoFinal] = [checkinDisparo] + 60s (reespecificação do
+      // usuário, 2026-08-10, ajustada de 180s para 60s em 2026-08-11):
+      // ao zerar, o Cronômetro concede uma tolerância sonora de 60
+      // segundos com o teclado de PIN aberto
+      // (ver `AlarmeService.duracaoJanelaFinalCronometro`/
+      // `cronometro_disparado_screen.dart`) antes de qualquer alerta real
+      // ser disparado — o mesmo prazo usado por
+      // `functions/scheduledAlarmMonitor.js` como rede de segurança
+      // offline precisa refletir esse fim real, não mais o zero puro.
+      final checkinDisparo = _checkinDataHoraDisparoAtiva;
+      if (checkinDisparo != null) {
+        final faltam = checkinDisparo.difference(agora);
+        if (!faltam.isNegative && faltam <= janelaRegistro48h) {
+          candidatos.add((
+            idAlarme: idAlarmeCheckinSeguranca,
+            proximoDisparo: checkinDisparo,
+            prazoFinal:
+                checkinDisparo.add(AlarmeService.duracaoJanelaFinalCronometro),
+            dentroDaJanelaDeLocalizacao: faltam <= janelaLocalizacao2h,
+            etiqueta: 'Check-in de Segurança',
+            contextoPersonalizado: _checkinContextoAtivo,
+            reiniciarComoPendente: _checkinPrecisaReiniciarCiclo,
+          ));
+          _checkinPrecisaReiniciarCiclo = false;
+        }
       }
 
       if (candidatos.isEmpty) return;
@@ -123,34 +267,34 @@ class BackgroundLocationHeartbeatService {
       final contatos = await _resolverContatosEmergencia();
 
       for (final candidato in candidatos) {
-        final idAlarme = (candidato.alarme['id'] as int?)?.toString();
-        if (idAlarme == null) continue;
-
         final incluirLocalizacao =
             candidato.dentroDaJanelaDeLocalizacao && posicao != null;
 
-        await AlarmeAgendadoCloudService().registrarAlarmeAgendado(
-          AlarmeAgendadoModel(
-            idAlarme: idAlarme,
-            usuarioId: usuarioId,
-            dataHoraDisparo: candidato.proximoDisparo,
-            prazoFinalDisparo: candidato.prazoFinal,
-            contatosEmergencia: contatos,
-            etiqueta: (candidato.alarme['etiqueta'] as String?) ?? '',
-            contextoPersonalizado:
-                (candidato.alarme['contexto_personalizado'] as String?) ?? '',
-            ultimaLocalizacao: incluirLocalizacao
-                ? UltimaLocalizacaoModel(lat: posicao.latitude, lng: posicao.longitude)
-                : null,
-          ),
+        final modelo = AlarmeAgendadoModel(
+          idAlarme: candidato.idAlarme,
+          usuarioId: usuarioId,
+          dataHoraDisparo: candidato.proximoDisparo,
+          prazoFinalDisparo: candidato.prazoFinal,
+          contatosEmergencia: contatos,
+          etiqueta: candidato.etiqueta,
+          contextoPersonalizado: candidato.contextoPersonalizado,
+          ultimaLocalizacao: incluirLocalizacao
+              ? UltimaLocalizacaoModel(lat: posicao.latitude, lng: posicao.longitude)
+              : null,
         );
+
+        if (candidato.reiniciarComoPendente) {
+          await AlarmeAgendadoCloudService().reiniciarCicloComoPendente(modelo);
+        } else {
+          await AlarmeAgendadoCloudService().registrarAlarmeAgendado(modelo);
+        }
       }
 
       final comLocalizacao =
           candidatos.where((c) => c.dentroDaJanelaDeLocalizacao).length;
       debugPrint(
           '💓 [BackgroundLocationHeartbeatService] Ciclo executado — '
-          '${candidatos.length} alarme(s) dentro da janela de 48h '
+          '${candidatos.length} candidato(s) dentro da janela de 48h '
           '($comLocalizacao com localização, dentro de 2h).');
     } catch (e) {
       debugPrint(
@@ -158,11 +302,11 @@ class BackgroundLocationHeartbeatService {
     }
   }
 
-  /// Mesmo formato `{nome, telefone, whatsappHabilitado}` gravado em
+  /// Mesmo formato `{nome, telefone}` gravado em
   /// `usuarios/{uid}.contatosEmergencia` (ver
   /// `FirebaseSyncService.sincronizarContatosEmergencia`), repassado
   /// junto com o alarme agendado para a Cloud Function de disparo poder
-  /// aplicar as mesmas regras de contingência via WhatsApp.
+  /// resolver o Push FCM.
   Future<List<Map<String, dynamic>>> _resolverContatosEmergencia() async {
     try {
       final contatos = await DatabaseHelper().getContatosEmergencia();
@@ -170,7 +314,6 @@ class BackgroundLocationHeartbeatService {
           .map((c) => {
                 'nome': (c['nome'] as String?) ?? '',
                 'telefone': (c['telefone'] as String?) ?? '',
-                'whatsappHabilitado': (c['whatsapp_habilitado'] as int?) == 1,
               })
           .where((c) => (c['telefone'] as String).isNotEmpty)
           .toList();

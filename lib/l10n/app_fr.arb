@@ -1,8 +1,7 @@
 {
   "@@locale": "fr",
-
+  "marcaGuardiaoX": "Gardien-X",
   "appTituloConfiguracoes": "Paramètres",
-
   "campoEmailLabel": "E-mail",
   "campoEmailObrigatorio": "Indiquez votre e-mail",
   "campoEmailInvalido": "E-mail invalide",
@@ -12,10 +11,21 @@
   "campoConfirmarSenhaLabel": "Confirmer le mot de passe",
   "campoConfirmarSenhaObrigatoria": "Confirmez votre mot de passe",
   "senhasNaoCoincidem": "Les mots de passe ne correspondent pas",
-
   "botaoEntrar": "Se connecter",
   "esqueciMinhaSenha": "Mot de passe oublié",
-  "recuperacaoSenhaEmBreve": "Récupération du mot de passe bientôt disponible.",
+  "recuperacaoSenhaTitulo": "Récupérer le mot de passe",
+  "recuperacaoSenhaDescricao": "Indiquez votre e-mail enregistré. Nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+  "recuperacaoSenhaBotaoEnviar": "Envoyer le lien",
+  "recuperacaoSenhaSucesso": "Lien de réinitialisation envoyé ! Vérifiez la boîte de réception (et les spams) de {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Nous n'avons trouvé aucun compte avec cet e-mail.",
+  "recuperacaoSenhaErroRede": "Échec de connexion. Vérifiez votre connexion internet et réessayez.",
   "erroLoginCredenciaisInvalidas": "E-mail ou mot de passe incorrect",
   "erroLoginMuitasTentativas": "Trop de tentatives. Réessayez plus tard",
   "erroLoginGenerico": "Connexion impossible. Veuillez réessayer",
@@ -28,19 +38,21 @@
   "emailNaoVerificadoReenviar": "Renvoyer l'e-mail",
   "emailVerificacaoReenviada": "E-mail de vérification renvoyé.",
   "emailVerificacaoReenvioFalhou": "Impossible de renvoyer l'e-mail. Veuillez réessayer plus tard.",
-
+  "meuPerfilTitulo": "Mon Profil",
+  "meuPerfilTelefoneTitulo": "Téléphone de contact",
+  "meuPerfilTelefoneDescricao": "Utilisé par vos contacts d'urgence pour identifier votre compte et recevoir des alertes.",
+  "meuPerfilTelefoneNaoCadastrado": "Aucun téléphone enregistré — appuyez pour ajouter",
+  "meuPerfilTelefoneAtualizado": "Téléphone mis à jour avec succès.",
+  "meuPerfilFalhaAtualizarTelefone": "Échec de la mise à jour du téléphone. Réessayez.",
   "sairDaContaTitulo": "Se déconnecter",
   "sairDaContaConfirmar": "Se déconnecter",
-
-  "contatoWhatsappSwitchLabel": "Notifier via WhatsApp (0,10 $ USD)",
-  "whatsappSimultaneoTitulo": "Envoyer aussi par WhatsApp",
-  "whatsappSimultaneoDescricao": "Envoie l'alerte immédiatement par WhatsApp en même temps que le Push, sans attendre la confirmation de livraison, en déduisant le montant du Portefeuille pour chaque contact activé.",
-
   "alertaRecebidoTitulo": "Alerte de sécurité reçue",
   "alertaRecebidoDe": "{nome} pourrait être en danger",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "Voir la position sur la carte",
@@ -52,32 +64,11 @@
   "alertaRecebidoFalhaCompartilhar": "Impossible de partager la photo.",
   "alertaRecebidoFotoIndisponivel": "Impossible de charger la photo.",
   "alertaRecebidoTentarNovo": "Réessayer",
-
-  "carteiraTitulo": "Portefeuille de crédits",
-  "carteiraMenuItem": "Portefeuille de crédits",
-  "carteiraSaldoAtual": "Solde actuel",
-  "carteiraAteNEnvios": "jusqu'à {n} envois",
-  "@carteiraAteNEnvios": {
-    "placeholders": {
-      "n": {"type": "int"}
-    }
-  },
-  "carteiraNotaExplicativa": "Les alertes via l'application sont 100% gratuites. Les envois de secours via WhatsApp coûtent 0,10 $ USD chacun.",
-  "carteiraRecarregarTitulo": "Recharger",
-  "carteiraHistoricoTitulo": "Historique",
-  "carteiraHistoricoVazio": "Aucun mouvement pour l'instant.",
-  "carteiraTipoRecarga": "Recharge",
-  "carteiraTipoDesconto": "Envoi WhatsApp",
-  "carteiraCompraSucesso": "Crédits ajoutés avec succès !",
-  "carteiraCompraFalhaVerificacao": "Impossible de confirmer l'achat. Veuillez réessayer.",
-  "carteiraCompraErro": "Impossible de terminer l'achat.",
-  "carteiraLojaIndisponivel": "Boutique indisponible pour le moment.",
   "ouEntreCom": "ou connectez-vous avec",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
   "naoTemConta": "Pas encore de compte ?",
   "cadastreSe": "S'inscrire",
-
   "cadastroSubtitulo": "Créez votre compte pour commencer",
   "campoNomeLabel": "Nom complet",
   "campoNomeObrigatorio": "Indiquez votre nom",
@@ -87,35 +78,41 @@
   "botaoCriarConta": "Créer un compte",
   "jaTemConta": "Vous avez déjà un compte ?",
   "facaLogin": "Se connecter",
-
   "configuracoesIdiomaTitulo": "Langue",
   "configuracoesIdiomaDescricao": "Choisissez la langue de l'application. Prise en charge prête pour 11 langues mondiales.",
   "configuracoesIdiomaLabel": "Langue de l'application",
   "idiomaAlteradoSnackbar": "🌐 Langue changée en {idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "Sécurité",
   "tabFamilia": "Famille",
   "tabMonitoramento": "Surveillance",
   "tabHistorico": "Historique",
   "tooltipAdicionarAlarme": "Ajouter une alarme",
   "tooltipAuditoriaSensivel": "Audit des événements sensibles",
-
   "cancelar": "Annuler",
   "confirmar": "Confirmer",
   "salvar": "Enregistrer",
   "excluir": "Supprimer",
   "fechar": "Fermer",
   "voltar": "Retour",
-
   "segurancaSelecioneTempo": "Veuillez sélectionner une durée supérieure à zéro !",
   "segurancaCheckinDesarmado": "✅ Check-in désarmé avec succès !",
   "segurancaConfirmarSosTitulo": "Confirmer le SOS ?",
   "segurancaConfirmarSosConteudo": "Cela enverra immédiatement un SMS d'urgence et une alerte à vos contacts enregistrés, avec votre position actuelle. Voulez-vous continuer ?",
   "segurancaConfirmarSosBotao": "Confirmer le SOS",
   "segurancaSosDisparado": "🚨 SOS déclenché ! Contacts d'urgence notifiés.",
+  "segurancaAlertaEnviadoTitulo": "Alerte envoyée",
+  "segurancaAlertaEnviadoConteudo": "Un message avec la localisation a été envoyé aux numéros enregistrés.",
+  "cronometroAtivoDescricao": "Minuteur de sécurité déclenché.\nEntrez votre mot de passe pour désarmer.",
+  "historicoCronometroFalhaMotivo": "le minuteur de sécurité n'a pas été désarmé dans les 60 secondes de tolérance après le déclenchement.",
+  "historicoCronometroPinIncorretoMotivo": "le code PIN a été saisi incorrectement 3 fois de suite en essayant de désarmer le minuteur de sécurité.",
+  "historicoCronometroFechamentoForcadoMotivo": "l'application a été fermée de force alors que le minuteur de sécurité sonnait encore, sans confirmation du désarmement.",
   "segurancaTituloSecaoTempo": "Dans combien de temps j'arriverai",
   "segurancaServidorVerificando": "Vérification du serveur...",
   "segurancaServidorOnline": "Serveur en ligne",
@@ -132,7 +129,6 @@
   "deviceAdminDescricaoInativo": "Permet à l'application de verrouiller l'écran automatiquement à la fin du SOS d'urgence. Nécessite une autorisation Android spéciale, accordée une seule fois.",
   "deviceAdminDescricaoAtivo": "Activé — l'écran sera verrouillé automatiquement à la fin de la séquence de SOS.",
   "deviceAdminBotaoAtivar": "Activer",
-
   "familiaAlarmeRemovido": "🗑️ Alarme supprimée avec succès.",
   "familiaAlarmePausadoAte": "⏸️ Alarme suspendue jusqu'à minuit aujourd'hui.",
   "familiaAdicionarAlarme": "Ajouter une alarme",
@@ -148,7 +144,11 @@
   "familiaToleranciaLabel": "Tolérance pour confirmer \"Bien arrivé\"",
   "familiaMinutosAbrev": "{minutos} min",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "Enregistrer l'alarme",
   "familiaAlarmesRotinaTitulo": "Alarmes de routine",
@@ -158,30 +158,57 @@
   "familiaExcluirAlarmeTitulo": "Supprimer l'alarme définitivement ?",
   "familiaExcluirAlarmeConteudo": "Voulez-vous supprimer définitivement l'alarme \"{etiqueta}\" ({horario}) ?",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "Suspendre l'alarme pour aujourd'hui ?",
   "familiaPausarAlarmeConteudo": "Voulez-vous suspendre l'alarme \"{etiqueta}\" ({horario}) jusqu'à minuit ? Elle redeviendra active demain automatiquement.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "Suspendre",
   "familiaPausadoAte0000": "Suspendue jusqu'à minuit",
   "familiaRetorna": "Reprend : {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ Toucher pour réactiver l'alarme",
   "familiaContatosEmergenciaTitulo": "Contacts d'urgence",
   "familiaContatosEmergenciaDescricao": "Ces contacts reçoivent les alertes d'urgence. Gérez-les dans l'onglet Paramètres.",
   "familiaNenhumContato": "Aucun contact d'urgence enregistré pour le moment.",
-  "familiaRemovendoEm24h": "Suppression dans 24h...",
+  "familiaRemovendoEmCarencia": "Suppression dans 2h...",
   "familiaSemNome": "Sans nom",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) réactivée avec succès.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "Autoriser à envoyer ma position",
   "monitoramentoSecaoVerLocalizacao": "Position des proches",
   "monitoramentoAdicionarContato": "Ajouter un contact",
@@ -193,123 +220,214 @@
   "monitoramentoExcluirContatoTooltip": "Supprimer le contact",
   "monitoramentoExcluirContatoTitulo": "Supprimer le contact ?",
   "monitoramentoExcluirContatoConteudo": "Voulez-vous retirer « {nome} » de votre liste de surveillance ?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "Aucun contact de surveillance ajouté pour l'instant.\nAppuyez sur « + » pour ajouter le premier.",
   "monitoramentoSolicitarLocalizacao": "Demander la position",
   "monitoramentoVerNoMapa": "Voir sur la carte",
   "monitoramentoAtualizadoHaMinutos": "Mis à jour il y a {minutos} min",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "Non demandé",
   "monitoramentoStatusAguardandoAprovacao": "En attente d'approbation",
   "monitoramentoStatusAprovado": "Approuvé",
   "monitoramentoStatusBloqueado": "Bloqué",
   "monitoramentoStatusNegado": "Demande refusée",
   "monitoramentoStatusExpirado": "Demande expirée",
+  "monitoramentoAguardandoPrimeiraLocalizacao": "En attente de la première position...",
+  "monitoramentoLocalizacaoSendoAtualizada": "La position est encore en cours de mise à jour. Réessayez dans quelques instants.",
   "monitoramentoSolicitacaoEnviada": "Demande envoyée. En attente d'approbation.",
   "monitoramentoJaAprovado": "Vous pouvez déjà voir la position de ce contact.",
-  "monitoramentoNumeroNaoEncontrado": "Ce numéro n'a pas encore de compte Guardião X.",
+  "monitoramentoNumeroNaoEncontrado": "Ce numéro n'a pas encore de compte Gardien X.",
   "monitoramentoProprioNumero": "Impossible de demander votre propre position.",
   "monitoramentoErroSolicitar": "Impossible d'envoyer la demande. Veuillez réessayer.",
   "monitoramentoSolicitacaoRecebidaTitulo": "Demande de position",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} demande votre position. Autoriser ou Bloquer ?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "Autoriser",
   "monitoramentoBloquearRecusar": "Bloquer/Refuser",
-
+  "monitoramentoBloquear": "Bloquer",
+  "monitoramentoBloquearContatoTitulo": "Bloquer le contact ?",
+  "monitoramentoBloquearContatoConteudo": "« {nome} » ne pourra plus vous envoyer de demandes de position.",
+  "@monitoramentoBloquearContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "monitoramentoContatoBloqueadoSucesso": "Contact bloqué. Il ne pourra plus demander votre position.",
+  "monitoramentoContatoDesbloqueadoSucesso": "Contact débloqué.",
+  "monitoramentoPermitirOuBloquearSolicitacoes": "Autoriser ou Bloquer les demandes de position",
+  "monitoramentoIndicadorBloqueado": "Bloqué",
+  "monitoramentoIndicadorLiberado": "Autorisé",
+  "monitoramentoContatoIndisponivel": "Ce contact n'est pas disponible pour le moment.",
   "historicoFiltroTodos": "Tous",
   "historicoFiltroSistema": "Système",
   "historicoAgoraMesmo": "À l'instant",
   "historicoHaMinutos": "Il y a {minutos} min",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "Il y a {horas}h",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "Hier",
   "historicoHaDias": "Il y a {dias} jours",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "Aucun événement trouvé pour ce filtre.",
   "historicoLimparBotao": "Effacer l'historique",
   "historicoLimparConfirmarTitulo": "Effacer l'historique ?",
   "historicoLimparConfirmarConteudo": "Cette action supprime définitivement les messages de cette catégorie. Elle est irréversible.",
-
   "contatosMaximoAtingido": "⚠️ Vous avez déjà enregistré le maximum de {max} contacts.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ L'accès aux contacts a été refusé.",
   "contatoSemTelefone": "⚠️ Ce contact n'a pas de numéro de téléphone enregistré.",
   "telefoneInvalido": "⚠️ Numéro de téléphone invalide.",
   "contatoAdicionado": "✅ {nome} ajouté aux contacts d'urgence !",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
-  "contatoRemocaoSolicitada": "⏳ Demande reçue. {nome} sera supprimé dans 24 heures.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoRemocaoSolicitada": "⏳ Demande reçue. {nome} sera supprimé dans 2 heures.",
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoApagarConfirmacaoTitulo": "Supprimer le contact",
+  "contatoApagarConfirmacaoMensagem": "Si approuvée, la suppression sera effective sous 2h00",
+  "historicoLatitudeLabel": "Latitude",
+  "historicoLongitudeLabel": "Longitude",
+  "permissaoSmsTitulo": "Autorisation SMS d'urgence",
+  "permissaoSmsConteudo": "Gardien-X envoie un SMS directement depuis votre carte SIM lorsque vous déclenchez le bouton panique — c'est le seul canal qui fonctionne même sans internet. Sans cette autorisation, le SMS d'urgence ne peut pas être envoyé. Voulez-vous l'autoriser maintenant ?",
+  "permissaoSmsAgoraNao": "Pas maintenant",
+  "permissaoSmsPermitir": "Autoriser",
+  "batteriaOtimizacaoTitulo": "Optimisation de la batterie",
+  "batteriaOtimizacaoDescricaoInativo": "Exemptez Gardien-X de l'optimisation de la batterie de l'appareil pour que le bouton panique physique continue de fonctionner même en arrière-plan pendant longtemps. Nécessite une autorisation spéciale d'Android, accordée une seule fois.",
+  "batteriaOtimizacaoBotaoAtivar": "Activer",
+  "permissaoBateriaTitulo": "Garder la surveillance toujours active",
+  "permissaoBateriaConteudo": "Certains appareils ferment les applications en arrière-plan pour économiser la batterie, ce qui peut empêcher le bouton panique physique de fonctionner. Exempter Gardien-X de cette optimisation maintient la surveillance active. Voulez-vous l'autoriser maintenant ?",
   "pinRealTitulo": "PIN réel",
   "pinRealDescricao": "Définissez un code PIN à 4 chiffres pour l'accès normal à l'application.",
   "pinRealHint": "Saisissez 4 chiffres",
   "pinInformarObrigatorio": "Saisissez le PIN",
   "pinDeveTer4Digitos": "Doit comporter exactement 4 chiffres",
   "pinApenasNumeros": "Chiffres uniquement",
-  "pinNovaSenhaPendente": "⏳ Nouveau mot de passe en attente (24h avant activation)",
+  "pinNovaSenhaPendente": "⏳ Nouveau mot de passe en attente (2h avant activation)",
   "pinDefinido": "✅ Défini",
   "pinNaoDefinido": "⚠️ Non défini",
   "pinDefinidoComSucesso": "🔒 PIN défini avec succès !",
-  "pinNovaSenhaEmVigor24h": "🔒 Demande reçue. Le nouveau mot de passe prendra effet dans 24 heures.",
-
+  "pinNovaSenhaEmVigorCarencia": "🔒 Demande reçue. Le nouveau mot de passe prendra effet dans 2 heures.",
   "alterarPlanoFundo": "Changer le fond d'écran",
   "planoFundoAlterado": "🎨 Fond d'écran modifié !",
   "planoFundoPadrao": "Lumière classique (par défaut)",
   "tamanhoLetrasTitulo": "Taille du texte",
   "tamanhoLetrasAlterado": "🔤 Taille du texte : {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "Forfait Premium",
-  "beneficioAlertasNuvem": "Alertes cloud en temps réel",
-  "beneficioMensagensWhatsapp": "Jusqu'à 10 messages de secours via WhatsApp",
-  "beneficioGruposIlimitados": "Créer des groupes d'alertes illimités",
-  "beneficioChatsCriptografados": "Discussions chiffrées avec audio et vidéo",
-  "beneficioBackupNuvem": "Sauvegarde automatique dans le cloud",
+  "premiumModalDestaque": "Toutes les fonctions de Gardien-X, illimitées",
+  "beneficioLocalizacaoTempoReal": "Localisation partagée en temps réel.",
+  "beneficioBotaoFisico": "Bouton physique qui envoie la localisation et une photo à la base de données Gardien-X et aux téléphones enregistrés.",
+  "beneficioModoSeguranca": "Mode sécurité avec bouton panique qui enregistre votre localisation chaque minute dans la base de données Gardien-X et déclenche une alerte d'urgence. Cela garantit que votre dernière localisation sera envoyée aux numéros enregistrés à la fin du compte à rebours, même si votre appareil est éteint.",
+  "beneficioModoFamilia": "Mode famille avec réveil pour une programmation hebdomadaire ou quotidienne et un check-in de confirmation de sécurité, envoyant la localisation à l'avance à la base de données Gardien-X pour garantir que le membre de la famille reçoive l'alerte d'urgence à l'heure et au jour programmés si le check-in n'est pas confirmé.",
+  "beneficioTresCamadas": "Deux couches de protection pour garantir l'arrivée des alertes d'urgence avec localisation et photos. (Application et SMS).",
+  "beneficioTempoEspera": "Délai d'attente pour les modifications et la consultation de données critiques.",
   "agoraNao": "Pas maintenant",
   "assinarPreco": "S'abonner 9,90 €/mois",
   "planoPremiumAtivado": "🎉 Forfait Premium activé !",
-
   "visualDoChatTitulo": "Apparence du chat",
   "alertaSonoroTitulo": "Alerte sonore",
   "planoTitulo": "Forfait",
   "contatosDescricao": "Enregistrez jusqu'à {max} membres de la famille qui recevront l'alerte d'urgence.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "Supprimer le contact",
   "adicionarContatoAgenda": "+ Ajouter un contact du répertoire",
   "alertaSonoroDescricao": "Choisissez le son et la durée de l'alarme déclenchée à la fin du compte à rebours du check-in.",
   "somAlarmeLabel": "Son de l'alarme",
   "tooltipTestarSom": "Tester/écouter le son",
   "somTesteVazio": "🔇 Fichier son de test vide. Remplacez le placeholder dans le dossier assets/sounds.",
-
   "planoFamiliarAtivo": "Forfait Familial Actif",
   "recursosPremiumDisponiveis": "Toutes les fonctionnalités premium disponibles",
   "premiumBadge": "Premium",
   "protejaQuemVoceAma": "Protégez ceux que vous aimez",
   "mudeParaPremium": "Passer au forfait Premium",
-  "precoMensal": "9,90 €",
-  "porMes": "/mois",
+  "premiumPrecoGenerico": "Abonnez-vous à Premium",
+  "premiumAssinarBotaoGenerico": "S'abonner à Premium",
+  "premiumPrecoMensalComValor": "{preco}/mois",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Voir plus",
-
   "alarmeRotinaAtivoDescricao": "Alarme de routine active.\nConfirmez votre sécurité pour la suspendre.",
-  "alarmeRotinaFaseFinalDescricao": "DERNIÈRE CHANCE ! L'alarme a sonné à nouveau.\nSaisissez votre code PIN dans les 2 minutes ou une alerte d'urgence sera envoyée.",
+  "alarmeRotinaFaseFinalDescricao": "DERNIÈRE CHANCE ! L'alarme a sonné à nouveau.\nSaisissez votre code PIN dans les 60 secondes ou une alerte d'urgence sera envoyée.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Alerte d'urgence envoyée !\nVotre position et le message ont été envoyés au cloud et aux contacts enregistrés.",
   "desligarAlarmeBotao": "ÉTEINDRE L'ALARME",
   "fecharConfirmacaoBotao": "FERMER",
   "fecharConfirmacaoDica": "Balayez vers le haut ou appuyez sur Fermer pour continuer",
-
   "cameraToqueOuVolume": "📸 Touchez le bouton ou appuyez sur VOLUME pour prendre la photo",
   "enviando": "Envoi en cours...",
   "atencaoMaiuscula": "ATTENTION",
   "mensagemEnviadaAviso": "ATTENTION, UN MESSAGE A ÉTÉ ENVOYÉ À LA FAMILLE AVEC LA PHOTO ET LA LOCALISATION. CETTE OPÉRATION EST IRRÉVERSIBLE.",
   "deslizeParaFechar": "Balayez vers le haut pour fermer",
-
   "auditoriaSolicitacaoAprovada": "Demande approuvée. Pour des raisons de sécurité et de confidentialité, les enregistrements seront disponibles dans 2 heures.",
   "auditoriaBloquearNovamenteTitulo": "Verrouiller à nouveau ?",
   "auditoriaBloquearNovamenteConteudo": "En confirmant, l'accès aux enregistrements sensibles sera immédiatement verrouillé. Pour les revoir, vous devrez faire une nouvelle demande et attendre à nouveau 2 heures de délai de sécurité.",
@@ -324,12 +442,301 @@
   "auditoriaSolicitarLiberacaoBotao": "Demander le déverrouillage de l'historique sensible",
   "auditoriaNenhumEvento": "Consultation débloquée. Aucun événement sensible enregistré pour l'instant.",
   "auditoriaPrazoLiberado": "Délai de sécurité écoulé. Enregistrements débloqués pour cette session.",
-
   "pinAlarmeDesligado": "Alarme éteinte",
   "pinSenhaIncorreta": "mot de passe incorrect",
   "pinConfirmeSeuPin": "CONFIRMEZ VOTRE PIN",
   "pinDigiteParaDesarmar": "Saisissez votre PIN pour désarmer le check-in.",
   "pinDigiteParaContinuar": "Saisissez votre PIN pour continuer.",
   "pinTempoTolerancia": "Temps de tolérance : {segundos}s",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } }
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTooltipInicio": "Retour à l'accueil",
+  "historicoFiltroAlertasEnviados": "Alertes envoyées",
+  "dashboardSecaoPlanosTitulo": "Choisissez votre forfait",
+  "dashboardPlanoFreeTitulo": "Free",
+  "dashboardPlanoFreeDescricao": "Toutes les fonctions Premium débloquées pendant 10 jours par mois",
+  "dashboardPlanoPremiumDescricao": "Touchez ici pour découvrir les avantages Premium.",
+  "dashboardFaqTitulo": "Questions Fréquentes",
+  "dashboardCentralAtendimentoTitulo": "Centre de Service Client",
+  "faqAppBarTitulo": "Questions Fréquentes (FAQ)",
+  "faqTooltipInicio": "Accueil",
+  "faqBuscaHint": "Rechercher dans les questions et réponses...",
+  "faqNenhumaEncontrada": "Aucune question trouvée.",
+  "faqPergunta1": "Les alertes d'urgence sont-elles envoyées aux numéros enregistrés même si mon téléphone est éteint ou sans signal internet ?",
+  "faqResposta1": "Oui, les alarmes de la page « Famille » et le compte à rebours de la page « Sécurité » sont programmés sur le serveur de la base de données de l'application Gardien-X. Si le compte à rebours dépasse le délai de tolérance sans être désarmé avec le mot de passe PIN, ou si l'alarme de la page « Famille » n'est pas désarmée après le délai de tolérance, une alerte de sécurité avec la dernière localisation enregistrée dans le cloud est envoyée immédiatement.",
+  "faqPergunta2": "À partir de combien de minutes l'envoi de la localisation vers la base de données Gardien-X commence-t-il ?",
+  "faqResposta2": "La localisation commence à être envoyée 120 minutes avant la fin du compte à rebours ou avant l'heure programmée du réveil de la page Famille.",
+  "faqPergunta3": "Pourquoi un délai programmé est-il exigé pour valider le nouveau mot de passe ou la suppression des contacts d'urgence ?",
+  "faqResposta3": "Comme l'application Gardien-X a pour objectif de protéger la sécurité de l'utilisateur, ce délai d'attente vise à empêcher des personnes non autorisées de débloquer certaines fonctions programmées pendant que l'alerte d'urgence attend d'être envoyée aux numéros enregistrés.",
+  "faqPergunta4": "Pourquoi la page « Historique » propose-t-elle une option de délai d'attente si l'utilisateur décide de restreindre la visualisation immédiate des informations sur les messages d'alerte envoyés ?",
+  "faqResposta4": "Dans des cas extrêmes où l'intégrité physique de l'utilisateur est en danger, celui-ci peut décider que personne d'autre ne doit savoir que sa localisation ou sa photo a été envoyée à un numéro enregistré.",
+  "faqPergunta5": "Pourquoi deux messages d'alerte sont-ils envoyés lors de l'utilisation du bouton panique physique ou de celui de la page « Sécurité » ?",
+  "faqResposta5": "Cette fonction du bouton panique a pour priorité absolue la sécurité de l'utilisateur. Lorsque le bouton panique physique ou celui de la page « Sécurité » est activé, un message d'alerte d'urgence contenant la localisation est immédiatement envoyé aux numéros enregistrés. Ensuite, après l'ouverture de l'appareil photo et la prise de la photo par l'utilisateur, un second message d'alerte d'urgence contenant la photo est envoyé. Cela garantit que la localisation parviendra au numéro enregistré même si l'utilisateur tarde ou ne prend pas la photo.",
+  "faqPergunta6": "Est-il possible de suivre la localisation d'un appareil qui n'a pas l'application Gardien-X installée ?",
+  "faqResposta6": "Ce n'est pas possible. La localisation ne peut être partagée que d'application à application, et uniquement avec le consentement et l'autorisation des deux utilisateurs.",
+  "faqPergunta7": "Est-il sûr de payer pour souscrire au forfait premium ?",
+  "faqResposta7": "Oui, c'est sûr. Aucun paiement n'est effectué directement à l'entreprise RMF GLOBAL. Tous les paiements sont traités directement sur la plateforme Google Play Store ou Apple App Store, avec la garantie totale de ces plateformes.",
+  "faqPergunta9": "Comment le partage des alertes d'urgence est-il effectué ?",
+  "faqResposta9": "Tous les messages d'alerte de sécurité sont envoyés de deux manières standard : d'application à application et par SMS aux numéros de téléphone enregistrés dans la page « Paramètres ».",
+  "faqPergunta11": "Comment fonctionne le service client ?",
+  "faqResposta11": "Le service client est assuré par WhatsApp : appuyez sur le bouton de contact sur l'écran d'accueil pour parler directement à notre équipe d'assistance. Les demandes effectuées via le menu « Parler à un agent physique » suivent les règles de la politique établie par l'entreprise RMF Global, les utilisateurs du forfait Premium bénéficiant d'une exclusivité pour ce service dans un délai maximal de 48 heures.",
+  "faqPergunta12": "Les messages d'alerte d'urgence ne seront-ils envoyés qu'aux numéros enregistrés ayant l'application Gardien-X installée ?",
+  "faqResposta12": "Non. Nous recommandons que les deux téléphones aient l'application installée, mais même si le téléphone destinataire n'a pas Gardien-X, l'alerte d'urgence est tout de même envoyée par SMS.",
+  "termosAppBarTitulo": "Conditions et Confidentialité",
+  "termosTabContrato": "Contrat de Consentement",
+  "termosTabPrivacidade": "Politique de Confidentialité",
+  "termosAvisoRodape": "Ce document résume le Contrat de Consentement et la Politique de Confidentialité de l'application Gardien-X. Pour toute question, contactez-nous via les canaux d'assistance indiqués dans l'application.",
+  "termosContratoTitulo1": "1. Objet et limites du service",
+  "termosContratoCorpo1": "Le présent Contrat de Consentement régit l'utilisation de l'application Gardien-X, développée et exploitée par RMF Global LTDA (« RMF Global »), destinée à aider l'utilisateur dans des situations d'urgence personnelle grâce au check-in de sécurité, aux alertes automatiques, au partage de localisation entre membres de la famille et contacts de confiance, et à la capture de preuves photographiques. Gardien-X est un outil d'aide et de soutien à la sécurité personnelle et NE remplace PAS les services d'urgence officiels (Police - 190, Pompiers - 193, SAMU - 192, ou les numéros d'urgence équivalents de votre pays) ni aucun autre service d'urgence public. En cas de risque immédiat, l'utilisateur doit toujours contacter en premier les numéros d'urgence officiels.",
+  "termosContratoTitulo2": "2. Consentement pour l'utilisation de la localisation (GPS et localisation en arrière-plan)",
+  "termosContratoCorpo2": "En activant le compte à rebours du check-in, le bouton SOS ou la surveillance familiale, l'utilisateur consent expressément à la collecte et à l'envoi de sa localisation géographique (GPS) en temps réel, y compris en arrière-plan (Background Location) lorsque l'application n'est pas activement utilisée, strictement pour permettre l'envoi et l'enregistrement d'alertes préventives et de panique vers les serveurs de Gardien-X et vers les contacts d'urgence enregistrés, y compris automatiquement si le check-in n'est pas confirmé dans le délai configuré.",
+  "termosContratoTitulo3": "3. Consentement pour l'envoi de messages (SMS/Application)",
+  "termosContratoCorpo3": "L'utilisateur consent à l'envoi de messages d'alerte (contenant la localisation, le contexte indiqué et, le cas échéant, une photo) aux numéros de téléphone et comptes enregistrés comme contacts d'urgence, par SMS et par notification entre applications.",
+  "termosContratoTitulo4": "4. Consentement pour l'utilisation de l'appareil photo et la capture de médias",
+  "termosContratoCorpo4": "L'utilisateur consent à ce que, dans certains scénarios d'urgence (fin du compte à rebours sans confirmation, activation du bouton panique ou tentative de désarmement échouée), l'application puisse ouvrir automatiquement l'appareil photo pour capturer une image, qui sera envoyée comme preuve supplémentaire aux contacts d'urgence enregistrés et sauvegardée dans la base de données de Gardien-X.",
+  "termosContratoTitulo5": "5. Délais de sécurité (période de carence)",
+  "termosContratoCorpo5": "Certaines actions sensibles (changement de mot de passe/PIN, suppression de contacts d'urgence, consultation immédiate de l'historique) sont soumises à un délai de carence avant d'être appliquées, afin d'empêcher des tiers non autorisés de désactiver les fonctions de sécurité de l'utilisateur sous la contrainte.",
+  "termosContratoTitulo6": "6. Forfaits, tarifs et paiements",
+  "termosContratoCorpo6": "Le Forfait Free débloque toutes les fonctionnalités Premium pendant jusqu'à 10 (dix) jours par mois, les jours restants étant soumis aux limites du forfait gratuit. Le Forfait Premium coûte le montant affiché dans l'application au moment de l'abonnement, facturé mensuellement, avec un accès illimité à toutes les fonctionnalités de l'application. Les abonnements au Forfait Premium sont traités exclusivement via les plateformes Google Play Store et Apple App Store, soumis à leurs politiques respectives de facturation, de remboursement et de protection des consommateurs — RMF Global ne reçoit ni ne traite les paiements directement.",
+  "termosContratoTitulo7": "7. Annulation et remboursement",
+  "termosContratoCorpo7": "L'annulation du Forfait Premium et les éventuels remboursements suivent strictement les politiques officielles du Google Play Store ou de l'Apple App Store, selon la plateforme utilisée pour l'abonnement — RMF Global ne traite ni les annulations ni les remboursements directement.",
+  "termosContratoTitulo8": "8. Service Client (SAC)",
+  "termosContratoCorpo8": "Le service client est assuré par WhatsApp : le bouton de contact sur l'écran d'accueil ouvre une conversation directe avec notre équipe d'assistance. Les demandes d'assistance humaine suivent les règles de la politique établie par RMF Global, les utilisateurs du Forfait Premium bénéficiant d'un accès exclusif à cette assistance humaine dans un délai maximal de 48 (quarante-huit) heures.",
+  "termosContratoTitulo9": "9. Consentement libre, sans équivoque, et révocation",
+  "termosContratoCorpo9": "En utilisant l'application Gardien-X et en activant ses fonctions de sécurité, l'utilisateur déclare consentir de manière libre, éclairée et sans équivoque à la collecte et à l'utilisation du GPS, de ses données personnelles et de médias (photos) en situation d'urgence, comme décrit dans ce Contrat. L'utilisateur peut révoquer ce consentement à tout moment en désinstallant l'application ou en demandant la suppression de son compte et des données associées via les canaux d'assistance indiqués dans l'application, sous réserve des délais de carence de sécurité décrits à la Section 5.",
+  "termosPrivacidadeTitulo1": "1. Données collectées et finalité",
+  "termosPrivacidadeCorpo1": "Pour permettre les fonctions de sécurité de Gardien-X, nous collectons : (a) la localisation géographique (GPS) en temps réel et en arrière-plan (Background Location), strictement pour l'envoi et l'enregistrement d'alertes préventives et de panique ; (b) des photos et autres médias capturés automatiquement lors de l'activation du bouton panique ou de la fonction Capture et Dissuasion ; (c) les données d'inscription de l'utilisateur et des contacts d'urgence renseignés (nom et téléphone) ; et (d) les données techniques de l'appareil nécessaires au fonctionnement des alertes (état de la connectivité, version de l'application).",
+  "termosPrivacidadeTitulo2": "2. Finalité de l'utilisation des données",
+  "termosPrivacidadeCorpo2": "Les données collectées sont utilisées exclusivement pour permettre les fonctions de sécurité de l'application : déclenchement d'alertes d'urgence, partage de localisation consenti entre utilisateurs, envoi de preuves photographiques et tenue de l'historique des événements de sécurité du compte de l'utilisateur.",
+  "termosPrivacidadeTitulo3": "3. Stockage et cloud",
+  "termosPrivacidadeCorpo3": "Une partie des données est stockée localement sur l'appareil (base de données locale chiffrée) et une partie est synchronisée avec des services cloud (Firebase/Firestore et stockage de médias) exploités par RMF Global, afin de garantir que les alertes d'urgence soient délivrées même si l'appareil de l'utilisateur est éteint, détruit ou perd la connexion après le déclenchement.",
+  "termosPrivacidadeTitulo4": "4. Partage avec des tiers",
+  "termosPrivacidadeCorpo4": "La localisation et les preuves photographiques ne sont partagées qu'avec les contacts d'urgence expressément enregistrés par l'utilisateur lui-même, et — dans le cas de la surveillance familiale — uniquement avec le consentement explicite des deux parties. Nous ne vendons ni ne partageons de données personnelles avec des tiers à des fins publicitaires.",
+  "termosPrivacidadeTitulo5": "5. Sécurité des données",
+  "termosPrivacidadeCorpo5": "Les mots de passe et codes PIN sont stockés de manière chiffrée. L'accès aux fonctions sensibles (changement de mot de passe, suppression de contacts, historique des alertes) est protégé par des délais de carence et une confirmation par PIN, comme décrit dans le Contrat de Consentement.",
+  "termosPrivacidadeTitulo6": "6. Droits de l'utilisateur (protection des données)",
+  "termosPrivacidadeCorpo6": "Conformément à la réglementation applicable en matière de protection des données (comme la LGPD brésilienne - Loi n° 13.709/2018, ou le RGPD selon votre juridiction), l'utilisateur peut, à tout moment, demander l'accès à ses données personnelles, la correction de données d'inscription incorrectes, la suppression de son compte et des données personnelles stockées, ainsi que la révocation des autorisations accordées aux contacts de surveillance, via les canaux d'assistance indiqués dans l'application.",
+  "termosPrivacidadeTitulo7": "7. Contact",
+  "termosPrivacidadeCorpo7": "Les questions concernant cette Politique de Confidentialité peuvent être adressées à RMF Global LTDA (CNPJ 68.358.210/0001-90), via les canaux d'assistance indiqués sur l'écran d'accueil de l'application (WhatsApp et adresse institutionnelle).",
+  "footerTermosLink": "Conditions d'utilisation et Contrat de consentement",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA",
+  "footerEmpresaEndereco": "Rue Rio de Janeiro, n° 243, Salle 802, Centro, Belo Horizonte - MG, Brésil, CP 30160-040",
+  "footerEmpresaCnpj": "Numéro d'immatriculation (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "Annuler le forfait Premium ?",
+  "premiumCancelarConfirmConteudo": "Vous reviendrez immédiatement au forfait Gratuit, avec les limites mensuelles du forfait gratuit.",
+  "premiumCancelarConfirmBotao": "Annuler Premium",
+  "premiumCanceladoSnackbar": "Forfait Premium annulé. Vous êtes maintenant sur le forfait Gratuit.",
+  "premiumAssinarBotaoComPreco": "S'abonner à Premium — {preco}",
+  "premiumCancelarBotaoModal": "Annuler le forfait Premium",
+  "familiaEtiquetaPadrao": "Alarme de routine",
+  "familiaDiasNuncaLabel": "Jamais",
+  "familiaDiasTodosLabel": "Tous les jours",
+  "familiaDiasSegASexLabel": "Lun à Ven",
+  "familiaDiaAbrevSeg": "Lun",
+  "familiaDiaAbrevTer": "Mar",
+  "familiaDiaAbrevQua": "Mer",
+  "familiaDiaAbrevQui": "Jeu",
+  "familiaDiaAbrevSex": "Ven",
+  "familiaDiaAbrevSab": "Sam",
+  "familiaDiaAbrevDom": "Dim",
+  "familiaDiaInicialSeg": "L",
+  "familiaDiaInicialTer": "M",
+  "familiaDiaInicialQua": "M",
+  "familiaDiaInicialQui": "J",
+  "familiaDiaInicialSex": "V",
+  "familiaDiaInicialSab": "S",
+  "familiaDiaInicialDom": "D",
+  "familiaAcaoPausar": "mettre en pause",
+  "familiaAcaoExcluir": "supprimer",
+  "familiaAcaoEditar": "modifier",
+  "familiaPinMotivoTexto": "Code PIN saisi de façon incorrecte 2 fois de suite en essayant de {acao} une alarme de routine dans l'onglet Famille.",
+  "historicoAlarmeAtivadoTitulo": "Alarme de routine activée",
+  "historicoAlarmeDesativadoTitulo": "Alarme de routine désactivée",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta} ({horario}) a été activée.",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta} ({horario}) a été désactivée.",
+  "historicoAlarmeRemovidoTitulo": "Alarme de routine supprimée",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta} ({horario}) a été supprimée.",
+  "historicoAlarmePausadoTitulo": "Alarme de routine mise en pause",
+  "historicoAlarmePausadoDescricao": "{etiqueta} ({horario}) a été mise en pause jusqu'à minuit.",
+  "historicoAlarmeReativadoTitulo": "Alarme de routine réactivée",
+  "historicoAlarmeReativadoDescricao": "{etiqueta} ({horario}) a été réactivée par l'utilisateur.",
+  "historicoAlarmeCriadoTitulo": "Alarme de routine créée",
+  "historicoAlarmeEditadoTitulo": "Alarme de routine modifiée",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} à {horario} ({dias}).",
+  "historicoContatoAdicionadoTitulo": "Contact d'urgence ajouté",
+  "historicoContatoAdicionadoDescricao": "{nome} a été enregistré comme contact d'urgence.",
+  "historicoContatoExclusaoSolicitadaTitulo": "Suppression de contact demandée",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} sera définitivement supprimé sous 2 heures.",
+  "historicoPinDefinidoTitulo": "Code PIN d'accès défini",
+  "historicoPinDefinidoDescricao": "Code PIN d'accès enregistré et activé immédiatement (premier enregistrement, sans délai de sécurité).",
+  "historicoPinAlteracaoSolicitadaTitulo": "Modification du code PIN demandée",
+  "historicoPinAlteracaoSolicitadaDescricao": "Nouveau mot de passe d'accès en attente, il entrera en vigueur dans 2 heures.",
+  "historicoPlanoFundoAlteradoTitulo": "Arrière-plan modifié",
+  "historicoPlanoFundoAlteradoDescricao": "Nouvel arrière-plan sélectionné : {nome}.",
+  "historicoCronometroAtivadoTitulo": "Minuteur activé",
+  "historicoCronometroAtivadoDescricao": "Check-in de sécurité démarré avec une durée de {horas}h{minutos}min.",
+  "historicoCheckinDesarmadoTitulo": "Check-in désarmé avec succès",
+  "historicoCheckinDesarmadoDescricao": "Le minuteur de sécurité a été arrêté/désarmé par l'utilisateur avec le bon code PIN.",
+  "historicoCheckinRotinaConfirmadoTitulo": "Check-in de routine confirmé",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta} : l'utilisateur a confirmé « Je suis arrivé » avec succès.",
+  "historicoCheckinRotinaUltimaChanceTitulo": "Check-in de routine — dernière chance",
+  "historicoCheckinRotinaUltimaChanceDescricao": "Le délai de tolérance a expiré sans confirmation. L'alarme sonne à nouveau, avec un délai final de 60 secondes avant le déclenchement de l'alerte d'urgence.",
+  "historicoAlertaEmergenciaRotinaTitulo": "Alerte d'urgence déclenchée (routine)",
+  "historicoAlertaEmergenciaTitulo": "Alerte d'urgence déclenchée",
+  "historicoAlertaEmergenciaDescricao": "SMS d'urgence envoyé aux contacts enregistrés. Localisation : {localizacao}",
+  "historicoTentativaDesarmeTitulo": "Tentative de désarmement avec un code PIN incorrect",
+  "historicoTentativaDesarmeDescricao": "{motivo} Alerte envoyée aux contacts d'urgence. Localisation : {localizacao}",
+  "historicoSosCacheTitulo": "SOS via bouton physique déclenché (localisation en cache)",
+  "historicoSosCacheDescricao": "SMS d'urgence immédiat envoyé avec la dernière localisation connue en cache. Localisation : {localizacao}",
+  "historicoSosAtualizadoTitulo": "SOS via bouton physique — localisation mise à jour",
+  "historicoSosAtualizadoDescricao": "Deuxième SMS d'urgence envoyé avec la localisation en temps réel. Localisation : {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "Preuve photographique enregistrée",
+  "historicoEvidenciaFotograficaDescricao": "SMS avec les données de secours envoyé aux contacts d'urgence.",
+  "historicoFotoSosSmsTitulo": "Photo du SOS envoyée par SMS",
+  "historicoFotoSosSmsDescricao": "SMS avec le lien de la photo et la localisation envoyé aux contacts d'urgence. Photo : {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "Localisation indisponible (service GPS désactivé sur l'appareil).",
+  "smsLocalizacaoIndisponivelPermissao": "Localisation indisponible (autorisation de localisation refusée).",
+  "smsLocalizacaoIndisponivelFalha": "Impossible d'obtenir la localisation actuelle de l'appareil.",
+  "smsContextoNaoInformado": "Aucune note de contexte fournie par l'utilisateur.",
+  "smsAlertaEmergenciaCorpo": "ALERTE D'URGENCE ! Je n'ai pas effectué mon check-in de sécurité.\nLocalisation : {localizacao}\nContexte : {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "Le code PIN a été saisi de façon incorrecte 2 fois de suite en tentant de désarmer le système de sécurité par anticipation.",
+  "smsTentativaDesarmeCorpo": "⚠️ ALERTE DE SÉCURITÉ : TENTATIVE DE DÉSARMEMENT AVEC UN MOT DE PASSE INCORRECT !\n{motivo}\nLocalisation : {localizacao}",
+  "smsSosContextoPadrao": "SOS déclenché via le bouton physique d'urgence (Volume+).",
+  "smsSosImediatoCorpo": "🚨 SOS D'URGENCE (bouton physique) !\nLocalisation (dernière connue) : {localizacao}\nContexte : {contexto}\n(Une mise à jour avec la localisation en temps réel sera envoyée ensuite.)",
+  "smsLocalizacaoCacheIndisponivel": "Localisation en cache indisponible — en attente d'une mise à jour en temps réel.",
+  "smsSosAtualizadoCorpo": "🚨 SOS D'URGENCE (mise à jour en temps réel) !\nLocalisation actualisée : {localizacao}\nContexte : {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "Localisation indisponible au moment de l'envoi.",
+  "smsFotoCorpo": "📷 PREUVE PHOTOGRAPHIQUE enregistrée pendant le SOS !\nPhoto : {fotoUrl}\nLocalisation : {localizacao}",
+  "smsResgateCorpo": "🚨 PREUVE PHOTOGRAPHIQUE ENREGISTRÉE !\nPhotos et localisation envoyées vers le cloud.\nAccès : {link}\nIdentifiant : {login}\nMot de passe : {senha}\nOpération irréversible.",
+  "temaAzulProfundo": "Bleu Profond",
+  "temaCinzaPlatina": "Gris Platine",
+  "temaLuzDoAmanhecer": "Lumière de l'Aube",
+  "temaVerdeBotanico": "Vert Botanique",
+  "temaRosaClaro": "Rose Clair",
+  "temaLuzClassica": "Lumière Classique",
+  "fontTamanhoPequeno": "Petit",
+  "fontTamanhoPadrao": "Standard",
+  "fontTamanhoGrande": "Grand",
+  "somNome1": "Bip Classique",
+  "somNome2": "Sirène Tactique",
+  "somNome3": "Alarme d'Urgence",
+  "somNome4": "Alerte Stridente",
+  "somNome5": "Sonnerie Urbaine",
+  "somNome6": "Cloche d'Alerte",
+  "somNome7": "Klaxon de Sécurité",
+  "somNome8": "Alarme Industrielle",
+  "somNome9": "Sirène de Police",
+  "somNome10": "Tonalité Silencieuse",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta} : le check-in de routine n'a pas été confirmé dans le délai final de 60 secondes, même après l'expiration du délai de tolérance.",
+  "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta} : le code PIN a été saisi incorrectement 3 fois de suite en essayant de confirmer le check-in de l'alarme de routine.",
+  "@historicoCheckinRotinaPinIncorretoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaFechamentoForcadoMotivo": "{etiqueta} : l'application a été fermée de force alors que l'alarme de routine sonnait encore, sans confirmation du check-in.",
+  "@historicoCheckinRotinaFechamentoForcadoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta} : l'alarme de routine a été ignorée (glissée vers le haut) sans confirmation du code PIN.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCanalCheckinNome": "Check-in de Routine",
+  "notifCanalCheckinDescricao": "Rappels de check-in de sécurité pour les alarmes de routine enregistrées.",
+  "notifCanalAlertaRecebidoNome": "Alerte d'Urgence Reçue",
+  "notifCanalAlertaRecebidoDescricao": "Alertes de sécurité des contacts qui ont enregistré cet appareil comme contact d'urgence.",
+  "notifCanalMonitoramentoNome": "Suivi de Localisation",
+  "notifCanalMonitoramentoDescricao": "Réponses aux demandes de partage de localisation envoyées depuis l'onglet Suivi.",
+  "notifCanalSolicitacaoMonitoramentoNome": "Demande de Localisation Reçue",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "Alerte prioritaire lorsqu'un proche demande à voir votre position en temps réel — nécessite Accepter ou Refuser.",
+  "notifCanalAlertaEnviadoNome": "Confirmation d'alerte envoyée",
+  "notifCanalAlertaEnviadoDescricao": "Confirme qu'une alerte d'urgence avec localisation a été envoyée aux contacts enregistrés.",
+  "notifDescarteAlertaEnviadoTitulo": "Alerte envoyée",
+  "notifDescarteAlertaEnviadoCorpo": "Le message d'alerte avec votre position a été envoyé aux contacts enregistrés.",
+  "notifCheckinCorpo": "Appuyez pour annuler l'alarme.",
+  "notifAlarmeSegurancaTitulo": "Alarme de Sécurité",
+  "notifAlarmeSegurancaCorpo": "Confirmez votre sécurité ou mettez l'alarme en pause !",
+  "notifPausarAlarmeAcao": "⏸️ Mettre l'Alarme en Pause",
+  "notifAlertaDeNome": "🚨 Alerte de {nome}",
+  "notifAlertaSegurancaGenerico": "🚨 Alerte de sécurité",
+  "notifMonitSolicitacaoTitulo": "📍 Demande de localisation",
+  "notifMonitSolicitacaoCorpo": "{nome} demande votre position.",
+  "notifMonitAprovadoTitulo": "📍 Localisation autorisée",
+  "notifMonitAprovadoCorpo": "{nome} vous a autorisé à voir sa position.",
+  "notifMonitNegadoTitulo": "📍 Demande refusée",
+  "notifMonitNegadoCorpo": "{nome} a refusé votre demande de localisation.",
+  "notifMonitBloqueadoTitulo": "📍 Partage bloqué",
+  "notifMonitBloqueadoCorpo": "{nome} a bloqué le partage de localisation avec vous.",
+  "notifMonitExpiradoTitulo": "📍 Demande expirée",
+  "notifMonitExpiradoCorpo": "Votre demande de localisation à {nome} a expiré sans réponse.",
+  "notifMonitContatoGenerico": "un contact",
+  "notifCheckinCanceladoCorpo": "Alarme annulée.",
+  "splashFrase1": "GARDIEN X\nTOUJOURS\nÀ VOS CÔTÉS",
+  "splashFrase2": "GARDIEN X\nVOTRE SÉCURITÉ\nEST NOTRE OBJECTIF",
+  "splashFrase3": "GARDIEN X\nVOTRE PROTECTEUR\nPERSONNEL",
+  "splashFrase4": "GARDIEN X\nPROTÉGER\nEST NOTRE OBJECTIF",
+  "splashFrase5": "SOYEZ PROTÉGÉ\nAVEC VOTRE\nGARDIEN X",
+  "splashFrase6": "GARDIEN X\nPOUR CHAQUE MOMENT",
+  "loginSocialDivisor": "ou connectez-vous avec",
+  "loginSocialGoogleTooltip": "Se connecter avec Google",
+  "loginSocialFacebookTooltip": "Se connecter avec Facebook",
+  "loginSocialAppleTooltip": "Se connecter avec Apple",
+  "loginLimparSessaoBotao": "Effacer la session de connexion",
+  "loginLimparSessaoConfirmacao": "Session de connexion sociale effacée. Essayez de vous reconnecter.",
+  "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion.",
+  "onboardingTitulo": "Configuration de sécurité",
+  "onboardingIntroducao": "Pour que le bouton panique et les alertes fonctionnent de façon fiable, même écran verrouillé, accordez les autorisations ci-dessous. Vous pouvez modifier ces autorisations à tout moment dans les paramètres du système d'exploitation de l'appareil.",
+  "onboardingBadgeEssencial": "Essentiel",
+  "onboardingBadgeRecomendado": "Recommandé",
+  "onboardingStatusConcedida": "Accordée",
+  "onboardingStatusPendente": "En attente",
+  "onboardingBotaoAbrirConfiguracoes": "Ouvrir les Paramètres",
+  "onboardingBotaoContinuar": "Continuer",
+  "onboardingAvisoEssenciaisPendentes": "Accordez les autorisations essentielles pour terminer la configuration.",
+  "onboardingNotificacoesTitulo": "Notifications et alarmes",
+  "onboardingNotificacoesConteudo": "Permet aux alertes d'urgence d'apparaître immédiatement, avec un son, et aux rappels programmés (check-ins, minuteur) de se déclencher à l'heure exacte.",
+  "onboardingLocalizacaoTitulo": "Localisation toujours active",
+  "onboardingLocalizacaoConteudo": "Avec « Toujours autoriser », votre position est envoyée à vos contacts d'urgence même avec l'application fermée ou l'écran éteint — essentiel lors d'un SOS réel.",
+  "onboardingCameraTitulo": "Accès à l'appareil photo",
+  "onboardingCameraConteudo": "Utilisé uniquement par le bouton panique, pour joindre une photo des lieux à l'alerte envoyée à vos contacts d'urgence.",
+  "onboardingTelaCheiaTitulo": "Alertes plein écran",
+  "onboardingTelaCheiaConteudo": "Permet à une alerte reçue d'un contact de réveiller l'écran et de s'afficher par-dessus l'écran verrouillé, comme un appel entrant.",
+  "statusPermissoesTitulo": "État des Autorisations",
+  "statusPermissoesSubtitulo": "Consultez ce qui est accordé et redemandez ce qui manque",
+  "statusPermissoesIntroducao": "Suivez en temps réel les autorisations déjà accordées à Guardião X sur votre appareil. Vous pouvez redemander n'importe quelle autorisation en attente ou ouvrir les paramètres natifs du système à tout moment.",
+  "excluirContaTitulo": "Supprimer le Compte et les Données",
+  "excluirContaSubtitulo": "Suppression définitive de votre compte et de vos données",
+  "excluirContaAvisoPrincipal": "Cette action supprime définitivement votre compte, vos contacts d'urgence, votre historique d'alertes, vos positions et vos photos enregistrées dans le cloud. Cette action est irréversible.",
+  "excluirContaAvisoRescisaoContrato": "En confirmant cette suppression, vous reconnaissez que cet acte met fin intégralement au Contrat de Consentement et aux Conditions d'Utilisation conclus avec RMF Global LTDA, mettant fin de façon immédiate et définitive à la prestation du service et à toutes les obligations mutuelles entre vous et RMF Global.",
+  "excluirContaAvisoAssinatura": "Si vous avez un abonnement Premium actif, annulez-le séparément sur le Google Play Store ou l'Apple App Store — la suppression du compte n'annule pas automatiquement le prélèvement.",
+  "excluirContaBotaoGerenciarAssinatura": "Gérer / Annuler l'abonnement dans la boutique",
+  "excluirContaListaTitulo": "Ce qui sera supprimé :",
+  "excluirContaItemConta": "Votre inscription et vos données de connexion (e-mail, téléphone, mot de passe/PIN)",
+  "excluirContaItemContatos": "Vos contacts d'urgence enregistrés",
+  "excluirContaItemHistorico": "Votre historique d'alertes, de positions et de photos envoyées",
+  "excluirContaItemMonitoramento": "Vos liens de surveillance entre proches",
+  "excluirContaBotaoExcluir": "Supprimer mon compte et toutes mes données",
+  "excluirContaDialogTitulo": "Êtes-vous sûr ?",
+  "excluirContaDialogConteudo": "Une fois confirmé avec votre PIN, ce processus est irréversible. Voulez-vous continuer ?",
+  "excluirContaSemPinTitulo": "Configurez d'abord un PIN",
+  "excluirContaSemPinConteudo": "Par sécurité, la suppression du compte exige la confirmation de votre PIN. Configurez un PIN dans l'onglet Sécurité avant de continuer.",
+  "excluirContaProcessando": "Suppression de votre compte et de vos données...",
+  "excluirContaSucessoMensagem": "Votre compte a été supprimé avec succès.",
+  "excluirContaErroMensagem": "Impossible de supprimer votre compte pour le moment. Vérifiez votre connexion et réessayez, ou contactez le support."
 }

@@ -1,8 +1,7 @@
 {
   "@@locale": "ru",
-
+  "marcaGuardiaoX": "Страж-X",
   "appTituloConfiguracoes": "Настройки",
-
   "campoEmailLabel": "Эл. почта",
   "campoEmailObrigatorio": "Введите вашу эл. почту",
   "campoEmailInvalido": "Неверная эл. почта",
@@ -12,10 +11,21 @@
   "campoConfirmarSenhaLabel": "Подтвердите пароль",
   "campoConfirmarSenhaObrigatoria": "Подтвердите ваш пароль",
   "senhasNaoCoincidem": "Пароли не совпадают",
-
   "botaoEntrar": "Войти",
   "esqueciMinhaSenha": "Забыли пароль",
-  "recuperacaoSenhaEmBreve": "Восстановление пароля скоро будет доступно.",
+  "recuperacaoSenhaTitulo": "Восстановить пароль",
+  "recuperacaoSenhaDescricao": "Укажите ваш зарегистрированный e-mail. Мы отправим ссылку для сброса пароля.",
+  "recuperacaoSenhaBotaoEnviar": "Отправить ссылку",
+  "recuperacaoSenhaSucesso": "Ссылка для сброса отправлена! Проверьте входящие (и спам) на {email}.",
+  "@recuperacaoSenhaSucesso": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "recuperacaoSenhaErroUsuarioNaoEncontrado": "Мы не нашли аккаунт с этим e-mail.",
+  "recuperacaoSenhaErroRede": "Ошибка соединения. Проверьте интернет и попробуйте снова.",
   "erroLoginCredenciaisInvalidas": "Неверный e-mail или пароль",
   "erroLoginMuitasTentativas": "Слишком много попыток. Повторите позже",
   "erroLoginGenerico": "Не удалось войти. Попробуйте снова",
@@ -28,19 +38,21 @@
   "emailNaoVerificadoReenviar": "Отправить письмо повторно",
   "emailVerificacaoReenviada": "Письмо с подтверждением отправлено повторно.",
   "emailVerificacaoReenvioFalhou": "Не удалось повторно отправить письмо. Попробуйте позже.",
-
+  "meuPerfilTitulo": "Мой профиль",
+  "meuPerfilTelefoneTitulo": "Контактный телефон",
+  "meuPerfilTelefoneDescricao": "Используется вашими экстренными контактами для идентификации вашей учётной записи и получения оповещений.",
+  "meuPerfilTelefoneNaoCadastrado": "Телефон не указан — нажмите, чтобы добавить",
+  "meuPerfilTelefoneAtualizado": "Телефон успешно обновлён.",
+  "meuPerfilFalhaAtualizarTelefone": "Не удалось обновить телефон. Попробуйте снова.",
   "sairDaContaTitulo": "Выйти из аккаунта",
   "sairDaContaConfirmar": "Выйти",
-
-  "contatoWhatsappSwitchLabel": "Уведомлять через WhatsApp ($0.10 USD)",
-  "whatsappSimultaneoTitulo": "Также отправлять через WhatsApp",
-  "whatsappSimultaneoDescricao": "Отправляет оповещение немедленно через WhatsApp вместе с push-уведомлением, не дожидаясь подтверждения доставки, списывая сумму с Кошелька за каждый включённый контакт.",
-
   "alertaRecebidoTitulo": "Получено оповещение безопасности",
   "alertaRecebidoDe": "{nome} может быть в опасности",
   "@alertaRecebidoDe": {
     "placeholders": {
-      "nome": {"type": "String"}
+      "nome": {
+        "type": "String"
+      }
     }
   },
   "alertaRecebidoVerNoMapa": "Посмотреть местоположение на карте",
@@ -52,32 +64,11 @@
   "alertaRecebidoFalhaCompartilhar": "Не удалось поделиться фото.",
   "alertaRecebidoFotoIndisponivel": "Не удалось загрузить фото.",
   "alertaRecebidoTentarNovo": "Повторить",
-
-  "carteiraTitulo": "Кошелёк кредитов",
-  "carteiraMenuItem": "Кошелёк кредитов",
-  "carteiraSaldoAtual": "Текущий баланс",
-  "carteiraAteNEnvios": "до {n} отправок",
-  "@carteiraAteNEnvios": {
-    "placeholders": {
-      "n": {"type": "int"}
-    }
-  },
-  "carteiraNotaExplicativa": "Оповещения через приложение полностью бесплатны. Резервная отправка через WhatsApp стоит $0.10 USD за сообщение.",
-  "carteiraRecarregarTitulo": "Пополнить",
-  "carteiraHistoricoTitulo": "История",
-  "carteiraHistoricoVazio": "Пока нет операций.",
-  "carteiraTipoRecarga": "Пополнение",
-  "carteiraTipoDesconto": "Отправка WhatsApp",
-  "carteiraCompraSucesso": "Кредиты успешно добавлены!",
-  "carteiraCompraFalhaVerificacao": "Не удалось подтвердить покупку. Попробуйте снова.",
-  "carteiraCompraErro": "Не удалось завершить покупку.",
-  "carteiraLojaIndisponivel": "Магазин сейчас недоступен.",
   "ouEntreCom": "или войдите через",
   "loginGoogle": "Google",
   "loginFacebook": "Facebook",
   "naoTemConta": "Нет аккаунта?",
   "cadastreSe": "Зарегистрироваться",
-
   "cadastroSubtitulo": "Создайте аккаунт, чтобы начать",
   "campoNomeLabel": "Полное имя",
   "campoNomeObrigatorio": "Введите ваше имя",
@@ -87,35 +78,41 @@
   "botaoCriarConta": "Создать аккаунт",
   "jaTemConta": "Уже есть аккаунт?",
   "facaLogin": "Войти",
-
   "configuracoesIdiomaTitulo": "Язык",
   "configuracoesIdiomaDescricao": "Выберите язык приложения. Готова поддержка 11 мировых языков.",
   "configuracoesIdiomaLabel": "Язык приложения",
   "idiomaAlteradoSnackbar": "🌐 Язык изменён на {idioma}",
   "@idiomaAlteradoSnackbar": {
-    "placeholders": { "idioma": { "type": "String" } }
+    "placeholders": {
+      "idioma": {
+        "type": "String"
+      }
+    }
   },
-
   "tabSeguranca": "Безопасность",
   "tabFamilia": "Семья",
   "tabMonitoramento": "Мониторинг",
   "tabHistorico": "История",
   "tooltipAdicionarAlarme": "Добавить будильник",
   "tooltipAuditoriaSensivel": "Аудит важных событий",
-
   "cancelar": "Отмена",
   "confirmar": "Подтвердить",
   "salvar": "Сохранить",
   "excluir": "Удалить",
   "fechar": "Закрыть",
   "voltar": "Назад",
-
   "segurancaSelecioneTempo": "Пожалуйста, выберите время больше нуля!",
   "segurancaCheckinDesarmado": "✅ Регистрация успешно отменена!",
   "segurancaConfirmarSosTitulo": "Подтвердить SOS?",
   "segurancaConfirmarSosConteudo": "Это немедленно отправит экстренное SMS и оповещение вашим зарегистрированным контактам с вашим текущим местоположением. Продолжить?",
   "segurancaConfirmarSosBotao": "Подтвердить SOS",
   "segurancaSosDisparado": "🚨 SOS отправлен! Экстренные контакты оповещены.",
+  "segurancaAlertaEnviadoTitulo": "Оповещение отправлено",
+  "segurancaAlertaEnviadoConteudo": "Сообщение с местоположением отправлено на зарегистрированные номера.",
+  "cronometroAtivoDescricao": "Сработал таймер безопасности.\nВведите пароль, чтобы отключить.",
+  "historicoCronometroFalhaMotivo": "таймер безопасности не был отключён в течение 60 секунд допустимого времени после срабатывания.",
+  "historicoCronometroPinIncorretoMotivo": "PIN-код был введён неверно 3 раза подряд при попытке отключить таймер безопасности.",
+  "historicoCronometroFechamentoForcadoMotivo": "приложение было принудительно закрыто, пока таймер безопасности ещё звонил, без подтверждения отключения.",
   "segurancaTituloSecaoTempo": "Через сколько я прибуду",
   "segurancaServidorVerificando": "Проверка сервера...",
   "segurancaServidorOnline": "Сервер в сети",
@@ -132,7 +129,6 @@
   "deviceAdminDescricaoInativo": "Позволяет приложению автоматически блокировать экран в конце экстренного SOS. Требуется специальное разрешение Android, предоставляемое один раз.",
   "deviceAdminDescricaoAtivo": "Включено — экран будет заблокирован автоматически в конце последовательности SOS.",
   "deviceAdminBotaoAtivar": "Включить",
-
   "familiaAlarmeRemovido": "🗑️ Будильник успешно удалён.",
   "familiaAlarmePausadoAte": "⏸️ Будильник приостановлен до полуночи сегодня.",
   "familiaAdicionarAlarme": "Добавить будильник",
@@ -148,7 +144,11 @@
   "familiaToleranciaLabel": "Время ожидания подтверждения \"Я в порядке\"",
   "familiaMinutosAbrev": "{minutos} мин",
   "@familiaMinutosAbrev": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "familiaSalvarAlarme": "Сохранить будильник",
   "familiaAlarmesRotinaTitulo": "Регулярные будильники",
@@ -158,30 +158,57 @@
   "familiaExcluirAlarmeTitulo": "Удалить будильник навсегда?",
   "familiaExcluirAlarmeConteudo": "Удалить будильник «{etiqueta}» ({horario}) навсегда?",
   "@familiaExcluirAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarAlarmeTitulo": "Приостановить будильник на сегодня?",
   "familiaPausarAlarmeConteudo": "Приостановить будильник «{etiqueta}» ({horario}) до полуночи? Завтра он снова автоматически станет активным.",
   "@familiaPausarAlarmeConteudo": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
   "familiaPausarBotao": "Приостановить",
   "familiaPausadoAte0000": "Приостановлен до полуночи",
   "familiaRetorna": "Возобновится: {horario} ({dia})",
   "@familiaRetorna": {
-    "placeholders": { "horario": { "type": "String" }, "dia": { "type": "String" } }
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      },
+      "dia": {
+        "type": "String"
+      }
+    }
   },
   "familiaToqueReativar": "▶️ Нажмите, чтобы снова включить будильник",
   "familiaContatosEmergenciaTitulo": "Экстренные контакты",
   "familiaContatosEmergenciaDescricao": "Эти контакты получают экстренные оповещения. Управляйте ими на вкладке Настройки.",
   "familiaNenhumContato": "Экстренные контакты ещё не добавлены.",
-  "familiaRemovendoEm24h": "Будет удалён через 24ч...",
+  "familiaRemovendoEmCarencia": "Будет удалён через 2ч...",
   "familiaSemNome": "Без имени",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) успешно снова активирован.",
   "@familiaReativadoComSucesso": {
-    "placeholders": { "etiqueta": { "type": "String" }, "horario": { "type": "String" } }
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
   },
-
   "monitoramentoPermitirReceberLocalizacao": "Разрешить отправлять моё местоположение",
   "monitoramentoSecaoVerLocalizacao": "Местоположение родных",
   "monitoramentoAdicionarContato": "Добавить контакт",
@@ -193,123 +220,214 @@
   "monitoramentoExcluirContatoTooltip": "Удалить контакт",
   "monitoramentoExcluirContatoTitulo": "Удалить контакт?",
   "monitoramentoExcluirContatoConteudo": "Удалить «{nome}» из списка мониторинга?",
-  "@monitoramentoExcluirContatoConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoExcluirContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoNenhumContato": "Контакты для мониторинга пока не добавлены.\nНажмите «+», чтобы добавить первый.",
   "monitoramentoSolicitarLocalizacao": "Запросить местоположение",
   "monitoramentoVerNoMapa": "Показать на карте",
   "monitoramentoAtualizadoHaMinutos": "Обновлено {minutos} мин назад",
-  "@monitoramentoAtualizadoHaMinutos": { "placeholders": { "minutos": { "type": "int" } } },
+  "@monitoramentoAtualizadoHaMinutos": {
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
+  },
   "monitoramentoStatusNaoSolicitado": "Не запрошено",
   "monitoramentoStatusAguardandoAprovacao": "Ожидает одобрения",
   "monitoramentoStatusAprovado": "Одобрено",
   "monitoramentoStatusBloqueado": "Заблокировано",
   "monitoramentoStatusNegado": "Запрос отклонён",
   "monitoramentoStatusExpirado": "Срок запроса истёк",
+  "monitoramentoAguardandoPrimeiraLocalizacao": "Ожидание первого местоположения...",
+  "monitoramentoLocalizacaoSendoAtualizada": "Местоположение всё ещё обновляется. Повторите попытку через мгновение.",
   "monitoramentoSolicitacaoEnviada": "Запрос отправлен. Ожидает одобрения.",
   "monitoramentoJaAprovado": "Вы уже можете видеть местоположение этого контакта.",
-  "monitoramentoNumeroNaoEncontrado": "У этого номера ещё нет аккаунта Guardião X.",
+  "monitoramentoNumeroNaoEncontrado": "У этого номера ещё нет аккаунта Страж X.",
   "monitoramentoProprioNumero": "Нельзя запросить собственное местоположение.",
   "monitoramentoErroSolicitar": "Не удалось отправить запрос. Попробуйте снова.",
   "monitoramentoSolicitacaoRecebidaTitulo": "Запрос местоположения",
   "monitoramentoSolicitacaoRecebidaConteudo": "{nome} запрашивает ваше местоположение. Разрешить или заблокировать?",
-  "@monitoramentoSolicitacaoRecebidaConteudo": { "placeholders": { "nome": { "type": "String" } } },
+  "@monitoramentoSolicitacaoRecebidaConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoPermitir": "Разрешить",
   "monitoramentoBloquearRecusar": "Заблокировать/Отклонить",
-
+  "monitoramentoBloquear": "Заблокировать",
+  "monitoramentoBloquearContatoTitulo": "Заблокировать контакт?",
+  "monitoramentoBloquearContatoConteudo": "«{nome}» больше не сможет отправлять вам запросы местоположения.",
+  "@monitoramentoBloquearContatoConteudo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "monitoramentoContatoBloqueadoSucesso": "Контакт заблокирован. Он больше не сможет запрашивать ваше местоположение.",
+  "monitoramentoContatoDesbloqueadoSucesso": "Контакт разблокирован.",
+  "monitoramentoPermitirOuBloquearSolicitacoes": "Разрешить или заблокировать запросы местоположения",
+  "monitoramentoIndicadorBloqueado": "Заблокировано",
+  "monitoramentoIndicadorLiberado": "Разрешено",
+  "monitoramentoContatoIndisponivel": "Этот контакт сейчас недоступен.",
   "historicoFiltroTodos": "Все",
   "historicoFiltroSistema": "Система",
   "historicoAgoraMesmo": "Только что",
   "historicoHaMinutos": "{minutos} мин назад",
   "@historicoHaMinutos": {
-    "placeholders": { "minutos": { "type": "int" } }
+    "placeholders": {
+      "minutos": {
+        "type": "int"
+      }
+    }
   },
   "historicoHaHoras": "{horas}ч назад",
   "@historicoHaHoras": {
-    "placeholders": { "horas": { "type": "int" } }
+    "placeholders": {
+      "horas": {
+        "type": "int"
+      }
+    }
   },
   "historicoOntem": "Вчера",
   "historicoHaDias": "{dias} дн. назад",
   "@historicoHaDias": {
-    "placeholders": { "dias": { "type": "int" } }
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
   },
   "historicoNenhumEvento": "Для этого фильтра события не найдены.",
   "historicoLimparBotao": "Очистить историю",
   "historicoLimparConfirmarTitulo": "Очистить историю?",
   "historicoLimparConfirmarConteudo": "Это действие безвозвратно удалит сообщения этой категории. Отменить его нельзя.",
-
   "contatosMaximoAtingido": "⚠️ Вы уже зарегистрировали максимум {max} контактов.",
-  "@contatosMaximoAtingido": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosMaximoAtingido": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "contatosPermissaoNegada": "❌ Доступ к контактам был отклонён.",
   "contatoSemTelefone": "⚠️ У этого контакта нет зарегистрированного номера телефона.",
   "telefoneInvalido": "⚠️ Неверный номер телефона.",
   "contatoAdicionado": "✅ {nome} добавлен(а) в экстренные контакты!",
-  "@contatoAdicionado": { "placeholders": { "nome": { "type": "String" } } },
-  "contatoRemocaoSolicitada": "⏳ Запрос получен. {nome} будет удалён(а) через 24 часа.",
-  "@contatoRemocaoSolicitada": { "placeholders": { "nome": { "type": "String" } } },
-
+  "@contatoAdicionado": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoRemocaoSolicitada": "⏳ Запрос получен. {nome} будет удалён(а) через 2 часа.",
+  "@contatoRemocaoSolicitada": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "contatoApagarConfirmacaoTitulo": "Удалить контакт",
+  "contatoApagarConfirmacaoMensagem": "После подтверждения удаление вступит в силу в течение 2h00",
+  "historicoLatitudeLabel": "Широта",
+  "historicoLongitudeLabel": "Долгота",
+  "permissaoSmsTitulo": "Разрешение на экстренные SMS",
+  "permissaoSmsConteudo": "Страж-X отправляет SMS напрямую с вашей SIM-карты при срабатывании тревожной кнопки — это единственный канал, работающий даже без интернета. Без этого разрешения экстренное SMS не может быть отправлено. Разрешить сейчас?",
+  "permissaoSmsAgoraNao": "Не сейчас",
+  "permissaoSmsPermitir": "Разрешить",
+  "batteriaOtimizacaoTitulo": "Оптимизация батареи",
+  "batteriaOtimizacaoDescricaoInativo": "Исключите Страж-X из оптимизации батареи устройства, чтобы физическая тревожная кнопка продолжала работать даже в фоновом режиме длительное время. Требуется специальное разрешение Android, предоставляемое один раз.",
+  "batteriaOtimizacaoBotaoAtivar": "Включить",
+  "permissaoBateriaTitulo": "Постоянно поддерживать мониторинг",
+  "permissaoBateriaConteudo": "Некоторые устройства закрывают фоновые приложения для экономии батареи, что может помешать работе физической тревожной кнопки. Исключение Страж-X из этой оптимизации сохраняет мониторинг активным. Разрешить сейчас?",
   "pinRealTitulo": "Настоящий PIN",
   "pinRealDescricao": "Установите 4-значный PIN-код для обычного доступа к приложению.",
   "pinRealHint": "Введите 4 цифры",
   "pinInformarObrigatorio": "Введите PIN-код",
   "pinDeveTer4Digitos": "Должен содержать ровно 4 цифры",
   "pinApenasNumeros": "Только цифры",
-  "pinNovaSenhaPendente": "⏳ Новый пароль ожидает активации (24 часа)",
+  "pinNovaSenhaPendente": "⏳ Новый пароль ожидает активации (2 часа)",
   "pinDefinido": "✅ Установлен",
   "pinNaoDefinido": "⚠️ Не установлен",
   "pinDefinidoComSucesso": "🔒 PIN-код успешно установлен!",
-  "pinNovaSenhaEmVigor24h": "🔒 Запрос получен. Новый пароль вступит в силу через 24 часа.",
-
+  "pinNovaSenhaEmVigorCarencia": "🔒 Запрос получен. Новый пароль вступит в силу через 2 часа.",
   "alterarPlanoFundo": "Изменить фон",
   "planoFundoAlterado": "🎨 Фон изменён!",
   "planoFundoPadrao": "Классический светлый (по умолчанию)",
   "tamanhoLetrasTitulo": "Размер текста",
   "tamanhoLetrasAlterado": "🔤 Размер текста: {rotulo}",
-  "@tamanhoLetrasAlterado": { "placeholders": { "rotulo": { "type": "String" } } },
-
+  "@tamanhoLetrasAlterado": {
+    "placeholders": {
+      "rotulo": {
+        "type": "String"
+      }
+    }
+  },
   "planoPremiumTitulo": "Премиум-план",
-  "beneficioAlertasNuvem": "Облачные оповещения в реальном времени",
-  "beneficioMensagensWhatsapp": "До 10 резервных сообщений через WhatsApp",
-  "beneficioGruposIlimitados": "Создание неограниченных групп оповещений",
-  "beneficioChatsCriptografados": "Зашифрованные чаты с аудио и видео",
-  "beneficioBackupNuvem": "Автоматическое резервное копирование в облако",
+  "premiumModalDestaque": "Все функции Страж-X без ограничений",
+  "beneficioLocalizacaoTempoReal": "Геолокация в реальном времени.",
+  "beneficioBotaoFisico": "Физическая кнопка, отправляющая местоположение и фото в базу данных Страж-X и на зарегистрированные телефоны.",
+  "beneficioModoSeguranca": "Режим безопасности с тревожной кнопкой, сохраняющей ваше местоположение каждую минуту в базе данных Страж-X и запускающей экстренное оповещение. Это гарантирует, что ваше последнее местоположение будет отправлено на зарегистрированные номера по окончании таймера, даже если ваше устройство выключено.",
+  "beneficioModoFamilia": "Семейный режим с будильником для еженедельного или ежедневного планирования и подтверждения безопасности check-in, с заблаговременной отправкой местоположения в базу данных Страж-X, чтобы член семьи получил экстренное оповещение в запланированное время и день, если check-in не будет подтверждён.",
+  "beneficioTresCamadas": "Два уровня защиты для гарантии доставки экстренных оповещений с местоположением и фото. (Приложение и SMS).",
+  "beneficioTempoEspera": "Время ожидания для изменений и просмотра критически важных данных.",
   "agoraNao": "Не сейчас",
   "assinarPreco": "Оформить подписку 9,90 R$/мес",
   "planoPremiumAtivado": "🎉 Премиум-план активирован!",
-
   "visualDoChatTitulo": "Внешний вид чата",
   "alertaSonoroTitulo": "Звуковое оповещение",
   "planoTitulo": "План",
   "contatosDescricao": "Зарегистрируйте до {max} членов семьи, которые получат экстренное оповещение.",
-  "@contatosDescricao": { "placeholders": { "max": { "type": "int" } } },
+  "@contatosDescricao": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "tooltipExcluirContato": "Удалить контакт",
   "adicionarContatoAgenda": "+ Добавить контакт из адресной книги",
   "alertaSonoroDescricao": "Выберите звук и длительность будильника, срабатывающего по окончании обратного отсчёта регистрации.",
   "somAlarmeLabel": "Звук будильника",
   "tooltipTestarSom": "Проверить/прослушать звук",
   "somTesteVazio": "🔇 Пустой тестовый звуковой файл. Замените заполнитель в папке assets/sounds.",
-
   "planoFamiliarAtivo": "Семейный план активен",
   "recursosPremiumDisponiveis": "Доступны все премиум-функции",
   "premiumBadge": "Премиум",
   "protejaQuemVoceAma": "Защитите тех, кого любите",
   "mudeParaPremium": "Перейти на Премиум-план",
-  "precoMensal": "9,90 R$",
-  "porMes": "/мес",
+  "premiumPrecoGenerico": "Оформите Premium",
+  "premiumAssinarBotaoGenerico": "Оформить Premium",
+  "premiumPrecoMensalComValor": "{preco}/мес",
+  "@premiumPrecoMensalComValor": {
+    "placeholders": {
+      "preco": {
+        "type": "String"
+      }
+    }
+  },
   "verMais": "Узнать больше",
-
   "alarmeRotinaAtivoDescricao": "Регулярный будильник активен.\nПодтвердите вашу безопасность, чтобы приостановить его.",
-  "alarmeRotinaFaseFinalDescricao": "ПОСЛЕДНИЙ ШАНС! Будильник прозвенел снова.\nВведите PIN-код в течение 2 минут, иначе будет отправлено экстренное оповещение.",
+  "alarmeRotinaFaseFinalDescricao": "ПОСЛЕДНИЙ ШАНС! Будильник прозвенел снова.\nВведите PIN-код в течение 60 секунд, иначе будет отправлено экстренное оповещение.",
   "alarmeRotinaAlertaEnviadoDescricao": "✅ Экстренное оповещение отправлено!\nВаше местоположение и сообщение были отправлены в облако и зарегистрированным контактам.",
   "desligarAlarmeBotao": "ВЫКЛЮЧИТЬ БУДИЛЬНИК",
   "fecharConfirmacaoBotao": "ЗАКРЫТЬ",
   "fecharConfirmacaoDica": "Проведите вверх или нажмите «Закрыть», чтобы продолжить",
-
   "cameraToqueOuVolume": "📸 Нажмите кнопку или клавишу громкости, чтобы сделать фото",
   "enviando": "Отправка...",
   "atencaoMaiuscula": "ВНИМАНИЕ",
   "mensagemEnviadaAviso": "ВНИМАНИЕ, СЕМЬЕ ОТПРАВЛЕНО СООБЩЕНИЕ С ФОТО И МЕСТОПОЛОЖЕНИЕМ. ЭТО ДЕЙСТВИЕ НЕЛЬЗЯ ОТМЕНИТЬ.",
   "deslizeParaFechar": "Проведите вверх, чтобы закрыть",
-
   "auditoriaSolicitacaoAprovada": "Запрос одобрен. В целях безопасности и защиты конфиденциальности записи будут доступны через 2 часа.",
   "auditoriaBloquearNovamenteTitulo": "Заблокировать снова?",
   "auditoriaBloquearNovamenteConteudo": "После подтверждения доступ к конфиденциальным записям будет немедленно заблокирован. Чтобы снова их просмотреть, потребуется новый запрос и ожидание ещё 2 часов безопасности.",
@@ -324,12 +442,301 @@
   "auditoriaSolicitarLiberacaoBotao": "Запросить разблокировку конфиденциальной истории",
   "auditoriaNenhumEvento": "Просмотр разблокирован. Конфиденциальные события ещё не зарегистрированы.",
   "auditoriaPrazoLiberado": "Период безопасности завершён. Записи разблокированы для этой сессии.",
-
   "pinAlarmeDesligado": "Будильник выключен",
   "pinSenhaIncorreta": "неверный пароль",
   "pinConfirmeSeuPin": "ПОДТВЕРДИТЕ ВАШ PIN",
   "pinDigiteParaDesarmar": "Введите PIN-код, чтобы отменить регистрацию.",
   "pinDigiteParaContinuar": "Введите PIN-код, чтобы продолжить.",
   "pinTempoTolerancia": "Время ожидания: {segundos} с",
-  "@pinTempoTolerancia": { "placeholders": { "segundos": { "type": "int" } } }
+  "@pinTempoTolerancia": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
+  "homeTooltipInicio": "На главную",
+  "historicoFiltroAlertasEnviados": "Отправленные оповещения",
+  "dashboardSecaoPlanosTitulo": "Выберите свой план",
+  "dashboardPlanoFreeTitulo": "Free",
+  "dashboardPlanoFreeDescricao": "Все функции Премиум открыты на 10 дней в месяц",
+  "dashboardPlanoPremiumDescricao": "Нажмите здесь, чтобы узнать о преимуществах Премиум.",
+  "dashboardFaqTitulo": "Часто задаваемые вопросы",
+  "dashboardCentralAtendimentoTitulo": "Центр обслуживания клиентов",
+  "faqAppBarTitulo": "Часто задаваемые вопросы (FAQ)",
+  "faqTooltipInicio": "Главная",
+  "faqBuscaHint": "Поиск по вопросам и ответам...",
+  "faqNenhumaEncontrada": "Вопросы не найдены.",
+  "faqPergunta1": "Отправляются ли экстренные оповещения на зарегистрированные номера, даже если мой телефон выключен или нет сигнала интернета?",
+  "faqResposta1": "Да, будильники на странице «Семья» и обратный отсчёт на странице «Безопасность» планируются на сервере базы данных приложения Страж-X. Если время ожидания таймера истекает без отмены с помощью PIN-кода, или будильник на странице «Семья» не отключён по истечении времени ожидания, немедленно отправляется оповещение безопасности с последним местоположением, сохранённым в облаке.",
+  "faqPergunta2": "За сколько минут начинается отправка местоположения в базу данных Страж-X?",
+  "faqResposta2": "Отправка местоположения начинается за 120 минут до окончания таймера или запланированного времени будильника на странице Семья.",
+  "faqPergunta3": "Почему требуется запланированное время ожидания для подтверждения нового пароля или удаления контактов экстренной связи?",
+  "faqResposta3": "Поскольку приложение Страж-X создано для защиты безопасности пользователя, это время ожидания предназначено для предотвращения разблокировки некоторых запланированных функций посторонними лицами, пока ожидается отправка экстренного оповещения на зарегистрированные номера.",
+  "faqPergunta4": "Почему на странице «История» добавлена опция времени ожидания на случай, если пользователь решит ограничить немедленный просмотр информации об отправленных оповещениях?",
+  "faqResposta4": "В крайних случаях, когда физическая безопасность пользователя находится под угрозой, пользователь может не хотеть, чтобы кто-то ещё узнал, что его местоположение или фото было отправлено на зарегистрированный номер.",
+  "faqPergunta5": "Почему при использовании физической тревожной кнопки или кнопки на странице «Безопасность» отправляются два оповещения?",
+  "faqResposta5": "Эта функция тревожной кнопки в первую очередь направлена на безопасность пользователя. При активации физической тревожной кнопки или кнопки на странице «Безопасность» немедленно отправляется экстренное оповещение с местоположением на зарегистрированные номера. Затем, после открытия камеры устройства и съёмки фото пользователем, отправляется второе экстренное оповещение с фото. Это гарантирует, что местоположение достигнет зарегистрированного номера, даже если пользователь медлит или не делает фото.",
+  "faqPergunta6": "Можно ли отследить и отслеживать местоположение устройства, на котором не установлено приложение Страж-X?",
+  "faqResposta6": "Нет, это невозможно. Местоположение может передаваться только между приложениями и только с согласия и разрешения обоих пользователей.",
+  "faqPergunta7": "Безопасно ли платить за премиум-план?",
+  "faqResposta7": "Да, это безопасно. Ни один платёж не производится напрямую компании RMF GLOBAL. Все платежи обрабатываются непосредственно через платформу Google Play Store или Apple App Store с полной гарантией платформ.",
+  "faqPergunta9": "Как происходит передача экстренных оповещений?",
+  "faqResposta9": "Все сообщения оповещения безопасности отправляются двумя стандартными способами: между приложениями и по SMS на номера мобильных телефонов, зарегистрированные на странице «Настройки».",
+  "faqPergunta11": "Как работает служба поддержки клиентов?",
+  "faqResposta11": "Поддержка клиентов осуществляется через WhatsApp — нажмите кнопку связи на главном экране, чтобы напрямую поговорить с нашей службой поддержки. Запросы, сделанные через меню «Связаться с живым оператором», следуют правилам политики, установленной компанией RMF Global, при этом пользователи Премиум-плана получают эксклюзивный доступ к этой поддержке в течение до 48 часов.",
+  "faqPergunta12": "Будут ли экстренные оповещения отправляться только на зарегистрированные номера с установленным приложением Страж-X?",
+  "faqResposta12": "Нет. Мы рекомендуем, чтобы приложение было установлено на обоих телефонах, но даже если на телефоне получателя нет Страж-X, экстренное оповещение всё равно отправляется через SMS.",
+  "termosAppBarTitulo": "Условия и конфиденциальность",
+  "termosTabContrato": "Договор согласия",
+  "termosTabPrivacidade": "Политика конфиденциальности",
+  "termosAvisoRodape": "Этот документ содержит краткое изложение Договора согласия и Политики конфиденциальности приложения Страж-X. Если у вас есть вопросы, свяжитесь с нами через каналы поддержки, указанные в приложении.",
+  "termosContratoTitulo1": "1. Предмет и ограничения услуги",
+  "termosContratoCorpo1": "Настоящий Договор согласия регулирует использование приложения Страж-X, разработанного и управляемого компанией RMF Global LTDA («RMF Global»), предназначенного для помощи пользователю в ситуациях личной чрезвычайной ситуации посредством регистрации безопасности (check-in), автоматических оповещений, обмена местоположением между членами семьи и доверенными контактами, а также фиксации фотодоказательств. Страж-X является вспомогательным инструментом личной безопасности и НЕ заменяет официальные экстренные службы (полицию, пожарную службу, скорую помощь или эквивалентные номера экстренных служб вашей страны) или любую другую государственную экстренную службу. В ситуации непосредственной угрозы пользователь всегда должен в первую очередь обращаться в официальные экстренные службы.",
+  "termosContratoTitulo2": "2. Согласие на использование геолокации (GPS и фоновая геолокация)",
+  "termosContratoCorpo2": "Активируя таймер check-in, кнопку SOS или семейный мониторинг, пользователь прямо соглашается на сбор и передачу своего географического местоположения (GPS) в реальном времени, в том числе в фоновом режиме (Background Location), когда приложение активно не используется, исключительно для обеспечения отправки и сохранения превентивных и тревожных оповещений на серверы Страж-X и зарегистрированным контактам экстренной связи, в том числе автоматически, если check-in не подтверждён в установленный срок.",
+  "termosContratoTitulo3": "3. Согласие на отправку сообщений (SMS/приложение)",
+  "termosContratoCorpo3": "Пользователь соглашается на отправку оповещений (содержащих местоположение, указанный контекст и, при необходимости, фото) на номера телефонов и учётные записи, зарегистрированные как контакты экстренной связи, посредством SMS и уведомлений между приложениями.",
+  "termosContratoTitulo4": "4. Согласие на использование камеры и съёмку медиафайлов",
+  "termosContratoCorpo4": "Пользователь соглашается с тем, что в определённых чрезвычайных ситуациях (истечение времени таймера без подтверждения, активация тревожной кнопки или неудачная попытка отмены) приложение может автоматически открыть камеру устройства для съёмки фото, которое будет отправлено как дополнительное доказательство зарегистрированным контактам экстренной связи и сохранено в базе данных Страж-X.",
+  "termosContratoTitulo5": "5. Сроки безопасности (период ожидания)",
+  "termosContratoCorpo5": "Определённые чувствительные действия (изменение пароля/PIN-кода, удаление контактов экстренной связи, немедленный просмотр истории) подлежат периоду ожидания перед вступлением в силу, с целью предотвратить отключение функций безопасности пользователя посторонними лицами под принуждением.",
+  "termosContratoTitulo6": "6. Планы, цены и платежи",
+  "termosContratoCorpo6": "Бесплатный план открывает все функции Премиум на срок до 10 (десяти) дней в месяц, при этом остальные дни подпадают под ограничения бесплатного плана. Стоимость Премиум-плана соответствует сумме, указанной в приложении на момент оформления подписки, и списывается ежемесячно, с неограниченным доступом ко всем функциям приложения. Подписки на Премиум-план обрабатываются исключительно через платформы Google Play Store и Apple App Store в соответствии с их правилами оплаты, возврата средств и защиты потребителей — RMF Global не получает и не обрабатывает платежи напрямую.",
+  "termosContratoTitulo7": "7. Отмена и возврат средств",
+  "termosContratoCorpo7": "Отмена Премиум-плана и возможные возвраты средств строго следуют официальным политикам Google Play Store или Apple App Store, в зависимости от платформы, использованной для подписки — RMF Global не обрабатывает отмены или возвраты средств напрямую.",
+  "termosContratoTitulo8": "8. Обслуживание клиентов (SAC)",
+  "termosContratoCorpo8": "Поддержка клиентов осуществляется через WhatsApp — кнопка связи на главном экране открывает прямой чат с нашей службой поддержки. Запросы на помощь живого оператора следуют правилам политики, установленной RMF Global, при этом пользователи Премиум-плана получают эксклюзивный доступ к этой поддержке в течение до 48 (сорока восьми) часов.",
+  "termosContratoTitulo9": "9. Свободное, недвусмысленное согласие и его отзыв",
+  "termosContratoCorpo9": "Используя приложение Страж-X и активируя его функции безопасности, пользователь заявляет о своём свободном, осознанном и недвусмысленном согласии на сбор и использование данных GPS, личных данных и медиафайлов (фото) в чрезвычайных ситуациях, как описано в настоящем Договоре. Пользователь может отозвать это согласие в любое время, удалив приложение или запросив удаление своей учётной записи и связанных данных через каналы поддержки, указанные в приложении, с учётом сроков ожидания безопасности, описанных в Разделе 5.",
+  "termosPrivacidadeTitulo1": "1. Собираемые данные и их цель",
+  "termosPrivacidadeCorpo1": "Для обеспечения функций безопасности Страж-X мы собираем: (а) географическое местоположение (GPS) в реальном времени и в фоновом режиме (Background Location), исключительно для отправки и сохранения превентивных и тревожных оповещений; (б) фотографии и другие медиафайлы, автоматически снятые при активации тревожной кнопки или функции «Съёмка и Сдерживание»; (в) регистрационные данные пользователя и указанных контактов экстренной связи (имя и телефон); и (г) технические данные устройства, необходимые для работы оповещений (статус подключения, версия приложения).",
+  "termosPrivacidadeTitulo2": "2. Цель использования данных",
+  "termosPrivacidadeCorpo2": "Собранные данные используются исключительно для обеспечения функций безопасности приложения: активации экстренных оповещений, согласованного обмена местоположением между пользователями, отправки фотодоказательств и ведения истории событий безопасности собственной учётной записи пользователя.",
+  "termosPrivacidadeTitulo3": "3. Хранение и облако",
+  "termosPrivacidadeCorpo3": "Часть данных хранится локально на устройстве (зашифрованная локальная база данных), а часть синхронизируется с облачными сервисами (Firebase/Firestore и хранилище медиафайлов), управляемыми RMF Global, с целью обеспечить доставку экстренных оповещений даже если устройство пользователя выключено, повреждено или теряет соединение после срабатывания.",
+  "termosPrivacidadeTitulo4": "4. Передача третьим лицам",
+  "termosPrivacidadeCorpo4": "Местоположение и фотодоказательства передаются только контактам экстренной связи, явно зарегистрированным самим пользователем, а в случае семейного мониторинга — только с явного согласия обеих сторон. Мы не продаём и не передаём личные данные третьим лицам в рекламных целях.",
+  "termosPrivacidadeTitulo5": "5. Безопасность данных",
+  "termosPrivacidadeCorpo5": "Пароли и PIN-коды хранятся в зашифрованном виде. Доступ к чувствительным функциям (смена пароля, удаление контактов, история оповещений) защищён периодами ожидания и подтверждением по PIN-коду, как описано в Договоре согласия.",
+  "termosPrivacidadeTitulo6": "6. Права пользователя (защита данных)",
+  "termosPrivacidadeCorpo6": "В соответствии с применимым законодательством о защите данных (например, бразильским законом LGPD № 13.709/2018) пользователь может в любое время запросить доступ к своим личным данным, исправление неверных регистрационных данных, удаление своей учётной записи и хранимых личных данных, а также отзыв разрешений, предоставленных контактам мониторинга, через каналы поддержки, указанные в приложении.",
+  "termosPrivacidadeTitulo7": "7. Контакты",
+  "termosPrivacidadeCorpo7": "Вопросы по данной Политике конфиденциальности можно направлять компании RMF Global LTDA (CNPJ 68.358.210/0001-90) через каналы поддержки, указанные на главном экране приложения (WhatsApp и юридический адрес).",
+  "footerTermosLink": "Условия использования и Договор согласия",
+  "footerEmpresaRazaoSocial": "RMF Global LTDA (ООО «РМФ Глобал»)",
+  "footerEmpresaEndereco": "Улица Рио-де-Жанейро, № 243, офис 802, район Сентро, Белу-Оризонти - штат Минас-Жерайс, Бразилия, индекс 30160-040",
+  "footerEmpresaCnpj": "Регистрационный номер компании (CNPJ) 68.358.210/0001-90",
+  "premiumCancelarConfirmTitulo": "Отменить план Premium?",
+  "premiumCancelarConfirmConteudo": "Вы сразу вернётесь на бесплатный план с его ежемесячными ограничениями.",
+  "premiumCancelarConfirmBotao": "Отменить Premium",
+  "premiumCanceladoSnackbar": "План Premium отменён. Теперь вы на бесплатном плане.",
+  "premiumAssinarBotaoComPreco": "Оформить Premium — {preco}",
+  "premiumCancelarBotaoModal": "Отменить план Premium",
+  "familiaEtiquetaPadrao": "Плановый будильник",
+  "familiaDiasNuncaLabel": "Никогда",
+  "familiaDiasTodosLabel": "Ежедневно",
+  "familiaDiasSegASexLabel": "Пн–Пт",
+  "familiaDiaAbrevSeg": "Пн",
+  "familiaDiaAbrevTer": "Вт",
+  "familiaDiaAbrevQua": "Ср",
+  "familiaDiaAbrevQui": "Чт",
+  "familiaDiaAbrevSex": "Пт",
+  "familiaDiaAbrevSab": "Сб",
+  "familiaDiaAbrevDom": "Вс",
+  "familiaDiaInicialSeg": "П",
+  "familiaDiaInicialTer": "В",
+  "familiaDiaInicialQua": "С",
+  "familiaDiaInicialQui": "Ч",
+  "familiaDiaInicialSex": "Пт",
+  "familiaDiaInicialSab": "Сб",
+  "familiaDiaInicialDom": "Вс",
+  "familiaAcaoPausar": "приостановить",
+  "familiaAcaoExcluir": "удалить",
+  "familiaAcaoEditar": "изменить",
+  "familiaPinMotivoTexto": "PIN-код введён неверно 2 раза подряд при попытке {acao} плановый будильник на вкладке «Семья».",
+  "historicoAlarmeAtivadoTitulo": "Плановый будильник включён",
+  "historicoAlarmeDesativadoTitulo": "Плановый будильник выключен",
+  "historicoAlarmeAtivadoDescricao": "{etiqueta} ({horario}) включён.",
+  "historicoAlarmeDesativadoDescricao": "{etiqueta} ({horario}) выключен.",
+  "historicoAlarmeRemovidoTitulo": "Плановый будильник удалён",
+  "historicoAlarmeRemovidoDescricao": "{etiqueta} ({horario}) удалён.",
+  "historicoAlarmePausadoTitulo": "Плановый будильник приостановлен",
+  "historicoAlarmePausadoDescricao": "{etiqueta} ({horario}) приостановлен до 00:00.",
+  "historicoAlarmeReativadoTitulo": "Плановый будильник возобновлён",
+  "historicoAlarmeReativadoDescricao": "{etiqueta} ({horario}) возобновлён пользователем.",
+  "historicoAlarmeCriadoTitulo": "Плановый будильник создан",
+  "historicoAlarmeEditadoTitulo": "Плановый будильник изменён",
+  "historicoAlarmeCriadoEditadoDescricao": "{etiqueta} в {horario} ({dias}).",
+  "historicoContatoAdicionadoTitulo": "Добавлен контакт для экстренной связи",
+  "historicoContatoAdicionadoDescricao": "{nome} добавлен как контакт для экстренной связи.",
+  "historicoContatoExclusaoSolicitadaTitulo": "Запрошено удаление контакта",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} будет окончательно удалён в течение 2 часов.",
+  "historicoPinDefinidoTitulo": "Установлен PIN-код доступа",
+  "historicoPinDefinidoDescricao": "PIN-код доступа зарегистрирован и активирован немедленно (первая настройка, без периода ожидания безопасности).",
+  "historicoPinAlteracaoSolicitadaTitulo": "Запрошено изменение PIN-кода",
+  "historicoPinAlteracaoSolicitadaDescricao": "Новый пароль доступа ожидает подтверждения, он вступит в силу через 2 часа.",
+  "historicoPlanoFundoAlteradoTitulo": "Фон изменён",
+  "historicoPlanoFundoAlteradoDescricao": "Выбран новый фон: {nome}.",
+  "historicoCronometroAtivadoTitulo": "Таймер запущен",
+  "historicoCronometroAtivadoDescricao": "Запущена проверка безопасности продолжительностью {horas}ч{minutos}мин.",
+  "historicoCheckinDesarmadoTitulo": "Проверка безопасности успешно отключена",
+  "historicoCheckinDesarmadoDescricao": "Таймер безопасности остановлен/отключён пользователем с помощью правильного PIN-кода.",
+  "historicoCheckinRotinaConfirmadoTitulo": "Плановая проверка подтверждена",
+  "historicoCheckinRotinaConfirmadoDescricao": "{etiqueta}: пользователь успешно подтвердил «Я в порядке».",
+  "historicoCheckinRotinaUltimaChanceTitulo": "Плановая проверка — последний шанс",
+  "historicoCheckinRotinaUltimaChanceDescricao": "Время ожидания истекло без подтверждения. Будильник звонит снова — до срабатывания экстренного оповещения осталось 60 секунд.",
+  "historicoAlertaEmergenciaRotinaTitulo": "Экстренное оповещение отправлено (плановое)",
+  "historicoAlertaEmergenciaTitulo": "Экстренное оповещение отправлено",
+  "historicoAlertaEmergenciaDescricao": "Экстренное SMS отправлено зарегистрированным контактам. Местоположение: {localizacao}",
+  "historicoTentativaDesarmeTitulo": "Попытка отключения с неверным PIN-кодом",
+  "historicoTentativaDesarmeDescricao": "{motivo} Оповещение отправлено контактам для экстренной связи. Местоположение: {localizacao}",
+  "historicoSosCacheTitulo": "SOS через физическую кнопку отправлен (кэшированное местоположение)",
+  "historicoSosCacheDescricao": "Отправлено немедленное экстренное SMS с последним известным кэшированным местоположением. Местоположение: {localizacao}",
+  "historicoSosAtualizadoTitulo": "SOS через физическую кнопку — местоположение обновлено",
+  "historicoSosAtualizadoDescricao": "Отправлено второе экстренное SMS с местоположением в реальном времени. Местоположение: {localizacao}",
+  "historicoEvidenciaFotograficaTitulo": "Фотодоказательство зафиксировано",
+  "historicoEvidenciaFotograficaDescricao": "SMS с данными для доступа отправлено контактам для экстренной связи.",
+  "historicoFotoSosSmsTitulo": "Фото SOS отправлено по SMS",
+  "historicoFotoSosSmsDescricao": "SMS со ссылкой на фото и местоположением отправлено контактам для экстренной связи. Фото: {fotoUrl}",
+  "smsLocalizacaoIndisponivelGps": "Местоположение недоступно (служба GPS на устройстве отключена).",
+  "smsLocalizacaoIndisponivelPermissao": "Местоположение недоступно (доступ к геолокации запрещён).",
+  "smsLocalizacaoIndisponivelFalha": "Не удалось определить текущее местоположение устройства.",
+  "smsContextoNaoInformado": "Пользователь не указал контекстную заметку.",
+  "smsAlertaEmergenciaCorpo": "ЭКСТРЕННОЕ ОПОВЕЩЕНИЕ! Я не выполнил проверку безопасности.\nМестоположение: {localizacao}\nКонтекст: {contexto}",
+  "smsTentativaDesarmeMotivoPadrao": "PIN-код был введён неверно 2 раза подряд при попытке досрочно отключить систему безопасности.",
+  "smsTentativaDesarmeCorpo": "⚠️ ОПОВЕЩЕНИЕ БЕЗОПАСНОСТИ: ПОПЫТКА ОТКЛЮЧЕНИЯ С НЕВЕРНЫМ ПАРОЛЕМ!\n{motivo}\nМестоположение: {localizacao}",
+  "smsSosContextoPadrao": "SOS активирован с помощью физической кнопки экстренного вызова (Громкость+).",
+  "smsSosImediatoCorpo": "🚨 ЭКСТРЕННЫЙ SOS (физическая кнопка)!\nМестоположение (последнее известное): {localizacao}\nКонтекст: {contexto}\n(Далее будет отправлено обновление с местоположением в реальном времени.)",
+  "smsLocalizacaoCacheIndisponivel": "Кэшированное местоположение недоступно — ожидается обновление в реальном времени.",
+  "smsSosAtualizadoCorpo": "🚨 ЭКСТРЕННЫЙ SOS (обновление в реальном времени)!\nОбновлённое местоположение: {localizacao}\nКонтекст: {contexto}",
+  "smsLocalizacaoIndisponivelMomentoEnvio": "Местоположение недоступно на момент отправки.",
+  "smsFotoCorpo": "📷 ФОТОДОКАЗАТЕЛЬСТВО зафиксировано во время SOS!\nФото: {fotoUrl}\nМестоположение: {localizacao}",
+  "smsResgateCorpo": "🚨 ФОТОДОКАЗАТЕЛЬСТВО ЗАФИКСИРОВАНО!\nФото и местоположение отправлены в облако.\nДоступ: {link}\nЛогин: {login}\nПароль: {senha}\nЭто действие необратимо.",
+  "temaAzulProfundo": "Глубокий синий",
+  "temaCinzaPlatina": "Платиновый серый",
+  "temaLuzDoAmanhecer": "Свет рассвета",
+  "temaVerdeBotanico": "Ботанический зелёный",
+  "temaRosaClaro": "Светло-розовый",
+  "temaLuzClassica": "Классический светлый",
+  "fontTamanhoPequeno": "Маленький",
+  "fontTamanhoPadrao": "Стандартный",
+  "fontTamanhoGrande": "Крупный",
+  "somNome1": "Классический сигнал",
+  "somNome2": "Тактическая сирена",
+  "somNome3": "Аварийная сигнализация",
+  "somNome4": "Пронзительный сигнал",
+  "somNome5": "Городской рингтон",
+  "somNome6": "Тревожный колокол",
+  "somNome7": "Сигнал безопасности",
+  "somNome8": "Промышленная сигнализация",
+  "somNome9": "Полицейская сирена",
+  "somNome10": "Беззвучный тон",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: плановая проверка не была подтверждена в течение последних 60 секунд, даже после истечения времени ожидания.",
+  "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: PIN-код был введён неверно 3 раза подряд при попытке подтвердить плановую проверку будильника.",
+  "@historicoCheckinRotinaPinIncorretoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaFechamentoForcadoMotivo": "{etiqueta}: приложение было принудительно закрыто, пока плановый будильник ещё звонил, без подтверждения проверки.",
+  "@historicoCheckinRotinaFechamentoForcadoMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoCheckinRotinaDescartadoPorArrasteMotivo": "{etiqueta}: плановый будильник был отклонён (смахиванием вверх) без подтверждения PIN-кода.",
+  "@historicoCheckinRotinaDescartadoPorArrasteMotivo": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCanalCheckinNome": "Плановая проверка",
+  "notifCanalCheckinDescricao": "Напоминания о проверке безопасности для зарегистрированных плановых будильников.",
+  "notifCanalAlertaRecebidoNome": "Получено экстренное оповещение",
+  "notifCanalAlertaRecebidoDescricao": "Оповещения безопасности от контактов, добавивших это устройство как контакт для экстренной связи.",
+  "notifCanalMonitoramentoNome": "Мониторинг местоположения",
+  "notifCanalMonitoramentoDescricao": "Ответы на запросы совместного доступа к местоположению, отправленные со вкладки «Мониторинг».",
+  "notifCanalSolicitacaoMonitoramentoNome": "Получен запрос местоположения",
+  "notifCanalSolicitacaoMonitoramentoDescricao": "Приоритетное оповещение, когда член семьи запрашивает ваше местоположение в реальном времени — требуется Принять или Отклонить.",
+  "notifCanalAlertaEnviadoNome": "Подтверждение отправки оповещения",
+  "notifCanalAlertaEnviadoDescricao": "Подтверждает, что оповещение о чрезвычайной ситуации с местоположением было отправлено зарегистрированным контактам.",
+  "notifDescarteAlertaEnviadoTitulo": "Оповещение отправлено",
+  "notifDescarteAlertaEnviadoCorpo": "Сообщение оповещения с вашим местоположением было отправлено зарегистрированным контактам.",
+  "notifCheckinCorpo": "Нажмите, чтобы отменить будильник.",
+  "notifAlarmeSegurancaTitulo": "Сигнал безопасности",
+  "notifAlarmeSegurancaCorpo": "Подтвердите безопасность или приостановите будильник!",
+  "notifPausarAlarmeAcao": "⏸️ Приостановить будильник",
+  "notifAlertaDeNome": "🚨 Оповещение от {nome}",
+  "notifAlertaSegurancaGenerico": "🚨 Оповещение безопасности",
+  "notifMonitSolicitacaoTitulo": "📍 Запрос местоположения",
+  "notifMonitSolicitacaoCorpo": "{nome} запрашивает ваше местоположение.",
+  "notifMonitAprovadoTitulo": "📍 Местоположение открыто",
+  "notifMonitAprovadoCorpo": "{nome} разрешил(а) вам видеть своё местоположение.",
+  "notifMonitNegadoTitulo": "📍 Запрос отклонён",
+  "notifMonitNegadoCorpo": "{nome} отклонил(а) ваш запрос местоположения.",
+  "notifMonitBloqueadoTitulo": "📍 Обмен заблокирован",
+  "notifMonitBloqueadoCorpo": "{nome} заблокировал(а) обмен местоположением с вами.",
+  "notifMonitExpiradoTitulo": "📍 Срок запроса истёк",
+  "notifMonitExpiradoCorpo": "Ваш запрос местоположения к {nome} истёк без ответа.",
+  "notifMonitContatoGenerico": "контакт",
+  "notifCheckinCanceladoCorpo": "Будильник отменён.",
+  "splashFrase1": "СТРАЖ X\nВСЕГДА\nРЯДОМ С ВАМИ",
+  "splashFrase2": "СТРАЖ X\nВАША БЕЗОПАСНОСТЬ\nНАША ЦЕЛЬ",
+  "splashFrase3": "СТРАЖ X\nВАШ ЛИЧНЫЙ\nЗАЩИТНИК",
+  "splashFrase4": "СТРАЖ X\nЗАЩИЩАТЬ\nНАША ЦЕЛЬ",
+  "splashFrase5": "БУДЬТЕ ЗАЩИЩЕНЫ\nС ВАШИМ\nСТРАЖ X",
+  "splashFrase6": "СТРАЖ X\nНА ВСЕ СЛУЧАИ ЖИЗНИ",
+  "loginSocialDivisor": "или войдите через",
+  "loginSocialGoogleTooltip": "Войти через Google",
+  "loginSocialFacebookTooltip": "Войти через Facebook",
+  "loginSocialAppleTooltip": "Войти через Apple",
+  "loginLimparSessaoBotao": "Очистить сеанс входа",
+  "loginLimparSessaoConfirmacao": "Сеанс социального входа очищен. Попробуйте войти снова.",
+  "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа.",
+  "onboardingTitulo": "Настройка безопасности",
+  "onboardingIntroducao": "Чтобы кнопка паники и оповещения работали надёжно, даже при заблокированном экране, предоставьте разрешения ниже. Вы можете изменить эти разрешения в любой момент в настройках операционной системы устройства.",
+  "onboardingBadgeEssencial": "Обязательно",
+  "onboardingBadgeRecomendado": "Рекомендуется",
+  "onboardingStatusConcedida": "Предоставлено",
+  "onboardingStatusPendente": "Ожидает",
+  "onboardingBotaoAbrirConfiguracoes": "Открыть настройки",
+  "onboardingBotaoContinuar": "Продолжить",
+  "onboardingAvisoEssenciaisPendentes": "Предоставьте обязательные разрешения, чтобы завершить настройку.",
+  "onboardingNotificacoesTitulo": "Уведомления и будильники",
+  "onboardingNotificacoesConteudo": "Позволяет экстренным оповещениям появляться сразу же со звуком, а запланированным напоминаниям (чек-ины, таймер) срабатывать точно в срок.",
+  "onboardingLocalizacaoTitulo": "Постоянная геолокация",
+  "onboardingLocalizacaoConteudo": "С разрешением «Всегда разрешать» ваше местоположение отправляется контактам экстренной связи, даже если приложение закрыто или экран выключен — это важно при реальном SOS.",
+  "onboardingCameraTitulo": "Доступ к камере",
+  "onboardingCameraConteudo": "Используется только кнопкой паники, чтобы прикрепить фото места к оповещению, отправляемому вашим контактам экстренной связи.",
+  "onboardingTelaCheiaTitulo": "Оповещения на весь экран",
+  "onboardingTelaCheiaConteudo": "Позволяет оповещению от контакта включать экран и отображаться поверх заблокированного экрана, как входящий звонок.",
+  "statusPermissoesTitulo": "Статус разрешений",
+  "statusPermissoesSubtitulo": "Посмотрите, что предоставлено, и запросите снова недостающее",
+  "statusPermissoesIntroducao": "Отслеживайте в реальном времени, какие разрешения уже есть у Guardião X на вашем устройстве. Вы можете повторно запросить любое ожидающее разрешение или открыть системные настройки в любой момент.",
+  "excluirContaTitulo": "Удалить аккаунт и данные",
+  "excluirContaSubtitulo": "Окончательное удаление вашего аккаунта и данных",
+  "excluirContaAvisoPrincipal": "Это действие безвозвратно удаляет ваш аккаунт, контакты для экстренной связи, историю оповещений, местоположения и фотографии, сохранённые в облаке. Это действие невозможно отменить.",
+  "excluirContaAvisoRescisaoContrato": "Подтверждая удаление, вы заявляете, что осведомлены о том, что это действие полностью прекращает Соглашение о согласии и Условия использования, заключённые с RMF Global LTDA, немедленно и окончательно прекращая предоставление услуги и все взаимные обязательства между вами и RMF Global.",
+  "excluirContaAvisoAssinatura": "Если у вас есть активная подписка Premium, отмените её отдельно в Google Play Store или Apple App Store — удаление аккаунта не отменяет списание средств автоматически.",
+  "excluirContaBotaoGerenciarAssinatura": "Управление / отмена подписки в магазине",
+  "excluirContaListaTitulo": "Что будет удалено:",
+  "excluirContaItemConta": "Ваша регистрация и данные для входа (эл. почта, телефон, пароль/PIN)",
+  "excluirContaItemContatos": "Ваши зарегистрированные контакты для экстренной связи",
+  "excluirContaItemHistorico": "История ваших оповещений, местоположений и отправленных фотографий",
+  "excluirContaItemMonitoramento": "Ваши связи мониторинга между членами семьи",
+  "excluirContaBotaoExcluir": "Удалить мой аккаунт и все мои данные",
+  "excluirContaDialogTitulo": "Вы уверены?",
+  "excluirContaDialogConteudo": "После подтверждения PIN-кодом этот процесс невозможно отменить. Хотите продолжить?",
+  "excluirContaSemPinTitulo": "Сначала настройте PIN-код",
+  "excluirContaSemPinConteudo": "В целях безопасности удаление аккаунта требует подтверждения PIN-кодом. Настройте PIN-код на вкладке Безопасность, прежде чем продолжить.",
+  "excluirContaProcessando": "Удаление вашего аккаунта и данных...",
+  "excluirContaSucessoMensagem": "Ваш аккаунт был успешно удалён.",
+  "excluirContaErroMensagem": "Не удалось удалить ваш аккаунт сейчас. Проверьте соединение и попробуйте снова, либо обратитесь в поддержку."
 }

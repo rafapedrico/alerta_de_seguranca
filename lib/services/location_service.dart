@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'firebase_sync_service.dart';
+import 'l10n_headless_service.dart';
 
 /// Serviço centralizado de geolocalização proativa.
 ///
@@ -236,7 +237,8 @@ class LocationService {
     }
 
     if (posicao == null) {
-      return 'Não foi possível obter a localização atual do aparelho.';
+      final l10n = await L10nHeadlessService.obter();
+      return l10n.smsLocalizacaoIndisponivelFalha;
     }
 
     return _formatarPosicao(posicao);
