@@ -1,6 +1,8 @@
 package com.example.security_check_app
 
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,6 +14,13 @@ import io.flutter.plugin.common.MethodChannel
  * no lado Dart. */
 private const val CANAL_SOLICITACAO_MONITORAMENTO =
     "com.example.security_check_app/solicitacao_monitoramento"
+
+/** Canal dedicado a consultas NATIVAS e 100% silenciosas de permissões que
+ * não têm equivalente síncrono/sem-navegação nos plugins Flutter em uso
+ * (ver [podeUsarTelaCheiaNativo] — `NotificacaoService.podeUsarTelaCheia`
+ * no lado Dart). */
+private const val CANAL_PERMISSOES_NATIVAS =
+    "com.example.security_check_app/permissoes_nativas"
 
 open class MainActivity: FlutterActivity() {
 
@@ -57,6 +66,38 @@ open class MainActivity: FlutterActivity() {
             }
         }
         canalSolicitacaoMonitoramento = canal
+
+        // BUG REAL CORRIGIDO (relatado pelo usuário em teste físico,
+        // 2026-08-16): a tela "Status de Permissões" mostrava "Alertas em
+        // tela cheia" como Concedida logo após tocar em "Conceder", mas
+        // voltava a "Pendente" ao reabrir a tela ou reiniciar o app — o
+        // Dart nunca tinha como reconsultar o status real dessa permissão
+        // (`flutter_local_notifications` só expõe `request...()`, que
+        // pede/navega, nunca uma checagem silenciosa isolada). Este canal
+        // consulta a API nativa do Android diretamente
+        // (`NotificationManager.canUseFullScreenIntent()`, só existe a
+        // partir da API 34/Android 14), sem qualquer navegação/prompt.
+        val canalPermissoes =
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CANAL_PERMISSOES_NATIVAS)
+        canalPermissoes.setMethodCallHandler { call, result ->
+            if (call.method == "podeUsarTelaCheia") {
+                result.success(podeUsarTelaCheiaNativo())
+            } else {
+                result.notImplemented()
+            }
+        }
+    }
+
+    /** Checagem 100% silenciosa (sem navegar para Configurações nem
+     * exibir nenhum prompt) de `USE_FULL_SCREEN_INTENT`. Em versões
+     * anteriores ao Android 14 essa restrição nem existe — a permissão é
+     * implicitamente concedida a qualquer app, então sempre retorna
+     * `true` nesse caso (mesmo fallback permissivo já usado no restante
+     * do app para versões antigas do Android). */
+    private fun podeUsarTelaCheiaNativo(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        val manager = getSystemService(NotificationManager::class.java) ?: return true
+        return manager.canUseFullScreenIntent()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

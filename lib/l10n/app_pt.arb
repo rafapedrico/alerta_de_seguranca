@@ -196,7 +196,7 @@
   "familiaContatosEmergenciaTitulo": "Contatos de Emergência",
   "familiaContatosEmergenciaDescricao": "Estes contatos recebem os alertas de emergência. Gerencie-os na aba Configurações.",
   "familiaNenhumContato": "Nenhum contato de emergência cadastrado ainda.",
-  "familiaRemovendoEm24h": "Removendo em 24h...",
+  "familiaRemovendoEmCarencia": "Removendo em 2h...",
   "familiaSemNome": "Sem nome",
   "familiaReativadoComSucesso": "{etiqueta} ({horario}) reativado com sucesso.",
   "@familiaReativadoComSucesso": {
@@ -329,7 +329,7 @@
       }
     }
   },
-  "contatoRemocaoSolicitada": "⏳ Solicitação recebida. {nome} será removido em 24 horas.",
+  "contatoRemocaoSolicitada": "⏳ Solicitação recebida. {nome} será removido em 2 horas.",
   "@contatoRemocaoSolicitada": {
     "placeholders": {
       "nome": {
@@ -338,7 +338,7 @@
     }
   },
   "contatoApagarConfirmacaoTitulo": "Apagar contato",
-  "contatoApagarConfirmacaoMensagem": "Se aprovada a efetivação será concluída em 24h00",
+  "contatoApagarConfirmacaoMensagem": "Se aprovada a efetivação será concluída em 2h00",
   "historicoLatitudeLabel": "Latitude",
   "historicoLongitudeLabel": "Longitude",
   "permissaoSmsTitulo": "Permissão de SMS de emergência",
@@ -356,11 +356,11 @@
   "pinInformarObrigatorio": "Informe o PIN",
   "pinDeveTer4Digitos": "Deve ter exatamente 4 dígitos",
   "pinApenasNumeros": "Apenas números",
-  "pinNovaSenhaPendente": "⏳ Nova senha pendente (aguardando 24h para ativar)",
+  "pinNovaSenhaPendente": "⏳ Nova senha pendente (aguardando 2h para ativar)",
   "pinDefinido": "✅ Definido",
   "pinNaoDefinido": "⚠️ Não definido",
   "pinDefinidoComSucesso": "🔒 PIN definido com sucesso!",
-  "pinNovaSenhaEmVigor24h": "🔒 Solicitação recebida. A nova senha entrará em vigor em 24 horas.",
+  "pinNovaSenhaEmVigorCarencia": "🔒 Solicitação recebida. A nova senha entrará em vigor em 2 horas.",
   "alterarPlanoFundo": "Alterar Plano de Fundo",
   "planoFundoAlterado": "🎨 Plano de fundo alterado!",
   "planoFundoPadrao": "Luz Clássica (padrão)",
@@ -463,7 +463,6 @@
   "dashboardPlanoPremiumDescricao": "Clique aqui e conheça os benefícios Premium.",
   "dashboardFaqTitulo": "Perguntas Frequentes",
   "dashboardCentralAtendimentoTitulo": "Central de Atendimento ao Cliente",
-  "dashboardAvisoGarantiaCancelamento": "Em caso de cancelamento do plano Premium nos primeiros 15 dias, receba 50% do valor pago sem burocracia.",
   "faqAppBarTitulo": "Perguntas Frequentes (FAQ)",
   "faqTooltipInicio": "Início",
   "faqBuscaHint": "Buscar em perguntas e respostas...",
@@ -505,7 +504,7 @@
   "termosContratoTitulo6": "6. Planos, preços e pagamentos",
   "termosContratoCorpo6": "O Plano Free libera todas as funções Premium por até 10 (dez) dias a cada mês, com os demais dias sujeitos aos limites do plano gratuito. O Plano Premium tem o valor exibido no aplicativo no momento da assinatura, cobrado mensalmente, com acesso ilimitado a todas as funções do aplicativo. Assinaturas do Plano Premium são processadas exclusivamente pelas plataformas Google Play Store e Apple App Store, sujeitas às respectivas políticas de cobrança, reembolso e proteção ao consumidor dessas plataformas — a RMF Global não recebe nem processa pagamentos diretamente.",
   "termosContratoTitulo7": "7. Cancelamento e reembolso",
-  "termosContratoCorpo7": "Em caso de cancelamento do Plano Premium dentro dos primeiros 15 (quinze) dias a partir da contratação, o usuário recebe de volta 50% (cinquenta por cento) do valor pago, sem burocracia, respeitadas as políticas de reembolso da Google Play Store ou da Apple App Store, conforme a plataforma utilizada na assinatura.",
+  "termosContratoCorpo7": "O cancelamento do Plano Premium e eventuais reembolsos seguem estritamente as políticas oficiais da Google Play Store ou da Apple App Store, conforme a plataforma utilizada na assinatura — a RMF Global não processa cancelamentos nem reembolsos diretamente.",
   "termosContratoTitulo8": "8. Atendimento ao Consumidor (SAC)",
   "termosContratoCorpo8": "O atendimento ao consumidor é feito pelo WhatsApp — o botão de contato na Tela de Início abre uma conversa direta com a nossa equipe de suporte. Solicitações de atendimento humano seguem as normas da política estabelecida pela RMF Global, sendo que os usuários do Plano Premium têm exclusividade nesse atendimento humano em um prazo de até 48 (quarenta e oito) horas.",
   "termosContratoTitulo9": "9. Consentimento livre, inequívoco e revogação",
@@ -656,7 +655,7 @@
     }
   },
   "historicoContatoExclusaoSolicitadaTitulo": "Exclusão de contato solicitada",
-  "historicoContatoExclusaoSolicitadaDescricao": "{nome} terá a remoção efetivada em até 24 horas.",
+  "historicoContatoExclusaoSolicitadaDescricao": "{nome} terá a remoção efetivada em até 2 horas.",
   "@historicoContatoExclusaoSolicitadaDescricao": {
     "placeholders": {
       "nome": {
@@ -667,7 +666,7 @@
   "historicoPinDefinidoTitulo": "PIN de acesso definido",
   "historicoPinDefinidoDescricao": "PIN de acesso cadastrado e ativado imediatamente (primeiro cadastro, sem carência de segurança).",
   "historicoPinAlteracaoSolicitadaTitulo": "Alteração de PIN solicitada",
-  "historicoPinAlteracaoSolicitadaDescricao": "Nova senha de acesso pendente, entrará em vigor em 24 horas.",
+  "historicoPinAlteracaoSolicitadaDescricao": "Nova senha de acesso pendente, entrará em vigor em 2 horas.",
   "historicoPlanoFundoAlteradoTitulo": "Plano de fundo alterado",
   "historicoPlanoFundoAlteradoDescricao": "Novo plano de fundo selecionado: {nome}.",
   "@historicoPlanoFundoAlteradoDescricao": {
@@ -967,7 +966,7 @@
   "loginLimparSessaoConfirmacao": "Sessão de login social limpa. Tente entrar novamente.",
   "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login.",
   "onboardingTitulo": "Configuração de Segurança",
-  "onboardingIntroducao": "Para que o botão de pânico e os alertas funcionem de forma confiável, mesmo com a tela bloqueada, conceda as permissões abaixo. Você pode revisar tudo depois em Configurações.",
+  "onboardingIntroducao": "Para que o botão de pânico e os alertas funcionem de forma confiável, mesmo com a tela bloqueada, conceda as permissões abaixo. Você pode editar estas permissões a qualquer momento nas configurações do sistema operacional do aparelho.",
   "onboardingBadgeEssencial": "Essencial",
   "onboardingBadgeRecomendado": "Recomendado",
   "onboardingStatusConcedida": "Concedida",
@@ -982,5 +981,27 @@
   "onboardingCameraTitulo": "Acesso à câmera",
   "onboardingCameraConteudo": "Usada só no botão de pânico, para anexar uma foto do local ao alerta enviado aos seus contatos de emergência.",
   "onboardingTelaCheiaTitulo": "Alertas em tela cheia",
-  "onboardingTelaCheiaConteudo": "Permite que um alerta recebido de um contato acorde a tela e apareça por cima da tela bloqueada, como uma chamada."
+  "onboardingTelaCheiaConteudo": "Permite que um alerta recebido de um contato acorde a tela e apareça por cima da tela bloqueada, como uma chamada.",
+  "statusPermissoesTitulo": "Status de Permissões",
+  "statusPermissoesSubtitulo": "Veja o que está concedido e solicite novamente o que faltar",
+  "statusPermissoesIntroducao": "Acompanhe em tempo real quais permissões o Guardião X já tem no seu aparelho. Você pode solicitar novamente qualquer permissão pendente ou abrir as configurações nativas do sistema a qualquer momento.",
+  "excluirContaTitulo": "Excluir Conta e Dados",
+  "excluirContaSubtitulo": "Exclusão definitiva da sua conta e dos seus dados",
+  "excluirContaAvisoPrincipal": "Esta ação exclui permanentemente sua conta, seus contatos de emergência, seu histórico de alertas, localizações e fotografias salvas na nuvem. Não é possível desfazer esta ação.",
+  "excluirContaAvisoRescisaoContrato": "Ao confirmar esta exclusão, você declara ciência de que este ato extingue integralmente o Contrato de Consentimento e Termos de Uso firmado com a RMF Global LTDA, encerrando de forma imediata e definitiva a prestação do serviço e todas as obrigações mútuas entre você e a RMF Global.",
+  "excluirContaAvisoAssinatura": "Se você tiver uma assinatura do Plano Premium ativa, cancele-a separadamente na Google Play Store ou na Apple App Store — a exclusão da conta não cancela a cobrança automaticamente.",
+  "excluirContaBotaoGerenciarAssinatura": "Gerenciar / Cancelar Assinatura na Loja",
+  "excluirContaListaTitulo": "O que será excluído:",
+  "excluirContaItemConta": "Seu cadastro e seus dados de login (e-mail, telefone, senha/PIN)",
+  "excluirContaItemContatos": "Seus contatos de emergência cadastrados",
+  "excluirContaItemHistorico": "Seu histórico de alertas, localizações e fotografias enviadas",
+  "excluirContaItemMonitoramento": "Seus vínculos de monitoramento entre familiares",
+  "excluirContaBotaoExcluir": "Excluir minha conta e todos os meus dados",
+  "excluirContaDialogTitulo": "Tem certeza?",
+  "excluirContaDialogConteudo": "Depois de confirmado com o seu PIN, este processo não pode ser desfeito. Deseja continuar?",
+  "excluirContaSemPinTitulo": "Configure um PIN primeiro",
+  "excluirContaSemPinConteudo": "Por segurança, a exclusão da conta exige a confirmação do seu PIN. Configure um PIN na aba Segurança antes de continuar.",
+  "excluirContaProcessando": "Excluindo sua conta e seus dados...",
+  "excluirContaSucessoMensagem": "Sua conta foi excluída com sucesso.",
+  "excluirContaErroMensagem": "Não foi possível excluir sua conta agora. Verifique sua conexão e tente novamente, ou entre em contato com o suporte."
 }

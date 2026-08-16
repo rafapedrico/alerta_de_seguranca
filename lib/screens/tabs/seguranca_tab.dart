@@ -202,7 +202,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         setState(() {
           _pinRealConfirmado = config['pin_real'] as String?;
         });
-        // Verifica se o prazo de segurança de 24h já expirou, e caso
+        // Verifica se o prazo de segurança de 2h já expirou, e caso
         // afirmativo, efetiva a troca de senha pendente automaticamente.
         await _processarSenhaPendenteSeExpirada();
       }
@@ -210,7 +210,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
   }
 
   /// Verifica se existe uma senha pendente e se o prazo de segurança de
-  /// 24 horas desde a solicitação já se passou. Se sim, promove a senha
+  /// 2 horas desde a solicitação já se passou. Se sim, promove a senha
   /// pendente para senha principal (pin_real) e limpa os campos temporários.
   /// Caso contrário, mantém a senha antiga como válida para autenticação.
   ///
@@ -228,7 +228,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
         });
       }
     }
-    // Se ainda não passaram 24h, nada é feito: a senha antiga
+    // Se ainda não passaram 2h, nada é feito: a senha antiga
     // (_pinRealConfirmado) continua sendo a única válida para autenticação.
   }
 

@@ -127,5 +127,14 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    match /contas_excluidas/{usuarioId} {
+      // Marcador PERMANENTE de revogação, gravado exclusivamente pela
+      // Cloud Function `excluirContaCompleta` (Admin SDK, ignora estas
+      // regras) — ver exclusaoContaService.js. Nunca acessível ao
+      // cliente, nem para o próprio ex-titular (que, a essa altura, nem
+      // tem mais uma sessão autenticada válida).
+      allow read, write: if false;
+    }
   }
 }

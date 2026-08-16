@@ -354,7 +354,7 @@ class FirebaseSyncService {
   /// [contatos] deve vir diretamente de
   /// `DatabaseHelper.getContatosEmergencia()`, preservando o mesmo
   /// critério já usado pelo SMS nativo (inclui contatos com exclusão
-  /// pendente dentro da janela de 24h, filtra apenas telefones vazios).
+  /// pendente dentro da janela de 2h, filtra apenas telefones vazios).
   Future<void> sincronizarContatosEmergencia(
     List<Map<String, dynamic>> contatos,
   ) async {

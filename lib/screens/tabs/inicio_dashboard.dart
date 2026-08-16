@@ -200,22 +200,6 @@ class InicioDashboard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          // Item 5: aviso de garantia de cancelamento do Premium nos
-          // primeiros 15 dias.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.verified_outlined, size: 14, color: Colors.white38),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.dashboardAvisoGarantiaCancelamento,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

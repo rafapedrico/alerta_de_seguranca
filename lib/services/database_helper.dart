@@ -84,7 +84,7 @@ class DatabaseHelper {
     // aos contatos de emergência da aba Família (até 3 contatos), com
     // integração via Agenda do celular (flutter_contacts).
     // Colunas exclusao_pendente/timestamp_solicitacao implementam a trava
-    // de segurança de 24h antes da remoção definitiva de um contato.
+    // de segurança de 2h antes da remoção definitiva de um contato.
     await db.execute('''
       CREATE TABLE contatos_emergencia (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,7 +210,7 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE user_config ADD COLUMN plano_de_fundo_url TEXT');
     }
     // Migration from v2 to v3: add senha_pendente e timestamp_alteracao_senha
-    // (regra de segurança de 24h para troca de senha)
+    // (regra de segurança de 2h para troca de senha)
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE user_config ADD COLUMN senha_pendente TEXT');
       await db.execute('ALTER TABLE user_config ADD COLUMN timestamp_alteracao_senha TEXT');
@@ -226,7 +226,7 @@ class DatabaseHelper {
         )
       ''');
     }
-    // Migration from v4 to v5: adiciona a trava de segurança de 24h para
+    // Migration from v4 to v5: adiciona a trava de segurança de 2h para
     // exclusão de contatos de emergência (exclusao_pendente/timestamp_solicitacao).
     if (oldVersion < 5) {
       await db.execute(
@@ -545,12 +545,12 @@ class DatabaseHelper {
   // 1) Primeiro acesso (nenhum PIN cadastrado ainda): o PIN informado é
   //    efetivado INSTANTANEAMENTE em 'pin_real', sem qualquer carência.
   // 2) Alteração de um PIN já existente: a nova senha fica pendente por
-  //    24 horas ('senha_pendente' + 'timestamp_alteracao_senha'),
+  //    2 horas ('senha_pendente' + 'timestamp_alteracao_senha'),
   //    mantendo o PIN atual válido até que o prazo de segurança se
   //    cumpra.
   //
   // Retorna `true` se o PIN foi efetivado instantaneamente (primeiro
-  // cadastro), ou `false` se ficou pendente por 24h (alteração).
+  // cadastro), ou `false` se ficou pendente por 2h (alteração).
   Future<bool> salvarOuAgendarPinReal(int userConfigId, String novoPin) async {
     final config = await getUserConfig();
     final String? pinAtual = config?['pin_real'] as String?;
@@ -568,7 +568,7 @@ class DatabaseHelper {
       return true;
     }
 
-    // Regra 2: já existe um PIN ativo — aplica a carência de 24h.
+    // Regra 2: já existe um PIN ativo — aplica a carência de 2h.
     final agora = DateTime.now().millisecondsSinceEpoch.toString();
     await updateUserConfig({
       'id': userConfigId,
@@ -581,8 +581,8 @@ class DatabaseHelper {
   // ==========================================
   // EFETIVAÇÃO CENTRALIZADA DA SENHA PENDENTE
   // ==========================================
-  // Regra de segurança de 24h para ALTERAÇÃO de PIN (regra 2 acima): a
-  // verificação "já passaram 24h desde a solicitação? então promove a
+  // Regra de segurança de 2h para ALTERAÇÃO de PIN (regra 2 acima): a
+  // verificação "já passaram 2h desde a solicitação? então promove a
   // senha_pendente para pin_real" precisa ser executada de forma
   // consistente independente de qual tela o usuário abrir primeiro
   // (Segurança, Configurações, ou logo no cold start do app). Por isso
@@ -593,7 +593,7 @@ class DatabaseHelper {
   //
   // Retorna `true` se uma senha pendente foi efetivada nesta chamada
   // (promovida a pin_real), ou `false` caso não houvesse nada pendente ou
-  // o prazo de 24h ainda não tenha se cumprido.
+  // o prazo de 2h ainda não tenha se cumprido.
   Future<bool> processarSenhaPendenteSeExpirada() async {
     final config = await getUserConfig();
     if (config == null) return false;
@@ -607,7 +607,7 @@ class DatabaseHelper {
 
     final agora = DateTime.now().millisecondsSinceEpoch;
     final decorrido = agora - timestampSolicitacao;
-    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+    const prazoSegurancaMs = 7200000; // 2 horas em milissegundos
 
     if (decorrido < prazoSegurancaMs) {
       // Ainda dentro da carência: o PIN atual continua sendo o único válido.
@@ -674,14 +674,14 @@ class DatabaseHelper {
   }
 
   /// Remove um contato de emergência pelo id (exclusão IMEDIATA/definitiva).
-  /// Usado apenas internamente após o prazo de segurança de 24h ter expirado.
+  /// Usado apenas internamente após o prazo de segurança de 2h ter expirado.
   Future<int> deletarContatoEmergencia(int id) async {
     final db = await database;
     return await db.delete('contatos_emergencia', where: 'id = ?', whereArgs: [id]);
   }
 
   /// Marca um contato de emergência como "exclusão pendente", iniciando a
-  /// trava de segurança de 24h. O contato NÃO é removido imediatamente,
+  /// trava de segurança de 2h. O contato NÃO é removido imediatamente,
   /// apenas sinalizado com o timestamp da solicitação. Continua sendo
   /// retornado normalmente por getContatosEmergencia() (e portanto ainda
   /// recebe alertas de emergência) até que o prazo expire.
@@ -700,11 +700,11 @@ class DatabaseHelper {
   }
 
   /// Verifica todos os contatos com exclusão pendente e remove
-  /// definitivamente aqueles cujo prazo de segurança de 24 horas já
+  /// definitivamente aqueles cujo prazo de segurança de 2 horas já
   /// tenha expirado desde a solicitação.
   Future<void> processarExclusoesPendentesExpiradas() async {
     final db = await database;
-    const prazoSegurancaMs = 86400000; // 24 horas em milissegundos
+    const prazoSegurancaMs = 7200000; // 2 horas em milissegundos
     final agora = DateTime.now().millisecondsSinceEpoch;
 
     final pendentes = await db.query(
@@ -1052,7 +1052,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
   // 'pin_real', 'senha_pendente' e 'timestamp_alteracao_senha', forçando
   // o aplicativo a voltar ao estado de "Primeiro Acesso" (sem PIN
   // cadastrado), permitindo cadastrar uma nova senha instantaneamente,
-  // sem a carência de 24h. REMOVER antes de qualquer build de produção.
+  // sem a carência de 2h. REMOVER antes de qualquer build de produção.
   Future<void> debugResetarSenhaParaPrimeiroAcesso() async {
     final db = await database;
     await db.rawUpdate('''
@@ -1248,7 +1248,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
   }
 
   /// Remove definitivamente um contato de monitoramento pelo id. Exclusão
-  /// IMEDIATA (sem trava de 24h, diferente de contatos_emergencia) — não
+  /// IMEDIATA (sem trava de 2h, diferente de contatos_emergencia) — não
   /// revoga, por si só, nenhuma permissão já concedida no Firestore.
   Future<int> deletarContatoMonitoramento(int id) async {
     final db = await database;
@@ -1435,6 +1435,40 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       'UPDATE fila_retry_upload_sos SET tentativas = tentativas + 1 WHERE id = ?',
       [id],
     );
+  }
+
+  /// Apaga TODAS as linhas de TODAS as tabelas locais — usado
+  /// exclusivamente pelo fluxo de "Excluir Conta e Dados"
+  /// (ver `ExclusaoContaService`), nunca por um logout comum (que
+  /// deliberadamente preserva os dados locais para um possível novo
+  /// login no mesmo aparelho). Diferente de apagar o arquivo do banco
+  /// inteiro, `DELETE FROM` em cada tabela mantém o schema intacto (sem
+  /// precisar fechar/reabrir a conexão já em uso pelo resto do app) e é
+  /// suficiente, já que a conta associada a esses dados deixará de
+  /// existir no Firebase Auth logo em seguida.
+  ///
+  /// Cada tabela é apagada isoladamente, protegida por try/catch: uma
+  /// falha isolada (ex: tabela ainda não migrada nesta instalação) nunca
+  /// deve impedir a limpeza das demais.
+  Future<void> apagarTudoLocal() async {
+    final db = await database;
+    const tabelas = [
+      'user_config',
+      'contacts',
+      'contatos_emergencia',
+      'historico',
+      'alarmes_rotina',
+      'monitoramento_contatos',
+      'alertas_terceiros_recebidos',
+      'fila_retry_upload_sos',
+    ];
+    for (final tabela in tabelas) {
+      try {
+        await db.delete(tabela);
+      } catch (e) {
+        debugPrint('⚠️ [DatabaseHelper] Falha ao limpar a tabela "$tabela": $e');
+      }
+    }
   }
 }
 

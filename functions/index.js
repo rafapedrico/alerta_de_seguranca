@@ -206,3 +206,12 @@ exports.definirBloqueioSolicitante =
 // resposta (ver monitoramentoExpiracaoMonitor.js).
 exports.monitorarExpiracaoMonitoramento =
   require("./monitoramentoExpiracaoMonitor").monitorarExpiracaoMonitoramento;
+
+// Configurações > Minha Conta > Excluir Conta e Dados (ver
+// exclusaoContaService.js): apaga Firestore + Storage + o registro no
+// Firebase Authentication do usuário autenticado, com Admin SDK (única
+// forma de contornar tanto `firestore.rules` — que nega `delete` ao
+// cliente de propósito — quanto a exigência de reautenticação recente do
+// SDK cliente do Auth).
+exports.excluirContaCompleta =
+  require("./exclusaoContaService").excluirContaCompleta;

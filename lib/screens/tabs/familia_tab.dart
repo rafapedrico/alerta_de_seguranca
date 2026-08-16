@@ -1078,7 +1078,7 @@ Widget _construirListaAlarmes() {
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                             ),
                             Text(
-                              pendente ? AppLocalizations.of(context)!.familiaRemovendoEm24h : telefone,
+                              pendente ? AppLocalizations.of(context)!.familiaRemovendoEmCarencia : telefone,
                               softWrap: true,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

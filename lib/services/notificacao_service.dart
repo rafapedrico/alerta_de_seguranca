@@ -254,6 +254,12 @@ class NotificacaoService {
   static const MethodChannel _canalAlertaRecebidoAlarme =
       MethodChannel('com.example.security_check_app/alerta_recebido_alarme');
 
+  /// Canal dedicado a consultas nativas 100% silenciosas sem equivalente
+  /// no `flutter_local_notifications`/`permission_handler` — ver
+  /// [podeUsarTelaCheia] e `MainActivity.kt`.
+  static const MethodChannel _canalPermissoesNativas =
+      MethodChannel('com.example.security_check_app/permissoes_nativas');
+
   /// Inicia o alarme sonoro contínuo em volume máximo — chamado junto com
   /// a notificação de tela cheia em [exibirNotificacaoAlertaRecebido].
   /// Protegido: uma falha aqui (ex: `MissingPluginException` no engine
@@ -590,12 +596,7 @@ class NotificacaoService {
   /// Solicita a permissão de notificação em tela cheia (`USE_FULL_SCREEN_INTENT`,
   /// só existe a partir do Android 14) — abre a tela nativa de
   /// Configurações se ainda não concedida; no-op imediato (retorna `true`)
-  /// em versões mais antigas ou se já concedida. Diferente de
-  /// [podeAgendarAlarmesExatos], não há um método NATIVO separado só de
-  /// checagem silenciosa para esta permissão específica (ver
-  /// `FlutterLocalNotificationsPlugin.java`) — por isso
-  /// `OnboardingScreen` só atualiza o status deste item DEPOIS do
-  /// usuário tocar em "Conceder" (nunca ao simples abrir a tela).
+  /// em versões mais antigas ou se já concedida.
   static Future<bool> solicitarPermissaoTelaCheia() async {
     try {
       final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
@@ -603,6 +604,33 @@ class NotificacaoService {
       return await implementacaoAndroid?.requestFullScreenIntentPermission() ?? true;
     } catch (e) {
       debugPrint('⚠️ [NotificacaoService] Falha ao solicitar permissão de tela cheia: $e');
+      return true;
+    }
+  }
+
+  /// Checagem NATIVA e 100% silenciosa (sem qualquer navegação/prompt) de
+  /// `USE_FULL_SCREEN_INTENT` — CORREÇÃO DE BUG REAL (relatado em teste
+  /// físico, 2026-08-16): antes desta checagem, `OnboardingScreen`/
+  /// `PermissoesStatusScreen` só sabiam o status desta permissão logo após
+  /// o usuário tocar em "Conceder" (valor nunca persistido nem
+  /// reconsultado) — ao reabrir a tela ou reiniciar o app, o item sempre
+  /// voltava a aparecer como "Pendente", mesmo já concedido de fato.
+  ///
+  /// O `flutter_local_notifications` só expõe um método que PEDE a
+  /// permissão (e pode navegar para Configurações), nunca um getter isolado
+  /// só de leitura — por isso esta consulta vai direto ao canal nativo
+  /// (`MainActivity.kt`), que chama `NotificationManager.canUseFullScreenIntent()`
+  /// (API 34+). Em versões anteriores ao Android 14, ou em qualquer falha
+  /// do canal, retorna `true`: a restrição nem existe nessas versões, e uma
+  /// falha técnica na checagem nunca deve fazer o item aparecer como
+  /// pendente indevidamente.
+  static Future<bool> podeUsarTelaCheia() async {
+    try {
+      final resultado =
+          await _canalPermissoesNativas.invokeMethod<bool>('podeUsarTelaCheia');
+      return resultado ?? true;
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao checar permissão de tela cheia: $e');
       return true;
     }
   }

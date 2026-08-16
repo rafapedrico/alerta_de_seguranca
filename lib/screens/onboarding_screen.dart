@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart' show openAppSettings
 import 'package:security_check_app/l10n/app_localizations.dart';
 
 import '../services/onboarding_service.dart';
+import '../widgets/permissao_status_card.dart';
 
 /// Assistente de Configuração Inicial — reespecificação do usuário
 /// (2026-08-16): exibido uma única vez, logo após o primeiro login bem
@@ -40,14 +41,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   StatusPermissaoOnboarding _notificacoes = StatusPermissaoOnboarding.pendente;
   StatusPermissaoOnboarding _localizacao = StatusPermissaoOnboarding.pendente;
   StatusPermissaoOnboarding _camera = StatusPermissaoOnboarding.pendente;
-
-  /// Diferente dos outros 4 itens, [_telaCheia] NUNCA é checado
-  /// automaticamente (nem no [initState], nem ao retomar o app) — ver
-  /// documentação completa em
-  /// `OnboardingService.solicitarTelaCheia`/`NotificacaoService.solicitarPermissaoTelaCheia`
-  /// sobre a ausência de um método nativo de checagem 100% silenciosa
-  /// para esta permissão específica. Só é atualizado depois do usuário
-  /// tocar em "Conceder" neste próprio card.
   StatusPermissaoOnboarding _telaCheia = StatusPermissaoOnboarding.pendente;
 
   bool _carregando = true;
@@ -83,6 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _service.statusNotificacoes(),
       _service.statusLocalizacao(),
       _service.statusCamera(),
+      _service.statusTelaCheia(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -90,6 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _notificacoes = resultados[1];
       _localizacao = resultados[2];
       _camera = resultados[3];
+      _telaCheia = resultados[4];
       _carregando = false;
     });
   }
@@ -128,12 +123,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _tocarTelaCheia() async {
-    final concedida = await _service.solicitarTelaCheia();
-    if (mounted) {
-      setState(() => _telaCheia = concedida
-          ? StatusPermissaoOnboarding.concedida
-          : StatusPermissaoOnboarding.pendente);
-    }
+    await _service.solicitarTelaCheia();
+    final novo = await _service.statusTelaCheia();
+    if (mounted) setState(() => _telaCheia = novo);
   }
 
   Future<void> _continuar() async {
@@ -174,8 +166,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             ),
                           ),
                           const SizedBox(height: 20),
-                          _buildCard(
-                            l10n: l10n,
+                          PermissaoStatusCard(
                             icone: Icons.notifications_active_rounded,
                             titulo: l10n.onboardingNotificacoesTitulo,
                             descricao: l10n.onboardingNotificacoesConteudo,
@@ -183,8 +174,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             status: _notificacoes,
                             aoConceder: _tocarNotificacoes,
                           ),
-                          _buildCard(
-                            l10n: l10n,
+                          PermissaoStatusCard(
                             icone: Icons.my_location_rounded,
                             titulo: l10n.onboardingLocalizacaoTitulo,
                             descricao: l10n.onboardingLocalizacaoConteudo,
@@ -196,8 +186,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                     ? openAppSettings
                                     : null,
                           ),
-                          _buildCard(
-                            l10n: l10n,
+                          PermissaoStatusCard(
                             icone: Icons.battery_saver_rounded,
                             titulo: l10n.permissaoBateriaTitulo,
                             descricao: l10n.permissaoBateriaConteudo,
@@ -205,8 +194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             status: _bateria,
                             aoConceder: _tocarBateria,
                           ),
-                          _buildCard(
-                            l10n: l10n,
+                          PermissaoStatusCard(
                             icone: Icons.camera_alt_rounded,
                             titulo: l10n.onboardingCameraTitulo,
                             descricao: l10n.onboardingCameraConteudo,
@@ -214,8 +202,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             status: _camera,
                             aoConceder: _tocarCamera,
                           ),
-                          _buildCard(
-                            l10n: l10n,
+                          PermissaoStatusCard(
                             icone: Icons.fullscreen_rounded,
                             titulo: l10n.onboardingTelaCheiaTitulo,
                             descricao: l10n.onboardingTelaCheiaConteudo,
@@ -271,139 +258,4 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _buildCard({
-    required AppLocalizations l10n,
-    required IconData icone,
-    required String titulo,
-    required String descricao,
-    required bool essencial,
-    required StatusPermissaoOnboarding status,
-    required VoidCallback aoConceder,
-    VoidCallback? aoAbrirConfiguracoes,
-  }) {
-    final concedida = status == StatusPermissaoOnboarding.concedida;
-    final Color corStatus;
-    final String textoStatus;
-    switch (status) {
-      case StatusPermissaoOnboarding.concedida:
-        corStatus = Colors.green.shade600;
-        textoStatus = l10n.onboardingStatusConcedida;
-        break;
-      case StatusPermissaoOnboarding.parcial:
-        corStatus = Colors.orange.shade700;
-        textoStatus = l10n.onboardingStatusPendente;
-        break;
-      case StatusPermissaoOnboarding.pendente:
-        corStatus = Colors.grey.shade600;
-        textoStatus = l10n.onboardingStatusPendente;
-        break;
-    }
-    final corDestaque = essencial ? Colors.red.shade400 : Colors.blue.shade400;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: corDestaque.withValues(alpha: 0.12),
-                child: Icon(icone, color: corDestaque),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      titulo,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                    ),
-                    _buildBadge(
-                      essencial ? l10n.onboardingBadgeEssencial : l10n.onboardingBadgeRecomendado,
-                      essencial,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            descricao,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.35),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                concedida ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                size: 17,
-                color: corStatus,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                textoStatus,
-                style: TextStyle(fontSize: 12.5, color: corStatus, fontWeight: FontWeight.w600),
-              ),
-              const Spacer(),
-              if (!concedida)
-                ElevatedButton(
-                  onPressed: aoConceder,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 13),
-                  ),
-                  child: Text(l10n.permissaoSmsPermitir),
-                ),
-            ],
-          ),
-          if (aoAbrirConfiguracoes != null) ...[
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: aoAbrirConfiguracoes,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  l10n.onboardingBotaoAbrirConfiguracoes,
-                  style: const TextStyle(fontSize: 12.5),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBadge(String texto, bool essencial) {
-    final cor = essencial ? Colors.red.shade400 : Colors.blue.shade400;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: cor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        texto,
-        style: TextStyle(fontSize: 10.5, color: cor, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
 }

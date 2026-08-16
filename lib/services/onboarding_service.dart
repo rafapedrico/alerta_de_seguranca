@@ -191,13 +191,18 @@ class OnboardingService {
   // ================================================================
   // ALERTAS EM TELA CHEIA (recomendada)
   // ================================================================
-  //
-  // Sem uma checagem NATIVA silenciosa separada (ver documentação em
-  // [NotificacaoService.solicitarPermissaoTelaCheia]), este item começa
-  // sempre como [StatusPermissaoOnboarding.pendente] na UI e só é
-  // reavaliado DEPOIS do usuário tocar em "Conceder" — nunca checado
-  // automaticamente ao abrir a tela, pra nunca arriscar navegar pra
-  // Configurações sem uma ação explícita do usuário.
+
+  /// CORREÇÃO DE BUG REAL (2026-08-16): antes, este item nunca era
+  /// checado ao abrir a tela (só reagia ao toque em "Conceder", sem
+  /// persistir nada) — agora reaproveita
+  /// [NotificacaoService.podeUsarTelaCheia], que consulta a API nativa do
+  /// Android diretamente e de forma 100% silenciosa, mantendo o status
+  /// real ao reabrir a tela ou reiniciar o app (mesmo padrão dos demais
+  /// itens desta classe).
+  Future<StatusPermissaoOnboarding> statusTelaCheia() async {
+    final concedida = await NotificacaoService.podeUsarTelaCheia();
+    return concedida ? StatusPermissaoOnboarding.concedida : StatusPermissaoOnboarding.pendente;
+  }
 
   Future<bool> solicitarTelaCheia() => NotificacaoService.solicitarPermissaoTelaCheia();
 }

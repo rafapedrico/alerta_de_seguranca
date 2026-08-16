@@ -15,7 +15,9 @@ import '../../services/localization_service.dart';
 import '../../services/battery_optimization_service.dart';
 import '../../services/sms_permission_service.dart';
 import '../../utils/telefone_utils.dart';
+import '../excluir_conta_screen.dart';
 import '../login_screen.dart';
+import '../permissoes_status_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 
@@ -280,7 +282,7 @@ Future<void> _selecionarSom(int? numero) async {
     setState(() => _carregandoContatos = true);
     try {
       // Antes de exibir a lista, remove definitivamente qualquer contato
-      // cuja trava de segurança de 24h já tenha expirado.
+      // cuja trava de segurança de 2h já tenha expirado.
       await _db.processarExclusoesPendentesExpiradas();
       final contatos = await _db.getContatosEmergencia();
       if (mounted) {
@@ -295,7 +297,7 @@ Future<void> _selecionarSom(int? numero) async {
   }
 
   /// Retorna true se o contato estiver marcado como "exclusão pendente"
-  /// (aguardando o prazo de segurança de 24h para remoção definitiva).
+  /// (aguardando o prazo de segurança de 2h para remoção definitiva).
   bool _isExclusaoPendente(Map<String, dynamic> contato) {
     final valor = contato['exclusao_pendente'];
     return valor == 1 || valor == true;
@@ -436,15 +438,15 @@ Future<void> _selecionarSom(int? numero) async {
 
 
   /// Solicita a exclusão de um contato de emergência, ativando a trava de
-  /// segurança de 24h. O contato NÃO é removido imediatamente: fica marcado
+  /// segurança de 2h. O contato NÃO é removido imediatamente: fica marcado
   /// como "exclusao_pendente" e continua recebendo alertas de emergência
-  /// normalmente até que o prazo de 24h expire.
+  /// normalmente até que o prazo de 2h expire.
   ///
   /// Exibe o modal de confirmação ("Apagar contato" / "Se aprovada a
-  /// efetivação será concluída em 24h00") ANTES de sequer iniciar a
-  /// contagem de 24h — o ícone de lixeira, sozinho, não deve mais
+  /// efetivação será concluída em 2h00") ANTES de sequer iniciar a
+  /// contagem de 2h — o ícone de lixeira, sozinho, não deve mais
   /// disparar a exclusão. Só ao tocar em "Confirmar" é que
-  /// [_excluirContato] (e, com ele, a trava de segurança de 24h) é
+  /// [_excluirContato] (e, com ele, a trava de segurança de 2h) é
   /// acionado; "Cancelar" ou fechar o diálogo não tem nenhum efeito.
   Future<void> _confirmarEExcluirContato(int id, String nome) async {
     final l10n = AppLocalizations.of(context)!;
@@ -485,7 +487,7 @@ Future<void> _selecionarSom(int? numero) async {
 
     // Registra no histórico ('familia') a solicitação de exclusão do
     // contato, deixando claro que a remoção definitiva ainda está sujeita
-    // à trava de segurança de 24h.
+    // à trava de segurança de 2h.
     if (mounted) {
       final l10n = AppLocalizations.of(context)!;
       await _db.inserirEventoHistorico(
@@ -499,7 +501,7 @@ Future<void> _selecionarSom(int? numero) async {
 
     // Notifica a aba Família (via ValueNotifier global) para que ela
     // recarregue automaticamente sua lista de contatos de emergência,
-    // refletindo imediatamente o estado "Removendo em 24h...".
+    // refletindo imediatamente o estado "Removendo em 2h...".
     ContatosEmergenciaService.notificarAlteracao();
 
     if (mounted) {
@@ -629,7 +631,7 @@ Future<void> _selecionarSom(int? numero) async {
     // 1) Primeiro cadastro (nenhum PIN ainda definido): o PIN é efetivado
     //    INSTANTANEAMENTE, sem qualquer carência.
     // 2) Alteração de um PIN já existente: a nova senha fica pendente por
-    //    24 horas, mantendo a senha atual intacta até o prazo se cumprir.
+    //    2 horas, mantendo a senha atual intacta até o prazo se cumprir.
     //
     // O método do DatabaseHelper decide qual dos dois casos se aplica e
     // retorna `true` quando a efetivação foi instantânea (primeiro
@@ -648,7 +650,7 @@ Future<void> _selecionarSom(int? numero) async {
         );
       } else {
         // Registra no histórico ('sistema') a solicitação de troca do PIN,
-        // deixando claro que a nova senha só entra em vigor após 24h.
+        // deixando claro que a nova senha só entra em vigor após 2h.
         await _db.inserirEventoHistorico(
           titulo: l10n.historicoPinAlteracaoSolicitadaTitulo,
           descricao: l10n.historicoPinAlteracaoSolicitadaDescricao,
@@ -664,7 +666,7 @@ Future<void> _selecionarSom(int? numero) async {
           content: Text(
             efetivadoInstantaneamente
                 ? AppLocalizations.of(context)!.pinDefinidoComSucesso
-                : AppLocalizations.of(context)!.pinNovaSenhaEmVigor24h,
+                : AppLocalizations.of(context)!.pinNovaSenhaEmVigorCarencia,
           ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
@@ -1180,7 +1182,7 @@ Future<void> _selecionarSom(int? numero) async {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  AppLocalizations.of(context)!.familiaRemovendoEm24h,
+                                  AppLocalizations.of(context)!.familiaRemovendoEmCarencia,
                                   softWrap: true,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -1517,6 +1519,55 @@ Future<void> _selecionarSom(int? numero) async {
             trailing: const Icon(Icons.edit),
             onTap: _editarTelefonePerfil,
           ),
+
+        const Divider(),
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.blue.shade50,
+            child: Icon(Icons.verified_user_outlined, color: Colors.blue.shade700),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.statusPermissoesTitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+          ),
+          subtitle: Text(
+            AppLocalizations.of(context)!.statusPermissoesSubtitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 12.5),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const PermissoesStatusScreen()),
+            );
+          },
+        ),
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.red.shade50,
+            child: Icon(Icons.delete_forever_outlined, color: Colors.red.shade700),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.excluirContaTitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          subtitle: Text(
+            AppLocalizations.of(context)!.excluirContaSubtitulo,
+            softWrap: true,
+            overflow: TextOverflow.clip,
+            style: const TextStyle(fontSize: 12.5),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ExcluirContaScreen()),
+            );
+          },
+        ),
 
         const Divider(),
         ListTile(
