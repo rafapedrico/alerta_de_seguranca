@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "验证邮件已重新发送。",
   "emailVerificacaoReenvioFalhou": "无法重新发送邮件，请稍后重试。",
   "meuPerfilTitulo": "我的资料",
-  "meuPerfilTelefoneTitulo": "联系电话",
-  "meuPerfilTelefoneDescricao": "供您的紧急联系人识别您的账户并接收警报。",
-  "meuPerfilTelefoneNaoCadastrado": "未登记电话号码 — 点击添加",
-  "meuPerfilTelefoneAtualizado": "电话号码更新成功。",
-  "meuPerfilFalhaAtualizarTelefone": "更新电话号码失败,请重试。",
+  "meuPerfilTelefoneTitulo": "我的联系电话",
+  "meuPerfilTelefoneNaoCadastrado": "未登记电话号码",
   "sairDaContaTitulo": "退出登录",
   "sairDaContaConfirmar": "退出",
   "alertaRecebidoTitulo": "收到安全警报",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "出于安全考虑，删除账户需要确认您的 PIN。请在继续之前，在安全选项卡中设置 PIN。",
   "excluirContaProcessando": "正在删除您的账户和数据…",
   "excluirContaSucessoMensagem": "您的账户已成功删除。",
-  "excluirContaErroMensagem": "目前无法删除您的账户。请检查网络连接后重试，或联系客服。"
+  "excluirContaErroMensagem": "目前无法删除您的账户。请检查网络连接后重试，或联系客服。",
+  "otpTitulo": "验证您的电话号码",
+  "otpIntroducao": "出于安全考虑，请在继续之前确认您的电话号码。该号码将用于让您的紧急联系人接收您的警报。",
+  "otpBotaoEnviarCodigo": "发送验证码",
+  "otpCodigoEnviadoPara": "我们已通过短信向 {numero} 发送了 6 位验证码。",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "验证码",
+  "otpBotaoVerificar": "验证",
+  "otpBotaoReenviarCodigo": "重新发送验证码",
+  "otpBotaoTrocarNumero": "更换号码",
+  "otpCodigoObrigatorio": "请输入短信中收到的验证码。",
+  "otpCodigoInvalido": "验证码无效。请输入短信中收到的 6 位数字。",
+  "otpErroCodigoIncorreto": "验证码错误。请检查后重试。",
+  "otpErroCodigoExpirado": "验证码已过期。点击「重新发送验证码」获取新验证码。",
+  "otpErroNumeroJaEmUso": "该号码已在其他 Guardião X 账户中验证过。请使用其他号码或联系客服。",
+  "otpErroGenerico": "目前无法完成验证。请检查网络连接后重试。",
+  "otpSucessoMensagem": "电话号码验证成功！"
 }

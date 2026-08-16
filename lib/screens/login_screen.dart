@@ -18,6 +18,7 @@ import '../services/notificacao_service.dart';
 import '../services/social_auth_service.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
 import 'cadastro_screen.dart';
+import 'verificacao_telefone_screen.dart';
 
 /// Provedores de login social suportados (ver [SocialAuthService]) — usado
 /// só para saber QUAL botão mostra o spinner de carregamento na
@@ -125,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // (`functions/index.js`) podia ler uma lista vazia/desatualizada e
       // não disparar o Push.
       if (!mounted) return;
-      await _finalizarLoginComSucesso();
+      await _finalizarLoginComSucesso(viaLoginSocial: false);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -172,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       if (!mounted) return;
-      await _finalizarLoginComSucesso();
+      await _finalizarLoginComSucesso(viaLoginSocial: true);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,38 +206,66 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Passos comuns pós-login bem-sucedido, compartilhados entre o login
-  /// por e-mail/senha ([_fazerLogin]) e os 3 sociais ([_fazerLoginSocial]):
-  /// inicializa o FCM, sincroniza os contatos de emergência locais com o
-  /// Firestore (ver comentário original em [_fazerLogin]), grava
-  /// nome/e-mail do login social em `usuarios/{uid}` (ver
-  /// [FirebaseSyncService.sincronizarPerfilSocial] — no-op inofensivo para
-  /// o login por e-mail/senha, que já grava isso via [CadastroScreen]) e
-  /// navega para o fluxo principal — passando primeiro pelo Assistente de
-  /// Configuração Inicial ([OnboardingScreen]), se ainda não concluído
-  /// nesta instalação (reespecificação do usuário, 2026-08-16: "logo após
-  /// o primeiro login").
-  Future<void> _finalizarLoginComSucesso() async {
+  /// por e-mail/senha ([_fazerLogin], `viaLoginSocial: false`) e os 3
+  /// sociais ([_fazerLoginSocial], `viaLoginSocial: true`): inicializa o
+  /// FCM, sincroniza os contatos de emergência locais com o Firestore
+  /// (ver comentário original em [_fazerLogin]), grava nome/e-mail do
+  /// login social em `usuarios/{uid}` (ver
+  /// [FirebaseSyncService.sincronizarPerfilSocial] — no-op inofensivo
+  /// para o login por e-mail/senha, que já grava isso via
+  /// [CadastroScreen]).
+  ///
+  /// REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): quando [viaLoginSocial] é
+  /// `true` E a conta ainda não tem `usuarios/{uid}.telefone` gravado
+  /// (nenhum dos 3 provedores sociais devolve telefone verificado por
+  /// padrão), o fluxo é OBRIGATORIAMENTE desviado para
+  /// [VerificacaoTelefoneScreen] (SMS OTP) ANTES de qualquer outra coisa
+  /// — inclusive antes do Assistente de Configuração Inicial. Só depois
+  /// do telefone verificado (ou já existente) é que
+  /// [_decidirProximaTelaAposLogin] decide entre Onboarding e o fluxo
+  /// principal.
+  Future<void> _finalizarLoginComSucesso({required bool viaLoginSocial}) async {
     unawaited(FcmService().inicializar());
     unawaited(ContatosEmergenciaService.sincronizarAgora());
     unawaited(FirebaseSyncService().sincronizarPerfilSocial(
       nome: FirebaseAuthService().usuarioAtual?.displayName,
       email: FirebaseAuthService().usuarioAtual?.email,
     ));
-    if (!mounted) return;
 
+    if (viaLoginSocial) {
+      final telefoneAtual = await FirebaseSyncService().obterTelefoneAtual();
+      final possuiTelefone = telefoneAtual != null && telefoneAtual.trim().isNotEmpty;
+      if (!possuiTelefone) {
+        appNavigatorKey.currentState?.pushReplacement(
+          MaterialPageRoute(
+            builder: (context) =>
+                VerificacaoTelefoneScreen(aoConcluir: _decidirProximaTelaAposLogin),
+          ),
+        );
+        return;
+      }
+    }
+
+    await _decidirProximaTelaAposLogin();
+  }
+
+  /// Decide entre o Assistente de Configuração Inicial
+  /// ([OnboardingScreen], se ainda não concluído nesta instalação — ver
+  /// [OnboardingService]) e o fluxo principal direto
+  /// ([_navegarParaFluxoPrincipal]). Extraído de [_finalizarLoginComSucesso]
+  /// para ser reutilizável como o callback `aoConcluir` de
+  /// [VerificacaoTelefoneScreen] — por isso usa [appNavigatorKey] (nunca
+  /// `Navigator.of(context)`/`mounted` desta State): quando chamado a
+  /// partir de lá (ou do próprio [OnboardingScreen] mais adiante),
+  /// `_LoginScreenState` já foi substituída/descartada havia muito tempo
+  /// (mesmo raciocínio já documentado em [_navegarParaFluxoPrincipal]).
+  Future<void> _decidirProximaTelaAposLogin() async {
     final onboardingConcluido = await OnboardingService().jaConcluido();
-    if (!mounted) return;
 
     if (onboardingConcluido) {
       _navegarParaFluxoPrincipal();
     } else {
-      // Substitui a PRÓPRIA LoginScreen (não empilha por cima) — igual ao
-      // padrão já usado por [_navegarParaFluxoPrincipal] — para que o
-      // botão "voltar" do sistema, no Assistente, nunca volte pra tela de
-      // login. `aoConcluir` é chamado pelo próprio Assistente ao tocar em
-      // "Continuar" (sempre disponível, mesmo com permissões pendentes —
-      // ver documentação completa em [OnboardingScreen]).
-      Navigator.of(context).pushReplacement(
+      appNavigatorKey.currentState?.pushReplacement(
         MaterialPageRoute(
           builder: (context) => OnboardingScreen(aoConcluir: _navegarParaFluxoPrincipal),
         ),

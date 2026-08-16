@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "Bestätigungs-E-Mail erneut gesendet.",
   "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
   "meuPerfilTitulo": "Mein Profil",
-  "meuPerfilTelefoneTitulo": "Kontakttelefon",
-  "meuPerfilTelefoneDescricao": "Wird von Ihren Notfallkontakten verwendet, um Ihr Konto zu identifizieren und Warnungen zu erhalten.",
-  "meuPerfilTelefoneNaoCadastrado": "Keine Telefonnummer registriert — zum Hinzufügen tippen",
-  "meuPerfilTelefoneAtualizado": "Telefonnummer erfolgreich aktualisiert.",
-  "meuPerfilFalhaAtualizarTelefone": "Fehler beim Aktualisieren der Telefonnummer. Versuchen Sie es erneut.",
+  "meuPerfilTelefoneTitulo": "Meine Kontakttelefonnummer",
+  "meuPerfilTelefoneNaoCadastrado": "Keine Telefonnummer registriert",
   "sairDaContaTitulo": "Abmelden",
   "sairDaContaConfirmar": "Abmelden",
   "alertaRecebidoTitulo": "Sicherheitswarnung erhalten",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "Aus Sicherheitsgründen erfordert das Löschen des Kontos die Bestätigung Ihrer PIN. Richten Sie eine PIN im Tab Sicherheit ein, bevor Sie fortfahren.",
   "excluirContaProcessando": "Ihr Konto und Ihre Daten werden gelöscht...",
   "excluirContaSucessoMensagem": "Ihr Konto wurde erfolgreich gelöscht.",
-  "excluirContaErroMensagem": "Ihr Konto konnte gerade nicht gelöscht werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut, oder wenden Sie sich an den Support."
+  "excluirContaErroMensagem": "Ihr Konto konnte gerade nicht gelöscht werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut, oder wenden Sie sich an den Support.",
+  "otpTitulo": "Bestätigen Sie Ihre Telefonnummer",
+  "otpIntroducao": "Bestätigen Sie aus Sicherheitsgründen Ihre Telefonnummer, bevor Sie fortfahren. Sie wird verwendet, damit Ihre Notfallkontakte Ihre Warnungen erhalten können.",
+  "otpBotaoEnviarCodigo": "Code senden",
+  "otpCodigoEnviadoPara": "Wir haben einen 6-stelligen Bestätigungscode per SMS an {numero} gesendet.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Bestätigungscode",
+  "otpBotaoVerificar": "Bestätigen",
+  "otpBotaoReenviarCodigo": "Code erneut senden",
+  "otpBotaoTrocarNumero": "Nummer ändern",
+  "otpCodigoObrigatorio": "Geben Sie den per SMS erhaltenen Code ein.",
+  "otpCodigoInvalido": "Ungültiger Code. Geben Sie die 6 per SMS erhaltenen Ziffern ein.",
+  "otpErroCodigoIncorreto": "Falscher Code. Überprüfen Sie ihn und versuchen Sie es erneut.",
+  "otpErroCodigoExpirado": "Der Code ist abgelaufen. Tippen Sie auf „Code erneut senden“, um einen neuen zu erhalten.",
+  "otpErroNumeroJaEmUso": "Diese Nummer ist bereits mit einem anderen Guardião-X-Konto verifiziert. Verwenden Sie eine andere Nummer oder wenden Sie sich an den Support.",
+  "otpErroGenerico": "Die Verifizierung konnte gerade nicht abgeschlossen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+  "otpSucessoMensagem": "Telefonnummer erfolgreich verifiziert!"
 }

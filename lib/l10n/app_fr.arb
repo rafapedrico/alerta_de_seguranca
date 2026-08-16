@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "E-mail de vérification renvoyé.",
   "emailVerificacaoReenvioFalhou": "Impossible de renvoyer l'e-mail. Veuillez réessayer plus tard.",
   "meuPerfilTitulo": "Mon Profil",
-  "meuPerfilTelefoneTitulo": "Téléphone de contact",
-  "meuPerfilTelefoneDescricao": "Utilisé par vos contacts d'urgence pour identifier votre compte et recevoir des alertes.",
-  "meuPerfilTelefoneNaoCadastrado": "Aucun téléphone enregistré — appuyez pour ajouter",
-  "meuPerfilTelefoneAtualizado": "Téléphone mis à jour avec succès.",
-  "meuPerfilFalhaAtualizarTelefone": "Échec de la mise à jour du téléphone. Réessayez.",
+  "meuPerfilTelefoneTitulo": "Mon numéro de contact",
+  "meuPerfilTelefoneNaoCadastrado": "Aucun téléphone enregistré",
   "sairDaContaTitulo": "Se déconnecter",
   "sairDaContaConfirmar": "Se déconnecter",
   "alertaRecebidoTitulo": "Alerte de sécurité reçue",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "Par sécurité, la suppression du compte exige la confirmation de votre PIN. Configurez un PIN dans l'onglet Sécurité avant de continuer.",
   "excluirContaProcessando": "Suppression de votre compte et de vos données...",
   "excluirContaSucessoMensagem": "Votre compte a été supprimé avec succès.",
-  "excluirContaErroMensagem": "Impossible de supprimer votre compte pour le moment. Vérifiez votre connexion et réessayez, ou contactez le support."
+  "excluirContaErroMensagem": "Impossible de supprimer votre compte pour le moment. Vérifiez votre connexion et réessayez, ou contactez le support.",
+  "otpTitulo": "Vérifiez votre numéro de téléphone",
+  "otpIntroducao": "Par sécurité, confirmez votre numéro de téléphone avant de continuer. Il sera utilisé pour que vos contacts d'urgence reçoivent vos alertes.",
+  "otpBotaoEnviarCodigo": "Envoyer le code",
+  "otpCodigoEnviadoPara": "Nous avons envoyé un code de vérification à 6 chiffres par SMS au {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Code de vérification",
+  "otpBotaoVerificar": "Vérifier",
+  "otpBotaoReenviarCodigo": "Renvoyer le code",
+  "otpBotaoTrocarNumero": "Changer de numéro",
+  "otpCodigoObrigatorio": "Saisissez le code reçu par SMS.",
+  "otpCodigoInvalido": "Code invalide. Saisissez les 6 chiffres reçus par SMS.",
+  "otpErroCodigoIncorreto": "Code incorrect. Vérifiez-le et réessayez.",
+  "otpErroCodigoExpirado": "Le code a expiré. Appuyez sur « Renvoyer le code » pour en recevoir un nouveau.",
+  "otpErroNumeroJaEmUso": "Ce numéro est déjà vérifié sur un autre compte Guardião X. Utilisez un autre numéro ou contactez le support.",
+  "otpErroGenerico": "Impossible de terminer la vérification pour le moment. Vérifiez votre connexion et réessayez.",
+  "otpSucessoMensagem": "Téléphone vérifié avec succès !"
 }

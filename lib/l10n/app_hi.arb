@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "सत्यापन ईमेल फिर से भेजा गया।",
   "emailVerificacaoReenvioFalhou": "ईमेल फिर से नहीं भेजा जा सका। कृपया बाद में पुनः प्रयास करें।",
   "meuPerfilTitulo": "मेरी प्रोफ़ाइल",
-  "meuPerfilTelefoneTitulo": "संपर्क फ़ोन नंबर",
-  "meuPerfilTelefoneDescricao": "आपके आपातकालीन संपर्कों द्वारा आपके खाते की पहचान करने और अलर्ट प्राप्त करने के लिए उपयोग किया जाता है।",
-  "meuPerfilTelefoneNaoCadastrado": "कोई फ़ोन नंबर दर्ज नहीं है — जोड़ने के लिए टैप करें",
-  "meuPerfilTelefoneAtualizado": "फ़ोन नंबर सफलतापूर्वक अपडेट किया गया।",
-  "meuPerfilFalhaAtualizarTelefone": "फ़ोन नंबर अपडेट करने में विफल। पुनः प्रयास करें।",
+  "meuPerfilTelefoneTitulo": "मेरा संपर्क फ़ोन नंबर",
+  "meuPerfilTelefoneNaoCadastrado": "कोई फ़ोन नंबर दर्ज नहीं है",
   "sairDaContaTitulo": "साइन आउट करें",
   "sairDaContaConfirmar": "साइन आउट करें",
   "alertaRecebidoTitulo": "सुरक्षा अलर्ट प्राप्त हुआ",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "सुरक्षा कारणों से, खाता हटाने के लिए आपके पिन की पुष्टि आवश्यक है। जारी रखने से पहले सुरक्षा टैब में एक पिन सेट करें।",
   "excluirContaProcessando": "आपका खाता और डेटा हटाया जा रहा है...",
   "excluirContaSucessoMensagem": "आपका खाता सफलतापूर्वक हटा दिया गया है।",
-  "excluirContaErroMensagem": "अभी आपका खाता नहीं हटाया जा सका। अपना कनेक्शन जाँचें और फिर से प्रयास करें, या सहायता से संपर्क करें।"
+  "excluirContaErroMensagem": "अभी आपका खाता नहीं हटाया जा सका। अपना कनेक्शन जाँचें और फिर से प्रयास करें, या सहायता से संपर्क करें।",
+  "otpTitulo": "अपना फ़ोन नंबर सत्यापित करें",
+  "otpIntroducao": "सुरक्षा के लिए, आगे बढ़ने से पहले अपना फ़ोन नंबर सत्यापित करें। इसका उपयोग यह सुनिश्चित करने के लिए किया जाएगा कि आपके आपातकालीन संपर्कों को आपके अलर्ट मिलें।",
+  "otpBotaoEnviarCodigo": "कोड भेजें",
+  "otpCodigoEnviadoPara": "हमने {numero} पर SMS द्वारा 6 अंकों का सत्यापन कोड भेजा है।",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "सत्यापन कोड",
+  "otpBotaoVerificar": "सत्यापित करें",
+  "otpBotaoReenviarCodigo": "कोड फिर से भेजें",
+  "otpBotaoTrocarNumero": "नंबर बदलें",
+  "otpCodigoObrigatorio": "SMS से प्राप्त कोड दर्ज करें।",
+  "otpCodigoInvalido": "अमान्य कोड। SMS से प्राप्त 6 अंक दर्ज करें।",
+  "otpErroCodigoIncorreto": "गलत कोड। जाँचें और फिर से प्रयास करें।",
+  "otpErroCodigoExpirado": "कोड की समय सीमा समाप्त हो गई। नया कोड पाने के लिए \"कोड फिर से भेजें\" पर टैप करें।",
+  "otpErroNumeroJaEmUso": "यह नंबर पहले से ही किसी अन्य Guardião X खाते में सत्यापित है। कोई दूसरा नंबर उपयोग करें या सहायता से संपर्क करें।",
+  "otpErroGenerico": "अभी सत्यापन पूरा नहीं हो सका। अपना कनेक्शन जाँचें और फिर से प्रयास करें।",
+  "otpSucessoMensagem": "फ़ोन सफलतापूर्वक सत्यापित हुआ!"
 }

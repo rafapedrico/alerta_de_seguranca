@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "E-mail di verifica inviata di nuovo.",
   "emailVerificacaoReenvioFalhou": "Impossibile reinviare l'e-mail. Riprova più tardi.",
   "meuPerfilTitulo": "Il Mio Profilo",
-  "meuPerfilTelefoneTitulo": "Telefono di contatto",
-  "meuPerfilTelefoneDescricao": "Usato dai tuoi contatti di emergenza per identificare il tuo account e ricevere avvisi.",
-  "meuPerfilTelefoneNaoCadastrado": "Nessun telefono registrato — tocca per aggiungere",
-  "meuPerfilTelefoneAtualizado": "Telefono aggiornato con successo.",
-  "meuPerfilFalhaAtualizarTelefone": "Impossibile aggiornare il telefono. Riprova.",
+  "meuPerfilTelefoneTitulo": "Il mio numero di contatto",
+  "meuPerfilTelefoneNaoCadastrado": "Nessun telefono registrato",
   "sairDaContaTitulo": "Esci",
   "sairDaContaConfirmar": "Esci",
   "alertaRecebidoTitulo": "Avviso di sicurezza ricevuto",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "Per sicurezza, l'eliminazione dell'account richiede la conferma del tuo PIN. Configura un PIN nella scheda Sicurezza prima di continuare.",
   "excluirContaProcessando": "Eliminazione del tuo account e dei tuoi dati...",
   "excluirContaSucessoMensagem": "Il tuo account è stato eliminato con successo.",
-  "excluirContaErroMensagem": "Non è stato possibile eliminare il tuo account in questo momento. Controlla la connessione e riprova, oppure contatta l'assistenza."
+  "excluirContaErroMensagem": "Non è stato possibile eliminare il tuo account in questo momento. Controlla la connessione e riprova, oppure contatta l'assistenza.",
+  "otpTitulo": "Verifica il tuo numero di telefono",
+  "otpIntroducao": "Per sicurezza, conferma il tuo numero di telefono prima di continuare. Sarà usato per far sì che i tuoi contatti di emergenza ricevano i tuoi avvisi.",
+  "otpBotaoEnviarCodigo": "Invia codice",
+  "otpCodigoEnviadoPara": "Abbiamo inviato un codice di verifica a 6 cifre via SMS a {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Codice di verifica",
+  "otpBotaoVerificar": "Verifica",
+  "otpBotaoReenviarCodigo": "Invia di nuovo il codice",
+  "otpBotaoTrocarNumero": "Cambia numero",
+  "otpCodigoObrigatorio": "Inserisci il codice ricevuto via SMS.",
+  "otpCodigoInvalido": "Codice non valido. Inserisci le 6 cifre ricevute via SMS.",
+  "otpErroCodigoIncorreto": "Codice errato. Controllalo e riprova.",
+  "otpErroCodigoExpirado": "Il codice è scaduto. Tocca \"Invia di nuovo il codice\" per riceverne uno nuovo.",
+  "otpErroNumeroJaEmUso": "Questo numero è già verificato su un altro account Guardião X. Usa un altro numero o contatta l'assistenza.",
+  "otpErroGenerico": "Non è stato possibile completare la verifica in questo momento. Controlla la connessione e riprova.",
+  "otpSucessoMensagem": "Telefono verificato con successo!"
 }

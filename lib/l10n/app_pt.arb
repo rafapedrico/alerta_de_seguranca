@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "E-mail de verificação reenviado.",
   "emailVerificacaoReenvioFalhou": "Não foi possível reenviar o e-mail. Tente novamente mais tarde.",
   "meuPerfilTitulo": "Meu Perfil",
-  "meuPerfilTelefoneTitulo": "Telefone de contato",
-  "meuPerfilTelefoneDescricao": "Usado pelos seus contatos de emergência para identificar sua conta e receber alertas.",
-  "meuPerfilTelefoneNaoCadastrado": "Nenhum telefone cadastrado — toque para adicionar",
-  "meuPerfilTelefoneAtualizado": "Telefone atualizado com sucesso.",
-  "meuPerfilFalhaAtualizarTelefone": "Falha ao atualizar o telefone. Tente novamente.",
+  "meuPerfilTelefoneTitulo": "Meu número de contato",
+  "meuPerfilTelefoneNaoCadastrado": "Nenhum telefone cadastrado",
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
@@ -1003,5 +1000,27 @@
   "excluirContaSemPinConteudo": "Por segurança, a exclusão da conta exige a confirmação do seu PIN. Configure um PIN na aba Segurança antes de continuar.",
   "excluirContaProcessando": "Excluindo sua conta e seus dados...",
   "excluirContaSucessoMensagem": "Sua conta foi excluída com sucesso.",
-  "excluirContaErroMensagem": "Não foi possível excluir sua conta agora. Verifique sua conexão e tente novamente, ou entre em contato com o suporte."
+  "excluirContaErroMensagem": "Não foi possível excluir sua conta agora. Verifique sua conexão e tente novamente, ou entre em contato com o suporte.",
+  "otpTitulo": "Verifique seu número de telefone",
+  "otpIntroducao": "Por segurança, confirme seu número de telefone antes de continuar. Ele será usado para que seus contatos de emergência recebam seus alertas.",
+  "otpBotaoEnviarCodigo": "Enviar código",
+  "otpCodigoEnviadoPara": "Enviamos um código de verificação de 6 dígitos por SMS para {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Código de verificação",
+  "otpBotaoVerificar": "Verificar",
+  "otpBotaoReenviarCodigo": "Reenviar código",
+  "otpBotaoTrocarNumero": "Trocar número",
+  "otpCodigoObrigatorio": "Digite o código recebido por SMS.",
+  "otpCodigoInvalido": "Código inválido. Digite os 6 dígitos recebidos por SMS.",
+  "otpErroCodigoIncorreto": "Código incorreto. Verifique e tente novamente.",
+  "otpErroCodigoExpirado": "O código expirou. Toque em \"Reenviar código\" para receber um novo.",
+  "otpErroNumeroJaEmUso": "Este número já está verificado em outra conta do Guardião X. Use outro número ou entre em contato com o suporte.",
+  "otpErroGenerico": "Não foi possível concluir a verificação agora. Verifique sua conexão e tente novamente.",
+  "otpSucessoMensagem": "Telefone verificado com sucesso!"
 }

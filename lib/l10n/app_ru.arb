@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "Письмо с подтверждением отправлено повторно.",
   "emailVerificacaoReenvioFalhou": "Не удалось повторно отправить письмо. Попробуйте позже.",
   "meuPerfilTitulo": "Мой профиль",
-  "meuPerfilTelefoneTitulo": "Контактный телефон",
-  "meuPerfilTelefoneDescricao": "Используется вашими экстренными контактами для идентификации вашей учётной записи и получения оповещений.",
-  "meuPerfilTelefoneNaoCadastrado": "Телефон не указан — нажмите, чтобы добавить",
-  "meuPerfilTelefoneAtualizado": "Телефон успешно обновлён.",
-  "meuPerfilFalhaAtualizarTelefone": "Не удалось обновить телефон. Попробуйте снова.",
+  "meuPerfilTelefoneTitulo": "Мой контактный телефон",
+  "meuPerfilTelefoneNaoCadastrado": "Телефон не указан",
   "sairDaContaTitulo": "Выйти из аккаунта",
   "sairDaContaConfirmar": "Выйти",
   "alertaRecebidoTitulo": "Получено оповещение безопасности",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "В целях безопасности удаление аккаунта требует подтверждения PIN-кодом. Настройте PIN-код на вкладке Безопасность, прежде чем продолжить.",
   "excluirContaProcessando": "Удаление вашего аккаунта и данных...",
   "excluirContaSucessoMensagem": "Ваш аккаунт был успешно удалён.",
-  "excluirContaErroMensagem": "Не удалось удалить ваш аккаунт сейчас. Проверьте соединение и попробуйте снова, либо обратитесь в поддержку."
+  "excluirContaErroMensagem": "Не удалось удалить ваш аккаунт сейчас. Проверьте соединение и попробуйте снова, либо обратитесь в поддержку.",
+  "otpTitulo": "Подтвердите номер телефона",
+  "otpIntroducao": "В целях безопасности подтвердите номер телефона, прежде чем продолжить. Он будет использоваться, чтобы ваши экстренные контакты могли получать ваши оповещения.",
+  "otpBotaoEnviarCodigo": "Отправить код",
+  "otpCodigoEnviadoPara": "Мы отправили 6-значный код подтверждения по SMS на номер {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Код подтверждения",
+  "otpBotaoVerificar": "Подтвердить",
+  "otpBotaoReenviarCodigo": "Отправить код повторно",
+  "otpBotaoTrocarNumero": "Изменить номер",
+  "otpCodigoObrigatorio": "Введите код, полученный по SMS.",
+  "otpCodigoInvalido": "Неверный код. Введите 6 цифр, полученных по SMS.",
+  "otpErroCodigoIncorreto": "Неверный код. Проверьте его и попробуйте снова.",
+  "otpErroCodigoExpirado": "Срок действия кода истёк. Нажмите «Отправить код повторно», чтобы получить новый.",
+  "otpErroNumeroJaEmUso": "Этот номер уже подтверждён в другом аккаунте Guardião X. Используйте другой номер или обратитесь в поддержку.",
+  "otpErroGenerico": "Не удалось завершить проверку сейчас. Проверьте соединение и попробуйте снова.",
+  "otpSucessoMensagem": "Телефон успешно подтверждён!"
 }

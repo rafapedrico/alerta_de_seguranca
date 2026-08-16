@@ -119,12 +119,14 @@ class FirebaseSyncService {
   /// `nome`/`email` do provedor social (Facebook `public_profile`+`email`,
   /// perfil do Google, nome/e-mail opcionais da Apple) se perdiam por
   /// completo, mesmo já vindo prontos em [User.displayName]/[User.email]
-  /// assim que o Firebase Auth aceita a credencial do provedor. Mesmo
-  /// bug/mesma família do já corrigido para `telefone`
-  /// ([atualizarTelefone]/"Meu Perfil" editável, 2026-08-14) — só que para
-  /// nome e e-mail, capturáveis automaticamente aqui (telefone continua
-  /// exigindo entrada manual do usuário: nenhum dos 3 provedores sociais
-  /// devolve telefone verificado por padrão).
+  /// assim que o Firebase Auth aceita a credencial do provedor. Mesma
+  /// família do bug de `telefone` nunca gravado para logins sociais (ver
+  /// [obterTelefoneAtual]) — só que para nome e e-mail, capturáveis
+  /// automaticamente aqui. Diferente de `telefone` (que, por segurança,
+  /// desde 2026-08-16 só é gravado no cadastro por e-mail/senha, nunca
+  /// editável depois — ver [obterTelefoneAtual]), nome/e-mail não têm
+  /// esse mesmo risco de sequestro de alertas, então continuam
+  /// sincronizados aqui a cada login.
   ///
   /// [nome]/[email] nulos ou vazios são omitidos do merge (nunca
   /// sobrescreve um valor real já gravado por um `null`/string vazia vindo
@@ -161,11 +163,21 @@ class FirebaseSyncService {
   }
 
   /// Lê o `telefone` atual gravado em `usuarios/{uid}` — usado por
-  /// [ConfiguracoesTab] (seção "Meu Perfil") para exibir/editar o número
-  /// já cadastrado. `null` se não houver sessão, o documento não existir
-  /// ainda, ou o campo nunca ter sido gravado (ex: login social, ver
-  /// [atualizarTelefone] — [CadastroScreen] é o único fluxo que grava
-  /// `telefone` automaticamente, no login com e-mail/senha).
+  /// [ConfiguracoesTab] (seção "Meu Perfil") para EXIBIR (somente
+  /// leitura) o número já cadastrado. `null` se não houver sessão, o
+  /// documento não existir ainda, ou o campo nunca ter sido gravado.
+  ///
+  /// REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): existia um método
+  /// `atualizarTelefone` que permitia editar este campo livremente a
+  /// qualquer momento pela tela de Configurações — removido por permitir
+  /// que qualquer usuário digitasse um número ARBITRÁRIO/de terceiros e
+  /// passasse a "sequestrar" os alertas de emergência endereçados ao
+  /// dono real daquele número (a Cloud Function resolve o destinatário
+  /// do Push pelo `telefone` gravado aqui). Os únicos fluxos que gravam
+  /// `telefone` agora são [CadastroScreen] (cadastro por e-mail/senha) e
+  /// [gravarTelefoneVerificado] (login social, ver
+  /// `VerificacaoTelefoneScreen` — SMS OTP obrigatório no primeiro
+  /// login, fechando o trade-off que existia antes desta correção).
   Future<String?> obterTelefoneAtual() async {
     if (!_firebaseDisponivel) return null;
     try {
@@ -177,26 +189,17 @@ class FirebaseSyncService {
     }
   }
 
-  /// Grava/atualiza o `telefone` de contato em `usuarios/{uid}` — mesmo
-  /// campo que [criarPerfilInicial] já grava no cadastro por e-mail/senha,
-  /// mas aqui editável a qualquer momento (ver [ConfiguracoesTab]).
+  /// Grava o `telefone` em `usuarios/{uid}` — chamado EXCLUSIVAMENTE por
+  /// [VerificacaoTelefoneScreen], depois que o número já foi comprovado
+  /// via SMS OTP e vinculado à sessão atual com
+  /// `User.linkWithCredential(PhoneAuthCredential)` (ver
+  /// `FirebaseAuthService`). Nunca deve ser chamado a partir de um campo
+  /// de texto livre — é exatamente essa brecha (edição livre sem
+  /// verificação) que esta reespecificação de segurança fecha (ver
+  /// [obterTelefoneAtual]).
   ///
-  /// BUG REAL CONFIRMADO (2026-08-14, teste físico): logins SOCIAIS
-  /// (Google/Facebook/Apple, ver `SocialAuthService`) nunca chamam
-  /// [criarPerfilInicial] — o documento `usuarios/{uid}` só passa a
-  /// existir de forma incidental na primeira sincronização de `fcmToken`
-  /// (ver [atualizarFcmToken]), SEM NENHUM campo `telefone`. Resultado:
-  /// a Cloud Function (`resolverContasPorTelefone`,
-  /// `functions/alertaHibridoService.js`) nunca encontra essa conta ao
-  /// resolver o telefone de um contato de emergência — o alerta por Push
-  /// nunca chega a esse usuário, mesmo com um `fcmToken` válido e
-  /// atualizado. Este método (chamado pela nova seção "Meu Perfil") é o
-  /// que fecha essa lacuna para quem logou via rede social.
-  ///
-  /// [telefone] deve já vir normalizado em E.164 (ver [TelefoneUtils] —
-  /// quem chama é responsável por validar ANTES; aqui é só a escrita).
-  /// Retorna `true` em caso de sucesso.
-  Future<bool> atualizarTelefone(String telefone) async {
+  /// [telefone] já deve vir normalizado em E.164 (ver [TelefoneUtils]).
+  Future<bool> gravarTelefoneVerificado(String telefone) async {
     if (!_firebaseDisponivel) return false;
     try {
       await _documentoUsuario.set(
@@ -205,7 +208,7 @@ class FirebaseSyncService {
       ).timeout(_timeoutFirestore);
       return true;
     } catch (e) {
-      debugPrint('⚠️ [FirebaseSyncService] Falha ao atualizar telefone: $e');
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar telefone verificado: $e');
       return false;
     }
   }

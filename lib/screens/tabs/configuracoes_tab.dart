@@ -64,13 +64,17 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
 
-  // Seção "Meu Perfil" (telefone de contato, ver FirebaseSyncService) —
-  // BUG REAL CONFIRMADO (2026-08-14): logins sociais (Google/Facebook/
-  // Apple) nunca passam por CadastroScreen, então `usuarios/{uid}.telefone`
-  // nunca é gravado automaticamente para essas contas — a Cloud Function
-  // de disparo de alerta nunca encontra essa conta ao resolver o telefone
-  // de um contato de emergência, mesmo com fcmToken válido. Esta seção
-  // permite editar o campo a qualquer momento, fechando essa lacuna.
+  // Seção "Meu Perfil" (ver FirebaseSyncService) — exibe o número
+  // vinculado à conta atual (Firebase/SQLite), SOMENTE LEITURA.
+  //
+  // REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): esta seção já foi editável
+  // (permitia digitar qualquer número, ver histórico do PR), mas isso
+  // abria uma brecha real — qualquer usuário podia digitar um número
+  // ARBITRÁRIO/de terceiros e passar a receber, no lugar do dono
+  // verdadeiro do número, os alertas de emergência endereçados a ele
+  // (a Cloud Function resolve o destinatário pelo telefone cadastrado em
+  // `usuarios/{uid}.telefone`). O campo agora só reflete o que já está
+  // gravado na conta — nenhuma edição livre é mais permitida por aqui.
   String? _telefoneAtual;
   bool _carregandoTelefone = true;
 
@@ -108,8 +112,22 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     _carregarTelefoneAtual();
   }
 
+  /// Firestore continua sendo a fonte de verdade — só cai para o cache
+  /// local (`user_config.telefone`, gravado por
+  /// `VerificacaoTelefoneScreen` no momento da verificação por SMS OTP)
+  /// quando a leitura online falhar (ex: sem internet no momento), para
+  /// nunca exibir "sem telefone" indevidamente a um usuário que já
+  /// verificou o número, só porque está offline agora.
   Future<void> _carregarTelefoneAtual() async {
-    final telefone = await FirebaseSyncService().obterTelefoneAtual();
+    var telefone = await FirebaseSyncService().obterTelefoneAtual();
+    if (telefone == null || telefone.trim().isEmpty) {
+      try {
+        final config = await _db.getUserConfig();
+        telefone = config?['telefone'] as String?;
+      } catch (_) {
+        // Sem cache local disponível — mantém `telefone` como está.
+      }
+    }
     if (mounted) {
       setState(() {
         _telefoneAtual = telefone;
@@ -928,88 +946,6 @@ Future<void> _selecionarSom(int? numero) async {
   }
 
 
-  /// Abre um diálogo para editar o telefone de contato (ver
-  /// [FirebaseSyncService.atualizarTelefone]) — mesma validação
-  /// internacional (E.164) já usada em [CadastroScreen], reaproveitada
-  /// aqui via [TelefoneUtils.normalizarE164].
-  Future<void> _editarTelefonePerfil() async {
-    final controller = TextEditingController(text: _telefoneAtual ?? '');
-    final formKey = GlobalKey<FormState>();
-    final l10n = AppLocalizations.of(context)!;
-
-    final novoTelefone = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.meuPerfilTelefoneTitulo),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.meuPerfilTelefoneDescricao,
-                style: const TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.phone,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: l10n.campoCelularLabel,
-                  prefixIcon: const Icon(Icons.phone_android_outlined),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (valor) {
-                  if (valor == null || valor.trim().isEmpty) {
-                    return l10n.campoCelularObrigatorio;
-                  }
-                  if (TelefoneUtils.normalizarE164(valor) == null) {
-                    return l10n.campoCelularInvalido;
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancelar),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() != true) return;
-              Navigator.of(ctx).pop(TelefoneUtils.normalizarE164(controller.text));
-            },
-            child: Text(l10n.salvar),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-
-    if (novoTelefone == null) return; // cancelado ou inválido
-
-    final sucesso = await FirebaseSyncService().atualizarTelefone(novoTelefone);
-    if (!mounted) return;
-
-    if (sucesso) {
-      setState(() => _telefoneAtual = novoTelefone);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(sucesso
-            ? l10n.meuPerfilTelefoneAtualizado
-            : l10n.meuPerfilFalhaAtualizarTelefone),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
-      ),
-    );
-  }
-
   /// Encerra a sessão do Firebase Auth e volta para a LoginScreen,
   /// limpando toda a pilha de navegação — usa a [appNavigatorKey] global
   /// (em vez do `context` local desta aba) porque esta tela pode estar
@@ -1477,7 +1413,7 @@ Future<void> _selecionarSom(int? numero) async {
         const Divider(),
 
         // =========================================
-        // SEÇÃO: MEU PERFIL (telefone de contato)
+        // SEÇÃO: MEU PERFIL (número de contato — somente leitura)
         // =========================================
         _sectionHeader(theme, Icons.person_outline, AppLocalizations.of(context)!.meuPerfilTitulo),
         if (_carregandoTelefone)
@@ -1516,8 +1452,6 @@ Future<void> _selecionarSom(int? numero) async {
                 fontSize: 13,
               ),
             ),
-            trailing: const Icon(Icons.edit),
-            onTap: _editarTelefonePerfil,
           ),
 
         const Divider(),

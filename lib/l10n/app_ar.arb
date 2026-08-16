@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "تمت إعادة إرسال بريد التحقق.",
   "emailVerificacaoReenvioFalhou": "تعذرت إعادة إرسال البريد الإلكتروني. حاول مرة أخرى لاحقًا.",
   "meuPerfilTitulo": "ملفي الشخصي",
-  "meuPerfilTelefoneTitulo": "رقم هاتف التواصل",
-  "meuPerfilTelefoneDescricao": "يستخدمه جهات اتصال الطوارئ الخاصة بك لتحديد حسابك وتلقي التنبيهات.",
-  "meuPerfilTelefoneNaoCadastrado": "لا يوجد رقم هاتف مسجل — اضغط للإضافة",
-  "meuPerfilTelefoneAtualizado": "تم تحديث رقم الهاتف بنجاح.",
-  "meuPerfilFalhaAtualizarTelefone": "فشل تحديث رقم الهاتف. حاول مرة أخرى.",
+  "meuPerfilTelefoneTitulo": "رقم هاتفي للتواصل",
+  "meuPerfilTelefoneNaoCadastrado": "لا يوجد رقم هاتف مسجل",
   "sairDaContaTitulo": "تسجيل الخروج",
   "sairDaContaConfirmar": "تسجيل الخروج",
   "alertaRecebidoTitulo": "تم استلام تنبيه أمني",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "لأسباب أمنية، يتطلب حذف الحساب تأكيد رمز PIN الخاص بك. قم بإعداد رمز PIN في علامة التبويب الأمان قبل المتابعة.",
   "excluirContaProcessando": "جارٍ حذف حسابك وبياناتك...",
   "excluirContaSucessoMensagem": "تم حذف حسابك بنجاح.",
-  "excluirContaErroMensagem": "تعذّر حذف حسابك الآن. تحقق من اتصالك وحاول مرة أخرى، أو تواصل مع الدعم."
+  "excluirContaErroMensagem": "تعذّر حذف حسابك الآن. تحقق من اتصالك وحاول مرة أخرى، أو تواصل مع الدعم.",
+  "otpTitulo": "تحقّق من رقم هاتفك",
+  "otpIntroducao": "لأسباب أمنية، أكّد رقم هاتفك قبل المتابعة. سيُستخدم هذا الرقم لتلقّي جهات اتصال الطوارئ الخاصة بك تنبيهاتك.",
+  "otpBotaoEnviarCodigo": "إرسال الرمز",
+  "otpCodigoEnviadoPara": "أرسلنا رمز تحقق مكوّنًا من 6 أرقام عبر رسالة نصية إلى {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "رمز التحقق",
+  "otpBotaoVerificar": "تحقّق",
+  "otpBotaoReenviarCodigo": "إعادة إرسال الرمز",
+  "otpBotaoTrocarNumero": "تغيير الرقم",
+  "otpCodigoObrigatorio": "أدخل الرمز الذي وصلك عبر رسالة نصية.",
+  "otpCodigoInvalido": "رمز غير صالح. أدخل الأرقام الستة التي وصلتك عبر رسالة نصية.",
+  "otpErroCodigoIncorreto": "رمز غير صحيح. تحقّق منه وحاول مرة أخرى.",
+  "otpErroCodigoExpirado": "انتهت صلاحية الرمز. اضغط على \"إعادة إرسال الرمز\" للحصول على رمز جديد.",
+  "otpErroNumeroJaEmUso": "هذا الرقم موثّق بالفعل في حساب آخر على Guardião X. استخدم رقمًا آخر أو تواصل مع الدعم.",
+  "otpErroGenerico": "تعذّر إتمام التحقق الآن. تحقق من اتصالك وحاول مرة أخرى.",
+  "otpSucessoMensagem": "تم التحقق من رقم الهاتف بنجاح!"
 }

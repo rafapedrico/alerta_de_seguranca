@@ -35,7 +35,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 18,
+      version: 19,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -65,7 +65,8 @@ class DatabaseHelper {
         timestamp_expiracao_alarme TEXT,
         som_alarme_selecionado INTEGER NOT NULL DEFAULT 1,
         duracao_som_alarme INTEGER NOT NULL DEFAULT 30,
-        idioma_selecionado TEXT NOT NULL DEFAULT 'pt'
+        idioma_selecionado TEXT NOT NULL DEFAULT 'pt',
+        telefone TEXT
       )
     ''');
 
@@ -504,6 +505,18 @@ class DatabaseHelper {
         )
       ''');
     }
+    // Migration from v18 to v19: cria a coluna 'telefone' em 'user_config'
+    // — cache local do número de contato já VERIFICADO por SMS OTP (ver
+    // VerificacaoTelefoneScreen/FirebaseSyncService.gravarTelefoneVerificado),
+    // usado como fallback de exibição em "Meu Perfil" quando o Firestore
+    // (fonte de verdade) não estiver acessível no momento (sem internet).
+    if (oldVersion < 19) {
+      try {
+        await db.execute('ALTER TABLE user_config ADD COLUMN telefone TEXT');
+      } catch (_) {
+        // Coluna já existe — ignora.
+      }
+    }
   }
 
 
@@ -536,6 +549,28 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [config['id']],
     );
+  }
+
+  /// Grava/atualiza o cache LOCAL do número de contato já verificado por
+  /// SMS OTP (ver [VerificacaoTelefoneScreen]/
+  /// `FirebaseSyncService.gravarTelefoneVerificado` — o Firestore continua
+  /// sendo a fonte de verdade; este cache só existe para exibição em "Meu
+  /// Perfil" quando o Firestore não estiver acessível). Autossuficiente:
+  /// cria a linha de `user_config` se ainda não existir uma (cenário
+  /// possível logo após o login social, antes de qualquer outra tela ter
+  /// chamado [_ensureUserConfig]-equivalente).
+  Future<void> salvarTelefoneLocal(String telefone) async {
+    final config = await getUserConfig();
+    if (config == null) {
+      await insertUserConfig({
+        'pin_real': null,
+        'tempo_padrao_timer': 15,
+        'tipo_plano': 'free',
+        'telefone': telefone,
+      });
+    } else {
+      await updateUserConfig({'id': config['id'], 'telefone': telefone});
+    }
   }
 
   // ==========================================

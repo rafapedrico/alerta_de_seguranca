@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "Verification email resent.",
   "emailVerificacaoReenvioFalhou": "Couldn't resend the email. Please try again later.",
   "meuPerfilTitulo": "My Profile",
-  "meuPerfilTelefoneTitulo": "Contact phone number",
-  "meuPerfilTelefoneDescricao": "Used by your emergency contacts to identify your account and receive alerts.",
-  "meuPerfilTelefoneNaoCadastrado": "No phone number registered — tap to add",
-  "meuPerfilTelefoneAtualizado": "Phone number updated successfully.",
-  "meuPerfilFalhaAtualizarTelefone": "Failed to update phone number. Try again.",
+  "meuPerfilTelefoneTitulo": "My contact phone number",
+  "meuPerfilTelefoneNaoCadastrado": "No phone number registered",
   "sairDaContaTitulo": "Sign out",
   "sairDaContaConfirmar": "Sign out",
   "alertaRecebidoTitulo": "Security alert received",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "For security, deleting your account requires PIN confirmation. Set up a PIN in the Security tab before continuing.",
   "excluirContaProcessando": "Deleting your account and data...",
   "excluirContaSucessoMensagem": "Your account has been successfully deleted.",
-  "excluirContaErroMensagem": "We couldn't delete your account right now. Check your connection and try again, or contact support."
+  "excluirContaErroMensagem": "We couldn't delete your account right now. Check your connection and try again, or contact support.",
+  "otpTitulo": "Verify your phone number",
+  "otpIntroducao": "For your security, confirm your phone number before continuing. It will be used so your emergency contacts can receive your alerts.",
+  "otpBotaoEnviarCodigo": "Send code",
+  "otpCodigoEnviadoPara": "We sent a 6-digit verification code by SMS to {numero}.",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "Verification code",
+  "otpBotaoVerificar": "Verify",
+  "otpBotaoReenviarCodigo": "Resend code",
+  "otpBotaoTrocarNumero": "Change number",
+  "otpCodigoObrigatorio": "Enter the code you received by SMS.",
+  "otpCodigoInvalido": "Invalid code. Enter the 6 digits you received by SMS.",
+  "otpErroCodigoIncorreto": "Incorrect code. Check it and try again.",
+  "otpErroCodigoExpirado": "The code has expired. Tap \"Resend code\" to get a new one.",
+  "otpErroNumeroJaEmUso": "This number is already verified on another Guardião X account. Use a different number or contact support.",
+  "otpErroGenerico": "We couldn't complete the verification right now. Check your connection and try again.",
+  "otpSucessoMensagem": "Phone number verified successfully!"
 }

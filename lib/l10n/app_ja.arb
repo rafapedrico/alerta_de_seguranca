@@ -39,11 +39,8 @@
   "emailVerificacaoReenviada": "確認メールを再送信しました。",
   "emailVerificacaoReenvioFalhou": "メールを再送信できませんでした。しばらくしてから再度お試しください。",
   "meuPerfilTitulo": "マイプロフィール",
-  "meuPerfilTelefoneTitulo": "連絡先の電話番号",
-  "meuPerfilTelefoneDescricao": "緊急連絡先があなたのアカウントを識別し、アラートを受信するために使用されます。",
-  "meuPerfilTelefoneNaoCadastrado": "電話番号が登録されていません — タップして追加",
-  "meuPerfilTelefoneAtualizado": "電話番号が正常に更新されました。",
-  "meuPerfilFalhaAtualizarTelefone": "電話番号の更新に失敗しました。もう一度お試しください。",
+  "meuPerfilTelefoneTitulo": "自分の連絡先電話番号",
+  "meuPerfilTelefoneNaoCadastrado": "電話番号が登録されていません",
   "sairDaContaTitulo": "ログアウト",
   "sairDaContaConfirmar": "ログアウト",
   "alertaRecebidoTitulo": "安全警報を受信しました",
@@ -738,5 +735,27 @@
   "excluirContaSemPinConteudo": "セキュリティのため、アカウントの削除にはPINでの確認が必要です。続行する前に、セキュリティタブでPINを設定してください。",
   "excluirContaProcessando": "アカウントとデータを削除しています…",
   "excluirContaSucessoMensagem": "アカウントは正常に削除されました。",
-  "excluirContaErroMensagem": "現在アカウントを削除できませんでした。接続を確認して再試行するか、サポートにお問い合わせください。"
+  "excluirContaErroMensagem": "現在アカウントを削除できませんでした。接続を確認して再試行するか、サポートにお問い合わせください。",
+  "otpTitulo": "電話番号を確認してください",
+  "otpIntroducao": "セキュリティのため、続行する前に電話番号を確認してください。この番号は、緊急連絡先があなたのアラートを受け取るために使用されます。",
+  "otpBotaoEnviarCodigo": "コードを送信",
+  "otpCodigoEnviadoPara": "6桁の確認コードをSMSで{numero}に送信しました。",
+  "@otpCodigoEnviadoPara": {
+    "placeholders": {
+      "numero": {
+        "type": "String"
+      }
+    }
+  },
+  "otpCampoCodigoLabel": "確認コード",
+  "otpBotaoVerificar": "確認する",
+  "otpBotaoReenviarCodigo": "コードを再送信",
+  "otpBotaoTrocarNumero": "番号を変更",
+  "otpCodigoObrigatorio": "SMSで届いたコードを入力してください。",
+  "otpCodigoInvalido": "無効なコードです。SMSで届いた6桁を入力してください。",
+  "otpErroCodigoIncorreto": "コードが正しくありません。確認してもう一度お試しください。",
+  "otpErroCodigoExpirado": "コードの有効期限が切れました。「コードを再送信」をタップして新しいコードを受け取ってください。",
+  "otpErroNumeroJaEmUso": "この番号はすでに別のGuardião Xアカウントで確認済みです。別の番号を使用するか、サポートにお問い合わせください。",
+  "otpErroGenerico": "現在確認を完了できませんでした。接続を確認してもう一度お試しください。",
+  "otpSucessoMensagem": "電話番号が正常に確認されました！"
 }
