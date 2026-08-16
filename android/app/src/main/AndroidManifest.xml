@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Exigida para o Android sequer OFERECER a opção "Permitir o tempo
+         todo" (background location) — ver OnboardingScreen/OnboardingService,
+         item "Localização sempre ativa". Sem esta declaração no manifest,
+         Permission.locationAlways/Geolocator.requestPermission() nunca
+         retorna LocationPermission.always, mesmo com o usuário tentando
+         conceder manualmente em Configurações. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>

@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Apple से साइन इन करें",
   "loginLimparSessaoBotao": "लॉगिन सत्र साफ़ करें",
   "loginLimparSessaoConfirmacao": "सोशल लॉगिन सत्र साफ़ हो गया। फिर से लॉगिन करने का प्रयास करें।",
-  "loginSocialContaExistente": "इस ईमेल के साथ पहले से ही किसी अन्य साइन-इन विधि का उपयोग करने वाला खाता मौजूद है।"
+  "loginSocialContaExistente": "इस ईमेल के साथ पहले से ही किसी अन्य साइन-इन विधि का उपयोग करने वाला खाता मौजूद है।",
+  "onboardingTitulo": "सुरक्षा सेटअप",
+  "onboardingIntroducao": "पैनिक बटन और अलर्ट को स्क्रीन लॉक होने पर भी भरोसेमंद तरीके से काम करने के लिए, नीचे दी गई अनुमतियाँ दें। आप बाद में सब कुछ सेटिंग्स में देख सकते हैं।",
+  "onboardingBadgeEssencial": "आवश्यक",
+  "onboardingBadgeRecomendado": "अनुशंसित",
+  "onboardingStatusConcedida": "स्वीकृत",
+  "onboardingStatusPendente": "लंबित",
+  "onboardingBotaoAbrirConfiguracoes": "सेटिंग्स खोलें",
+  "onboardingBotaoContinuar": "जारी रखें",
+  "onboardingAvisoEssenciaisPendentes": "सेटअप पूरा करने के लिए आवश्यक अनुमतियाँ दें।",
+  "onboardingNotificacoesTitulo": "सूचनाएं और अलार्म",
+  "onboardingNotificacoesConteudo": "आपातकालीन अलर्ट को तुरंत ध्वनि के साथ दिखाने देता है, और निर्धारित रिमाइंडर (चेक-इन, टाइमर) को सही समय पर सक्रिय होने देता है।",
+  "onboardingLocalizacaoTitulo": "स्थान हमेशा सक्रिय",
+  "onboardingLocalizacaoConteudo": "\"हमेशा अनुमति दें\" के साथ, आपका स्थान आपके आपातकालीन संपर्कों को तब भी भेजा जाता है जब ऐप बंद हो या स्क्रीन बंद हो — असली SOS में यह ज़रूरी है।",
+  "onboardingCameraTitulo": "कैमरा एक्सेस",
+  "onboardingCameraConteudo": "केवल पैनिक बटन में उपयोग होता है, ताकि आपके आपातकालीन संपर्कों को भेजे गए अलर्ट में जगह की एक फोटो जोड़ी जा सके।",
+  "onboardingTelaCheiaTitulo": "पूर्ण-स्क्रीन अलर्ट",
+  "onboardingTelaCheiaConteudo": "किसी संपर्क से मिले अलर्ट को स्क्रीन जगाने और कॉल की तरह लॉक स्क्रीन के ऊपर दिखने देता है।"
 }

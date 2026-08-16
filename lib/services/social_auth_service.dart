@@ -176,6 +176,29 @@ class SocialAuthService {
       // qualquer forma, mas deixar explícito documenta a intenção e
       // protege uma futura adição de projeto iOS.
       loginTracking: LoginTracking.enabled,
+      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
+      // logcat no Motorola Razr — Android 16): o padrão
+      // `LoginBehavior.nativeWithFallback` tenta primeiro entregar o
+      // login ao APP do Facebook (`com.facebook.katana`, quando
+      // instalado no aparelho) — que precisa abrir o Chrome para
+      // completar o OAuth. O Logcat mostrou esse handoff se repetindo
+      // ~13 vezes em ~17s e finalmente sendo REJEITADO pelo Android:
+      // ```
+      // ActivityTaskManager: Background activity launch blocked!
+      //   goo.gle/android-bal [callingPackage: com.facebook.katana;
+      //   callingUidProcState: SERVICE; ...]
+      // ```
+      // Ou seja: o app do Facebook tenta abrir o navegador a partir de um
+      // SERVIÇO em segundo plano (não uma Activity visível) — a MESMA
+      // restrição de "Background Activity Launch" do Android 12+/16 já
+      // enfrentada em `VolumeSosService.kt` hoje, só que desta vez dentro
+      // do app de TERCEIRO (Facebook), fora do nosso controle de código.
+      // `LoginBehavior.dialogOnly` pula esse handoff por completo: abre o
+      // login DENTRO deste app (Custom Tab/diálogo, a partir da nossa
+      // PRÓPRIA Activity em primeiro plano — sempre um contexto válido
+      // para o Android, nunca bloqueado por BAL), nunca delegando a
+      // nenhum app externo.
+      loginBehavior: LoginBehavior.dialogOnly,
     );
 
     switch (result.status) {

@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "使用 Apple 登录",
   "loginLimparSessaoBotao": "清除登录会话",
   "loginLimparSessaoConfirmacao": "社交登录会话已清除,请重新尝试登录。",
-  "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。"
+  "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。",
+  "onboardingTitulo": "安全设置",
+  "onboardingIntroducao": "为了让紧急按钮和警报即使在锁屏状态下也能可靠工作，请授予以下权限。您稍后可以在设置中查看全部权限。",
+  "onboardingBadgeEssencial": "必需",
+  "onboardingBadgeRecomendado": "建议",
+  "onboardingStatusConcedida": "已授权",
+  "onboardingStatusPendente": "待处理",
+  "onboardingBotaoAbrirConfiguracoes": "打开设置",
+  "onboardingBotaoContinuar": "继续",
+  "onboardingAvisoEssenciaisPendentes": "请授予必需权限以完成设置。",
+  "onboardingNotificacoesTitulo": "通知和闹钟",
+  "onboardingNotificacoesConteudo": "让紧急警报立即弹出并带有提示音，并让预定提醒（签到、计时器）准时触发。",
+  "onboardingLocalizacaoTitulo": "始终开启定位",
+  "onboardingLocalizacaoConteudo": "选择“始终允许”后，即使应用已关闭或屏幕熄灭，您的位置也会发送给紧急联系人——在真实的SOS中至关重要。",
+  "onboardingCameraTitulo": "相机权限",
+  "onboardingCameraConteudo": "仅在紧急按钮中使用，用于在发送给紧急联系人的警报中附上现场照片。",
+  "onboardingTelaCheiaTitulo": "全屏警报",
+  "onboardingTelaCheiaConteudo": "让联系人发来的警报能唤醒屏幕，并像来电一样显示在锁屏界面上方。"
 }

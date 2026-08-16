@@ -105,6 +105,61 @@ class FirebaseSyncService {
     }
   }
 
+  /// Equivalente de [criarPerfilInicial] para os 3 fluxos de LOGIN SOCIAL
+  /// (Google/Facebook/Apple, ver `SocialAuthService`) — chamado por
+  /// `LoginScreen._finalizarLoginComSucesso` logo após qualquer login bem
+  /// sucedido (social OU e-mail/senha, idempotente nos dois casos).
+  ///
+  /// CORREÇÃO DE LACUNA REAL (2026-08-16): diferente do cadastro por
+  /// e-mail/senha ([CadastroScreen], que sempre chama [criarPerfilInicial]
+  /// com nome/e-mail/telefone digitados no formulário), os 3 logins
+  /// sociais NUNCA gravavam absolutamente NADA em `usuarios/{uid}` além do
+  /// que outros serviços não relacionados (heartbeat de localização, sync
+  /// de contatos, token FCM) acabavam gravando incidentalmente via merge —
+  /// `nome`/`email` do provedor social (Facebook `public_profile`+`email`,
+  /// perfil do Google, nome/e-mail opcionais da Apple) se perdiam por
+  /// completo, mesmo já vindo prontos em [User.displayName]/[User.email]
+  /// assim que o Firebase Auth aceita a credencial do provedor. Mesmo
+  /// bug/mesma família do já corrigido para `telefone`
+  /// ([atualizarTelefone]/"Meu Perfil" editável, 2026-08-14) — só que para
+  /// nome e e-mail, capturáveis automaticamente aqui (telefone continua
+  /// exigindo entrada manual do usuário: nenhum dos 3 provedores sociais
+  /// devolve telefone verificado por padrão).
+  ///
+  /// [nome]/[email] nulos ou vazios são omitidos do merge (nunca
+  /// sobrescreve um valor real já gravado por um `null`/string vazia vindo
+  /// do provedor, ex: Apple ocultando o e-mail real atrás de um relay, ou
+  /// devolvendo nome só na PRIMEIRA autorização) — `SetOptions(merge:
+  /// true)` preserva o resto do documento intacto, inclusive um
+  /// `telefone` já preenchido manualmente em "Meu Perfil".
+  Future<void> sincronizarPerfilSocial({
+    String? nome,
+    String? email,
+  }) async {
+    if (!_firebaseDisponivel) return;
+    final dados = <String, dynamic>{
+      if (nome != null && nome.isNotEmpty) 'nome': nome,
+      if (email != null && email.isNotEmpty) 'email': email,
+    };
+    if (dados.isEmpty) return;
+    try {
+      // Propositalmente NÃO grava `criadoEm` aqui (diferente de
+      // [criarPerfilInicial]): com `merge: true`, um campo PRESENTE no
+      // payload sempre SOBRESCREVE o valor já existente — gravar
+      // `FieldValue.serverTimestamp()` aqui reiniciaria `criadoEm` a cada
+      // login social subsequente, não só no primeiro. Sem uma leitura
+      // prévia para checar se o documento já existe (custo extra
+      // desnecessário neste caminho, chamado a cada login), o mais seguro
+      // é simplesmente não mexer no campo — o pior caso é um usuário
+      // 100% social nunca ter `criadoEm` gravado, cosmético, não afeta
+      // nenhuma regra de negócio.
+      await _documentoUsuario.set(dados, SetOptions(merge: true)).timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao sincronizar perfil do login social: $e');
+    }
+  }
+
   /// Lê o `telefone` atual gravado em `usuarios/{uid}` — usado por
   /// [ConfiguracoesTab] (seção "Meu Perfil") para exibir/editar o número
   /// já cadastrado. `null` se não houver sessão, o documento não existir

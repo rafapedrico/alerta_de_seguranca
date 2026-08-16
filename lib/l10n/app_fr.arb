@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Se connecter avec Apple",
   "loginLimparSessaoBotao": "Effacer la session de connexion",
   "loginLimparSessaoConfirmacao": "Session de connexion sociale effacée. Essayez de vous reconnecter.",
-  "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion."
+  "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion.",
+  "onboardingTitulo": "Configuration de sécurité",
+  "onboardingIntroducao": "Pour que le bouton panique et les alertes fonctionnent de façon fiable, même écran verrouillé, accordez les autorisations ci-dessous. Vous pourrez tout revoir plus tard dans les Paramètres.",
+  "onboardingBadgeEssencial": "Essentiel",
+  "onboardingBadgeRecomendado": "Recommandé",
+  "onboardingStatusConcedida": "Accordée",
+  "onboardingStatusPendente": "En attente",
+  "onboardingBotaoAbrirConfiguracoes": "Ouvrir les Paramètres",
+  "onboardingBotaoContinuar": "Continuer",
+  "onboardingAvisoEssenciaisPendentes": "Accordez les autorisations essentielles pour terminer la configuration.",
+  "onboardingNotificacoesTitulo": "Notifications et alarmes",
+  "onboardingNotificacoesConteudo": "Permet aux alertes d'urgence d'apparaître immédiatement, avec un son, et aux rappels programmés (check-ins, minuteur) de se déclencher à l'heure exacte.",
+  "onboardingLocalizacaoTitulo": "Localisation toujours active",
+  "onboardingLocalizacaoConteudo": "Avec « Toujours autoriser », votre position est envoyée à vos contacts d'urgence même avec l'application fermée ou l'écran éteint — essentiel lors d'un SOS réel.",
+  "onboardingCameraTitulo": "Accès à l'appareil photo",
+  "onboardingCameraConteudo": "Utilisé uniquement par le bouton panique, pour joindre une photo des lieux à l'alerte envoyée à vos contacts d'urgence.",
+  "onboardingTelaCheiaTitulo": "Alertes plein écran",
+  "onboardingTelaCheiaConteudo": "Permet à une alerte reçue d'un contact de réveiller l'écran et de s'afficher par-dessus l'écran verrouillé, comme un appel entrant."
 }

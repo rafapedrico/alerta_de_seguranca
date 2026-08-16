@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Accedi con Apple",
   "loginLimparSessaoBotao": "Cancella sessione di accesso",
   "loginLimparSessaoConfirmacao": "Sessione di accesso social cancellata. Prova ad accedere di nuovo.",
-  "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso."
+  "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso.",
+  "onboardingTitulo": "Configurazione di Sicurezza",
+  "onboardingIntroducao": "Perché il pulsante di panico e gli avvisi funzionino in modo affidabile, anche a schermo bloccato, concedi i permessi qui sotto. Potrai rivedere tutto in seguito nelle Impostazioni.",
+  "onboardingBadgeEssencial": "Essenziale",
+  "onboardingBadgeRecomendado": "Consigliato",
+  "onboardingStatusConcedida": "Concesso",
+  "onboardingStatusPendente": "In sospeso",
+  "onboardingBotaoAbrirConfiguracoes": "Apri Impostazioni",
+  "onboardingBotaoContinuar": "Continua",
+  "onboardingAvisoEssenciaisPendentes": "Concedi i permessi essenziali per completare la configurazione.",
+  "onboardingNotificacoesTitulo": "Notifiche e allarmi",
+  "onboardingNotificacoesConteudo": "Permette agli avvisi di emergenza di comparire subito, con suono, e ai promemoria programmati (check-in, timer) di scattare all'ora esatta.",
+  "onboardingLocalizacaoTitulo": "Posizione sempre attiva",
+  "onboardingLocalizacaoConteudo": "Con \"Consenti sempre\", la tua posizione viene inviata ai tuoi contatti di emergenza anche con l'app chiusa o lo schermo spento — essenziale in un vero SOS.",
+  "onboardingCameraTitulo": "Accesso alla fotocamera",
+  "onboardingCameraConteudo": "Usata solo dal pulsante di panico, per allegare una foto del luogo all'avviso inviato ai tuoi contatti di emergenza.",
+  "onboardingTelaCheiaTitulo": "Avvisi a schermo intero",
+  "onboardingTelaCheiaConteudo": "Permette a un avviso ricevuto da un contatto di riattivare lo schermo e comparire sopra la schermata di blocco, come una chiamata in arrivo."
 }

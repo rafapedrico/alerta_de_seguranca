@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Sign in with Apple",
   "loginLimparSessaoBotao": "Clear login session",
   "loginLimparSessaoConfirmacao": "Social login session cleared. Try signing in again.",
-  "loginSocialContaExistente": "An account with this email already exists using a different sign-in method."
+  "loginSocialContaExistente": "An account with this email already exists using a different sign-in method.",
+  "onboardingTitulo": "Security Setup",
+  "onboardingIntroducao": "For the panic button and alerts to work reliably, even with the screen locked, grant the permissions below. You can review everything later in Settings.",
+  "onboardingBadgeEssencial": "Essential",
+  "onboardingBadgeRecomendado": "Recommended",
+  "onboardingStatusConcedida": "Granted",
+  "onboardingStatusPendente": "Pending",
+  "onboardingBotaoAbrirConfiguracoes": "Open Settings",
+  "onboardingBotaoContinuar": "Continue",
+  "onboardingAvisoEssenciaisPendentes": "Grant the essential permissions to finish setup.",
+  "onboardingNotificacoesTitulo": "Notifications and alarms",
+  "onboardingNotificacoesConteudo": "Lets emergency alerts appear right away, with sound, and scheduled reminders (check-ins, timer) fire at the exact time.",
+  "onboardingLocalizacaoTitulo": "Always-on location",
+  "onboardingLocalizacaoConteudo": "With \"Allow all the time\", your location is sent to your emergency contacts even with the app closed or the screen off — essential in a real SOS.",
+  "onboardingCameraTitulo": "Camera access",
+  "onboardingCameraConteudo": "Used only by the panic button, to attach a photo of the scene to the alert sent to your emergency contacts.",
+  "onboardingTelaCheiaTitulo": "Full-screen alerts",
+  "onboardingTelaCheiaConteudo": "Lets an alert received from a contact wake the screen and appear over the lock screen, like an incoming call."
 }

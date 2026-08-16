@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Iniciar sesión con Apple",
   "loginLimparSessaoBotao": "Borrar sesión de inicio",
   "loginLimparSessaoConfirmacao": "Sesión de inicio social borrada. Intenta iniciar sesión de nuevo.",
-  "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión."
+  "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión.",
+  "onboardingTitulo": "Configuración de Seguridad",
+  "onboardingIntroducao": "Para que el botón de pánico y las alertas funcionen de forma confiable, incluso con la pantalla bloqueada, concede los permisos a continuación. Puedes revisar todo después en Configuración.",
+  "onboardingBadgeEssencial": "Esencial",
+  "onboardingBadgeRecomendado": "Recomendado",
+  "onboardingStatusConcedida": "Concedido",
+  "onboardingStatusPendente": "Pendiente",
+  "onboardingBotaoAbrirConfiguracoes": "Abrir Configuración",
+  "onboardingBotaoContinuar": "Continuar",
+  "onboardingAvisoEssenciaisPendentes": "Concede los permisos esenciales para completar la configuración.",
+  "onboardingNotificacoesTitulo": "Notificaciones y alarmas",
+  "onboardingNotificacoesConteudo": "Permite que las alertas de emergencia aparezcan al instante, con sonido, y que los avisos programados (check-ins, temporizador) se disparen a la hora exacta.",
+  "onboardingLocalizacaoTitulo": "Ubicación siempre activa",
+  "onboardingLocalizacaoConteudo": "Con \"Permitir todo el tiempo\", tu ubicación se envía a tus contactos de emergencia incluso con la app cerrada o la pantalla apagada — esencial en un SOS real.",
+  "onboardingCameraTitulo": "Acceso a la cámara",
+  "onboardingCameraConteudo": "Se usa solo en el botón de pánico, para adjuntar una foto del lugar a la alerta enviada a tus contactos de emergencia.",
+  "onboardingTelaCheiaTitulo": "Alertas en pantalla completa",
+  "onboardingTelaCheiaConteudo": "Permite que una alerta recibida de un contacto encienda la pantalla y aparezca sobre la pantalla bloqueada, como una llamada."
 }

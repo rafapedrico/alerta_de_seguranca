@@ -50,7 +50,8 @@ import androidx.core.content.ContextCompat
  * (toque na notificação PRINCIPAL/ação/card) e ao tocar no link do mapa.
  *
  * SEGURANÇA CONTRA TOQUE INFINITO: [_TEMPO_MAXIMO_TOCANDO] encerra o
- * alarme sozinho após 3 minutos, mesmo sem nenhuma ação do usuário — rede
+ * alarme sozinho após 5 minutos (reespecificado pelo usuário, 2026-08-15;
+ * era 3 minutos), mesmo sem nenhuma ação do usuário — rede
  * de segurança para o caso (sem hook nativo de "notificação descartada"
  * exposto pelo `flutter_local_notifications` da notificação PRINCIPAL)
  * de o usuário arrastar aquela notificação para fora sem tocar em nada
@@ -296,10 +297,12 @@ class AlertaRecebidoAlarmService : Service() {
         const val EXTRA_PARAR_AO_ABRIR = "parar_alarme_recebido_ao_abrir"
 
         /** Rede de segurança contra toque infinito — ver documentação da
-         * classe. 3 minutos: tempo generoso para o usuário perceber e
-         * agir, sem tocar indefinidamente caso ele ignore/esqueça o
-         * aparelho. */
-        private const val _TEMPO_MAXIMO_TOCANDO = 3 * 60 * 1000L
+         * classe. 5 minutos (reespecificado pelo usuário, 2026-08-15; era
+         * 3 minutos): tempo generoso para o usuário perceber e agir, sem
+         * tocar indefinidamente caso ele ignore/esqueça o aparelho. MESMO
+         * valor de [NotificacaoService._tempoMaximoAlarmeRecebido] (Dart)
+         * — os dois tetos precisam ficar sincronizados. */
+        private const val _TEMPO_MAXIMO_TOCANDO = 5 * 60 * 1000L
 
         fun iniciar(context: Context) {
             val intent = Intent(context, AlertaRecebidoAlarmService::class.java)

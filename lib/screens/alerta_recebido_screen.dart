@@ -196,6 +196,16 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
   /// autenticado) ou a Login — nunca deixa o Android tratar a ausência
   /// de rotas como "sair do app".
   void _fecharTela() {
+    // Redundante com [initState] (o alarme já para assim que esta tela
+    // abre) — mantido aqui explicitamente porque o botão "Fechar" é, por
+    // si só, um gesto claro de "dispensar o alerta" (reespecificação do
+    // usuário, 2026-08-16). Idempotente/seguro chamar de novo mesmo já
+    // parado.
+    NotificacaoService.pararAlarmeCritico();
+    final idEntregaFechar = widget.idEntrega;
+    if (idEntregaFechar != null && idEntregaFechar.isNotEmpty) {
+      NotificacaoService.cancelarNotificacaoAlertaRecebido(idEntregaFechar);
+    }
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();

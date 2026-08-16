@@ -953,5 +953,22 @@
   "loginSocialAppleTooltip": "Entrar com Apple",
   "loginLimparSessaoBotao": "Limpar sessão de login",
   "loginLimparSessaoConfirmacao": "Sessão de login social limpa. Tente entrar novamente.",
-  "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login."
+  "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login.",
+  "onboardingTitulo": "Configuração de Segurança",
+  "onboardingIntroducao": "Para que o botão de pânico e os alertas funcionem de forma confiável, mesmo com a tela bloqueada, conceda as permissões abaixo. Você pode revisar tudo depois em Configurações.",
+  "onboardingBadgeEssencial": "Essencial",
+  "onboardingBadgeRecomendado": "Recomendado",
+  "onboardingStatusConcedida": "Concedida",
+  "onboardingStatusPendente": "Pendente",
+  "onboardingBotaoAbrirConfiguracoes": "Abrir Configurações",
+  "onboardingBotaoContinuar": "Continuar",
+  "onboardingAvisoEssenciaisPendentes": "Conceda as permissões essenciais para concluir a configuração.",
+  "onboardingNotificacoesTitulo": "Notificações e alarmes",
+  "onboardingNotificacoesConteudo": "Permite que os alertas de emergência apareçam na hora, com som, e que os avisos programados (check-ins, cronômetro) disparem no horário exato.",
+  "onboardingLocalizacaoTitulo": "Localização sempre ativa",
+  "onboardingLocalizacaoConteudo": "Com \"Permitir o tempo todo\", sua localização é enviada aos contatos de emergência mesmo com o app fechado ou a tela apagada — essencial num SOS real.",
+  "onboardingCameraTitulo": "Acesso à câmera",
+  "onboardingCameraConteudo": "Usada só no botão de pânico, para anexar uma foto do local ao alerta enviado aos seus contatos de emergência.",
+  "onboardingTelaCheiaTitulo": "Alertas em tela cheia",
+  "onboardingTelaCheiaConteudo": "Permite que um alerta recebido de um contato acorde a tela e apareça por cima da tela bloqueada, como uma chamada."
 }

@@ -9,6 +9,9 @@ import '../main.dart' show TelaInicialComPossivelDialogoPin;
 import '../services/contatos_emergencia_service.dart';
 import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/firebase_sync_service.dart';
+import '../services/onboarding_service.dart';
+import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
 import '../services/notificacao_service.dart';
 import '../services/social_auth_service.dart';
@@ -203,13 +206,41 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Passos comuns pós-login bem-sucedido, compartilhados entre o login
   /// por e-mail/senha ([_fazerLogin]) e os 3 sociais ([_fazerLoginSocial]):
   /// inicializa o FCM, sincroniza os contatos de emergência locais com o
-  /// Firestore (ver comentário original em [_fazerLogin]) e navega para o
-  /// fluxo principal.
+  /// Firestore (ver comentário original em [_fazerLogin]), grava
+  /// nome/e-mail do login social em `usuarios/{uid}` (ver
+  /// [FirebaseSyncService.sincronizarPerfilSocial] — no-op inofensivo para
+  /// o login por e-mail/senha, que já grava isso via [CadastroScreen]) e
+  /// navega para o fluxo principal — passando primeiro pelo Assistente de
+  /// Configuração Inicial ([OnboardingScreen]), se ainda não concluído
+  /// nesta instalação (reespecificação do usuário, 2026-08-16: "logo após
+  /// o primeiro login").
   Future<void> _finalizarLoginComSucesso() async {
     unawaited(FcmService().inicializar());
     unawaited(ContatosEmergenciaService.sincronizarAgora());
+    unawaited(FirebaseSyncService().sincronizarPerfilSocial(
+      nome: FirebaseAuthService().usuarioAtual?.displayName,
+      email: FirebaseAuthService().usuarioAtual?.email,
+    ));
     if (!mounted) return;
-    _navegarParaFluxoPrincipal();
+
+    final onboardingConcluido = await OnboardingService().jaConcluido();
+    if (!mounted) return;
+
+    if (onboardingConcluido) {
+      _navegarParaFluxoPrincipal();
+    } else {
+      // Substitui a PRÓPRIA LoginScreen (não empilha por cima) — igual ao
+      // padrão já usado por [_navegarParaFluxoPrincipal] — para que o
+      // botão "voltar" do sistema, no Assistente, nunca volte pra tela de
+      // login. `aoConcluir` é chamado pelo próprio Assistente ao tocar em
+      // "Continuar" (sempre disponível, mesmo com permissões pendentes —
+      // ver documentação completa em [OnboardingScreen]).
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => OnboardingScreen(aoConcluir: _navegarParaFluxoPrincipal),
+        ),
+      );
+    }
   }
 
   String _mensagemErroLogin(FirebaseAuthException e) {
@@ -286,10 +317,23 @@ class _LoginScreenState extends State<LoginScreen> {
   /// [NotificacaoService.consumirPayloadSolicitacaoPendente]): em vez de o
   /// usuário precisar navegar manualmente até a aba Monitoramento depois de
   /// logar, o modal de decisão já abre direto por cima da Home.
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-16): usa [appNavigatorKey] (mesmo
+  /// padrão já usado por [_abrirModalDecisaoAposLogin] logo abaixo) em vez
+  /// de `Navigator.of(context)` — necessário desde que este método passou
+  /// a também ser usado como o callback `aoConcluir` de [OnboardingScreen]
+  /// (ver `_finalizarLoginComSucesso`): quando chamado a partir de lá,
+  /// `_LoginScreenState` (e seu `context`) já foi DESCARTADO havia muito
+  /// tempo (a troca de rota `pushReplacement` para o Assistente já
+  /// aconteceu antes, e o usuário pode levar minutos decidindo as
+  /// permissões) — usar o `context` antigo lançaria
+  /// `FlutterError: This widget has been unmounted`. `appNavigatorKey`
+  /// aponta para o Navigator RAIZ do app, sempre válido independente de
+  /// qual tela specific o chamou.
   void _navegarParaFluxoPrincipal() {
     final payloadPendente = NotificacaoService.consumirPayloadSolicitacaoPendente();
 
-    Navigator.of(context).pushReplacement(
+    appNavigatorKey.currentState?.pushReplacement(
       MaterialPageRoute(
         builder: (context) =>
             const TelaInicialComPossivelDialogoPin(aguardandoConfirmacaoPin: false),

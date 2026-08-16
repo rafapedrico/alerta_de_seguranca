@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Войти через Apple",
   "loginLimparSessaoBotao": "Очистить сеанс входа",
   "loginLimparSessaoConfirmacao": "Сеанс социального входа очищен. Попробуйте войти снова.",
-  "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа."
+  "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа.",
+  "onboardingTitulo": "Настройка безопасности",
+  "onboardingIntroducao": "Чтобы кнопка паники и оповещения работали надёжно, даже при заблокированном экране, предоставьте разрешения ниже. Позже вы сможете всё изменить в Настройках.",
+  "onboardingBadgeEssencial": "Обязательно",
+  "onboardingBadgeRecomendado": "Рекомендуется",
+  "onboardingStatusConcedida": "Предоставлено",
+  "onboardingStatusPendente": "Ожидает",
+  "onboardingBotaoAbrirConfiguracoes": "Открыть настройки",
+  "onboardingBotaoContinuar": "Продолжить",
+  "onboardingAvisoEssenciaisPendentes": "Предоставьте обязательные разрешения, чтобы завершить настройку.",
+  "onboardingNotificacoesTitulo": "Уведомления и будильники",
+  "onboardingNotificacoesConteudo": "Позволяет экстренным оповещениям появляться сразу же со звуком, а запланированным напоминаниям (чек-ины, таймер) срабатывать точно в срок.",
+  "onboardingLocalizacaoTitulo": "Постоянная геолокация",
+  "onboardingLocalizacaoConteudo": "С разрешением «Всегда разрешать» ваше местоположение отправляется контактам экстренной связи, даже если приложение закрыто или экран выключен — это важно при реальном SOS.",
+  "onboardingCameraTitulo": "Доступ к камере",
+  "onboardingCameraConteudo": "Используется только кнопкой паники, чтобы прикрепить фото места к оповещению, отправляемому вашим контактам экстренной связи.",
+  "onboardingTelaCheiaTitulo": "Оповещения на весь экран",
+  "onboardingTelaCheiaConteudo": "Позволяет оповещению от контакта включать экран и отображаться поверх заблокированного экрана, как входящий звонок."
 }

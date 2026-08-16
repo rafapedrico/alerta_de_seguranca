@@ -72,7 +72,23 @@ class NotificacaoService {
   /// rodar — o canal antigo `alerta_emergencia_recebido` fica órfão,
   /// inofensivo, e pode ser removido manualmente pelo usuário em
   /// Configurações do Android se desejar (não reaparece).
-  static const String canalAlertaRecebidoId = 'alerta_emergencia_recebido_v2';
+  /// CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-16, Moto G7
+  /// Play, via `dumpsys notification` ao vivo): incrementar SÓ a flag de
+  /// migração (`_chaveCanaisMigrados`, delete+recreate do MESMO id) não
+  /// foi suficiente para desativar `enableVibration` em instalações que
+  /// já tinham este canal — `dumpsys notification` continuou mostrando
+  /// `mVibrationEnabled=true` mesmo minutos depois da migração ter
+  /// rodado (confirmado sem nenhuma exceção nos logs). Suspeita: uma
+  /// corrida no lado nativo do Android entre `deleteNotificationChannel`
+  /// (processado de forma assíncrona pelo `system_server`) e o
+  /// `createNotificationChannel` seguinte, chamados em sequência rápida
+  /// demais para o MESMO id. Em vez de depurar essa corrida a fundo,
+  /// aplicada a MESMA solução definitiva já usada da `_v1` pra `_v2`
+  /// (2026-08-15): um id de canal NOVO, que nunca existiu neste
+  /// aparelho — sem migração alguma envolvida, `createNotificationChannel`
+  /// aplica as configurações (agora com `enableVibration: false`) sem
+  /// ambiguidade nenhuma.
+  static const String canalAlertaRecebidoId = 'alerta_emergencia_recebido_v3';
   static String canalAlertaRecebidoNome = 'Alerta de Emergência Recebido';
   static String canalAlertaRecebidoDescricao =
       'Alertas de segurança de contatos que cadastraram este aparelho como emergência.';
@@ -149,8 +165,13 @@ class NotificacaoService {
   /// Chave em disco (sobrevive entre isolates, ao contrário de
   /// [_inicializado]) que marca se a migração ÚNICA de canais antigos
   /// (deletar + recriar) já rodou nesta instalação — ver [inicializar].
+  /// Incrementada para `_v2` (2026-08-16): força a migração rodar de
+  /// novo mesmo em instalações que já tinham passado pela `_v1`,
+  /// necessário para o canal `alerta_emergencia_recebido_v2` (já
+  /// existente nesses aparelhos, com vibração habilitada) ser recriado
+  /// com a vibração desativada — ver [exibirNotificacaoAlertaRecebido].
   static const String _chaveCanaisMigrados =
-      'notificacao_canais_migrados_v1';
+      'notificacao_canais_migrados_v2';
 
   /// Payload de uma notificação de SOLICITAÇÃO ('solicitacao_monitoramento')
   /// recebida antes de existir uma sessão autenticada — capturado tanto no
@@ -411,6 +432,19 @@ class NotificacaoService {
       // iniciar — este ajuste garante que ao menos o som PADRÃO desta
       // notificação já fure o silencioso.
       audioAttributesUsage: AudioAttributesUsage.alarm,
+      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-16, Moto
+      // G7 Play — reespecificação do usuário): vibração desativada por
+      // completo neste canal — ver documentação completa (motor de
+      // vibração ficando preso em loop infinito, som permanece
+      // funcionando normalmente) em [exibirNotificacaoAlertaRecebido].
+      // Esta é a configuração que REALMENTE vale: o Android trava as
+      // opções de vibração/som de um canal no momento em que ele é
+      // criado pela PRIMEIRA vez, então é aqui — não no
+      // `enableVibration: false` da notificação individual — que a
+      // mudança precisa acontecer para valer também em instalações já
+      // existentes (ver a migração `_chaveCanaisMigrados` em
+      // [inicializar], incrementada para forçar a recriação deste canal).
+      enableVibration: false,
     );
     final canalMonitoramento = AndroidNotificationChannel(
       canalMonitoramentoId,
@@ -516,6 +550,61 @@ class NotificacaoService {
     }
 
     _inicializado = true;
+  }
+
+  /// `true` se o app já pode agendar alarmes EXATOS (`AlarmManager.
+  /// canScheduleExactAlarms()`) — checagem 100% silenciosa, nunca navega
+  /// para Configurações (ao contrário de [solicitarAlarmesExatos]). Usado
+  /// por [OnboardingService] para mostrar o status do item "Notificações
+  /// e alarmes" sem disparar nenhuma navegação indesejada só de exibir a
+  /// tela. Sempre `true` em versões do Android onde a permissão nem existe
+  /// (< 12) — nunca lança exceção (permissivo em caso de erro/plataforma
+  /// não suportada).
+  static Future<bool> podeAgendarAlarmesExatos() async {
+    try {
+      final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await implementacaoAndroid?.canScheduleExactNotifications() ?? true;
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao checar permissão de alarmes exatos: $e');
+      return true;
+    }
+  }
+
+  /// Solicita a permissão de alarmes exatos — abre a tela nativa de
+  /// Configurações se ainda não concedida (Android 12+); no-op imediato
+  /// (retorna `true`) em versões mais antigas ou se já concedida. Usado
+  /// pelo botão "Conceder" do item "Notificações e alarmes" em
+  /// [OnboardingService]/`OnboardingScreen`.
+  static Future<bool> solicitarAlarmesExatos() async {
+    try {
+      final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await implementacaoAndroid?.requestExactAlarmsPermission() ?? true;
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao solicitar permissão de alarmes exatos: $e');
+      return true;
+    }
+  }
+
+  /// Solicita a permissão de notificação em tela cheia (`USE_FULL_SCREEN_INTENT`,
+  /// só existe a partir do Android 14) — abre a tela nativa de
+  /// Configurações se ainda não concedida; no-op imediato (retorna `true`)
+  /// em versões mais antigas ou se já concedida. Diferente de
+  /// [podeAgendarAlarmesExatos], não há um método NATIVO separado só de
+  /// checagem silenciosa para esta permissão específica (ver
+  /// `FlutterLocalNotificationsPlugin.java`) — por isso
+  /// `OnboardingScreen` só atualiza o status deste item DEPOIS do
+  /// usuário tocar em "Conceder" (nunca ao simples abrir a tela).
+  static Future<bool> solicitarPermissaoTelaCheia() async {
+    try {
+      final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await implementacaoAndroid?.requestFullScreenIntentPermission() ?? true;
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao solicitar permissão de tela cheia: $e');
+      return true;
+    }
   }
 
   /// Exibe a notificação de check-in de rotina para o [idAlarme]
@@ -666,9 +755,9 @@ class NotificacaoService {
       // MODO "DESPERTADOR DE EMERGÊNCIA" (items 3/4, reespecificação do
       // usuário, 2026-08-15) — `Notification.FLAG_INSISTENT` (valor 4),
       // aplicado via `additionalFlags` (recurso nativo padrão do
-      // Android, não um hack): repete o som/vibração em loop contínuo
-      // até a notificação ser CANCELADA (arrastada para descartar, ou
-      // removida programaticamente — ver [cancelarNotificacaoAlertaRecebido]).
+      // Android, não um hack): repete o SOM em loop contínuo até a
+      // notificação ser CANCELADA (arrastada para descartar, ou removida
+      // programaticamente — ver [cancelarNotificacaoAlertaRecebido]).
       // ÚNICO mecanismo de loop que funciona de forma 100% confiável
       // mesmo com o app TOTALMENTE fechado: roda inteiramente dentro da
       // MESMA chamada `flutter_local_notifications` que já posta esta
@@ -678,7 +767,23 @@ class NotificacaoService {
       // funciona quando o app já tem um engine "de verdade" rodando —
       // ver documentação completa em `AlertaRecebidoAlarmService.kt`).
       additionalFlags: Int32List.fromList(<int>[4]),
-      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-16, Moto
+      // G7 Play — reespecificação do usuário): a vibração REMOVIDA por
+      // completo — `FLAG_INSISTENT` (acima) mantém o motor de vibração
+      // repetindo pra sempre em loop junto com o som, e nesse aparelho
+      // esse loop ficava PRESO mesmo depois da notificação já ter sido
+      // cancelada (só desligar o aparelho parava) — um bug de
+      // fabricante/SO fora do nosso controle de código, mas que só afeta
+      // a vibração; o som (roteado por STREAM_ALARM, ver
+      // `audioAttributesUsage` acima) continua funcionando e sendo
+      // corretamente interrompido pelos mesmos mecanismos já existentes
+      // (toque na notificação, abrir o app, ou o teto de 5 minutos — ver
+      // [_tempoMaximoAlarmeRecebido]). `enableVibration: false` aqui é
+      // redundante com o mesmo ajuste já feito no CANAL (ver
+      // [inicializar]) — o Android decide pelo canal, mas deixar
+      // explícito também aqui documenta a intenção sem depender de
+      // ninguém ler o outro lugar.
+      enableVibration: false,
       styleInformation: fotoBytes != null
           ? BigPictureStyleInformation(
               ByteArrayAndroidBitmap(fotoBytes),
@@ -721,8 +826,10 @@ class NotificacaoService {
     );
 
     // TETO DE SEGURANÇA (2026-08-15, mesmo pedido do usuário que motivou
-    // a correção do "não consegui fazer parar de vibrar"): agenda um
-    // alarme nativo de UMA VEZ, em [_tempoMaximoAlarmeRecebido] (3
+    // a correção do "não consegui fazer parar de vibrar"; ajustado de 3
+    // para 5 minutos no mesmo dia, após confirmar em teste físico que o
+    // teto nativo/este agendado já disparavam corretamente): agenda um
+    // alarme nativo de UMA VEZ, em [_tempoMaximoAlarmeRecebido] (5
     // minutos — MESMO valor já usado por
     // `AlertaRecebidoAlarmService._TEMPO_MAXIMO_TOCANDO`, do lado
     // nativo), que cancela esta notificação sozinho se o usuário nunca
@@ -747,7 +854,7 @@ class NotificacaoService {
         _callbackTimeoutSegurancaAlertaRecebido,
         exact: true,
         wakeup: true,
-        allowWhileIdle: true, // bypassa Doze — o dispositivo receptor pode estar com a tela apagada/bloqueada pelos 3 minutos inteiros.
+        allowWhileIdle: true, // bypassa Doze — o dispositivo receptor pode estar com a tela apagada/bloqueada pelos 5 minutos inteiros.
         rescheduleOnReboot: false,
         params: {'idEntrega': idEntrega},
       );
@@ -758,12 +865,13 @@ class NotificacaoService {
     }
   }
 
-  /// Mesmo teto (3 minutos) já usado pelo timeout nativo de
+  /// Mesmo teto (5 minutos — reespecificado pelo usuário, 2026-08-15;
+  /// era 3 minutos) já usado pelo timeout nativo de
   /// `AlertaRecebidoAlarmService._TEMPO_MAXIMO_TOCANDO` — ver
   /// documentação completa em [exibirNotificacaoAlertaRecebido] sobre por
   /// que este, implementado separadamente via `AndroidAlarmManager`, é
   /// necessário mesmo já existindo aquele.
-  static const Duration _tempoMaximoAlarmeRecebido = Duration(minutes: 3);
+  static const Duration _tempoMaximoAlarmeRecebido = Duration(minutes: 5);
 
   /// Id estável derivado do [idEntrega] — evita colidir com os ids de
   /// notificação de check-in de rotina (idAlarme/idAlarme+10000).
@@ -799,7 +907,7 @@ class NotificacaoService {
     }
     // Cancela também o teto de segurança agendado (ver
     // [exibirNotificacaoAlertaRecebido]) — a notificação já foi resolvida
-    // por interação do usuário, então o alarme de 3 minutos não precisa
+    // por interação do usuário, então o alarme de 5 minutos não precisa
     // mais disparar. Puramente cosmético/limpeza: mesmo se este cancel
     // falhar ou o alarme já tiver disparado, [_callbackTimeoutSegurancaAlertaRecebido]
     // chamar [cancelarNotificacaoAlertaRecebido] de novo é inofensivo
@@ -1194,7 +1302,7 @@ class NotificacaoService {
 /// conseguir encontrá-la mesmo depois do tree-shaking do Dart AOT em
 /// builds de release.
 ///
-/// Se os 3 minutos se esgotarem sem o usuário ter interagido com a
+/// Se os 5 minutos se esgotarem sem o usuário ter interagido com a
 /// notificação (que já teria cancelado este mesmo alarme, ver
 /// [NotificacaoService.cancelarNotificacaoAlertaRecebido]), para o
 /// alarme sonoro nativo (best-effort — pode já nem estar tocando, ver
@@ -1208,7 +1316,7 @@ void _callbackTimeoutSegurancaAlertaRecebido(int id, Map<String, dynamic> params
   final idEntrega = params['idEntrega'] as String?;
   if (idEntrega == null) return;
 
-  debugPrint('⏰ [HEADLESS] Teto de segurança (3min) do alerta recebido '
+  debugPrint('⏰ [HEADLESS] Teto de segurança (5min) do alerta recebido '
       '#$idEntrega atingido sem confirmação — parando o alarme.');
 
   await NotificacaoService.pararAlarmeCritico();

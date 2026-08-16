@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Mit Apple anmelden",
   "loginLimparSessaoBotao": "Anmeldesitzung löschen",
   "loginLimparSessaoConfirmacao": "Soziale Anmeldesitzung gelöscht. Versuchen Sie es erneut.",
-  "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode."
+  "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode.",
+  "onboardingTitulo": "Sicherheitseinrichtung",
+  "onboardingIntroducao": "Damit der Notfallknopf und die Warnungen zuverlässig funktionieren, auch bei gesperrtem Bildschirm, erteilen Sie bitte die unten stehenden Berechtigungen. Sie können später alles in den Einstellungen überprüfen.",
+  "onboardingBadgeEssencial": "Erforderlich",
+  "onboardingBadgeRecomendado": "Empfohlen",
+  "onboardingStatusConcedida": "Erteilt",
+  "onboardingStatusPendente": "Ausstehend",
+  "onboardingBotaoAbrirConfiguracoes": "Einstellungen öffnen",
+  "onboardingBotaoContinuar": "Weiter",
+  "onboardingAvisoEssenciaisPendentes": "Erteilen Sie die erforderlichen Berechtigungen, um die Einrichtung abzuschließen.",
+  "onboardingNotificacoesTitulo": "Benachrichtigungen und Alarme",
+  "onboardingNotificacoesConteudo": "Ermöglicht, dass Notfallwarnungen sofort mit Ton erscheinen und geplante Erinnerungen (Check-ins, Timer) genau zur richtigen Zeit ausgelöst werden.",
+  "onboardingLocalizacaoTitulo": "Standort immer aktiv",
+  "onboardingLocalizacaoConteudo": "Mit „Immer zulassen“ wird Ihr Standort auch bei geschlossener App oder ausgeschaltetem Bildschirm an Ihre Notfallkontakte gesendet — unverzichtbar bei einem echten Notfall.",
+  "onboardingCameraTitulo": "Kamerazugriff",
+  "onboardingCameraConteudo": "Wird nur beim Notfallknopf verwendet, um ein Foto des Ortes an die an Ihre Notfallkontakte gesendete Warnung anzuhängen.",
+  "onboardingTelaCheiaTitulo": "Vollbildwarnungen",
+  "onboardingTelaCheiaConteudo": "Ermöglicht, dass eine von einem Kontakt empfangene Warnung den Bildschirm weckt und wie ein Anruf über dem Sperrbildschirm erscheint."
 }

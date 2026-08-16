@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "تسجيل الدخول عبر Apple",
   "loginLimparSessaoBotao": "مسح جلسة الدخول",
   "loginLimparSessaoConfirmacao": "تم مسح جلسة الدخول الاجتماعي. حاول تسجيل الدخول مرة أخرى.",
-  "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة."
+  "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة.",
+  "onboardingTitulo": "إعداد الأمان",
+  "onboardingIntroducao": "لكي يعمل زر الذعر والتنبيهات بشكل موثوق، حتى مع قفل الشاشة، امنح الأذونات أدناه. يمكنك مراجعة كل شيء لاحقًا في الإعدادات.",
+  "onboardingBadgeEssencial": "أساسي",
+  "onboardingBadgeRecomendado": "موصى به",
+  "onboardingStatusConcedida": "ممنوح",
+  "onboardingStatusPendente": "معلّق",
+  "onboardingBotaoAbrirConfiguracoes": "فتح الإعدادات",
+  "onboardingBotaoContinuar": "متابعة",
+  "onboardingAvisoEssenciaisPendentes": "امنح الأذونات الأساسية لإكمال الإعداد.",
+  "onboardingNotificacoesTitulo": "الإشعارات والمنبهات",
+  "onboardingNotificacoesConteudo": "يسمح بظهور تنبيهات الطوارئ فورًا مع صوت، وبتشغيل التذكيرات المجدولة (تسجيلات الوصول، المؤقت) في الوقت المحدد بالضبط.",
+  "onboardingLocalizacaoTitulo": "الموقع نشط دائمًا",
+  "onboardingLocalizacaoConteudo": "باستخدام \"السماح طوال الوقت\"، يتم إرسال موقعك إلى جهات اتصال الطوارئ حتى مع إغلاق التطبيق أو إطفاء الشاشة — أمر أساسي في حالة طوارئ حقيقية.",
+  "onboardingCameraTitulo": "الوصول إلى الكاميرا",
+  "onboardingCameraConteudo": "تُستخدم فقط في زر الذعر، لإرفاق صورة للموقع بالتنبيه المرسل إلى جهات اتصال الطوارئ.",
+  "onboardingTelaCheiaTitulo": "تنبيهات ملء الشاشة",
+  "onboardingTelaCheiaConteudo": "يسمح لتنبيه وارد من جهة اتصال بتشغيل الشاشة وعرضه فوق شاشة القفل، مثل مكالمة واردة."
 }

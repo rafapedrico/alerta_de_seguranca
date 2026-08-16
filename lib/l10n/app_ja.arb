@@ -688,5 +688,22 @@
   "loginSocialAppleTooltip": "Appleでログイン",
   "loginLimparSessaoBotao": "ログインセッションをクリア",
   "loginLimparSessaoConfirmacao": "ソーシャルログインセッションをクリアしました。もう一度ログインしてください。",
-  "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。"
+  "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。",
+  "onboardingTitulo": "セキュリティ設定",
+  "onboardingIntroducao": "画面がロックされていても緊急ボタンとアラートが確実に機能するように、以下の権限を許可してください。後から設定画面でいつでも確認できます。",
+  "onboardingBadgeEssencial": "必須",
+  "onboardingBadgeRecomendado": "推奨",
+  "onboardingStatusConcedida": "許可済み",
+  "onboardingStatusPendente": "未許可",
+  "onboardingBotaoAbrirConfiguracoes": "設定を開く",
+  "onboardingBotaoContinuar": "続ける",
+  "onboardingAvisoEssenciaisPendentes": "設定を完了するには必須の権限を許可してください。",
+  "onboardingNotificacoesTitulo": "通知とアラーム",
+  "onboardingNotificacoesConteudo": "緊急アラートが音とともにすぐに表示されるようにし、予定されたリマインダー(チェックイン、タイマー)が正確な時刻に作動するようにします。",
+  "onboardingLocalizacaoTitulo": "位置情報を常にオンにする",
+  "onboardingLocalizacaoConteudo": "「常に許可」にすると、アプリが閉じていたり画面が消えていたりしても、位置情報が緊急連絡先に送信されます — 本物のSOSでは不可欠です。",
+  "onboardingCameraTitulo": "カメラへのアクセス",
+  "onboardingCameraConteudo": "緊急ボタンでのみ使用し、緊急連絡先に送るアラートに現場の写真を添付します。",
+  "onboardingTelaCheiaTitulo": "全画面アラート",
+  "onboardingTelaCheiaConteudo": "連絡先から届いたアラートが画面をオンにし、着信のようにロック画面の上に表示されるようにします。"
 }
