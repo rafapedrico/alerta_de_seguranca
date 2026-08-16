@@ -340,12 +340,37 @@ Future<void> _inicializarNotificacoesEAbrirAlertaPendente() async {
 /// ao inicializar (sem rede, projeto mal configurado, etc.), o app
 /// continua funcional para login local/SMS, que não dependem dele.
 Future<void> _iniciarFirebaseEAuth({required bool preservarSessaoExistente}) async {
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    debugPrint('☁️ [Firebase] Inicializado com sucesso.');
-  } catch (e) {
-    debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
-        'apenas com os recursos locais): $e');
+  // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
+  // logcat no Moto G7 Play): esta função roda em CADA execução de
+  // main() — inclusive no cold-start dedicado do botão físico de SOS
+  // (`coldStartViaSosFisico`, ver acima), que abre `LockscreenCameraActivity`
+  // com sua PRÓPRIA `FlutterEngine`/isolate, SEPARADA da engine principal
+  // (`MainActivity`) que pode continuar viva/"quente" no MESMO processo
+  // Android (ver `VolumeSosEventBridge`). O `FirebaseApp` nativo é um
+  // singleton POR PROCESSO — se a engine principal já tiver inicializado
+  // o Firebase segundos antes, chamar `Firebase.initializeApp()` de novo
+  // nesta engine NOVA, sem checar antes, derruba com
+  // `IllegalStateException: FirebaseApp name [DEFAULT] already exists!`
+  // — visto ao vivo no logcat em disparos consecutivos do botão físico.
+  // Resultado real: `Firebase.apps` ficava vazio NESTA engine, e todo o
+  // disparo (localização E foto) caía silenciosamente no fallback SEM
+  // sessão (SMS de resgate genérico, sem link real nem Push) — sintoma
+  // relatado pelo usuário como "a foto tirada nem sempre é enviada".
+  // `if (Firebase.apps.isEmpty)` é o MESMO guard já usado com sucesso
+  // pelos outros pontos de entrada headless deste app (ver
+  // `fcm_service.dart`/`rotina_alarme_service.dart`) — o SDK detecta o
+  // app nativo já registrado por OUTRA engine e reaproveita, em vez de
+  // tentar recriá-lo.
+  if (Firebase.apps.isEmpty) {
+    try {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      debugPrint('☁️ [Firebase] Inicializado com sucesso.');
+    } catch (e) {
+      debugPrint('⚠️ [Firebase] Falha ao inicializar (app segue 100% funcional '
+          'apenas com os recursos locais): $e');
+    }
+  } else {
+    debugPrint('☁️ [Firebase] Já inicializado (outra engine no mesmo processo) — reaproveitando.');
   }
 
   // CORREÇÃO (bug real diagnosticado em teste, 2026-08-10 — login

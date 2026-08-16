@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -718,7 +719,51 @@ class NotificacaoService {
       details,
       payload: payload,
     );
+
+    // TETO DE SEGURANÇA (2026-08-15, mesmo pedido do usuário que motivou
+    // a correção do "não consegui fazer parar de vibrar"): agenda um
+    // alarme nativo de UMA VEZ, em [_tempoMaximoAlarmeRecebido] (3
+    // minutos — MESMO valor já usado por
+    // `AlertaRecebidoAlarmService._TEMPO_MAXIMO_TOCANDO`, do lado
+    // nativo), que cancela esta notificação sozinho se o usuário nunca
+    // interagir com ela.
+    //
+    // POR QUE NÃO REAPROVEITAR O TIMEOUT NATIVO JÁ EXISTENTE: aquele
+    // timeout vive DENTRO de `AlertaRecebidoAlarmService` — mas esse
+    // Service só chega a INICIAR quando `iniciarAlarmeCritico()` (acima)
+    // funciona, e ele já é protegido por try/catch justamente porque
+    // FALHA (`MissingPluginException`) sempre que esta função roda no
+    // isolate HEADLESS do FCM (app fechado) — exatamente o cenário onde
+    // uma rede de segurança é mais necessária. `AndroidAlarmManager`
+    // (usado abaixo) é um plugin FEDERADO de verdade (registrado em
+    // QUALQUER engine automaticamente, mesmo padrão já usado com sucesso
+    // em outros callbacks headless deste app, ver
+    // `RotinaAlarmeService`/`RetryUploadService`), então funciona de
+    // forma confiável não importa o estado do app.
+    try {
+      await AndroidAlarmManager.oneShot(
+        _tempoMaximoAlarmeRecebido,
+        _idAlarmeSegurancaAlertaRecebido(idEntrega),
+        _callbackTimeoutSegurancaAlertaRecebido,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true, // bypassa Doze — o dispositivo receptor pode estar com a tela apagada/bloqueada pelos 3 minutos inteiros.
+        rescheduleOnReboot: false,
+        params: {'idEntrega': idEntrega},
+      );
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao agendar o teto de segurança '
+          'do alerta recebido — a notificação só será cancelada por interação '
+          'manual do usuário: $e');
+    }
   }
+
+  /// Mesmo teto (3 minutos) já usado pelo timeout nativo de
+  /// `AlertaRecebidoAlarmService._TEMPO_MAXIMO_TOCANDO` — ver
+  /// documentação completa em [exibirNotificacaoAlertaRecebido] sobre por
+  /// que este, implementado separadamente via `AndroidAlarmManager`, é
+  /// necessário mesmo já existindo aquele.
+  static const Duration _tempoMaximoAlarmeRecebido = Duration(minutes: 3);
 
   /// Id estável derivado do [idEntrega] — evita colidir com os ids de
   /// notificação de check-in de rotina (idAlarme/idAlarme+10000).
@@ -726,6 +771,15 @@ class NotificacaoService {
   /// [cancelarNotificacaoAlertaRecebido] (remove) para nunca divergir.
   static int _idNotificacaoAlertaRecebido(String idEntrega) =>
       30000 + (idEntrega.hashCode.abs() % 60000);
+
+  /// Id do alarme nativo do teto de segurança (ver
+  /// [_tempoMaximoAlarmeRecebido]) — faixa DELIBERADAMENTE separada de
+  /// [_idNotificacaoAlertaRecebido] (namespace diferente do
+  /// `AndroidAlarmManager`, mas por clareza/depuração nunca reaproveita o
+  /// mesmo número) e dos demais ids de alarme nativo já usados neste app
+  /// (`RotinaAlarmeService`, `RetryUploadService`, `AlarmeService`).
+  static int _idAlarmeSegurancaAlertaRecebido(String idEntrega) =>
+      90000 + (idEntrega.hashCode.abs() % 60000);
 
   /// Remove a notificação do alerta recebido — item 4 do pedido
   /// ("Despertador de Emergência"): cancelar a notificação
@@ -742,6 +796,18 @@ class NotificacaoService {
       await _plugin.cancel(_idNotificacaoAlertaRecebido(idEntrega));
     } catch (e) {
       debugPrint('⚠️ [NotificacaoService] Falha ao cancelar notificação de alerta recebido: $e');
+    }
+    // Cancela também o teto de segurança agendado (ver
+    // [exibirNotificacaoAlertaRecebido]) — a notificação já foi resolvida
+    // por interação do usuário, então o alarme de 3 minutos não precisa
+    // mais disparar. Puramente cosmético/limpeza: mesmo se este cancel
+    // falhar ou o alarme já tiver disparado, [_callbackTimeoutSegurancaAlertaRecebido]
+    // chamar [cancelarNotificacaoAlertaRecebido] de novo é inofensivo
+    // (idempotente).
+    try {
+      await AndroidAlarmManager.cancel(_idAlarmeSegurancaAlertaRecebido(idEntrega));
+    } catch (e) {
+      debugPrint('⚠️ [NotificacaoService] Falha ao cancelar o teto de segurança do alerta recebido: $e');
     }
   }
 
@@ -1049,6 +1115,39 @@ class NotificacaoService {
         return;
       }
 
+      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, Moto
+      // G7 Play — "vibrou e não consegui fazer parar"): antes, parar o
+      // alarme sonoro/vibração insistente (`FLAG_INSISTENT`) só acontecia
+      // DENTRO de [AlertaRecebidoScreen] (`initState`) — ou seja,
+      // dependia inteiramente do `push()` abaixo ter sucesso. Mas esta
+      // função também roda no isolate HEADLESS de
+      // `onDidReceiveBackgroundNotificationResponse` (toque na
+      // notificação com o app TOTALMENTE fechado) — nesse isolate NUNCA
+      // existe `runApp()`/Navigator, então `appNavigatorKey.currentState`
+      // é sempre `null` e `?.push(...)` é um NO-OP silencioso: a tela
+      // nunca abria, [cancelarNotificacaoAlertaRecebido] nunca era
+      // chamado, e a notificação (com sua vibração/som em loop,
+      // `Notification.FLAG_INSISTENT`) ficava tocando/vibrando PARA
+      // SEMPRE, sem nenhuma forma de parar a não ser matar o app pelo
+      // sistema. Agora, parar o alarme e cancelar a notificação
+      // acontecem AQUI, incondicionalmente, ANTES da tentativa de
+      // navegação — [cancelarNotificacaoAlertaRecebido] usa só
+      // `flutter_local_notifications` (plugin federado, registrado
+      // automaticamente em QUALQUER engine, inclusive headless — ao
+      // contrário do MethodChannel customizado usado por
+      // [pararAlarmeCritico], protegido por seu próprio try/catch), então
+      // funciona de forma confiável não importa o estado do app. A
+      // navegação para [AlertaRecebidoScreen] continua best-effort logo
+      // abaixo — quando não há Navigator vivo (app fechado), o usuário só
+      // vê os detalhes ao reabrir o app manualmente (já persistidos
+      // localmente por `AlertasRecebidosService`), mas o alarme já para
+      // na hora do toque, não importa o estado do app.
+      final idEntregaAlerta = dados['idEntrega'] as String?;
+      unawaited(pararAlarmeCritico());
+      if (idEntregaAlerta != null) {
+        unawaited(cancelarNotificacaoAlertaRecebido(idEntregaAlerta));
+      }
+
       appNavigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => AlertaRecebidoScreen(
@@ -1057,7 +1156,7 @@ class NotificacaoService {
             latitude: (dados['latitude'] as num?)?.toDouble(),
             longitude: (dados['longitude'] as num?)?.toDouble(),
             fotoUrl: dados['fotoUrl'] as String?,
-            idEntrega: dados['idEntrega'] as String?,
+            idEntrega: idEntregaAlerta,
             recebidoEm: dados['recebidoEm'] as String?,
           ),
         ),
@@ -1084,4 +1183,34 @@ class NotificacaoService {
       debugPrint('⚠️ Falha ao registrar evento de sistema no histórico: $e');
     }
   }
+}
+
+/// Callback headless do teto de segurança agendado por
+/// [NotificacaoService.exibirNotificacaoAlertaRecebido] — roda num
+/// isolate/engine SEPARADO do processo principal (mesmo mecanismo já
+/// usado por `RotinaAlarmeService`/`RetryUploadService`), por isso é uma
+/// função TOP-LEVEL (fora de qualquer classe) anotada com
+/// `@pragma('vm:entry-point')`, obrigatória para o `AndroidAlarmManager`
+/// conseguir encontrá-la mesmo depois do tree-shaking do Dart AOT em
+/// builds de release.
+///
+/// Se os 3 minutos se esgotarem sem o usuário ter interagido com a
+/// notificação (que já teria cancelado este mesmo alarme, ver
+/// [NotificacaoService.cancelarNotificacaoAlertaRecebido]), para o
+/// alarme sonoro nativo (best-effort — pode já nem estar tocando, ver
+/// documentação completa em [NotificacaoService.exibirNotificacaoAlertaRecebido]
+/// sobre por que este teto existe SEPARADO daquele) e cancela a
+/// notificação (o que efetivamente encerra o som/vibração insistentes do
+/// `flutter_local_notifications`, o caminho que SEMPRE funciona
+/// independente do estado do app).
+@pragma('vm:entry-point')
+void _callbackTimeoutSegurancaAlertaRecebido(int id, Map<String, dynamic> params) async {
+  final idEntrega = params['idEntrega'] as String?;
+  if (idEntrega == null) return;
+
+  debugPrint('⏰ [HEADLESS] Teto de segurança (3min) do alerta recebido '
+      '#$idEntrega atingido sem confirmação — parando o alarme.');
+
+  await NotificacaoService.pararAlarmeCritico();
+  await NotificacaoService.cancelarNotificacaoAlertaRecebido(idEntrega);
 }

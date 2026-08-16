@@ -18,4 +18,12 @@
     <string name="alerta_alarme_titulo">Alerta de emergência tocando</string>
     <string name="alerta_alarme_corpo">Toque para abrir ou deslize para silenciar</string>
     <string name="alerta_alarme_silenciar">Silenciar</string>
+
+    <!-- Notificação full-screen-intent usada por
+         VolumeSosService.forcarAberturaLockscreenCameraActivity para
+         abrir a câmera sobre a tela bloqueada, contornando a restrição
+         de "Background Activity Launch" do Android 12+ (ver comentário
+         completo na classe). Texto nativo, mesmo motivo dos acima. -->
+    <string name="alerta_sos_fisico_titulo">SOS acionado</string>
+    <string name="alerta_sos_fisico_corpo">Abrindo a câmera de emergência…</string>
 </resources>

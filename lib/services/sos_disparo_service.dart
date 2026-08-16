@@ -215,7 +215,29 @@ class SosDisparoService {
           }
         }
       } else {
-        debugPrint('📵 [SosDisparoService] Sem sessão autenticada — P2 ($origem) só via SMS (canal oficial único).');
+        // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15):
+        // antes, este ramo ("sem sessão AGORA") só mandava o SMS de
+        // resgate genérico (sem link real da foto) e não enfileirava
+        // NADA para retry — diferente do ramo acima (upload falhou COM
+        // sessão), que já enfileira. Resultado real observado: quando
+        // `aguardarUidPronto()` retornava `null` momentaneamente (ex:
+        // corrida de inicialização do Firebase entre duas engines no
+        // mesmo processo — ver `main.dart::_iniciarFirebaseEAuth` — ou
+        // qualquer instabilidade de sessão passageira), a foto real
+        // NUNCA mais era enviada, mesmo depois da sessão/conectividade
+        // se restabelecerem segundos depois — só o SMS genérico "SOS-..."
+        // sem link nenhum ficava registrado. Enfileirar aqui também
+        // garante que [RetryUploadService] (cold start seguinte + alarme
+        // periódico de 15 min) tente de novo automaticamente assim que
+        // houver sessão, completando o upload real + o link da foto na
+        // segunda mensagem, sem exigir nenhuma ação do usuário.
+        debugPrint('📵 [SosDisparoService] Sem sessão autenticada — P2 ($origem) só via SMS '
+            '(canal oficial único) agora; enfileirando para retry automático.');
+        try {
+          await RetryUploadService().enfileirar(fotoOriginal: foto, origem: origem);
+        } catch (e2) {
+          debugPrint('⚠️ [SosDisparoService] Falha ao enfileirar retry do upload (sem sessão): $e2');
+        }
       }
 
       // Canal 1 (SEMPRE): SMS — com o link real da foto quando
