@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "Richten Sie zuerst eine PIN ein",
   "excluirContaSemPinConteudo": "Aus Sicherheitsgründen erfordert das Löschen des Kontos die Bestätigung Ihrer PIN. Richten Sie eine PIN im Tab Sicherheit ein, bevor Sie fortfahren.",
   "excluirContaProcessando": "Ihr Konto und Ihre Daten werden gelöscht...",
+  "excluirContaPinSucesso": "Wächter-X wird gelöscht...",
   "excluirContaSucessoMensagem": "Ihr Konto wurde erfolgreich gelöscht.",
   "excluirContaErroMensagem": "Ihr Konto konnte gerade nicht gelöscht werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut, oder wenden Sie sich an den Support.",
   "otpTitulo": "Bestätigen Sie Ihre Telefonnummer",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "Der Code ist abgelaufen. Tippen Sie auf „Code erneut senden“, um einen neuen zu erhalten.",
   "otpErroNumeroJaEmUso": "Diese Nummer ist bereits mit einem anderen Guardião-X-Konto verifiziert. Verwenden Sie eine andere Nummer oder wenden Sie sich an den Support.",
   "otpErroGenerico": "Die Verifizierung konnte gerade nicht abgeschlossen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-  "otpSucessoMensagem": "Telefonnummer erfolgreich verifiziert!"
+  "otpSucessoMensagem": "Telefonnummer erfolgreich verifiziert!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "Kontakt entfernt, aber die Aufhebung der Standortfreigabe konnte nicht bestätigt werden. Überprüfen Sie Ihre Verbindung und versuchen Sie erneut zu löschen, um Ihre Privatsphäre zu schützen."
 }

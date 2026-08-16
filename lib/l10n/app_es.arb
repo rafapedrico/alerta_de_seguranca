@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "Configura un PIN primero",
   "excluirContaSemPinConteudo": "Por seguridad, eliminar la cuenta requiere la confirmación de tu PIN. Configura un PIN en la pestaña Seguridad antes de continuar.",
   "excluirContaProcessando": "Eliminando tu cuenta y tus datos...",
+  "excluirContaPinSucesso": "Eliminando Guardián-X...",
   "excluirContaSucessoMensagem": "Tu cuenta se eliminó con éxito.",
   "excluirContaErroMensagem": "No pudimos eliminar tu cuenta en este momento. Verifica tu conexión e inténtalo de nuevo, o contacta con soporte.",
   "otpTitulo": "Verifica tu número de teléfono",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "El código ha expirado. Toca \"Reenviar código\" para recibir uno nuevo.",
   "otpErroNumeroJaEmUso": "Este número ya está verificado en otra cuenta de Guardián X. Usa otro número o contacta con soporte.",
   "otpErroGenerico": "No pudimos completar la verificación en este momento. Verifica tu conexión e inténtalo de nuevo.",
-  "otpSucessoMensagem": "¡Teléfono verificado con éxito!"
+  "otpSucessoMensagem": "¡Teléfono verificado con éxito!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contacto eliminado, pero no pudimos confirmar la revocación del uso compartido de ubicación. Verifica tu conexión e intenta eliminarlo de nuevo para proteger tu privacidad."
 }

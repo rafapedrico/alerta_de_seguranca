@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "先にPINを設定してください",
   "excluirContaSemPinConteudo": "セキュリティのため、アカウントの削除にはPINでの確認が必要です。続行する前に、セキュリティタブでPINを設定してください。",
   "excluirContaProcessando": "アカウントとデータを削除しています…",
+  "excluirContaPinSucesso": "守護者-Xを削除しています…",
   "excluirContaSucessoMensagem": "アカウントは正常に削除されました。",
   "excluirContaErroMensagem": "現在アカウントを削除できませんでした。接続を確認して再試行するか、サポートにお問い合わせください。",
   "otpTitulo": "電話番号を確認してください",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "コードの有効期限が切れました。「コードを再送信」をタップして新しいコードを受け取ってください。",
   "otpErroNumeroJaEmUso": "この番号はすでに別のGuardião Xアカウントで確認済みです。別の番号を使用するか、サポートにお問い合わせください。",
   "otpErroGenerico": "現在確認を完了できませんでした。接続を確認してもう一度お試しください。",
-  "otpSucessoMensagem": "電話番号が正常に確認されました！"
+  "otpSucessoMensagem": "電話番号が正常に確認されました！",
+  "monitoramentoRevogacaoFalhouAoExcluir": "連絡先は削除されましたが、位置情報共有の取り消しを確認できませんでした。接続を確認し、プライバシー保護のためもう一度削除をお試しください。"
 }

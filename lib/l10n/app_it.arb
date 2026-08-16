@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "Configura prima un PIN",
   "excluirContaSemPinConteudo": "Per sicurezza, l'eliminazione dell'account richiede la conferma del tuo PIN. Configura un PIN nella scheda Sicurezza prima di continuare.",
   "excluirContaProcessando": "Eliminazione del tuo account e dei tuoi dati...",
+  "excluirContaPinSucesso": "Eliminazione di Guardiano-X...",
   "excluirContaSucessoMensagem": "Il tuo account è stato eliminato con successo.",
   "excluirContaErroMensagem": "Non è stato possibile eliminare il tuo account in questo momento. Controlla la connessione e riprova, oppure contatta l'assistenza.",
   "otpTitulo": "Verifica il tuo numero di telefono",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "Il codice è scaduto. Tocca \"Invia di nuovo il codice\" per riceverne uno nuovo.",
   "otpErroNumeroJaEmUso": "Questo numero è già verificato su un altro account Guardião X. Usa un altro numero o contatta l'assistenza.",
   "otpErroGenerico": "Non è stato possibile completare la verifica in questo momento. Controlla la connessione e riprova.",
-  "otpSucessoMensagem": "Telefono verificato con successo!"
+  "otpSucessoMensagem": "Telefono verificato con successo!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contatto rimosso, ma non è stato possibile confermare la revoca della condivisione della posizione. Controlla la connessione e riprova a eliminarlo per proteggere la tua privacy."
 }

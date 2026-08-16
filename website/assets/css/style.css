@@ -250,6 +250,12 @@ section {
   color: var(--primary-light);
 }
 
+/* CTA duplicado só para o menu hambúrguer mobile — some no desktop, onde o
+   botão "Baixar o app" já existe em .nav-cta. */
+.nav-mobile-cta {
+  display: none;
+}
+
 .nav-cta {
   display: flex;
   align-items: center;
@@ -1098,9 +1104,10 @@ section {
     gap: 10px;
   }
 
+  /* O botão verde some da navbar (colava no logo/hambúrguer) e passa a
+     existir só dentro do menu aberto, via .nav-mobile-cta. */
   .nav-cta .btn-primary {
-    padding: 12px 20px;
-    font-size: 16px;
+    display: none;
   }
 
   body.nav-open .nav-links {
@@ -1123,12 +1130,46 @@ section {
     border-bottom: 1px solid var(--border);
   }
 
+  body.nav-open .nav-links a.nav-mobile-cta {
+    display: inline-flex;
+    width: 100%;
+    margin-top: 18px;
+    padding: 16px 20px;
+    border-bottom: none;
+    font-size: 16px;
+  }
+
   section {
     padding: 90px 0;
   }
 
   .container {
     padding: 0 24px;
+  }
+
+  /* Hero: reduz o H1 e evita quebra de linha estranha no limite da tela. */
+  .hero {
+    padding: 108px 0 60px;
+  }
+
+  .hero h1 {
+    font-size: clamp(34px, 8.5vw, 44px);
+    line-height: 1.2;
+  }
+
+  .hero p.lead {
+    font-size: 19px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
   }
 
   .features-grid,
@@ -1170,11 +1211,6 @@ section {
   .brand img {
     width: 42px;
     height: 42px;
-  }
-
-  .nav-cta .btn-primary {
-    padding: 10px 16px;
-    font-size: 14.5px;
   }
 
   .site-header .nav-wrap {

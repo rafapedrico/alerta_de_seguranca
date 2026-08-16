@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "قم بإعداد رمز PIN أولاً",
   "excluirContaSemPinConteudo": "لأسباب أمنية، يتطلب حذف الحساب تأكيد رمز PIN الخاص بك. قم بإعداد رمز PIN في علامة التبويب الأمان قبل المتابعة.",
   "excluirContaProcessando": "جارٍ حذف حسابك وبياناتك...",
+  "excluirContaPinSucesso": "جارٍ حذف حارس-X...",
   "excluirContaSucessoMensagem": "تم حذف حسابك بنجاح.",
   "excluirContaErroMensagem": "تعذّر حذف حسابك الآن. تحقق من اتصالك وحاول مرة أخرى، أو تواصل مع الدعم.",
   "otpTitulo": "تحقّق من رقم هاتفك",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "انتهت صلاحية الرمز. اضغط على \"إعادة إرسال الرمز\" للحصول على رمز جديد.",
   "otpErroNumeroJaEmUso": "هذا الرقم موثّق بالفعل في حساب آخر على Guardião X. استخدم رقمًا آخر أو تواصل مع الدعم.",
   "otpErroGenerico": "تعذّر إتمام التحقق الآن. تحقق من اتصالك وحاول مرة أخرى.",
-  "otpSucessoMensagem": "تم التحقق من رقم الهاتف بنجاح!"
+  "otpSucessoMensagem": "تم التحقق من رقم الهاتف بنجاح!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "تمت إزالة جهة الاتصال، ولكن تعذّر تأكيد إلغاء مشاركة الموقع. تحقق من اتصالك وحاول الحذف مرة أخرى لحماية خصوصيتك."
 }

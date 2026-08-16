@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "请先设置 PIN",
   "excluirContaSemPinConteudo": "出于安全考虑，删除账户需要确认您的 PIN。请在继续之前，在安全选项卡中设置 PIN。",
   "excluirContaProcessando": "正在删除您的账户和数据…",
+  "excluirContaPinSucesso": "正在删除守护者-X…",
   "excluirContaSucessoMensagem": "您的账户已成功删除。",
   "excluirContaErroMensagem": "目前无法删除您的账户。请检查网络连接后重试，或联系客服。",
   "otpTitulo": "验证您的电话号码",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "验证码已过期。点击「重新发送验证码」获取新验证码。",
   "otpErroNumeroJaEmUso": "该号码已在其他 Guardião X 账户中验证过。请使用其他号码或联系客服。",
   "otpErroGenerico": "目前无法完成验证。请检查网络连接后重试。",
-  "otpSucessoMensagem": "电话号码验证成功！"
+  "otpSucessoMensagem": "电话号码验证成功！",
+  "monitoramentoRevogacaoFalhouAoExcluir": "联系人已移除，但无法确认位置共享的撤销。请检查网络连接，并再次尝试删除以保护您的隐私。"
 }

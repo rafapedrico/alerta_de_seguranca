@@ -353,7 +353,21 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     );
 
     if (confirmou != true) return;
-    await _servico.removerContato(id);
+    final revogacaoOk = await _servico.removerContato(id);
+    if (!mounted || revogacaoOk) return;
+
+    // Falha CRÍTICA de privacidade em potencial: o contato já saiu da
+    // lista local, mas a revogação da permissão de compartilhamento no
+    // Firestore falhou de verdade (rede/servidor) — nunca deixar isso
+    // passar em silêncio, ver `MonitoramentoService.removerContato`.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.monitoramentoRevogacaoFalhouAoExcluir),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 6),
+      ),
+    );
   }
 
   // ==========================================================

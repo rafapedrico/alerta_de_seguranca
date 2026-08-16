@@ -92,13 +92,51 @@ class MonitoramentoService {
     _notificarAlteracao();
   }
 
-  /// Remove definitivamente o contato da lista local. NÃO revoga, por si
-  /// só, nenhuma permissão já concedida no Firestore — o compartilhamento
-  /// de localização continua ativo até ser bloqueado explicitamente (ver
-  /// [definirPermissaoCompartilhamento]).
-  Future<void> removerContato(int id) async {
+  /// Remove o contato da lista local E revoga IMEDIATAMENTE, no Firestore,
+  /// qualquer permissão de compartilhamento que eu tenha concedido a ele
+  /// (reaproveita [definirPermissaoCompartilhamento] com `permitir: false`
+  /// — mesmo caminho do switch de compartilhamento).
+  ///
+  /// CORREÇÃO DE FALHA CRÍTICA DE PRIVACIDADE (pedido do usuário,
+  /// 2026-08-16): antes, este método só apagava a linha local do SQLite —
+  /// o documento em `permissoes_monitoramento` continuava com `status:
+  /// 'aprovado'` no Firestore, então o contato removido CONTINUAVA
+  /// conseguindo ver minha localização em tempo real (o `StreamBuilder` do
+  /// APARELHO DELE escuta esse documento diretamente, nunca minha lista
+  /// local). Agora a revogação é chamada SEMPRE, incondicionalmente, ANTES
+  /// de apagar a linha local (que fornece o telefone usado para resolver
+  /// o documento certo) — nunca dependendo do cache local
+  /// `status_compartilhamento`, que pode estar desatualizado.
+  ///
+  /// Depois de revogado, o status volta a um estado não aprovado — só
+  /// uma NOVA solicitação (ver [solicitarLocalizacao]), com uma NOVA
+  /// aprovação explícita minha, pode restabelecer o compartilhamento.
+  ///
+  /// Best-effort quanto à revogação: a remoção LOCAL sempre acontece
+  /// (nunca deixa um contato "preso" na lista por falta de rede), mas
+  /// retorna `false` quando a revogação em si falhou de verdade (erro de
+  /// rede/servidor — não confundir com "não havia nada para revogar"),
+  /// para que a UI ([MonitoramentoTab._excluirContato]) alerte o usuário
+  /// a tentar de novo em vez de presumir silenciosamente que está seguro.
+  Future<bool> removerContato(int id) async {
+    final contato = await DatabaseHelper().buscarContatoMonitoramentoPorId(id);
+
+    bool revogacaoOk = true;
+    if (contato != null) {
+      final resultado = await definirPermissaoCompartilhamento(
+        idContatoLocal: id,
+        permitir: false,
+      );
+      // 'numero_nao_encontrado'/'proprio_numero' não são falhas de
+      // revogação — significam que nunca poderia ter existido uma
+      // permissão de verdade para esse contato. Só 'erro' (rede/servidor)
+      // é reportado como falha real ao chamador.
+      revogacaoOk = resultado != 'erro';
+    }
+
     await DatabaseHelper().deletarContatoMonitoramento(id);
     _notificarAlteracao();
+    return revogacaoOk;
   }
 
   // ==========================================================
@@ -348,10 +386,16 @@ class MonitoramentoService {
   /// `StreamBuilder` que escuta o campo `bloqueado` em tempo real.
   ///
   /// Persistido como campo booleano DEDICADO (`bloqueado`) no documento de
-  /// permissão — eixo INDEPENDENTE do `status` de compartilhamento: não
-  /// revoga, por si só, um compartilhamento já aprovado, só impede um novo
-  /// ciclo `pendente` (ver `functions/monitoramentoService.js`,
-  /// `solicitarMonitoramento`, que verifica este campo antes do Push).
+  /// permissão — eixo antes INDEPENDENTE do `status` de compartilhamento.
+  ///
+  /// REGRA DE CONSISTÊNCIA DE PRIVACIDADE (pedido do usuário, 2026-08-16):
+  /// ao BLOQUEAR (nunca ao desbloquear), agora também força
+  /// [definirPermissaoCompartilhamento] com `permitir: false` para o mesmo
+  /// contato, se houver um [idContatoLocal] resolvido — não fazia sentido
+  /// impedir novas solicitações e, ao mesmo tempo, continuar compartilhando
+  /// ATIVAMENTE a localização já aprovada antes. Desbloquear continua
+  /// **não** reativando o compartilhamento sozinho — isso ainda exige uma
+  /// ação explícita separada do usuário no switch de compartilhamento.
   ///
   /// Retorna:
   /// - `'sucesso'`: bloqueio/desbloqueio definido.
@@ -387,6 +431,28 @@ class MonitoramentoService {
         if (uidContato != null) {
           await DatabaseHelper()
               .atualizarUidContatoMonitoramento(idContatoLocal, uidContato);
+        }
+      }
+
+      // REGRA DE CONSISTÊNCIA DE PRIVACIDADE (ver documentação completa
+      // acima): bloquear novas solicitações também revoga o
+      // compartilhamento ATIVO já concedido a este contato — nunca ao
+      // desbloquear. Reaproveita [definirPermissaoCompartilhamento]
+      // inteiro (não só a chamada à Cloud Function) para que o cache local
+      // (`status_compartilhamento`) e a notificação de UI fiquem
+      // consistentes nos dois eixos. Best-effort: uma falha aqui não deve
+      // impedir o bloqueio em si (já concluído com sucesso acima) de ser
+      // reportado como êxito — o usuário pode reabrir o switch de
+      // compartilhamento manualmente se este segundo passo falhar.
+      if (bloquear && idContatoLocal != null) {
+        try {
+          await definirPermissaoCompartilhamento(
+            idContatoLocal: idContatoLocal,
+            permitir: false,
+          );
+        } catch (e) {
+          debugPrint(
+              '⚠️ [MonitoramentoService] Falha ao revogar compartilhamento em cascata após bloqueio: $e');
         }
       }
 

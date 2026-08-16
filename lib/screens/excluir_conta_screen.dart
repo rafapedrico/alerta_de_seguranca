@@ -106,6 +106,7 @@ class _ExcluirContaScreenState extends State<ExcluirContaScreen> {
       pinEsperado: pinReal,
       aoConfirmarPinCorreto: _executarExclusao,
       mostrarBotaoCancelar: true,
+      mensagemSucesso: l10n.excluirContaPinSucesso,
     );
   }
 

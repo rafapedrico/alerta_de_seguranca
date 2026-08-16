@@ -999,6 +999,7 @@
   "excluirContaSemPinTitulo": "Configure um PIN primeiro",
   "excluirContaSemPinConteudo": "Por segurança, a exclusão da conta exige a confirmação do seu PIN. Configure um PIN na aba Segurança antes de continuar.",
   "excluirContaProcessando": "Excluindo sua conta e seus dados...",
+  "excluirContaPinSucesso": "Excluindo Guardião-X...",
   "excluirContaSucessoMensagem": "Sua conta foi excluída com sucesso.",
   "excluirContaErroMensagem": "Não foi possível excluir sua conta agora. Verifique sua conexão e tente novamente, ou entre em contato com o suporte.",
   "otpTitulo": "Verifique seu número de telefone",
@@ -1022,5 +1023,6 @@
   "otpErroCodigoExpirado": "O código expirou. Toque em \"Reenviar código\" para receber um novo.",
   "otpErroNumeroJaEmUso": "Este número já está verificado em outra conta do Guardião X. Use outro número ou entre em contato com o suporte.",
   "otpErroGenerico": "Não foi possível concluir a verificação agora. Verifique sua conexão e tente novamente.",
-  "otpSucessoMensagem": "Telefone verificado com sucesso!"
+  "otpSucessoMensagem": "Telefone verificado com sucesso!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contato removido, mas não foi possível confirmar a revogação do compartilhamento de localização. Verifique sua conexão e tente excluir novamente para garantir sua privacidade."
 }

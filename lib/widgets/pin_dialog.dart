@@ -75,6 +75,7 @@ Future<void> exibirDialogoPin({
   bool mostrarBotaoCancelar = false,
   VoidCallback? aoCancelar,
   Future<void> Function()? aoDescartarPorArraste,
+  String? mensagemSucesso,
 }) {
   return showDialog<void>(
     context: context,
@@ -91,6 +92,7 @@ Future<void> exibirDialogoPin({
         mostrarBotaoCancelar: mostrarBotaoCancelar,
         aoCancelar: aoCancelar,
         aoDescartarPorArraste: aoDescartarPorArraste,
+        mensagemSucesso: mensagemSucesso,
       );
     },
   );
@@ -109,6 +111,7 @@ class PinDialogContent extends StatefulWidget {
     this.mostrarBotaoCancelar = false,
     this.aoCancelar,
     this.aoDescartarPorArraste,
+    this.mensagemSucesso,
   });
 
   final String? pinEsperado;
@@ -167,6 +170,17 @@ class PinDialogContent extends StatefulWidget {
   /// cargo de quem fornece o callback, igual ao padrão já usado em
   /// [aoAtingirLimiteDeErros]/[aoExpirarTempoLimite].
   final Future<void> Function()? aoDescartarPorArraste;
+
+  /// Mensagem de sucesso exibida no lugar do texto padrão
+  /// ([AppLocalizations.pinAlarmeDesligado]) quando o PIN correto é
+  /// digitado. OPCIONAL — quando omitido (`null`), mantém o texto padrão
+  /// "Alarme desligado" usado historicamente em todos os fluxos de
+  /// desarme de alarme/cronômetro. Chamadores cuja ação por trás do PIN
+  /// não é desarmar um alarme (ex: [ExcluirContaScreen], que reaproveita
+  /// este mesmo teclado para confirmar a exclusão de conta) devem
+  /// informar um texto específico ao contexto — sem isso, o usuário via
+  /// "Alarme desligado" ao excluir a conta, um feedback incorreto.
+  final String? mensagemSucesso;
 
   @override
   State<PinDialogContent> createState() => _PinDialogContentState();
@@ -284,7 +298,10 @@ class _PinDialogContentState extends State<PinDialogContent> {
       _timerLimiteDuro?.cancel();
       setState(() {
         _verificando = true;
-        _mensagemErro = AppLocalizations.of(context)!.pinAlarmeDesligado; // Altera a mensagem no próprio teclado
+        // Altera a mensagem no próprio teclado: usa o texto específico do
+        // chamador quando informado, senão cai no padrão "Alarme desligado".
+        _mensagemErro = widget.mensagemSucesso ??
+            AppLocalizations.of(context)!.pinAlarmeDesligado;
       });
 
       // Aguarda 1 segundo para o usuário ler o feedback de sucesso antes de sair

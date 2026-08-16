@@ -734,6 +734,7 @@
   "excluirContaSemPinTitulo": "Set up a PIN first",
   "excluirContaSemPinConteudo": "For security, deleting your account requires PIN confirmation. Set up a PIN in the Security tab before continuing.",
   "excluirContaProcessando": "Deleting your account and data...",
+  "excluirContaPinSucesso": "Deleting Guardian-X...",
   "excluirContaSucessoMensagem": "Your account has been successfully deleted.",
   "excluirContaErroMensagem": "We couldn't delete your account right now. Check your connection and try again, or contact support.",
   "otpTitulo": "Verify your phone number",
@@ -757,5 +758,6 @@
   "otpErroCodigoExpirado": "The code has expired. Tap \"Resend code\" to get a new one.",
   "otpErroNumeroJaEmUso": "This number is already verified on another Guardião X account. Use a different number or contact support.",
   "otpErroGenerico": "We couldn't complete the verification right now. Check your connection and try again.",
-  "otpSucessoMensagem": "Phone number verified successfully!"
+  "otpSucessoMensagem": "Phone number verified successfully!",
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contact removed, but we couldn't confirm the location sharing revocation. Check your connection and try deleting again to protect your privacy."
 }
