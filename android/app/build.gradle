@@ -5,6 +5,17 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Assinatura de release (upload key da Play Store) — lida de android/key.properties,
+// arquivo fora do git (ver android/.gitignore) contendo a senha real da keystore.
+// Em CI/máquinas sem esse arquivo, o build de release simplesmente cai de volta
+// para a assinatura debug (mesmo comportamento de antes desta config existir),
+// nunca falha o build por falta dele.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.example.security_check_app"
     // Fixado em 36 (em vez de flutter.compileSdkVersion) — 35 atendia o
@@ -30,10 +41,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.security_check_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Pacote definitivo de produção, registrado na Play Store e no
+        // Firebase (novo Android app "Guardião X (Android)" criado em
+        // 2026-08-16, appId 1:555863351772:android:f8cdca1bbe926aa74def19)
+        // — NUNCA mais pode mudar depois da primeira publicação na loja.
+        applicationId = "com.rmfglobal.guardiaox"
         // Fixado em 23 (em vez de flutter.minSdkVersion, que resolvia 21)
         // — exigido pelo flutter_secure_storage (dependência transitiva do
         // flutter_facebook_auth, ver pubspec.yaml/social_auth_service.dart):
@@ -51,15 +63,30 @@ android {
         // igual ao compileSdk, como o comentário sempre pretendeu.
         targetSdk = 36
 
-        versionCode 1
-        versionName "1.0.0"
+        // Lidos do pubspec.yaml (campo "version: X.Y.Z+N") pelo próprio
+        // Flutter Gradle Plugin — nunca mais precisam ser tocados aqui
+        // manualmente; bastar bumpar o pubspec.yaml a cada release.
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // Usa a upload key real (android/key.properties) quando
+            // disponível; senão cai de volta para a debug key, mesmo
+            // comportamento de antes desta config existir.
+            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

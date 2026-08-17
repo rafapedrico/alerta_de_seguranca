@@ -17,7 +17,7 @@ import '../termos_privacidade_screen.dart';
 class InicioDashboard extends StatelessWidget {
   const InicioDashboard({super.key});
 
-  static const String _site = 'https://www.guardiaox.com.br';
+  static const String _site = 'https://www.meuguardiaox.com.br';
   // Número oficial de contato do WhatsApp (atualizado em 2026-08-08) —
   // formato de exibição com código do país (+1, EUA/Canadá) para
   // leitura humana, e formato só-dígitos (sem "+", espaços ou símbolos)
@@ -26,9 +26,9 @@ class InicioDashboard extends StatelessWidget {
   static const String _whatsappUrl =
       'https://wa.me/15817095728?text=Olá!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Guardião-X';
 
-  // Pacote Android real ainda não publicado (usa o id placeholder do
-  // template do projeto) — usado só para montar o link da Play Store.
-  static const String _androidPackageId = 'com.example.security_check_app';
+  // Pacote Android definitivo (com.rmfglobal.guardiaox, ver
+  // android/app/build.gradle) — usado só para montar o link da Play Store.
+  static const String _androidPackageId = 'com.rmfglobal.guardiaox';
   static const String _playStoreWebUrl =
       'https://play.google.com/store/apps/details?id=$_androidPackageId';
   static const String _playStoreAppUrl = 'market://details?id=$_androidPackageId';
@@ -345,7 +345,7 @@ class InicioDashboard extends StatelessWidget {
             child: InkWell(
               onTap: () => _abrirUrl(_site),
               child: const Text(
-                'www.guardiaox.com.br',
+                'www.meuguardiaox.com.br',
                 style: TextStyle(
                   color: Color(0xFF9CCC65),
                   fontWeight: FontWeight.bold,
