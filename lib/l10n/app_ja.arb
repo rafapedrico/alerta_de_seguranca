@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "この番号はすでに別のGuardião Xアカウントで確認済みです。別の番号を使用するか、サポートにお問い合わせください。",
   "otpErroGenerico": "現在確認を完了できませんでした。接続を確認してもう一度お試しください。",
   "otpSucessoMensagem": "電話番号が正常に確認されました！",
-  "monitoramentoRevogacaoFalhouAoExcluir": "連絡先は削除されましたが、位置情報共有の取り消しを確認できませんでした。接続を確認し、プライバシー保護のためもう一度削除をお試しください。"
+  "monitoramentoRevogacaoFalhouAoExcluir": "連絡先は削除されましたが、位置情報共有の取り消しを確認できませんでした。接続を確認し、プライバシー保護のためもう一度削除をお試しください。",
+  "planoFreeIndicadorAtivo": "フリープラン: 今月の完全保護はあと{dias}日です",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "フリープラン: {data}に全機能が再び利用可能になります",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "プレミアムプラン: 中断のない完全保護",
+  "planoBloqueadoModalTitulo": "今月の無料日数が終了しました",
+  "planoBloqueadoModalConteudo": "今月の10日間の無料期間が終了しました。この電話番号は{data}に再び全機能にアクセスできるようになります。24時間365日、中断のない保護のために、プレミアムプランにご登録ください。",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "プレミアムプランに登録"
 }

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'database_helper.dart';
 import 'api_service.dart';
 import 'l10n_headless_service.dart';
+import 'plano_ciclo_service.dart';
 import 'plano_limite_service.dart';
 
 
@@ -389,6 +390,20 @@ class EmergencyAlertService {
     List<Map<String, dynamic>> contatosEmergencia,
     String mensagem,
   ) async {
+    // TRAVA DO CICLO DO PLANO FREE (ver PlanoCicloService): ponto ÚNICO
+    // de bloqueio do canal SMS — TODOS os fluxos de emergência deste
+    // serviço (SOS físico/manual, tentativa de desarme incorreta, alerta
+    // padrão do cronômetro, resgate de foto) passam por aqui. Fora dos 10
+    // dias ativos do mês (e sem Premium), o app NÃO dispara SMS
+    // automaticamente — regra de negócio explícita do produto. Falha ao
+    // determinar o status (sem sessão, sem rede) é tratada como liberado
+    // por padrão dentro do próprio PlanoCicloService, nunca aqui.
+    if (!await PlanoCicloService().podeUsarRecursosAvancados()) {
+      debugPrint('🔒 [SMS] Plano Free fora da janela de 10 dias ativos do mês — '
+          'SMS de emergência bloqueado (ver PlanoCicloService).');
+      return;
+    }
+
     final List<String> numerosDestinatarios = contatosEmergencia
         .map((contato) => (contato['telefone'] as String?) ?? '')
         .where((telefone) => telefone.isNotEmpty)

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/monitoramento_service.dart';
 import '../../services/wallpaper_service.dart';
 import '../../widgets/monitoramento_decisao_dialog.dart';
+import '../../widgets/plano_bloqueado_dialog.dart';
 
 const Color _corDestaque = Color(0xFF4C7040);
 
@@ -379,6 +380,14 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     final resultado = await _servico.solicitarLocalizacao(idContato);
     if (!mounted) return;
 
+    // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
+    // PlanoCicloService): modal de upsell dedicado, em vez do SnackBar
+    // genérico de erro usado pelos demais resultados.
+    if (resultado == MonitoramentoService.statusBloqueadoPlanoFree) {
+      await _exibirUpsellPlanoBloqueado();
+      return;
+    }
+
     final mensagem = switch (resultado) {
       'enviada' => l10n.monitoramentoSolicitacaoEnviada,
       'ja_aprovado' => l10n.monitoramentoJaAprovado,
@@ -393,7 +402,21 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     );
   }
 
+  /// Atalho para exibir o modal de upsell fora de um `Future<bool>` já em
+  /// mãos (ver [garantirRecursoLiberadoOuExibirUpsell]) — usado quando o
+  /// bloqueio já foi detectado pelo RESULTADO de uma chamada de serviço
+  /// (em vez de checado antes de chamá-la).
+  Future<void> _exibirUpsellPlanoBloqueado() async {
+    if (!mounted) return;
+    await garantirRecursoLiberadoOuExibirUpsell(context);
+  }
+
   Future<void> _abrirMapa(String uidAlvo) async {
+    // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
+    // PlanoCicloService) — checado ANTES de consultar a localização,
+    // exibindo o modal de upsell em vez de simplesmente não abrir nada.
+    if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+
     final dados = await _servico.buscarUltimaLocalizacao(uidAlvo);
     final latitude = (dados?['latitude'] as num?)?.toDouble();
     final longitude = (dados?['longitude'] as num?)?.toDouble();
@@ -999,6 +1022,16 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       permitir: permitir,
     );
     if (!mounted || resultado == 'sucesso') return;
+
+    // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
+    // PlanoCicloService) — modal de upsell dedicado, em vez do SnackBar
+    // genérico de erro. O Switch volta ao estado real (bloqueado) sozinho
+    // no próximo rebuild, já que reflete o `StreamBuilder` do Firestore,
+    // nunca um estado otimista local.
+    if (resultado == MonitoramentoService.statusBloqueadoPlanoFree) {
+      await _exibirUpsellPlanoBloqueado();
+      return;
+    }
 
     final mensagem = switch (resultado) {
       'numero_nao_encontrado' => l10n.monitoramentoNumeroNaoEncontrado,

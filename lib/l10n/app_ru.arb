@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "Этот номер уже подтверждён в другом аккаунте Guardião X. Используйте другой номер или обратитесь в поддержку.",
   "otpErroGenerico": "Не удалось завершить проверку сейчас. Проверьте соединение и попробуйте снова.",
   "otpSucessoMensagem": "Телефон успешно подтверждён!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "Контакт удалён, но не удалось подтвердить отмену доступа к геолокации. Проверьте соединение и попробуйте удалить снова, чтобы защитить свою конфиденциальность."
+  "monitoramentoRevogacaoFalhouAoExcluir": "Контакт удалён, но не удалось подтвердить отмену доступа к геолокации. Проверьте соединение и попробуйте удалить снова, чтобы защитить свою конфиденциальность.",
+  "planoFreeIndicadorAtivo": "Бесплатный план: осталось {dias} дн. полной защиты в этом месяце",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "Бесплатный план: полный доступ к функциям снова откроется {data}",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "Премиум-план: полная защита без перерывов",
+  "planoBloqueadoModalTitulo": "Ваши бесплатные дни в этом месяце закончились",
+  "planoBloqueadoModalConteudo": "Ваши 10 бесплатных дней в этом месяце истекли. Этот номер телефона снова получит полный доступ {data}. Для круглосуточной защиты без перерывов оформите Премиум-план.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "Оформить Премиум-план"
 }

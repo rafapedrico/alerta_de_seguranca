@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "该号码已在其他 Guardião X 账户中验证过。请使用其他号码或联系客服。",
   "otpErroGenerico": "目前无法完成验证。请检查网络连接后重试。",
   "otpSucessoMensagem": "电话号码验证成功！",
-  "monitoramentoRevogacaoFalhouAoExcluir": "联系人已移除，但无法确认位置共享的撤销。请检查网络连接，并再次尝试删除以保护您的隐私。"
+  "monitoramentoRevogacaoFalhouAoExcluir": "联系人已移除，但无法确认位置共享的撤销。请检查网络连接，并再次尝试删除以保护您的隐私。",
+  "planoFreeIndicadorAtivo": "免费计划：本月还剩 {dias} 天的完整保护",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "免费计划：完整功能将于 {data} 重新开放",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "高级计划：全天候保护，无中断",
+  "planoBloqueadoModalTitulo": "本月的免费天数已用完",
+  "planoBloqueadoModalConteudo": "您本月的10天免费时间已到期。此电话号码将于{data}重新获得完整功能访问权限。如需全天候无中断保护，请订阅高级计划。",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "订阅高级计划"
 }

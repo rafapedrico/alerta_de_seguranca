@@ -9,6 +9,7 @@ import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'location_service.dart';
+import 'plano_ciclo_service.dart';
 
 /// Serviço central da aba Monitoramento: gerencia a lista LOCAL de
 /// contatos (SQLite, tabela `monitoramento_contatos`, TOTALMENTE
@@ -51,6 +52,16 @@ class MonitoramentoService {
   /// Valores padrão do cache local antes de qualquer solicitação existir.
   static const String statusVerNaoSolicitado = 'nao_solicitado';
   static const String statusCompartilharInexistente = 'inexistente';
+
+  /// Retornado por [solicitarLocalizacao]/[definirPermissaoCompartilhamento]
+  /// quando a ação foi recusada por causa do BLOQUEIO BIDIRECIONAL de
+  /// localização em tempo real do ciclo do Plano Free (ver
+  /// PlanoCicloService) — fora dos 10 dias ativos do mês, sem Premium, o
+  /// usuário não pode nem VER a localização de terceiros nem PASSAR A
+  /// COMPARTILHAR a própria (revogar/bloquear um compartilhamento já
+  /// concedido continua sempre permitido, por ser uma ação
+  /// segurança-positiva).
+  static const String statusBloqueadoPlanoFree = 'bloqueado_plano_free';
 
   /// Incrementado a cada alteração relevante na lista local de contatos
   /// ou em seus status em cache — mesmo padrão de
@@ -159,6 +170,9 @@ class MonitoramentoService {
   /// - `'erro'`: falha de rede/servidor.
   Future<String> solicitarLocalizacao(int idContatoLocal) async {
     if (!_firebaseDisponivel) return 'erro';
+    if (!await PlanoCicloService().podeUsarRecursosAvancados()) {
+      return statusBloqueadoPlanoFree;
+    }
 
     final contato =
         await DatabaseHelper().buscarContatoMonitoramentoPorId(idContatoLocal);
@@ -230,6 +244,12 @@ class MonitoramentoService {
     required String telefoneSolicitante,
   }) async {
     if (!_firebaseDisponivel) return;
+    // Defesa em profundidade: a UI (ver `monitoramento_decisao_dialog.dart`)
+    // já checa isso ANTES de chegar aqui e exibe o modal de upsell — este
+    // segundo bloqueio cobre qualquer outro chamador futuro.
+    if (aprovar && !await PlanoCicloService().podeUsarRecursosAvancados()) {
+      aprovar = false;
+    }
     final novoStatus = aprovar ? statusAprovado : statusNegado;
 
     try {
@@ -318,6 +338,13 @@ class MonitoramentoService {
     required bool permitir,
   }) async {
     if (!_firebaseDisponivel) return 'erro';
+    // Bloqueia apenas o caminho POSITIVO (passar a compartilhar) — negar/
+    // revogar (`permitir: false`) é sempre permitido, inclusive quando
+    // chamado internamente em cascata por [definirBloqueioPorTelefone] e
+    // [removerContato], que nunca devem ser impedidos de revogar acesso.
+    if (permitir && !await PlanoCicloService().podeUsarRecursosAvancados()) {
+      return statusBloqueadoPlanoFree;
+    }
 
     final contato =
         await DatabaseHelper().buscarContatoMonitoramentoPorId(idContatoLocal);
@@ -531,6 +558,14 @@ class MonitoramentoService {
   /// devolve `null` silenciosamente. Usada pelo botão "Ver no mapa".
   Future<Map<String, dynamic>?> buscarUltimaLocalizacao(String uidAlvo) async {
     if (!_firebaseDisponivel) return null;
+    // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
+    // PlanoCicloService) — lado "visualizar": além de [_abrirMapa] já
+    // checar isso antes de abrir o mapa (exibindo o modal de upsell),
+    // este `null` aqui também suprime a data de "atualizado há X min" e o
+    // botão "Ver no mapa" exibidos no próprio card (ver
+    // `_construirLinhaAprovado` em `monitoramento_tab.dart`), sem nunca
+    // expor a coordenada em si.
+    if (!await PlanoCicloService().podeUsarRecursosAvancados()) return null;
     try {
       final snap = await FirebaseFirestore.instance
           .collection('usuarios')

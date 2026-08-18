@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "यह नंबर पहले से ही किसी अन्य Guardião X खाते में सत्यापित है। कोई दूसरा नंबर उपयोग करें या सहायता से संपर्क करें।",
   "otpErroGenerico": "अभी सत्यापन पूरा नहीं हो सका। अपना कनेक्शन जाँचें और फिर से प्रयास करें।",
   "otpSucessoMensagem": "फ़ोन सफलतापूर्वक सत्यापित हुआ!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "संपर्क हटा दिया गया, लेकिन स्थान साझाकरण रद्द करने की पुष्टि नहीं हो सकी। अपनी गोपनीयता सुरक्षित रखने के लिए अपना कनेक्शन जाँचें और फिर से हटाने का प्रयास करें।"
+  "monitoramentoRevogacaoFalhouAoExcluir": "संपर्क हटा दिया गया, लेकिन स्थान साझाकरण रद्द करने की पुष्टि नहीं हो सकी। अपनी गोपनीयता सुरक्षित रखने के लिए अपना कनेक्शन जाँचें और फिर से हटाने का प्रयास करें।",
+  "planoFreeIndicadorAtivo": "फ्री प्लान: इस महीने पूर्ण सुरक्षा के {dias} दिन शेष हैं",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "फ्री प्लान: पूर्ण सुविधाएं {data} को फिर से उपलब्ध होंगी",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "प्रीमियम प्लान: बिना रुकावट पूर्ण सुरक्षा",
+  "planoBloqueadoModalTitulo": "इस महीने के आपके मुफ्त दिन समाप्त हो गए हैं",
+  "planoBloqueadoModalConteudo": "इस महीने आपके 10 मुफ्त दिन समाप्त हो चुके हैं। यह फ़ोन नंबर {data} को फिर से पूर्ण सुविधाओं तक पहुंच पाएगा। बिना रुकावट 24/7 सुरक्षा के लिए, प्रीमियम प्लान सब्सक्राइब करें।",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "प्रीमियम प्लान सब्सक्राइब करें"
 }

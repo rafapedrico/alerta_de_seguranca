@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'firebase_auth_service.dart';
+import 'plano_ciclo_service.dart';
 
 /// Teto de tempo para QUALQUER chamada de rede ao Firestore neste
 /// serviço. CORREÇÃO (bug real observado em teste): sem isto, uma
@@ -75,6 +76,21 @@ class FirebaseSyncService {
 
   DocumentReference<Map<String, dynamic>> get _documentoUsuario =>
       FirebaseFirestore.instance.collection(_colecaoUsuarios).doc(_usuarioId);
+
+  /// TRAVA DO CICLO DO PLANO FREE (ver PlanoCicloService) — ponto ÚNICO de
+  /// bloqueio do canal de nuvem (Push App-para-App + transmissão de
+  /// localização em tempo real). Reaproveitado por
+  /// [dispararAlertaSosFisico], [dispararAlertaSosFoto],
+  /// [dispararAlertaTentativaDesarmeIncorreto] (canal Push) e
+  /// [atualizarLocalizacaoAtual] (transmissão de localização, tanto para o
+  /// dead man's switch do pânico quanto para a aba Monitoramento). Fora
+  /// dos 10 dias ativos do mês (e sem Premium), nenhum desses 4 escreve
+  /// nada na nuvem — mesma regra de negócio do canal SMS (ver
+  /// EmergencyAlertService._enviarSms). Falha ao determinar o status (sem
+  /// sessão, sem rede) é tratada como liberado por padrão dentro do
+  /// próprio PlanoCicloService, nunca aqui.
+  Future<bool> _podeUsarRecursoAvancado() =>
+      PlanoCicloService().podeUsarRecursosAvancados();
 
   /// Cria (via merge) o documento `usuarios/{uid}` logo após o cadastro
   /// bem-sucedido no Firebase Auth ([FirebaseAuthService.criarConta]).
@@ -313,6 +329,11 @@ class FirebaseSyncService {
     required double longitude,
   }) async {
     if (!_firebaseDisponivel) return;
+    if (!await _podeUsarRecursoAvancado()) {
+      debugPrint('🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos — '
+          'transmissão de localização em tempo real bloqueada.');
+      return;
+    }
     final agora = FieldValue.serverTimestamp();
     try {
       await _documentoUsuario.set(
@@ -401,6 +422,11 @@ class FirebaseSyncService {
     required String origem,
   }) async {
     if (!_firebaseDisponivel) return false;
+    if (!await _podeUsarRecursoAvancado()) {
+      debugPrint('🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos ($origem) — '
+          'Push de SOS bloqueado.');
+      return false;
+    }
     try {
       await _documentoUsuario.collection('alertas').add({
         'tipo': 'sos_fisico',
@@ -430,6 +456,11 @@ class FirebaseSyncService {
     required String origem,
   }) async {
     if (!_firebaseDisponivel) return false;
+    if (!await _podeUsarRecursoAvancado()) {
+      debugPrint('🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos ($origem) — '
+          'Push de foto do SOS bloqueado.');
+      return false;
+    }
     try {
       await _documentoUsuario.collection('alertas').add({
         'tipo': 'sos_fisico_foto',
@@ -500,6 +531,11 @@ class FirebaseSyncService {
     if (!_firebaseDisponivel) {
       debugPrint('🚫 [TENTATIVA DE DESARME INCORRETA] Abortando: Firebase '
           'indisponível ou sem sessão ativa — Push/Firestore NÃO enviado.');
+      return false;
+    }
+    if (!await _podeUsarRecursoAvancado()) {
+      debugPrint('🔒 [TENTATIVA DE DESARME INCORRETA] Plano Free fora da janela de 10 '
+          'dias ativos — Push/Firestore bloqueado.');
       return false;
     }
     try {

@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "Este número ya está verificado en otra cuenta de Guardián X. Usa otro número o contacta con soporte.",
   "otpErroGenerico": "No pudimos completar la verificación en este momento. Verifica tu conexión e inténtalo de nuevo.",
   "otpSucessoMensagem": "¡Teléfono verificado con éxito!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "Contacto eliminado, pero no pudimos confirmar la revocación del uso compartido de ubicación. Verifica tu conexión e intenta eliminarlo de nuevo para proteger tu privacidad."
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contacto eliminado, pero no pudimos confirmar la revocación del uso compartido de ubicación. Verifica tu conexión e intenta eliminarlo de nuevo para proteger tu privacidad.",
+  "planoFreeIndicadorAtivo": "Plan Gratuito: quedan {dias} días de protección completa este mes",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "Plan Gratuito: las funciones completas se desbloquean de nuevo el {data}",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "Plan Premium: protección completa sin interrupciones",
+  "planoBloqueadoModalTitulo": "Tus días gratuitos de este mes terminaron",
+  "planoBloqueadoModalConteudo": "Tus 10 días gratuitos de este mes han expirado. Este número de teléfono volverá a tener acceso completo el {data}. Para protección 24/7 sin interrupciones, suscríbete al Plan Premium.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "Suscribirse al Plan Premium"
 }

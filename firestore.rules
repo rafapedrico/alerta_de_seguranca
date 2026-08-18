@@ -14,12 +14,23 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == usuarioId;
 
       // Criação do perfil (cadastro, ver
-      // FirebaseSyncService.criarPerfilInicial) — só o próprio dono.
-      allow create: if request.auth != null && request.auth.uid == usuarioId;
+      // FirebaseSyncService.criarPerfilInicial) — só o próprio dono, e
+      // NUNCA definindo os campos do ciclo do Plano Free (ver abaixo).
+      allow create: if request.auth != null && request.auth.uid == usuarioId &&
+          !request.resource.data.keys().hasAny(['isPremium', 'cycleStartDate', 'blockedAt']);
 
       // Atualizações do próprio dono (localização periódica, contatos de
-      // emergência, fcmToken, etc.).
-      allow update: if request.auth != null && request.auth.uid == usuarioId;
+      // emergência, fcmToken, etc.) — PROTEÇÃO DE SERVIDOR do ciclo do
+      // Plano Free (pedido explícito do usuário, "trava de servidor" para
+      // que reinstalar o app ou adulterar o cliente não reinicie/burle o
+      // ciclo): `isPremium`/`cycleStartDate`/`blockedAt` NUNCA podem ser
+      // alterados por uma escrita vinda do cliente, mesmo o próprio dono —
+      // só a Cloud Function `sincronizarCicloPlano`/
+      // `cancelarPremiumDoProprioUsuario` (Admin SDK, ignora estas regras)
+      // pode gravá-los. Ver `functions/planoCicloService.js`.
+      allow update: if request.auth != null && request.auth.uid == usuarioId &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['isPremium', 'cycleStartDate', 'blockedAt']);
 
       allow delete: if false;
 

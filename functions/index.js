@@ -215,3 +215,16 @@ exports.monitorarExpiracaoMonitoramento =
 // SDK cliente do Auth).
 exports.excluirContaCompleta =
   require("./exclusaoContaService").excluirContaCompleta;
+
+// Ciclo recorrente de 30 dias do Plano Free (10 dias ativos + 20 dias
+// bloqueados, ver planoCicloService.js) — Admin SDK é a ÚNICA forma de
+// gravar `isPremium`/`cycleStartDate`/`blockedAt` em `usuarios/{uid}`
+// (ver `firestore.rules`, que bloqueia essa escrita vinda do cliente).
+const planoCicloService = require("./planoCicloService");
+// - Callable chamada pelo app uma vez por sessão (ver
+// PlanoCicloService.iniciar): inicializa o ciclo no primeiro login e
+// renova automaticamente ao completar 30 dias.
+exports.sincronizarCicloPlano = planoCicloService.sincronizarCicloPlano;
+// - Callable do botão "Cancelar Plano Premium" (self-downgrade apenas).
+exports.cancelarPremiumDoProprioUsuario =
+  planoCicloService.cancelarPremiumDoProprioUsuario;

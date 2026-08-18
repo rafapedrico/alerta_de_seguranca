@@ -29,6 +29,7 @@ import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
+import 'services/plano_ciclo_service.dart';
 import 'services/plano_limite_service.dart';
 import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
@@ -537,6 +538,15 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   await NotificacaoService.inicializar();
   await VolumeSosService().iniciarMonitoramento();
   await PlanoLimiteService().inicializar();
+
+  // Ciclo recorrente de 30 dias do Plano Free (10 dias ativos + 20 dias
+  // bloqueados, ver PlanoCicloService) — dispara a sincronização/renovação
+  // server-side uma vez por sessão. Não `await`ado de propósito: nunca
+  // deve atrasar o boot dos demais serviços, mesma filosofia de
+  // RetryUploadService().iniciar() logo abaixo; os pontos de bloqueio
+  // sempre fazem sua PRÓPRIA leitura fresca do Firestore quando
+  // necessário, nunca dependem deste disparo já ter terminado.
+  PlanoCicloService().iniciar();
 
   // Resiliência offline do P2 do SOS (ver RetryUploadService): reagenda
   // o alarme periódico de retry (precisa do AndroidAlarmManager já

@@ -26,6 +26,7 @@ const {getFirestore, Timestamp} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
 const {normalizarTelefoneE164} = require("./telefoneUtils");
+const {calcularDiaAtual, DURACAO_ATIVO_DIAS} = require("./planoCicloService");
 
 const db = getFirestore();
 
@@ -92,7 +93,38 @@ async function resolverContasPorTelefone(contatos) {
             }
           }
           const dados = melhorDoc.data();
-          return {...base, uidDestino: melhorDoc.id, fcmToken: dados.fcmToken || null};
+
+          // TRAVA DE RECEBIMENTO (eixo "não recebe alertas em tempo real
+          // App-para-App" do Plano Free, ver `planoCicloService.js`):
+          // avaliada aqui, no lado do DESTINATÁRIO (não do remetente),
+          // porque só o servidor sabe o status de ciclo/isPremium da
+          // conta que RECEBERIA o Push — o remetente nunca tem acesso ao
+          // documento `usuarios/{uidDestino}` de outra pessoa. Reaproveita
+          // os MESMOS `dados` já lidos acima (nenhuma leitura extra ao
+          // Firestore). Um destinatário bloqueado simplesmente não entra
+          // na lista de tokens de `enviarFcmParaContatos` — segue
+          // recebendo alertas normalmente assim que seu próprio ciclo
+          // reabrir (Premium ou os 10 dias do próximo mês).
+          const isPremiumDestino = dados.isPremium === true;
+          let destinoBloqueado = false;
+          if (!isPremiumDestino) {
+            const cycleStartDate = dados.cycleStartDate;
+            if (cycleStartDate) {
+              const diaAtual = calcularDiaAtual(cycleStartDate.toMillis(), Date.now());
+              destinoBloqueado = diaAtual > DURACAO_ATIVO_DIAS && diaAtual <= 30;
+              // diaAtual > 30 (ciclo vencido, ainda não sincronizado pelo
+              // app do destinatário) é tratado como ATIVO por padrão —
+              // mesma filosofia permissiva do restante do app: nunca
+              // suprimir um alerta de emergência por uma renovação de
+              // ciclo simplesmente atrasada.
+            }
+          }
+
+          return {
+            ...base,
+            uidDestino: melhorDoc.id,
+            fcmToken: destinoBloqueado ? null : (dados.fcmToken || null),
+          };
         } catch (e) {
           logger.error(
               `[resolverContasPorTelefone] Falha ao resolver conta para ${telefoneNormalizado}`, e,

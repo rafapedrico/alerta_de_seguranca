@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "Questo numero è già verificato su un altro account Guardião X. Usa un altro numero o contatta l'assistenza.",
   "otpErroGenerico": "Non è stato possibile completare la verifica in questo momento. Controlla la connessione e riprova.",
   "otpSucessoMensagem": "Telefono verificato con successo!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "Contatto rimosso, ma non è stato possibile confermare la revoca della condivisione della posizione. Controlla la connessione e riprova a eliminarlo per proteggere la tua privacy."
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contatto rimosso, ma non è stato possibile confermare la revoca della condivisione della posizione. Controlla la connessione e riprova a eliminarlo per proteggere la tua privacy.",
+  "planoFreeIndicadorAtivo": "Piano Free: restano {dias} giorni di protezione completa questo mese",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "Piano Free: le funzioni complete tornano disponibili il {data}",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "Piano Premium: protezione completa senza interruzioni",
+  "planoBloqueadoModalTitulo": "I tuoi giorni gratuiti di questo mese sono terminati",
+  "planoBloqueadoModalConteudo": "I tuoi 10 giorni gratuiti di questo mese sono scaduti. Questo numero di telefono avrà di nuovo accesso completo il {data}. Per una protezione 24/7 senza interruzioni, abbonati al Piano Premium.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "Abbonati al Piano Premium"
 }

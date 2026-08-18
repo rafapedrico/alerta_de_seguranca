@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "هذا الرقم موثّق بالفعل في حساب آخر على Guardião X. استخدم رقمًا آخر أو تواصل مع الدعم.",
   "otpErroGenerico": "تعذّر إتمام التحقق الآن. تحقق من اتصالك وحاول مرة أخرى.",
   "otpSucessoMensagem": "تم التحقق من رقم الهاتف بنجاح!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "تمت إزالة جهة الاتصال، ولكن تعذّر تأكيد إلغاء مشاركة الموقع. تحقق من اتصالك وحاول الحذف مرة أخرى لحماية خصوصيتك."
+  "monitoramentoRevogacaoFalhouAoExcluir": "تمت إزالة جهة الاتصال، ولكن تعذّر تأكيد إلغاء مشاركة الموقع. تحقق من اتصالك وحاول الحذف مرة أخرى لحماية خصوصيتك.",
+  "planoFreeIndicadorAtivo": "الخطة المجانية: تبقّى {dias} يومًا من الحماية الكاملة هذا الشهر",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "الخطة المجانية: ستتوفر الميزات الكاملة مجددًا في {data}",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "الخطة المميزة: حماية كاملة دون انقطاع",
+  "planoBloqueadoModalTitulo": "انتهت أيامك المجانية لهذا الشهر",
+  "planoBloqueadoModalConteudo": "انتهت أيامك العشرة المجانية لهذا الشهر. سيستعيد هذا الرقم الوصول الكامل في {data}. للحصول على حماية على مدار الساعة دون انقطاع، اشترك في الخطة المميزة.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "الاشتراك في الخطة المميزة"
 }

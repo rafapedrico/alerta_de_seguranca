@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "Diese Nummer ist bereits mit einem anderen Guardião-X-Konto verifiziert. Verwenden Sie eine andere Nummer oder wenden Sie sich an den Support.",
   "otpErroGenerico": "Die Verifizierung konnte gerade nicht abgeschlossen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "otpSucessoMensagem": "Telefonnummer erfolgreich verifiziert!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "Kontakt entfernt, aber die Aufhebung der Standortfreigabe konnte nicht bestätigt werden. Überprüfen Sie Ihre Verbindung und versuchen Sie erneut zu löschen, um Ihre Privatsphäre zu schützen."
+  "monitoramentoRevogacaoFalhouAoExcluir": "Kontakt entfernt, aber die Aufhebung der Standortfreigabe konnte nicht bestätigt werden. Überprüfen Sie Ihre Verbindung und versuchen Sie erneut zu löschen, um Ihre Privatsphäre zu schützen.",
+  "planoFreeIndicadorAtivo": "Free-Plan: noch {dias} Tage vollständiger Schutz in diesem Monat",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "Free-Plan: alle Funktionen sind ab {data} wieder verfügbar",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "Premium-Plan: vollständiger Schutz ohne Unterbrechungen",
+  "planoBloqueadoModalTitulo": "Deine kostenlosen Tage für diesen Monat sind aufgebraucht",
+  "planoBloqueadoModalConteudo": "Deine 10 kostenlosen Tage in diesem Monat sind abgelaufen. Diese Telefonnummer erhält am {data} wieder vollen Zugriff. Für ununterbrochenen 24/7-Schutz abonniere den Premium-Plan.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "Premium-Plan abonnieren"
 }

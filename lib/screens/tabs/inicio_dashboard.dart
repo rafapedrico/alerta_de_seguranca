@@ -1,10 +1,11 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../services/database_helper.dart';
 import '../../services/locale_service.dart';
+import '../../services/plano_ciclo_service.dart';
 import '../../services/premium_price_service.dart';
 import '../faq_screen.dart';
 import '../termos_privacidade_screen.dart';
@@ -71,6 +72,7 @@ class InicioDashboard extends StatelessWidget {
         children: [
           _buildCabecalho(context),
           _buildSecaoPlanos(context),
+          _buildIndicadorPlanoFree(context),
           _buildRodape(context),
         ],
       ),
@@ -205,20 +207,78 @@ class InicioDashboard extends StatelessWidget {
     );
   }
 
-  /// Lê `user_config.tipo_plano` direto do banco — mesma fonte de verdade
-  /// usada por [PlanoLimiteService] — para saber se o usuário tem
-  /// atualmente o Plano Premium ativo. Qualquer falha de leitura resulta
-  /// em `false` (trata como Free), já que este método só controla a
-  /// exibição de um botão de UI, nunca uma regra de segurança.
+  /// Indicador visual simples do status do ciclo do Plano Free (item 4 do
+  /// pedido: "Plano Free: Restam X dias de proteção completa este mês") —
+  /// reativo em tempo real via [PlanoCicloService.statusStream], nunca
+  /// exibido para quem já é Premium (sem contagem, proteção sempre
+  /// ilimitada) nem enquanto o status ainda não foi carregado (evita um
+  /// "pisca" de estado incorreto no primeiro frame).
+  Widget _buildIndicadorPlanoFree(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return StreamBuilder<PlanoCicloStatus?>(
+      stream: PlanoCicloService().statusStream(),
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        if (status == null || status.isPremium) return const SizedBox.shrink();
+
+        final bool ativo = status.ativo;
+        final String texto = ativo
+            ? l10n.planoFreeIndicadorAtivo(status.diasRestantesAtivos)
+            : l10n.planoFreeIndicadorBloqueado(_formatarData(status.dataRenovacao));
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: (ativo ? Colors.green : _corDestaquePremium).withOpacity(0.14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: (ativo ? Colors.green : _corDestaquePremium).withOpacity(0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  ativo ? Icons.shield_outlined : Icons.lock_clock,
+                  size: 18,
+                  color: ativo ? Colors.greenAccent : _corDestaquePremium,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    texto,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatarData(DateTime data) {
+    final dia = data.day.toString().padLeft(2, '0');
+    final mes = data.month.toString().padLeft(2, '0');
+    return '$dia/$mes/${data.year}';
+  }
+
+  /// Lê `isPremium` de `usuarios/{uid}` no Firestore — mesma fonte de
+  /// verdade server-side usada por [PlanoCicloService] em todos os
+  /// pontos de bloqueio — para saber se o usuário tem atualmente o Plano
+  /// Premium ativo. Qualquer falha de leitura resulta em `false` (trata
+  /// como Free), já que este método só controla a exibição de um botão
+  /// de UI, nunca uma regra de segurança.
   Future<bool> _possuiPlanoPremiumAtivo() async {
-    try {
-      final config = await DatabaseHelper().getUserConfig();
-      final tipoPlano = (config?['tipo_plano'] as String?) ?? 'free';
-      return tipoPlano.trim().toLowerCase() != 'free';
-    } catch (e) {
-      debugPrint('⚠️ [InicioDashboard] Falha ao verificar tipo de plano: $e');
-      return false;
-    }
+    final status = await PlanoCicloService().obterStatusAtualizado();
+    return status?.isPremium ?? false;
   }
 
   Future<void> _abrirModalPremium(BuildContext context) async {
@@ -262,11 +322,14 @@ class InicioDashboard extends StatelessWidget {
     );
   }
 
-  /// Confirma e efetiva a reversão do plano do usuário para o Free
-  /// (`user_config.tipo_plano = 'free'`), acionado pelo botão "Cancelar
-  /// Plano Premium" dentro do modal informativo do Premium. Reaproveita
-  /// [DatabaseHelper.updateUserConfig] — o mesmo campo lido por
-  /// [PlanoLimiteService] para decidir se o usuário tem plano pago.
+  /// Confirma e efetiva a reversão do plano do usuário para o Free,
+  /// acionado pelo botão "Cancelar Plano Premium" dentro do modal
+  /// informativo do Premium. Chama a Cloud Function
+  /// `cancelarPremiumDoProprioUsuario` (ver `functions/planoCicloService.js`)
+  /// — `isPremium` agora vive em `usuarios/{uid}` no Firestore, protegido
+  /// por `firestore.rules` contra escrita direta do cliente (ver
+  /// [PlanoCicloService]); um self-downgrade (nunca upgrade) continua
+  /// seguro de ser exposto como callable simples, sem risco de fraude.
   Future<void> _confirmarCancelamentoPremium(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final bool? confirmou = await showDialog<bool>(
@@ -291,12 +354,9 @@ class InicioDashboard extends StatelessWidget {
     if (confirmou != true || !context.mounted) return;
 
     try {
-      final db = DatabaseHelper();
-      final config = await db.getUserConfig();
-      final id = config?['id'] as int?;
-      if (id != null) {
-        await db.updateUserConfig({'id': id, 'tipo_plano': 'free'});
-      }
+      await FirebaseFunctions.instance
+          .httpsCallable('cancelarPremiumDoProprioUsuario')
+          .call();
     } catch (e) {
       debugPrint('⚠️ [InicioDashboard] Falha ao cancelar Plano Premium: $e');
     }

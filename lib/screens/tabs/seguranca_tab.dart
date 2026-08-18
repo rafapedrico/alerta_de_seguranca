@@ -17,6 +17,7 @@ import '../../services/sos_disparo_service.dart';
 import '../cronometro_disparado_screen.dart' show chaveCronometroFluxoResolvido;
 import '../../widgets/confirmacao_alerta_emergencia.dart';
 import '../../widgets/pin_dialog.dart';
+import '../../widgets/plano_bloqueado_dialog.dart';
 
 
 
@@ -705,6 +706,16 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// a tela e pode ter tocado por engano. O diálogo permanece aberto até
   /// o usuário decidir (sem timeout automático).
   Future<void> _confirmarEDispararSosManual() async {
+    // BLOQUEIO DE MENSAGENS/ALERTAS do ciclo do Plano Free (ver
+    // PlanoCicloService): checado ANTES de exibir o diálogo de
+    // confirmação — fora dos 10 dias ativos do mês, sem Premium, exibe o
+    // modal de upsell e interrompe o fluxo aqui, sem abrir a câmera nem
+    // disparar SMS/Push (o disparo em si já seria bloqueado mais abaixo
+    // em EmergencyAlertService/FirebaseSyncService de qualquer forma —
+    // este precheck só evita a UI de "SOS enviado" enganosa).
+    if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+    if (!mounted) return;
+
     final bool? confirmou = await showDialog<bool>(
       context: context,
       barrierDismissible: true,

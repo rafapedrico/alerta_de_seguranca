@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 
 import '../services/monitoramento_service.dart';
+import 'plano_bloqueado_dialog.dart';
 
 const Color _corDestaque = Color(0xFF4C7040);
 
@@ -52,11 +53,20 @@ Future<void> exibirDialogoDecisaoMonitoramento({
     ),
   );
 
+  // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
+  // PlanoCicloService): só checado quando o usuário de fato tocou em
+  // "Permitir" — recusar/dispensar o modal nunca é bloqueado, é sempre
+  // uma ação segurança-positiva. Fora dos 10 dias ativos do mês, exibe o
+  // modal de upsell e trata como recusa (mesmo comportamento já usado
+  // acima para "dispensado sem escolha explícita").
+  bool aprovarDeFato = aprovou ?? false;
+  if (aprovarDeFato && context.mounted) {
+    aprovarDeFato = await garantirRecursoLiberadoOuExibirUpsell(context);
+  }
+
   await MonitoramentoService().responderSolicitacao(
     permissaoId: idPermissao,
-    // Dispensado sem escolha explícita (toque fora / voltar) => `null` =>
-    // tratado como recusa.
-    aprovar: aprovou ?? false,
+    aprovar: aprovarDeFato,
     uidSolicitante: uidSolicitante,
     nomeSolicitante: nomeSolicitante,
     telefoneSolicitante: telefoneSolicitante,

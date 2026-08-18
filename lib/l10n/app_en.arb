@@ -759,5 +759,32 @@
   "otpErroNumeroJaEmUso": "This number is already verified on another Guardião X account. Use a different number or contact support.",
   "otpErroGenerico": "We couldn't complete the verification right now. Check your connection and try again.",
   "otpSucessoMensagem": "Phone number verified successfully!",
-  "monitoramentoRevogacaoFalhouAoExcluir": "Contact removed, but we couldn't confirm the location sharing revocation. Check your connection and try deleting again to protect your privacy."
+  "monitoramentoRevogacaoFalhouAoExcluir": "Contact removed, but we couldn't confirm the location sharing revocation. Check your connection and try deleting again to protect your privacy.",
+  "planoFreeIndicadorAtivo": "Free Plan: {dias} days of full protection left this month",
+  "@planoFreeIndicadorAtivo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "planoFreeIndicadorBloqueado": "Free Plan: full features unlock again on {data}",
+  "@planoFreeIndicadorBloqueado": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoFreeIndicadorPremium": "Premium Plan: full protection with no interruptions",
+  "planoBloqueadoModalTitulo": "Your free days for this month are over",
+  "planoBloqueadoModalConteudo": "Your 10 free days this month have expired. This phone number will have full access to features again on {data}. For 24/7 protection with no interruptions, subscribe to the Premium Plan.",
+  "@planoBloqueadoModalConteudo": {
+    "placeholders": {
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "planoBloqueadoModalBotaoAssinar": "Subscribe to Premium Plan"
 }
