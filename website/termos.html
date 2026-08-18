@@ -106,12 +106,35 @@
         </section>
 
         <section id="mensagens" class="legal-section">
-          <h2>4. Consentimento para envio de mensagens (SMS/App)</h2>
+          <h2>4. Consentimento para envio de mensagens (SMS/App) e limites técnicos de funcionamento</h2>
           <p>
             O usuário consente com o envio de mensagens de alerta (contendo localização, contexto informado e,
             quando aplicável, fotografia) para os números de telefone e contas cadastradas como contatos de
             emergência, por SMS e por notificação entre aplicativos.
           </p>
+          <p>
+            A localização do usuário passa a ser sincronizada e sobrescrita nos servidores do Guardião X a partir
+            de até 120 (cento e vinte) minutos antes do horário limite de um cronômetro ou alarme ativo, para que a
+            última posição conhecida esteja disponível em caso de disparo automático. O canal efetivamente
+            utilizado no momento do disparo depende do estado do aparelho do usuário:
+          </p>
+          <ul>
+            <li>
+              <strong>Aparelho ligado, com sinal de operadora e crédito/plano ativo:</strong> o alerta é enviado
+              simultaneamente por notificação Push (de aplicativo para aplicativo, sem custo) e por SMS nativo do
+              próprio aparelho, utilizando o chip e o plano/crédito da operadora contratada pelo usuário — custo
+              este de responsabilidade exclusiva do usuário perante sua operadora.
+            </li>
+            <li>
+              <strong>Aparelho desligado, sem bateria ou sem sinal de operadora:</strong> o disparo passa a ser de
+              responsabilidade exclusiva dos servidores em nuvem do Guardião X, que enviam automaticamente um
+              alerta por notificação Push (de aplicativo para aplicativo), com base na última localização
+              sincronizada, para os contatos de emergência que também possuam o Guardião X instalado. Nesse
+              cenário, NENHUM SMS é disparado pelos servidores do Guardião X por meio de gateways ou APIs de
+              terceiros — o envio de SMS depende exclusivamente do próprio aparelho do usuário estar operante, e
+              não é substituído nem simulado pela RMF Global em nenhuma hipótese.
+            </li>
+          </ul>
         </section>
 
         <section id="camera" class="legal-section">

@@ -20,6 +20,19 @@
  *    entrega (ver `FirebaseSyncService.confirmarEntregaAlerta`/
  *    `FcmService` no app), mesmo sem nenhum job de transbordo consumindo
  *    mais essa confirmação.
+ *
+ * REGRA DE NEGÓCIO PERMANENTE (custo de infraestrutura, reafirmada
+ * explicitamente pelo usuário): este módulo é o ÚNICO caminho de disparo
+ * de alerta a partir da NUVEM (chamado tanto pelo trigger reativo em
+ * `index.js` quanto pelo monitoramento agendado em
+ * `scheduledAlarmMonitor.js`) e NUNCA deve enviar SMS por gateway/API
+ * paga de terceiros — apenas Push FCM App-para-App, sem custo. O SMS
+ * nativo (via `SmsManager` do próprio aparelho, sem custo para o
+ * servidor) só existe no lado do CLIENTE Flutter (ver
+ * `EmergencyAlertService`), quando o aparelho do usuário está ligado, com
+ * sinal e crédito/plano ativo. Qualquer novo canal de nuvem que envolva
+ * custo de SMS/WhatsApp de terceiros violaria essa regra — não
+ * reintroduzir sem alinhamento explícito.
  */
 
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");

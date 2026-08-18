@@ -36,6 +36,15 @@
  *    real dispararia localmente — dataHoraDisparo + tolerância + janela
  *    final, não o horário bruto do alarme), marca ALERTA_DISPARADO e
  *    aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`).
+ *
+ * REGRA DE NEGÓCIO (celular desligado/sem sinal): é exatamente este o
+ * cenário em que esta função age — o app local nunca teve chance de
+ * confirmar o check-in nem de disparar o alerta sozinho. O disparo aqui é
+ * SEMPRE via `dispararAlertaHibrido` (Push FCM App-para-App, gratuito) —
+ * nunca por SMS de gateway/API paga, custo zero de terceiros para o
+ * servidor. A localização usada é a última sincronizada por
+ * `BackgroundLocationHeartbeatService` dentro da janela de 120 minutos
+ * (2h) antes do prazo — ver `montarTextoLocalizacao`.
  */
 
 const {onSchedule} = require("firebase-functions/v2/scheduler");
