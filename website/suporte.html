@@ -92,7 +92,11 @@
       <div class="faq-list">
         <details class="faq-item">
           <summary>Os alertas de emergência são enviados mesmo se meu celular estiver desligado ou sem internet?</summary>
-          <p>Sim. Os alarmes da página "Família" e o cronômetro regressivo da página "Segurança" são agendados no servidor do Guardião X. Se o cronômetro estourar o tempo de tolerância sem o desarme com a senha do PIN, ou o alarme da página "Família" não for desarmado a tempo, um alerta de segurança com a última localização registrada na nuvem é enviado imediatamente.</p>
+          <p>Sim. Os alarmes da página "Família" e o cronômetro regressivo da página "Segurança" são agendados no servidor do Guardião X. Se o cronômetro estourar o tempo de tolerância sem o desarme com a senha do PIN, ou o alarme da página "Família" não for desarmado a tempo, um alerta de segurança com a última localização registrada na nuvem é enviado imediatamente — via Push (aplicativo para aplicativo) para os contatos que têm o Guardião X instalado. O SMS complementar só sai se o próprio aparelho conseguir enviá-lo (ligado, com sinal e crédito/plano ativo); com o aparelho desligado ou sem sinal, o SMS não é disparado.</p>
+        </details>
+        <details class="faq-item">
+          <summary>O que acontece se o meu celular desligar ou acabar a bateria durante um alarme ou cronômetro ativo?</summary>
+          <p>O Guardião X registra sua última localização até 120 minutos antes do término. Se o seu aparelho for desligado ou perder o sinal, nossos servidores na nuvem enviarão automaticamente um alerta Push de emergência para os contatos que possuem o Guardião X instalado. O envio complementar de SMS depende exclusivamente do seu aparelho estar ligado, com sinal de operadora e com créditos/plano ativo.</p>
         </details>
         <details class="faq-item">
           <summary>A partir de quantos minutos começa o envio da localização?</summary>
@@ -108,7 +112,7 @@
         </details>
         <details class="faq-item">
           <summary>Como são compartilhados os alertas de emergência?</summary>
-          <p>Todas as mensagens de alerta são enviadas de duas formas: de aplicativo para aplicativo e por SMS para os números cadastrados na página de Configurações.</p>
+          <p>Com o aparelho ligado, com sinal e crédito/plano ativo: de duas formas simultâneas, de aplicativo para aplicativo (Push) e por SMS para os números cadastrados na página de Configurações. Se o aparelho estiver desligado ou sem sinal no momento do disparo, o alerta é enviado apenas por Push, diretamente pelos nossos servidores na nuvem, usando a última localização registrada até 120 minutos antes.</p>
         </details>
         <details class="faq-item">
           <summary>É possível rastrear um aparelho que não tenha o Guardião X instalado?</summary>
@@ -120,7 +124,7 @@
         </details>
         <details class="faq-item">
           <summary>As mensagens só são enviadas para contatos que também têm o app instalado?</summary>
-          <p>Não. Recomendamos que ambos os celulares tenham o aplicativo instalado, mas mesmo que o contato não tenha o Guardião X, o alerta de emergência ainda é enviado por SMS.</p>
+          <p>Recomendamos que ambos os celulares tenham o aplicativo instalado. Com o seu aparelho ligado e com sinal, mesmo um contato sem o Guardião X ainda recebe o alerta por SMS. Já o alerta disparado pelos nossos servidores na nuvem (quando o seu aparelho está desligado ou sem sinal) só chega a contatos que também têm o Guardião X instalado, pois é enviado exclusivamente por Push — nesse caso, não há envio de SMS.</p>
         </details>
         <details class="faq-item">
           <summary>Como funciona o atendimento ao consumidor?</summary>
