@@ -144,9 +144,35 @@ class PlanoCicloService {
   /// [obterStatusAtualizado]) — a próxima sessão com internet tenta de
   /// novo.
   void iniciar() {
-    if (!_firebaseDisponivel || _sincronizadoNestaSessao) return;
+    if (_sincronizadoNestaSessao) {
+      debugPrint('☁️ [PlanoCicloService] iniciar() ignorado — já sincronizado nesta sessão.');
+      return;
+    }
     _sincronizadoNestaSessao = true;
-    unawaited(_sincronizarNoServidor());
+    unawaited(_aguardarSessaoESincronizar());
+  }
+
+  /// CORREÇÃO (2026-08-18, confirmado em teste físico — Moto G7 Play):
+  /// `iniciar()` era chamado com [_uid] SÍNCRONO ainda `null` logo após um
+  /// login fresco (mesma classe de corrida já documentada e resolvida em
+  /// [FirebaseAuthService.aguardarUidPronto] para outros fluxos) — o
+  /// resultado era um retorno 100% silencioso (nenhum print de sucesso
+  /// nem de falha) e a Cloud Function `sincronizarCicloPlano` NUNCA
+  /// chegava a ser sequer invocada durante toda a sessão (confirmado:
+  /// zero logs no servidor). Agora aguarda ativamente a sessão ficar
+  /// pronta (com teto de tempo) antes de desistir.
+  Future<void> _aguardarSessaoESincronizar() async {
+    if (Firebase.apps.isEmpty) {
+      debugPrint('☁️ [PlanoCicloService] Firebase indisponível — sincronização do ciclo adiada.');
+      return;
+    }
+    final String? uid = await FirebaseAuthService().aguardarUidPronto();
+    if (uid == null) {
+      debugPrint('☁️ [PlanoCicloService] Sem sessão mesmo após aguardar — sincronização do ciclo adiada.');
+      return;
+    }
+    debugPrint('☁️ [PlanoCicloService] Disparando sincronização do ciclo do plano (uid=$uid)...');
+    await _sincronizarNoServidor();
   }
 
   Future<void> _sincronizarNoServidor() async {
