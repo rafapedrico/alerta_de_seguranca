@@ -708,6 +708,16 @@
       }
     }
   },
+  "relatorioFalhaContatoDesconhecido": "contato não identificado",
+  "historicoRelatorioFalhaEntregaTitulo": "Relatório de alerta: entrega não confirmada",
+  "historicoRelatorioFalhaEntregaDescricao": "Um alerta de emergência foi finalizado após 48h sem confirmação de recebimento pelos seguintes contatos (aparelho desligado/sem sinal/sem conta no app): {contatos}.",
+  "@historicoRelatorioFalhaEntregaDescricao": {
+    "placeholders": {
+      "contatos": {
+        "type": "String"
+      }
+    }
+  },
   "historicoTentativaDesarmeTitulo": "Tentativa de desarme com PIN incorreto",
   "historicoTentativaDesarmeDescricao": "{motivo} Alerta enviado aos contatos de emergência. Localização: {localizacao}",
   "@historicoTentativaDesarmeDescricao": {

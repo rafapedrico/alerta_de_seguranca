@@ -33,6 +33,16 @@
  * sinal e crédito/plano ativo. Qualquer novo canal de nuvem que envolva
  * custo de SMS/WhatsApp de terceiros violaria essa regra — não
  * reintroduzir sem alinhamento explícito.
+ *
+ * MOTOR DE RETENTATIVA PROGRESSIVA (2026-08-22, ver `entregaRetryEngine.js`):
+ * além do disparo imediato feito por [dispararAlertaHibrido] abaixo, cada
+ * contato de emergência ganha um sub-documento de acompanhamento em
+ * `entregas_alerta/{idEntrega}/destinatarios/{contatoId}` (criado por
+ * [criarDestinatariosDeAcompanhamento]), consumido pelo cron de 1 minuto
+ * em `entregaRetryEngine.js` para reenviar o Push (com o `fcmToken`
+ * SEMPRE resolvido de novo na hora, nunca em cache) em intervalos
+ * crescentes por até 48h, até o contato confirmar ENTREGUE ou o prazo
+ * esgotar (ver `relatorioFalhaService.js`).
  */
 
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
@@ -44,7 +54,10 @@ const {calcularDiaAtual, DURACAO_ATIVO_DIAS} = require("./planoCicloService");
 const db = getFirestore();
 
 const COLECAO_ENTREGAS = "entregas_alerta";
+const SUBCOLECAO_DESTINATARIOS = "destinatarios";
 const TITULO_PUSH = "🚨 Alerta de segurança";
+const STATUS_DESTINATARIO_PENDENTE = "PENDENTE";
+const PRIMEIRO_INTERVALO_RETENTATIVA_MS = 60 * 1000; // 1 min (0–20 min decorridos)
 
 /**
  * Para cada contato `{nome, telefone}`, normaliza o telefone e busca em
@@ -160,7 +173,18 @@ async function resolverContasPorTelefone(contatos) {
  * exceção — um token inválido/expirado não deve interromper o restante
  * do fluxo do alerta.
  *
- * @param {Array<{fcmToken: string|null}>} contatosResolvidos
+ * Cada contato leva o SEU PRÓPRIO `contatoId` (id do sub-documento em
+ * `entregas_alerta/{idEntrega}/destinatarios/`, ver
+ * `criarDestinatariosDeAcompanhamento`) embutido em `data` — é assim que
+ * o ACK do app receptor (ver
+ * `FirebaseSyncService.confirmarEntregaDestinatario`) sabe qual
+ * sub-documento marcar como ENTREGUE, inclusive já no disparo IMEDIATO
+ * (não só nas retentativas de `entregaRetryEngine.js`). Por precisar de
+ * um `data` DIFERENTE por token, usa `sendEach` (um Message por
+ * destinatário) em vez de `sendEachForMulticast` (que só aceita um único
+ * `data` compartilhado por todos os tokens).
+ *
+ * @param {Array<{fcmToken: string|null, contatoId: string, nome: string, telefone: string, uidDestino: string|null}>} contatosResolvidos
  * @param {string} titulo
  * @param {string} corpo
  * @param {Object<string, string>} dadosExtras
@@ -176,11 +200,11 @@ async function enviarFcmParaContatos(contatosResolvidos, titulo, corpo, dadosExt
   }
 
   try {
-    const resposta = await getMessaging().sendEachForMulticast({
-      tokens: comToken.map((c) => c.fcmToken),
-      data: {...dadosExtras, titulo, corpo},
+    const resposta = await getMessaging().sendEach(comToken.map((c) => ({
+      token: c.fcmToken,
+      data: {...dadosExtras, titulo, corpo, contatoId: c.contatoId},
       android: {priority: "high"},
-    });
+    })));
     logger.info(
         `[FCM Enviado] ${resposta.successCount} enviado(s), ` +
         `${resposta.failureCount} falha(s) de ${comToken.length} token(s).`,
@@ -188,16 +212,16 @@ async function enviarFcmParaContatos(contatosResolvidos, titulo, corpo, dadosExt
 
     // CORREÇÃO (bug real, 2026-08-14 — Razr recebendo
     // "0 enviado(s), 1 falha(s) de 1 token(s)" em TODO disparo, sem
-    // nenhuma pista do motivo): `sendEachForMulticast` nunca lança
-    // exceção por falha individual de token (é por isso que o `catch`
-    // abaixo nunca via nada) — cada resultado fica em `resposta.responses`,
-    // na MESMA ordem/tamanho de `comToken`. Loga o `error.code`/
-    // `error.message` de cada falha (nunca o token cru, só nome+telefone
-    // do contato, suficiente pra identificar QUEM sem expor o segredo) —
-    // é a única forma de distinguir, por exemplo, um token morto
-    // (`messaging/registration-token-not-registered`) de um projeto
-    // Firebase incompatível (`messaging/mismatched-credential`) ou
-    // qualquer outra causa.
+    // nenhuma pista do motivo): nem `sendEachForMulticast` nem `sendEach`
+    // lançam exceção por falha individual de token (é por isso que o
+    // `catch` abaixo nunca via nada) — cada resultado fica em
+    // `resposta.responses`, na MESMA ordem/tamanho de `comToken`. Loga o
+    // `error.code`/`error.message` de cada falha (nunca o token cru, só
+    // nome+telefone do contato, suficiente pra identificar QUEM sem
+    // expor o segredo) — é a única forma de distinguir, por exemplo, um
+    // token morto (`messaging/registration-token-not-registered`) de um
+    // projeto Firebase incompatível (`messaging/mismatched-credential`)
+    // ou qualquer outra causa.
     resposta.responses.forEach((r, i) => {
       if (r.success) return;
       const contato = comToken[i];
@@ -207,7 +231,7 @@ async function enviarFcmParaContatos(contatosResolvidos, titulo, corpo, dadosExt
       );
     });
   } catch (e) {
-    logger.error("[FCM Enviado] Falha ao enviar multicast FCM", e);
+    logger.error("[FCM Enviado] Falha ao enviar Push em lote", e);
   }
 }
 
@@ -241,7 +265,39 @@ async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, fot
     logger.error(`[dispararAlertaHibrido] Falha ao buscar nome do remetente ${usuarioId}`, e);
   }
 
-  await enviarFcmParaContatos(contatosResolvidos, TITULO_PUSH, mensagem, {
+  const agora = Timestamp.now();
+
+  await entregaRef.set({
+    usuarioId,
+    origem,
+    mensagem,
+    nomeRemetente,
+    ...(fotoUrl ? {fotoUrl} : {}),
+    ...(typeof latitude === "number" ? {latitude} : {}),
+    ...(typeof longitude === "number" ? {longitude} : {}),
+    criadoEm: agora,
+    // Consumido por `entregaRetryEngine.js` para decidir quando o alerta
+    // deixa de aceitar novas retentativas (48h) — e por
+    // `relatorioFalhaService.js` para travar o envio do relatório de
+    // falha a UMA ÚNICA VEZ por alerta.
+    relatorioFalhaEnviado: false,
+    contatos: contatosResolvidos.map((c) => ({
+      nome: c.nome,
+      telefone: c.telefone,
+      uidDestino: c.uidDestino,
+    })),
+  });
+
+  // Cria os sub-documentos de acompanhamento ANTES de enviar o Push
+  // imediato abaixo (não depois) — de propósito: cada mensagem enviada
+  // precisa levar o `contatoId` JÁ definido em `data`, para que o ACK do
+  // próprio disparo imediato (o caminho mais comum, quando o
+  // destinatário já está com o app aberto/em segundo plano) já pare a
+  // fila de retentativa — em vez de só a PRÓXIMA tentativa (1 min
+  // depois, via `entregaRetryEngine.js`) carregar um `contatoId` válido.
+  const contatosComId = await criarDestinatariosDeAcompanhamento(entregaRef, contatosResolvidos, agora);
+
+  await enviarFcmParaContatos(contatosComId, TITULO_PUSH, mensagem, {
     tipo: "alerta_emergencia",
     idEntrega,
     origem,
@@ -260,18 +316,6 @@ async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, fot
     ...(typeof longitude === "number" ? {longitude: longitude.toString()} : {}),
   });
 
-  await entregaRef.set({
-    usuarioId,
-    origem,
-    mensagem,
-    criadoEm: Timestamp.now(),
-    contatos: contatosResolvidos.map((c) => ({
-      nome: c.nome,
-      telefone: c.telefone,
-      uidDestino: c.uidDestino,
-    })),
-  });
-
   logger.info(
       `[dispararAlertaHibrido] entregas_alerta/${idEntrega} criado para o usuário ` +
       `${usuarioId} (origem: ${origem}) — ${contatosResolvidos.length} contato(s).`,
@@ -280,9 +324,64 @@ async function dispararAlertaHibrido({usuarioId, contatos, mensagem, origem, fot
   return idEntrega;
 }
 
+/**
+ * Cria, em `entregas_alerta/{idEntrega}/destinatarios/{contatoId}`, um
+ * sub-documento de acompanhamento POR CONTATO — inclusive para quem
+ * ainda não tem `fcmToken` resolvido (sem conta no app agora, mas que
+ * pode instalar/logar dentro da janela de 48h: o motor de retentativa
+ * tenta resolver de novo a cada tentativa, ver `entregaRetryEngine.js`).
+ * Todos começam com a MESMA `proximaTentativa` (agora + 1 min — primeiro
+ * degrau da régua de backoff).
+ *
+ * Retorna os MESMOS `contatosResolvidos`, cada um com o `contatoId` do
+ * seu sub-documento anexado — usado pelo chamador para que o Push
+ * imediato já saia com o `contatoId` certo em `data` (ver
+ * `dispararAlertaHibrido`).
+ *
+ * @param {FirebaseFirestore.DocumentReference} entregaRef
+ * @param {Array<{nome: string, telefone: string, uidDestino: string|null, fcmToken: string|null}>} contatosResolvidos
+ * @param {FirebaseFirestore.Timestamp} criadoEm
+ * @return {Promise<Array<{nome: string, telefone: string, uidDestino: string|null, fcmToken: string|null, contatoId: string}>>}
+ */
+async function criarDestinatariosDeAcompanhamento(entregaRef, contatosResolvidos, criadoEm) {
+  if (!contatosResolvidos || contatosResolvidos.length === 0) return [];
+
+  const lote = db.batch();
+  const proximaTentativa = Timestamp.fromMillis(
+      criadoEm.toMillis() + PRIMEIRO_INTERVALO_RETENTATIVA_MS,
+  );
+
+  const contatosComId = contatosResolvidos.map((contato) => ({
+    ...contato,
+    contatoId: entregaRef.collection(SUBCOLECAO_DESTINATARIOS).doc().id,
+  }));
+
+  for (const contato of contatosComId) {
+    const destinatarioRef = entregaRef.collection(SUBCOLECAO_DESTINATARIOS).doc(contato.contatoId);
+    lote.set(destinatarioRef, {
+      nome: contato.nome || "",
+      telefone: contato.telefone || "",
+      uidDestino: contato.uidDestino || null,
+      status: STATUS_DESTINATARIO_PENDENTE,
+      // Conta a tentativa já feita pelo disparo imediato logo em seguida
+      // somente quando há um token para enviar — contatos sem conta
+      // resolvida ainda ficam com 0 até o motor de retentativa achar um
+      // token.
+      tentativas: contato.fcmToken ? 1 : 0,
+      proximaTentativa,
+      entregueEm: null,
+    });
+  }
+
+  await lote.commit();
+  return contatosComId;
+}
+
 module.exports = {
   resolverContasPorTelefone,
   enviarFcmParaContatos,
   dispararAlertaHibrido,
   COLECAO_ENTREGAS,
+  SUBCOLECAO_DESTINATARIOS,
+  TITULO_PUSH,
 };

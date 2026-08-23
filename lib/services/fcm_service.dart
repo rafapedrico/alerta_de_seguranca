@@ -11,6 +11,7 @@ import 'alertas_recebidos_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'notificacao_service.dart';
+import 'relatorio_falha_entrega_service.dart';
 
 /// Handler de SEGUNDO PLANO/TERMINADO do FCM — chamado pelo Android num
 /// ISOLATE/ENGINE TOTALMENTE SEPARADO, sem NENHUM estado compartilhado
@@ -99,6 +100,12 @@ class FcmService {
   factory FcmService() => _instance;
 
   static const String _tipoAlertaEmergencia = 'alerta_emergencia';
+
+  /// Nudge silencioso do relatório de falha de 48h (ver
+  /// `functions/relatorioFalhaService.js`/[RelatorioFalhaEntregaService])
+  /// — NUNCA exibe notificação, apenas grava um evento local no cofre de
+  /// Auditoria de Eventos Sensíveis.
+  static const String _tipoRelatorioFalhaEntrega = 'relatorio_falha_entrega';
 
   /// Tipos de push da aba Monitoramento (ver `functions/monitoramentoService.js`
   /// e `functions/monitoramentoExpiracaoMonitor.js`) — notificações NORMAIS
@@ -230,6 +237,17 @@ class FcmService {
       return;
     }
 
+    if (tipo == _tipoRelatorioFalhaEntrega) {
+      // Propositalmente sem nenhuma notificação/UI — ver documentação de
+      // [RelatorioFalhaEntregaService.processarRelatorioSilencioso].
+      try {
+        await RelatorioFalhaEntregaService().processarRelatorioSilencioso(data);
+      } catch (e) {
+        debugPrint('⚠️ [FcmService] Falha ao processar relatório de falha de entrega: $e');
+      }
+      return;
+    }
+
     if (tipo != null && _tiposPushMonitoramento.contains(tipo)) {
       await _tratarPushMonitoramento(data, tipo, emPrimeiroPlano: emPrimeiroPlano);
       return;
@@ -255,6 +273,11 @@ class FcmService {
     final mensagem = (data['mensagem'] as String?) ?? '';
     final nomeRemetente = data['nomeRemetente'] as String?;
     final fotoUrl = data['fotoUrl'] as String?;
+    // Presente só quando este Push veio do disparo imediato/motor de
+    // retentativa (ver `alertaHibridoService.js`/`entregaRetryEngine.js`)
+    // — identifica QUAL sub-documento de `destinatarios` corresponde a
+    // este aparelho, para o ACK abaixo parar futuras retentativas.
+    final contatoId = data['contatoId'] as String?;
     // Valores do FCM `data` chegam sempre como String — ver
     // functions/alertaHibridoService.js, que serializa com `.toString()`.
     final latitude = double.tryParse((data['latitude'] as String?) ?? '');
@@ -266,6 +289,12 @@ class FcmService {
       debugPrint('✅ [Confirmação de Entrega Enviada] entregas_alerta/$idEntrega');
     } catch (e) {
       debugPrint('⚠️ [FcmService] Falha ao confirmar entrega no dispositivo: $e');
+    }
+
+    try {
+      await FirebaseSyncService().confirmarEntregaDestinatario(idEntrega, contatoId);
+    } catch (e) {
+      debugPrint('⚠️ [FcmService] Falha ao confirmar ENTREGUE do destinatário (motor de retentativa): $e');
     }
 
     // Persiste localmente (indicador de "não visualizado" no HomeScreen +

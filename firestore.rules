@@ -45,6 +45,18 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      match /relatoriosFalha/{idEntrega} {
+        // Relatório de retorno de 48h (ver
+        // functions/relatorioFalhaService.js): gerado inteiramente pela
+        // Cloud Function via Admin SDK — o cliente nunca cria/edita o
+        // conteúdo. O próprio dono só PRECISA ler (para gravar o evento
+        // 'critico' local, ver RelatorioFalhaEntregaService no app) e
+        // apagar depois de já ter ingerido localmente, evitando
+        // reprocessar o mesmo relatório numa próxima sincronização.
+        allow read, delete: if request.auth != null && request.auth.uid == usuarioId;
+        allow create, update: if false;
+      }
+
       match /monitoramento/atual {
         // Espelho GRAVADO PELO PRÓPRIO DONO (mesmo heartbeat de
         // localização já usado pelo alarme de pânico, ver
@@ -94,6 +106,26 @@ service cloud.firestore {
         allow create, update: if request.auth != null &&
             request.auth.uid == uidDestino;
         allow read, delete: if false;
+      }
+
+      match /destinatarios/{contatoId} {
+        // Fila de retentativa por CONTATO (ver entregaRetryEngine.js) —
+        // criada e avançada (tentativas/proximaTentativa) inteiramente
+        // pela Cloud Function via Admin SDK. O ÚNICO ponto de escrita do
+        // cliente é o ACK de entrega: o app do contato que efetivamente
+        // recebeu o Push grava `status: 'ENTREGUE'` para sair da fila de
+        // reenvio — e só pode fazê-lo se `uidDestino` (gravado pelo
+        // servidor na última tentativa resolvida) for o PRÓPRIO uid
+        // autenticado, e só alterando exatamente os 2 campos esperados,
+        // nunca reescrevendo `tentativas`/`proximaTentativa`/outro
+        // destinatário.
+        allow update: if request.auth != null &&
+            resource.data.uidDestino == request.auth.uid &&
+            request.resource.data.status == 'ENTREGUE' &&
+            request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'entregueEm']);
+        allow create, delete: if false;
+        allow read: if false;
       }
     }
 

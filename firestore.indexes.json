@@ -9,11 +9,11 @@
       ]
     },
     {
-      "collectionGroup": "entregas_alerta",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "destinatarios",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "prazoTransbordoEpochMs", "order": "ASCENDING" }
+        { "fieldPath": "proximaTentativa", "order": "ASCENDING" }
       ]
     },
     {

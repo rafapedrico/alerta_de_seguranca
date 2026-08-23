@@ -318,6 +318,40 @@ class FirebaseSyncService {
     }
   }
 
+  /// Confirmação de ENTREGA por CONTATO individual (motor de retentativa
+  /// progressiva, ver `functions/entregaRetryEngine.js`): grava
+  /// `entregas_alerta/{idEntrega}/destinatarios/{contatoId}.status =
+  /// 'ENTREGUE'`. Diferente de [confirmarEntregaAlerta] (bookkeeping
+  /// agregado em `confirmacoes/`, sem efeito colateral nenhum hoje), esta
+  /// escrita é o que efetivamente PARA as retentativas futuras deste
+  /// alerta para este contato — a partir dela o servidor nunca mais
+  /// reenvia o Push para o mesmo `idEntrega`.
+  ///
+  /// [contatoId] vem do próprio payload do Push (campo `contatoId`, ver
+  /// `FcmService`/`entregaRetryEngine.js`) — ausente em mensagens
+  /// anteriores a esta funcionalidade, caso em que este método é um
+  /// no-op silencioso (o alerta antigo simplesmente não tem fila de
+  /// retentativa para parar).
+  Future<void> confirmarEntregaDestinatario(String idEntrega, String? contatoId) async {
+    if (!_firebaseDisponivel || contatoId == null || contatoId.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('entregas_alerta')
+          .doc(idEntrega)
+          .collection('destinatarios')
+          .doc(contatoId)
+          .update({
+        'status': 'ENTREGUE',
+        'entregueEm': FieldValue.serverTimestamp(),
+      }).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [FirebaseSyncService] Destinatário $contatoId confirmado como ENTREGUE em entregas_alerta/$idEntrega.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [FirebaseSyncService] Falha ao confirmar ENTREGUE do destinatário $contatoId em $idEntrega: $e');
+    }
+  }
+
   /// Sobrescreve (via merge, nunca acumula) a última localização
   /// conhecida do usuário no documento `usuarios/{usuarioId}`. Deve ser
   /// chamada periodicamente (a cada 1 minuto, ver

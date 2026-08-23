@@ -31,6 +31,7 @@ import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/plano_ciclo_service.dart';
 import 'services/plano_limite_service.dart';
+import 'services/relatorio_falha_entrega_service.dart';
 import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
 import 'services/sos_disparo_service.dart';
@@ -554,6 +555,15 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   // fila imediatamente — cobre o caso comum de o app ser reaberto depois
   // que a conectividade voltou.
   RetryUploadService().iniciar();
+
+  // Varredura de fallback do relatório de falha de 48h (ver
+  // RelatorioFalhaEntregaService) — cobre o caso do nudge silencioso do
+  // Push nunca ter chegado (app encerrado pelo SO antes da entrega, sem
+  // Google Play Services, etc.). Não `await`ado de propósito, mesma
+  // filosofia dos demais disparos "fire-and-forget" deste bloco — nunca
+  // deve atrasar o boot dos demais serviços, e é 100% silenciosa (nunca
+  // exibe notificação/UI, só grava eventos no cofre local).
+  RelatorioFalhaEntregaService().sincronizarPendentes();
 
   VolumeSosService().aoDispararSos.listen((_) {
     _dispararFluxoCompletoDeSos(origem: 'sos_fisico');

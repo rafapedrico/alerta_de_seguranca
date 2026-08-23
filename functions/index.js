@@ -182,6 +182,13 @@ exports.aoReceberAlertaTentativaDesarme = onDocumentCreated(
 exports.monitorarAlarmesAgendados =
   require("./scheduledAlarmMonitor").monitorarAlarmesAgendados;
 
+// Motor de retentativa progressiva do alerta híbrido (ver
+// entregaRetryEngine.js): reenvia o Push por CONTATO individual a cada
+// 1/2/5/10 min (conforme o tempo decorrido) por até 48h, até confirmação
+// de entrega (ACK) ou expiração — que aciona relatorioFalhaService.js.
+exports.monitorarRetentativasEntrega =
+  require("./entregaRetryEngine").monitorarRetentativasEntrega;
+
 // Aba Monitoramento (ver monitoramentoService.js): permissão bilateral e
 // explícita de compartilhamento de localização GPS em tempo real,
 // totalmente independente do pipeline de alerta de emergência acima.
