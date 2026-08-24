@@ -150,9 +150,16 @@ async function _chamarOpenRouter(messages) {
       "Authorization": `Bearer ${openRouterApiKey.value()}`,
       "Content-Type": "application/json",
       // Recomendado pelo OpenRouter para identificar a origem das
-      // chamadas no painel de uso deles — não é autenticação.
+      // chamadas no painel de uso deles — não é autenticação. Valor
+      // estritamente ASCII: headers HTTP via fetch/Headers exigem
+      // ByteString (só código <=255); um acento passaria, mas um
+      // travessão "—" (código 8212) já derruba a chamada com
+      // "Cannot convert argument to a ByteString..." ANTES de sair
+      // pela rede — mesma classe de bug da correção de pontuação do
+      // SMS, agora num header em vez de GSM-7 (confirmado em produção,
+      // ver git log).
       "HTTP-Referer": "https://www.meuguardiaox.com.br",
-      "X-Title": "Guardião X — Suporte",
+      "X-Title": "Guardiao X - Suporte",
     },
     body: JSON.stringify({
       model: SUPORTE_MODELO_IA,
