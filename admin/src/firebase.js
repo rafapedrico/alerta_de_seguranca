@@ -2,8 +2,11 @@
  * Inicialização do Firebase pro Painel de Admin — mesmo projeto
  * (guardiaox) do app e do site institucional, mesma config pública do
  * app Web já registrado (ver `website/assets/js/suporte-chat.js`, que
- * usa a mesma config). Região das Cloud Functions setada explicitamente
- * (southamerica-east1) — senão o SDK chama us-central1 por padrão.
+ * usa a mesma config). Região das callables: us-central1 — é o default
+ * do Firebase quando a function não seta região explícita no código
+ * (confirmado com `firebase functions:list`); só as TRIGGERS do
+ * Firestore (ex: aoReceberMensagemSuporte) saem em southamerica-east1,
+ * porque o Firebase co-loca elas com a região do banco.
  */
 import {initializeApp} from "firebase/app";
 import {getAuth} from "firebase/auth";
@@ -24,4 +27,4 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app, "southamerica-east1");
+export const functions = getFunctions(app, "us-central1");

@@ -47,10 +47,14 @@ const FIREBASE_CONFIG = {
   measurementId: "G-7TD2NW0S3T",
 };
 
-// Mesma região onde as Cloud Functions estão deployadas
-// (southamerica-east1) — sem isso o SDK chama us-central1 por padrão e
-// a callable `solicitarAtendenteHumano` daria "not-found".
-const FUNCTIONS_REGION = "southamerica-east1";
+// Região das callables (`onCall`, ex: solicitarAtendenteHumano) — SÓ as
+// triggers do Firestore (ex: aoReceberMensagemSuporte) deployam em
+// southamerica-east1 (Firebase co-loca com a região do banco); toda
+// callable/scheduled function segue o default do Firebase, us-central1
+// (confirmado com `firebase functions:list` — nenhuma function deste
+// projeto tem região explícita no código, então isso é o que sai por
+// padrão). Setado explícito aqui só por clareza/robustez.
+const FUNCTIONS_REGION = "us-central1";
 
 const CHAVE_TICKET_LOCALSTORAGE = "guardiaoXSuporteTicketId";
 
