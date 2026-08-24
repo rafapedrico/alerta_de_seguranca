@@ -190,6 +190,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /suporte_limites/{uid} {
+      // Contador diário de mensagens do Chat de Suporte por uid
+      // (proteção contra abuso, decisão 2026-08-24 — o chat do site
+      // institucional é acesso anônimo/público) — gravado
+      // EXCLUSIVAMENTE pela Cloud Function via Admin SDK (ignora estas
+      // regras). Ver `functions/suporteChatService.js` →
+      // `_consumirLimiteDiario`. Não é dado que o cliente precisa ler.
+      allow read, write: if false;
+    }
+
     match /suporte_tickets/{ticketId} {
       // Chat de Suporte Interno com IA (decisão de arquitetura
       // 2026-08-24, substitui a Central de Atendimento via WhatsApp) —

@@ -49,6 +49,16 @@ const SUPORTE_MAX_TOKENS_RESPOSTA = 400;
 // intenção). Ver `suporteChatService.js` → `_extrairEscalonamento`.
 const SUPORTE_MARCA_ESCALONAMENTO = "[[ESCALAR_ATENDENTE]]";
 
+// Teto de mensagens (que chegam a chamar a IA) por uid por dia —
+// decisão de arquitetura 2026-08-24 (item do Chat de Suporte no site
+// institucional): o site permite visitante anônimo (Firebase Anonymous
+// Auth) abrir o chat sem nenhuma fricção, então precisa de um limite
+// simples pra não sangrar crédito do OpenRouter com spam/abuso. Aplicado
+// a QUALQUER uid (app ou site) por simplicidade — 15/dia é folgado pro
+// uso legítimo de suporte, tanto de usuário logado quanto anônimo. Ver
+// `suporteChatService.js` → `_consumirLimiteDiario`.
+const SUPORTE_LIMITE_MENSAGENS_POR_DIA = 15;
+
 module.exports = {
   JANELA_EXPIRACAO_MONITORAMENTO_MS,
   SUPORTE_MODELO_IA,
@@ -56,4 +66,5 @@ module.exports = {
   SUPORTE_HISTORICO_MAX_MENSAGENS,
   SUPORTE_MAX_TOKENS_RESPOSTA,
   SUPORTE_MARCA_ESCALONAMENTO,
+  SUPORTE_LIMITE_MENSAGENS_POR_DIA,
 };

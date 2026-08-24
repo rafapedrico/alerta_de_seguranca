@@ -67,6 +67,7 @@ const {
   SUPORTE_HISTORICO_MAX_MENSAGENS,
   SUPORTE_MAX_TOKENS_RESPOSTA,
   SUPORTE_MARCA_ESCALONAMENTO,
+  SUPORTE_LIMITE_MENSAGENS_POR_DIA,
 } = require("./constantes");
 
 const db = getFirestore();
@@ -94,6 +95,48 @@ const TEXTOS_ERRO_IA = {
  */
 function _textoErroIA(idioma) {
   return TEXTOS_ERRO_IA[idioma] || TEXTOS_ERRO_IA.pt;
+}
+
+// Mensagem de fallback (mesmo punhado de idiomas de TEXTOS_ERRO_IA) pro
+// caso do uid atingir o teto diário de mensagens (ver
+// `_consumirLimiteDiario` — proteção contra abuso, principalmente do
+// chat do site institucional, que é acesso anônimo e público).
+const TEXTOS_LIMITE_DIARIO = {
+  pt: "Você atingiu o limite de mensagens do suporte automático por hoje. Tente novamente amanhã, ou toque em \"Falar com atendente\".",
+  en: "You've reached today's automated support message limit. Please try again tomorrow, or tap \"Talk to a human\".",
+  es: "Alcanzaste el límite de mensajes del soporte automático por hoy. Inténtalo de nuevo mañana, o toca \"Hablar con un agente\".",
+};
+
+/**
+ * @param {string} idioma
+ * @return {string}
+ */
+function _textoLimiteDiario(idioma) {
+  return TEXTOS_LIMITE_DIARIO[idioma] || TEXTOS_LIMITE_DIARIO.pt;
+}
+
+/**
+ * Teto de `SUPORTE_LIMITE_MENSAGENS_POR_DIA` mensagens que chegam a
+ * chamar a IA, por uid, por dia UTC — transação atômica pra não deixar
+ * passar mais que o limite em mensagens quase simultâneas. Aplicado a
+ * QUALQUER uid (app ou site institucional) — proteção principal é o
+ * chat público/anônimo do site, mas não custa nada valer pra todos.
+ * @param {string} uid
+ * @return {Promise<boolean>} true se PODE prosseguir, false se estourou o limite.
+ */
+async function _consumirLimiteDiario(uid) {
+  const hoje = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD" (UTC)
+  const limiteRef = db.collection("suporte_limites").doc(uid);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(limiteRef);
+    const dados = snap.exists ? snap.data() : null;
+    const contagemAtual = dados && dados.data === hoje ? dados.contagem : 0;
+    if (contagemAtual >= SUPORTE_LIMITE_MENSAGENS_POR_DIA) {
+      return false;
+    }
+    tx.set(limiteRef, {data: hoje, contagem: contagemAtual + 1});
+    return true;
+  });
 }
 
 /**
@@ -226,6 +269,21 @@ exports.aoReceberMensagemSuporte = onDocumentCreated(
       }
 
       const mensagensRef = ticketRef.collection("mensagens");
+      const idioma = ticket.idioma || "pt";
+
+      // Proteção contra abuso (decisão 2026-08-24, chat do site
+      // institucional — acesso anônimo/público): checa e consome o teto
+      // diário ANTES de gastar a leitura do histórico ou chamar a IA.
+      const podeProsseguir = await _consumirLimiteDiario(ticket.uid);
+      if (!podeProsseguir) {
+        logger.info(`[Suporte] Ticket ${ticketId} (uid ${ticket.uid}) atingiu o limite diário.`);
+        await mensagensRef.add({
+          autor: "sistema",
+          texto: _textoLimiteDiario(idioma),
+          criadoEm: Timestamp.now(),
+        });
+        return;
+      }
 
       // Histórico: últimas SUPORTE_HISTORICO_MAX_MENSAGENS mensagens
       // ANTERIORES à atual (economia de tokens de entrada, pedido
@@ -242,8 +300,6 @@ exports.aoReceberMensagemSuporte = onDocumentCreated(
           .slice(0, SUPORTE_HISTORICO_MAX_MENSAGENS)
           .map((d) => d.data())
           .reverse(); // mais antiga -> mais nova, ordem que a API espera
-
-      const idioma = ticket.idioma || "pt";
 
       const messages = [
         {role: "system", content: _montarSystemContent(idioma)},
