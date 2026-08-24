@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ تنبيه أمني: محاولة إلغاء تفعيل بكلمة مرور غير صحيحة!\n{motivo}\nالموقع: {localizacao}",
   "smsSosContextoPadrao": "تم إطلاق نداء الاستغاثة عبر زر الطوارئ الفعلي (رفع الصوت).",
   "smsSosImediatoCorpo": "🚨 نداء استغاثة طارئ (زر فعلي)!\nالموقع (آخر موقع معروف): {localizacao}\nالسياق: {contexto}\n(سيتم إرسال تحديث بالموقع الفوري لاحقًا.)",
-  "smsLocalizacaoCacheIndisponivel": "الموقع المخزّن مؤقتًا غير متاح — بانتظار تحديث فوري.",
+  "smsLocalizacaoCacheIndisponivel": "الموقع المخزّن مؤقتًا غير متاح - بانتظار تحديث فوري.",
   "smsSosAtualizadoCorpo": "🚨 نداء استغاثة طارئ (تحديث فوري)!\nالموقع المحدث: {localizacao}\nالسياق: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "الموقع غير متاح وقت الإرسال.",
   "smsFotoCorpo": "📷 تم تسجيل دليل مصور أثناء الاستغاثة!\nالصورة: {fotoUrl}\nالموقع: {localizacao}",

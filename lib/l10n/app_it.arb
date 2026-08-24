@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ AVVISO DI SICUREZZA: TENTATIVO DI DISATTIVAZIONE CON PASSWORD ERRATA!\n{motivo}\nPosizione: {localizacao}",
   "smsSosContextoPadrao": "SOS attivato tramite il pulsante fisico di emergenza (Volume+).",
   "smsSosImediatoCorpo": "🚨 SOS DI EMERGENZA (pulsante fisico)!\nPosizione (ultima nota): {localizacao}\nContesto: {contexto}\n(A breve verrà inviato un aggiornamento con la posizione in tempo reale.)",
-  "smsLocalizacaoCacheIndisponivel": "Posizione in cache non disponibile — in attesa di un aggiornamento in tempo reale.",
+  "smsLocalizacaoCacheIndisponivel": "Posizione in cache non disponibile - in attesa di un aggiornamento in tempo reale.",
   "smsSosAtualizadoCorpo": "🚨 SOS DI EMERGENZA (aggiornamento in tempo reale)!\nPosizione aggiornata: {localizacao}\nContesto: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Posizione non disponibile al momento dell'invio.",
   "smsFotoCorpo": "📷 PROVA FOTOGRAFICA registrata durante il SOS!\nFoto: {fotoUrl}\nPosizione: {localizacao}",

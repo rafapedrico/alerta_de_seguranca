@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ セキュリティアラート：誤ったパスワードでの解除試行！\n{motivo}\n位置情報：{localizacao}",
   "smsSosContextoPadrao": "物理緊急ボタン（音量+）によりSOSが発報されました。",
   "smsSosImediatoCorpo": "🚨 緊急SOS（物理ボタン）！\n位置情報（最終確認）：{localizacao}\n状況：{contexto}\n（この後リアルタイム位置情報の更新が送信されます。）",
-  "smsLocalizacaoCacheIndisponivel": "キャッシュされた位置情報がありません — リアルタイム更新を待っています。",
+  "smsLocalizacaoCacheIndisponivel": "キャッシュされた位置情報がありません - リアルタイム更新を待っています。",
   "smsSosAtualizadoCorpo": "🚨 緊急SOS（リアルタイム更新）！\n更新された位置情報：{localizacao}\n状況：{contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "送信時点で位置情報を取得できませんでした。",
   "smsFotoCorpo": "📷 SOS中に写真証拠が記録されました！\n写真：{fotoUrl}\n位置情報：{localizacao}",

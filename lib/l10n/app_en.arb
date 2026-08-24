@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ SECURITY ALERT: DISARM ATTEMPT WITH INCORRECT PASSWORD!\n{motivo}\nLocation: {localizacao}",
   "smsSosContextoPadrao": "SOS triggered via the physical emergency button (Volume+).",
   "smsSosImediatoCorpo": "🚨 EMERGENCY SOS (physical button)!\nLocation (last known): {localizacao}\nContext: {contexto}\n(An update with the real-time location will be sent next.)",
-  "smsLocalizacaoCacheIndisponivel": "Cached location unavailable — waiting for a real-time update.",
+  "smsLocalizacaoCacheIndisponivel": "Cached location unavailable - waiting for a real-time update.",
   "smsSosAtualizadoCorpo": "🚨 EMERGENCY SOS (real-time update)!\nUpdated location: {localizacao}\nContext: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Location unavailable at the time of sending.",
   "smsFotoCorpo": "📷 PHOTOGRAPHIC EVIDENCE recorded during the SOS!\nPhoto: {fotoUrl}\nLocation: {localizacao}",

@@ -114,6 +114,33 @@ class EmergencyAlertService {
     'Œ': 'Oe', 'Æ': 'Ae',
   };
 
+  /// Pontuação "tipográfica" (smart quotes/travessão/reticências) para o
+  /// equivalente ASCII/GSM-7 mais próximo — mesmo motivo do
+  /// [_transliteracaoAscii] acima: qualquer um destes caracteres, sozinho,
+  /// já basta para forçar a mensagem INTEIRA para UCS-2.
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-23, mesmo dia da correção de acentos):
+  /// `smsLocalizacaoCacheIndisponivel` (usada no PRIMEIRO SMS do SOS
+  /// físico, ver [dispararSosComDuplaLocalizacao], quando a localização em
+  /// cache ainda não está disponível) tem um travessão "—" (U+2014) nos
+  /// 11 idiomas — sozinho, ele já reintroduzia a mesma degradação para
+  /// UCS-2/5-partes que a transliteração de acentos foi feita para evitar.
+  /// Mais importante: [anotacoesUsuario] (o campo "contexto", TEXTO LIVRE
+  /// digitado pelo usuário — ver [_prepararMensagemParaSms]) pode conter
+  /// qualquer um destes caracteres sem que nenhuma tradução do app tenha
+  /// culpa nenhuma; sem esta normalização, um usuário digitando aspas
+  /// "inteligentes" do teclado do próprio Android (comportamento padrão
+  /// de autocorreção) já bastaria para degradar o SMS inteiro de novo.
+  static const Map<String, String> _pontuacaoTipografica = {
+    '–': '-', // – en dash
+    '—': '-', // — em dash
+    '‘': "'", '’': "'", // ' '
+    '“': '"', '”': '"', // " "
+    '…': '...', // …
+    '•': '-', // •
+    ' ': ' ', // espaço não separável
+  };
+
   /// `yyyy-MM-dd HH:mm` — formato numérico ISO, sem ambiguidade de
   /// ordem dia/mês entre os países atendidos pelo app (diferente de
   /// "23/08" ou "08/23", que significam datas diferentes dependendo da
@@ -139,6 +166,9 @@ class EmergencyAlertService {
         .replaceAll(_rotuloLatLongAntesDoLink, '');
     _transliteracaoAscii.forEach((acentuado, ascii) {
       semDecoracao = semDecoracao.replaceAll(acentuado, ascii);
+    });
+    _pontuacaoTipografica.forEach((tipografico, ascii) {
+      semDecoracao = semDecoracao.replaceAll(tipografico, ascii);
     });
     semDecoracao = semDecoracao
         .split('\n')

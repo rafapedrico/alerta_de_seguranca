@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ SICHERHEITSALARM: DEAKTIVIERUNGSVERSUCH MIT FALSCHEM PASSWORT!\n{motivo}\nStandort: {localizacao}",
   "smsSosContextoPadrao": "SOS über den physischen Notfallknopf ausgelöst (Lautstärke+).",
   "smsSosImediatoCorpo": "🚨 NOTFALL-SOS (physischer Knopf)!\nStandort (zuletzt bekannt): {localizacao}\nKontext: {contexto}\n(Ein Update mit dem Echtzeit-Standort folgt in Kürze.)",
-  "smsLocalizacaoCacheIndisponivel": "Zwischengespeicherter Standort nicht verfügbar — Echtzeit-Update wird erwartet.",
+  "smsLocalizacaoCacheIndisponivel": "Zwischengespeicherter Standort nicht verfügbar - Echtzeit-Update wird erwartet.",
   "smsSosAtualizadoCorpo": "🚨 NOTFALL-SOS (Echtzeit-Update)!\nAktualisierter Standort: {localizacao}\nKontext: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Standort zum Zeitpunkt des Versands nicht verfügbar.",
   "smsFotoCorpo": "📷 FOTOGRAFISCHER BEWEIS während des SOS erfasst!\nFoto: {fotoUrl}\nStandort: {localizacao}",

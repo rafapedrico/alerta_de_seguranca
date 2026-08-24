@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ ALERTA DE SEGURIDAD: INTENTO DE DESARMADO CON CONTRASEÑA INCORRECTA!\n{motivo}\nUbicación: {localizacao}",
   "smsSosContextoPadrao": "SOS activado mediante el botón físico de emergencia (Volumen+).",
   "smsSosImediatoCorpo": "🚨 ¡SOS DE EMERGENCIA (botón físico)!\nUbicación (última conocida): {localizacao}\nContexto: {contexto}\n(A continuación se enviará una actualización con la ubicación en tiempo real.)",
-  "smsLocalizacaoCacheIndisponivel": "Ubicación en caché no disponible — esperando actualización en tiempo real.",
+  "smsLocalizacaoCacheIndisponivel": "Ubicación en caché no disponible - esperando actualización en tiempo real.",
   "smsSosAtualizadoCorpo": "🚨 ¡SOS DE EMERGENCIA (actualización en tiempo real)!\nUbicación actualizada: {localizacao}\nContexto: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Ubicación no disponible en el momento del envío.",
   "smsFotoCorpo": "📷 ¡EVIDENCIA FOTOGRÁFICA registrada durante el SOS!\nFoto: {fotoUrl}\nUbicación: {localizacao}",

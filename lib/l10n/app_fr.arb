@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ ALERTE DE SÉCURITÉ : TENTATIVE DE DÉSARMEMENT AVEC UN MOT DE PASSE INCORRECT !\n{motivo}\nLocalisation : {localizacao}",
   "smsSosContextoPadrao": "SOS déclenché via le bouton physique d'urgence (Volume+).",
   "smsSosImediatoCorpo": "🚨 SOS D'URGENCE (bouton physique) !\nLocalisation (dernière connue) : {localizacao}\nContexte : {contexto}\n(Une mise à jour avec la localisation en temps réel sera envoyée ensuite.)",
-  "smsLocalizacaoCacheIndisponivel": "Localisation en cache indisponible — en attente d'une mise à jour en temps réel.",
+  "smsLocalizacaoCacheIndisponivel": "Localisation en cache indisponible - en attente d'une mise à jour en temps réel.",
   "smsSosAtualizadoCorpo": "🚨 SOS D'URGENCE (mise à jour en temps réel) !\nLocalisation actualisée : {localizacao}\nContexte : {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Localisation indisponible au moment de l'envoi.",
   "smsFotoCorpo": "📷 PREUVE PHOTOGRAPHIQUE enregistrée pendant le SOS !\nPhoto : {fotoUrl}\nLocalisation : {localizacao}",

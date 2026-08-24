@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ सुरक्षा अलर्ट: गलत पासवर्ड के साथ निष्क्रिय करने का प्रयास!\n{motivo}\nस्थान: {localizacao}",
   "smsSosContextoPadrao": "फिजिकल इमरजेंसी बटन (वॉल्यूम+) के माध्यम से SOS भेजा गया।",
   "smsSosImediatoCorpo": "🚨 आपातकालीन SOS (फिजिकल बटन)!\nस्थान (अंतिम ज्ञात): {localizacao}\nसंदर्भ: {contexto}\n(इसके बाद वास्तविक समय के स्थान के साथ एक अपडेट भेजा जाएगा।)",
-  "smsLocalizacaoCacheIndisponivel": "कैश किया गया स्थान उपलब्ध नहीं — वास्तविक समय के अपडेट की प्रतीक्षा है।",
+  "smsLocalizacaoCacheIndisponivel": "कैश किया गया स्थान उपलब्ध नहीं - वास्तविक समय के अपडेट की प्रतीक्षा है।",
   "smsSosAtualizadoCorpo": "🚨 आपातकालीन SOS (वास्तविक समय अपडेट)!\nअद्यतन स्थान: {localizacao}\nसंदर्भ: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "भेजते समय स्थान उपलब्ध नहीं था।",
   "smsFotoCorpo": "📷 SOS के दौरान फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो: {fotoUrl}\nस्थान: {localizacao}",

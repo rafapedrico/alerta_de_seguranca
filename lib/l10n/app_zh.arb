@@ -613,7 +613,7 @@
   "smsTentativaDesarmeCorpo": "⚠️ 安全警报：使用错误密码尝试解除！\n{motivo}\n位置：{localizacao}",
   "smsSosContextoPadrao": "通过物理紧急按钮（音量+）触发SOS。",
   "smsSosImediatoCorpo": "🚨 紧急SOS（物理按钮）！\n位置（最后已知）：{localizacao}\n背景：{contexto}\n（随后将发送包含实时位置的更新。）",
-  "smsLocalizacaoCacheIndisponivel": "缓存位置不可用 — 正在等待实时更新。",
+  "smsLocalizacaoCacheIndisponivel": "缓存位置不可用 - 正在等待实时更新。",
   "smsSosAtualizadoCorpo": "🚨 紧急SOS（实时更新）！\n更新后的位置：{localizacao}\n背景：{contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "发送时位置不可用。",
   "smsFotoCorpo": "📷 SOS期间记录的照片证据！\n照片：{fotoUrl}\n位置：{localizacao}",

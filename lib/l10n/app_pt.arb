@@ -803,7 +803,7 @@
       }
     }
   },
-  "smsLocalizacaoCacheIndisponivel": "Localização em cache indisponível — aguardando atualização em tempo real.",
+  "smsLocalizacaoCacheIndisponivel": "Localização em cache indisponível - aguardando atualização em tempo real.",
   "smsSosAtualizadoCorpo": "🚨 SOS DE EMERGÊNCIA (atualização em tempo real)!\nLocalização atualizada: {localizacao}\nContexto: {contexto}",
   "@smsSosAtualizadoCorpo": {
     "placeholders": {
