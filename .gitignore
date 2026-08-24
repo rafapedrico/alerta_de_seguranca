@@ -49,4 +49,8 @@ functions/node_modules/
 functions/lib/
 .firebase/
 firebase-debug.log
+
+# Painel Web de Admin (admin/, Vite+React)
+admin/node_modules/
+admin/dist/
 firebase-debug.*.log

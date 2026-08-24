@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "guardiaox"
-  }
+  },
+  "targets": {
+    "guardiaox": {
+      "hosting": {
+        "publico": [
+          "guardiaox"
+        ],
+        "admin": [
+          "guardiaox-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

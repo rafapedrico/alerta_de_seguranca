@@ -232,6 +232,21 @@ async function _chamarOpenRouter(messages) {
   return {texto, usage: dados.usage || {}};
 }
 
+// Roles do Painel Web de Admin (decisão de arquitetura 2026-08-24) que
+// podem atender tickets — setadas EXCLUSIVAMENTE via
+// `functions/scripts/definirRoleAdmin.js` (nunca por um endpoint
+// exposto). Mesma whitelist usada em `firestore.rules` →
+// `temRolePainel`.
+const ROLES_COM_ACESSO_TICKETS = ["atendente", "supervisor", "admin"];
+
+/**
+ * @param {import("firebase-functions/v2/https").CallableRequest} request
+ * @return {boolean}
+ */
+function _temAcessoPainelTickets(request) {
+  return !!request.auth && ROLES_COM_ACESSO_TICKETS.includes(request.auth.token.role);
+}
+
 exports.aoReceberMensagemSuporte = onDocumentCreated(
     {
       document: "suporte_tickets/{ticketId}/mensagens/{mensagemId}",
@@ -399,12 +414,12 @@ exports.solicitarAtendenteHumano = onCall(async (request) => {
 });
 
 /**
- * Callable usada pelo futuro Painel de Atendimento (Admin) — exige a
- * custom claim `admin: true`. Grava a resposta do atendente e move o
+ * Callable usada pelo Painel Web de Admin — exige role "atendente",
+ * "supervisor" ou "admin". Grava a resposta do atendente e move o
  * ticket pra "em_atendimento_humano".
  */
 exports.responderComoAtendente = onCall(async (request) => {
-  if (!request.auth || request.auth.token.admin !== true) {
+  if (!_temAcessoPainelTickets(request)) {
     throw new HttpsError("permission-denied", "Apenas atendentes autorizados.");
   }
   const {ticketId, texto} = request.data || {};
@@ -438,11 +453,11 @@ exports.responderComoAtendente = onCall(async (request) => {
 });
 
 /**
- * Callable usada pelo futuro Painel de Atendimento (Admin) pra encerrar
- * um ticket — exige a custom claim `admin: true`.
+ * Callable usada pelo Painel Web de Admin pra encerrar um ticket —
+ * exige role "atendente", "supervisor" ou "admin".
  */
 exports.encerrarTicketSuporte = onCall(async (request) => {
-  if (!request.auth || request.auth.token.admin !== true) {
+  if (!_temAcessoPainelTickets(request)) {
     throw new HttpsError("permission-denied", "Apenas atendentes autorizados.");
   }
   const {ticketId} = request.data || {};

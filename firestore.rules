@@ -7,6 +7,19 @@ rules_version = '2';
 // maioria dos casos, que `request.auth.uid` seja o dono do recurso.
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Painel Web de Admin (decisão de arquitetura 2026-08-24) — custom
+    // claim `role` setada EXCLUSIVAMENTE via
+    // `functions/scripts/definirRoleAdmin.js` (script local, nunca uma
+    // Cloud Function exposta — ver o próprio script). 3 níveis, do
+    // menos ao mais sensível: "atendente" (só Tickets/Suporte),
+    // "supervisor" (+ Monitoramento de Alertas, leitura),
+    // "admin" (tudo, incluindo Gestão de Planos). `rolesPermitidas` é
+    // sempre passado já na ordem/whitelist certa por quem chama esta
+    // função — nunca aceita a role sozinha sem checar contra a lista.
+    function temRolePainel(rolesPermitidas) {
+      return request.auth != null && request.auth.token.role in rolesPermitidas;
+    }
+
     match /usuarios/{usuarioId} {
       // Documento por usuário: perfil (nome/email/telefone/fcmToken),
       // localização atual e contatos de emergência sincronizados (ver
@@ -209,7 +222,8 @@ service cloud.firestore {
       // callable `solicitarAtendenteHumano` também usa Admin SDK); o
       // cliente nunca escreve o status diretamente.
       allow read: if request.auth != null &&
-          (request.auth.uid == resource.data.uid || request.auth.token.admin == true);
+          (request.auth.uid == resource.data.uid ||
+           temRolePainel(['atendente', 'supervisor', 'admin']));
 
       allow create: if request.auth != null &&
           request.resource.data.uid == request.auth.uid &&
@@ -219,10 +233,10 @@ service cloud.firestore {
       allow update, delete: if false;
 
       match /mensagens/{mensagemId} {
-        // Leitura: dono do ticket ou atendente (custom claim `admin`).
+        // Leitura: dono do ticket ou atendente do Painel de Admin.
         allow read: if request.auth != null &&
             (get(/databases/$(database)/documents/suporte_tickets/$(ticketId)).data.uid == request.auth.uid ||
-             request.auth.token.admin == true);
+             temRolePainel(['atendente', 'supervisor', 'admin']));
 
         // O cliente só escreve a PRÓPRIA pergunta (autor 'usuario') —
         // respostas 'ia'/'atendente'/'sistema' são exclusividade da
