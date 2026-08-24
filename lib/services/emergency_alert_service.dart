@@ -33,6 +33,123 @@ class EmergencyAlertService {
 
   final DatabaseHelper _db = DatabaseHelper();
 
+  /// Emojis decorativos usados nos textos de SMS (`sms*Corpo` em
+  /// `app_XX.arb`) — nenhum caractere fora do alfabeto padrão GSM 03.38
+  /// (o único que caracteres puramente ASCII/latino cobrem no envio real
+  /// de SMS; acentos do português já fazem parte desse alfabeto, então
+  /// NÃO são afetados aqui).
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-23, confirmado via logcat nativo —
+  /// `adb logcat -s SmsSender`): um SMS com QUALQUER caractere fora do
+  /// GSM 03.38 obriga o Android a codificar a mensagem INTEIRA em UCS-2
+  /// (70 caracteres por parte) em vez de GSM-7 concatenado (153
+  /// caracteres por parte) — o emoji sozinho, no INÍCIO da mensagem,
+  /// bastava para triplicar o número de partes. Um teste real (Moto G7
+  /// Play, "TENTATIVA DE DESARME") mostrou a mensagem completa
+  /// (~280 caracteres) sendo dividida em 5 partes por contato; o rádio
+  /// aceitou TODAS (nenhum RESULT_ERROR_*), mas levou mais de 2 MINUTOS
+  /// entre a primeira e a última parte, chegando fora de ordem — janela
+  /// mais que suficiente para o app do destinatário desistir de
+  /// remontar a mensagem multi-parte, resultando em "SMS não chegou"
+  /// mesmo com o envio 100% confirmado do lado de quem manda.
+  ///
+  /// Removido SOMENTE do texto que sai de verdade pelo SmsManager (ver
+  /// [_enviarSms]) — o emoji continua intacto em qualquer outro lugar
+  /// (Push/histórico local/notificação), onde não custa nada e ajuda a
+  /// chamar atenção visualmente.
+  static final RegExp _emojiDecorativo = RegExp(
+    '[\u{2600}-\u{27BF}\u{1F300}-\u{1FAFF}\u{FE00}-\u{FE0F}\u{2B00}-\u{2BFF}]',
+    unicode: true,
+  );
+
+  /// Casa o trecho "Rótulo: número, Rótulo: número " (ex: "Latitude:
+  /// -23.5, Longitude: -47.4 ") logo ANTES do link do Google Maps entre
+  /// parênteses — ver [_formatarPosicao]. `\p{L}` (letra Unicode) em vez
+  /// de "Latitude"/"Longitude" fixos porque esses rótulos são
+  /// localizados (`historicoLatitudeLabel`/`historicoLongitudeLabel`,
+  /// diferentes em cada um dos 11 idiomas do app).
+  ///
+  /// CORREÇÃO (2026-08-23, pedido do usuário): o link já contém as
+  /// mesmas coordenadas (`?q=lat,lng`) — repeti-las por extenso no corpo
+  /// do SMS só engordava a mensagem sem agregar nenhuma informação nova
+  /// para quem recebe (o link abre direto no mapa). Removido SOMENTE do
+  /// texto que sai pelo SMS — o histórico local continua mostrando
+  /// latitude/longitude por extenso normalmente.
+  static final RegExp _rotuloLatLongAntesDoLink = RegExp(
+    r'[\p{L}]+:\s*-?[\d.]+,\s*[\p{L}]+:\s*-?[\d.]+\s*(?=\()',
+    unicode: true,
+  );
+
+  /// Transliteração para ASCII dos diacríticos latinos mais comuns entre
+  /// os 11 idiomas do app (á, ã, â, à, ä, é, ê, è, ë, í, ì, î, ï, ó, ô,
+  /// õ, ò, ö, ú, ù, û, ü, ñ, ç, ß, œ, æ — e variantes maiúsculas).
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-23): o alfabeto GSM 03.38 (SMS) só
+  /// cobre um subconjunto BEM menor de acentos do que o esperado (à, è,
+  /// é, ì, ò, ù, Ä, Ö, Ñ, Ü, ä, ö, ñ, ü) — confirmado via
+  /// `adb logcat -s SmsSender` que, mesmo depois de remover o emoji (ver
+  /// [_emojiDecorativo]), a mensagem em português CONTINUAVA saindo em
+  /// UCS-2/5 partes por causa só de "ã"/"ç"/"á"/"ó" (nenhum destes está
+  /// no alfabeto básico do GSM 03.38). Em vez de reimplementar essa
+  /// tabela reduzida (e arriscar esquecer algum idioma), transliterar
+  /// tudo para o equivalente ASCII mais próximo é mais simples e
+  /// garante GSM-7 (153 caracteres/parte) para qualquer idioma de
+  /// escrita latina — idiomas de escrita não-latina (ex: árabe)
+  /// continuam exigindo UCS-2 de qualquer forma, limitação real do
+  /// protocolo SMS, não deste app.
+  static const Map<String, String> _transliteracaoAscii = {
+    'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ñ': 'n', 'ç': 'c', 'ý': 'y', 'ÿ': 'y',
+    'ß': 'ss', 'œ': 'oe', 'æ': 'ae',
+    'Á': 'A', 'À': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A', 'Å': 'A',
+    'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O',
+    'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+    'Ñ': 'N', 'Ç': 'C', 'Ý': 'Y',
+    'Œ': 'Oe', 'Æ': 'Ae',
+  };
+
+  /// `yyyy-MM-dd HH:mm` — formato numérico ISO, sem ambiguidade de
+  /// ordem dia/mês entre os países atendidos pelo app (diferente de
+  /// "23/08" ou "08/23", que significam datas diferentes dependendo da
+  /// região do destinatário). Pedido do usuário (2026-08-23): toda
+  /// mensagem de emergência passa a informar quando foi enviada, para o
+  /// contato saber o quão recente é o alerta.
+  String _formatarDataHoraEnvio(DateTime agora) {
+    String dois(int n) => n.toString().padLeft(2, '0');
+    return '${agora.year}-${dois(agora.month)}-${dois(agora.day)} '
+        '${dois(agora.hour)}:${dois(agora.minute)}';
+  }
+
+  /// Remove [_emojiDecorativo] e acentos (via [_transliteracaoAscii]),
+  /// normaliza os espaços/linhas resultantes (um caractere removido do
+  /// início de uma linha deixava um espaço em branco solto antes do
+  /// texto) e prefixa a data/hora do envio. Só chamado imediatamente
+  /// antes de [_canalSms].invokeMethod — nunca deve vazar para fora de
+  /// [_enviarSms] (o texto acentuado/com emoji original continua sendo
+  /// usado em qualquer outro lugar: Push, histórico local, notificação).
+  String _prepararMensagemParaSms(String mensagem) {
+    var semDecoracao = mensagem
+        .replaceAll(_emojiDecorativo, '')
+        .replaceAll(_rotuloLatLongAntesDoLink, '');
+    _transliteracaoAscii.forEach((acentuado, ascii) {
+      semDecoracao = semDecoracao.replaceAll(acentuado, ascii);
+    });
+    semDecoracao = semDecoracao
+        .split('\n')
+        .map((linha) => linha.trim())
+        .join('\n')
+        .trim();
+
+    final dataHora = _formatarDataHoraEnvio(DateTime.now());
+    return '[$dataHora] $semDecoracao';
+  }
+
   /// Formata uma [Position] em texto legível (latitude/longitude + link
   /// do Google Maps) para ser inserida no corpo do SMS e no histórico.
   /// [l10n] resolve "Latitude"/"Longitude" no idioma atualmente
@@ -431,7 +548,11 @@ class EmergencyAlertService {
     try {
       await _canalSms.invokeMethod('enviarSms', {
         'telefones': numerosDestinatarios,
-        'mensagem': mensagem,
+        // Ver [_prepararMensagemParaSms] — remove emojis decorativos
+        // ANTES de chegar ao SmsManager, evitando a codificação UCS-2
+        // (que triplica o número de partes) sem alterar o texto exibido
+        // em nenhum outro lugar (histórico, Push, etc.).
+        'mensagem': _prepararMensagemParaSms(mensagem),
       });
       // IMPORTANTE: isto só confirma que `sendMultipartTextMessage` NÃO
       // lançou exceção — ou seja, que o PEDIDO estava bem formado

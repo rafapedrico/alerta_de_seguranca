@@ -270,6 +270,14 @@ class RotinaAlarmeService {
   }
 
   static Future<void> cancelarAlarme(int idAlarme) async {
+    // NOVO (sincronização imediata, 2026-08-23): avisa a nuvem ANTES de
+    // qualquer outra coisa — fecha a janela de corrida com a Cloud
+    // Function agendada (`monitorarAlarmesAgendados`, a cada 2min), que
+    // senão poderia encontrar o documento ainda PENDENTE e disparar um
+    // alerta falso para um alarme que o usuário acabou de cancelar. Ver
+    // [AlarmeAgendadoCloudService.marcarCancelado].
+    unawaited(AlarmeAgendadoCloudService().marcarCancelado(idAlarme.toString()));
+
     await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
@@ -294,6 +302,16 @@ class RotinaAlarmeService {
     int idAlarme,
     Map<String, dynamic> alarmeMap,
   ) async {
+    // NOVO (sincronização imediata, 2026-08-23): mesmo motivo de
+    // [cancelarAlarme] — o disparo de HOJE está sendo pulado, então a
+    // nuvem precisa saber ANTES da Cloud Function agendada rodar de
+    // novo. `sinalizarNovoCiclo` garante que, quando o heartbeat
+    // registrar o PRÓXIMO disparo (amanhã ou depois), o documento nasça
+    // PENDENTE de novo em vez de herdar este CANCELADO de hoje — ver
+    // [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+    unawaited(AlarmeAgendadoCloudService().marcarCancelado(idAlarme.toString()));
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
+
     await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
@@ -348,6 +366,11 @@ class RotinaAlarmeService {
   }
 
   static Future<void> pausarAlarme(int idAlarme) async {
+    // NOVO (sincronização imediata, 2026-08-23): ver
+    // [AlarmeAgendadoCloudService.marcarPausado] e o mesmo raciocínio de
+    // [cancelarAlarme].
+    unawaited(AlarmeAgendadoCloudService().marcarPausado(idAlarme.toString()));
+
     await AndroidAlarmManager.cancel(_idCheckin(idAlarme));
     await AndroidAlarmManager.cancel(_idTolerancia(idAlarme));
     await AndroidAlarmManager.cancel(_idJanelaFinal(idAlarme));
@@ -402,6 +425,36 @@ class RotinaAlarmeService {
     }
   }
 
+  /// Checagem PRÉ-DISPARO (2026-08-23): garante que o Firebase esteja
+  /// inicializado neste isolate (necessário sempre que esta função roda
+  /// dentro de um callback HEADLESS do `android_alarm_manager_plus` — ver
+  /// mesmo padrão em [_callbackJanelaFinalExpirada]) e consulta se a
+  /// nuvem já assumiu o desfecho do ciclo ATUAL do alarme [idAlarme] (ver
+  /// [AlarmeAgendadoCloudService.statusJaResolvidoNaNuvem]) — chamada no
+  /// início dos três callbacks headless do alarme local (check-in,
+  /// tolerância expirada e janela final expirada), ANTES de tocar sirene,
+  /// abrir a tela ou enviar SMS/Push. `true` significa que o disparo
+  /// local ATUAL deve ser abortado (a nuvem já confirmou seguro, já
+  /// disparou o alerta sozinha, ou o usuário cancelou/pausou o alarme por
+  /// outro caminho) — ver os pontos de chamada para o que cada callback
+  /// faz nesse caso. Nunca lança exceção; `false` em caso de qualquer
+  /// falha (comportamento local segue exatamente como antes desta
+  /// correção).
+  static Future<bool> _alarmeJaResolvidoNaNuvem(int idAlarme) async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+            .timeout(const Duration(seconds: 8));
+      }
+    } catch (e) {
+      debugPrint(
+          '⚠️ [RotinaAlarmeService] Falha ao inicializar Firebase para checagem pré-disparo: $e');
+      return false;
+    }
+
+    return AlarmeAgendadoCloudService().statusJaResolvidoNaNuvem(idAlarme.toString());
+  }
+
   static Future<void> desligarAlarme() async {
     try {
       await _canalRotinaAlarme.invokeMethod('pararAlarme');
@@ -417,6 +470,16 @@ class RotinaAlarmeService {
     } catch (e) {
       debugPrint('⚠️ Falha ao desmarcar alarme #$idAlarme como pausado: $e');
     }
+
+    // NOVO (sincronização imediata, 2026-08-23): sinaliza que o PRÓXIMO
+    // registro deste alarme pelo heartbeat (`BackgroundLocationHeartbeatService`,
+    // a cada 1min quando dentro da janela de 48h) deve reiniciar o
+    // documento como um ciclo PENDENTE totalmente novo, com o timestamp
+    // recém-calculado — em vez de herdar o PAUSADO gravado por
+    // [AlarmeAgendadoCloudService.marcarPausado]. Mesmo padrão já usado
+    // por [confirmarCheckinRotina]/[_callbackJanelaFinalExpirada] ao
+    // concluir um ciclo. Ver [AlarmeAgendadoCloudService.sinalizarNovoCiclo].
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
 
     try {
       final dados = await DatabaseHelper().buscarAlarmePorId(idAlarme);
@@ -602,6 +665,32 @@ void _callbackCheckinRotina(int idAlarmeParam, Map<String, dynamic> params) asyn
 
   debugPrint('🔔 [HEADLESS] Alarme de check-in de rotina #$idAlarme disparado!');
 
+  // NOVO (checagem pré-disparo, 2026-08-23): cobre o cenário TESTADO
+  // FISICAMENTE pelo usuário — aparelho desligado no horário do alarme,
+  // a nuvem dispara o alerta híbrido sozinha via
+  // `functions/scheduledAlarmMonitor.js`, e só DEPOIS o aparelho é
+  // religado. `rescheduleOnReboot: true` reagenda este mesmo alarme (já
+  // vencido) para disparar IMEDIATAMENTE ao religar — sem esta checagem,
+  // isso tocaria a sirene e reenviaria SMS/Push duplicados para um ciclo
+  // que a nuvem já concluiu sozinha. Ver [_alarmeJaResolvidoNaNuvem].
+  if (await RotinaAlarmeService._alarmeJaResolvidoNaNuvem(idAlarme)) {
+    debugPrint(
+        '☁️ [HEADLESS] Alarme #$idAlarme já resolvido na nuvem — disparo '
+        'local abortado, apenas atualizando o estado local e reagendando '
+        'a próxima ocorrência.');
+    try {
+      final dadosResolvido = await DatabaseHelper().buscarAlarmePorId(idAlarme);
+      final ativoResolvido = (dadosResolvido?['ativo'] as int?) == 1;
+      if (dadosResolvido != null && ativoResolvido) {
+        await RotinaAlarmeService.agendarAlarme(dadosResolvido);
+      }
+    } catch (e) {
+      debugPrint(
+          '⚠️ [HEADLESS] Falha ao reagendar alarme #$idAlarme já resolvido na nuvem: $e');
+    }
+    return;
+  }
+
   final prefs = await SharedPreferences.getInstance();
   await prefs.reload();
   
@@ -777,6 +866,22 @@ void _callbackToleranciaExpirada(int idAlarmeParam, Map<String, dynamic> params)
       '🔔 [HEADLESS] Tolerância do check-in de rotina #$idAlarme expirada — '
       'concedendo janela final de 60 segundos antes do alerta de emergência.');
 
+  // NOVO (checagem pré-disparo, 2026-08-23): mesmo raciocínio de
+  // [_callbackCheckinRotina] — se a nuvem já resolveu este ciclo (alerta
+  // já disparado pela Cloud Function, confirmado seguro ou
+  // cancelado/pausado pelo usuário por outro caminho), não há motivo
+  // para reacender a tela/som para mais uma última chance. Ver
+  // [_alarmeJaResolvidoNaNuvem].
+  if (await RotinaAlarmeService._alarmeJaResolvidoNaNuvem(idAlarme)) {
+    debugPrint(
+        '☁️ [HEADLESS] Alarme #$idAlarme já resolvido na nuvem — janela '
+        'final abortada.');
+    try {
+      await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
+    } catch (_) {}
+    return;
+  }
+
   try {
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
   } catch (_) {}
@@ -856,6 +961,39 @@ void _callbackJanelaFinalExpirada(int idAlarmeParam, Map<String, dynamic> params
   debugPrint(
       '🚨 [HEADLESS] Janela final (2 min) do alarme de rotina #$idAlarme '
       'expirada sem confirmação — disparando alerta de emergência AGORA.');
+
+  // NOVO (checagem pré-disparo/regra de confirmação única, 2026-08-23):
+  // este é o instante em que o alerta REAL seria disparado localmente —
+  // se a nuvem já assumiu o desfecho deste ciclo (a Cloud Function
+  // agendada disparou o alerta híbrido sozinha numa corrida vencida pelo
+  // lado da nuvem, o PIN foi confirmado por outro caminho, ou o usuário
+  // cancelou/pausou o alarme), ABORTA o disparo local e apenas
+  // sincroniza o estado — evita SMS/Push duplicados. Ver
+  // [_alarmeJaResolvidoNaNuvem].
+  if (await RotinaAlarmeService._alarmeJaResolvidoNaNuvem(idAlarme)) {
+    debugPrint(
+        '☁️ [HEADLESS] Alarme #$idAlarme já resolvido na nuvem — disparo '
+        'local do alerta de emergência abortado (evita duplicidade de '
+        'SMS/Push).');
+    try {
+      await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(chaveAlarmeFaseFinal);
+      await prefs.remove(chaveAlarmeFaseFinalDeadlineEpochMs);
+      await prefs.setBool(chaveAlarmeEmergenciaDisparada, true);
+      await prefs.setBool(chaveAlarmeFluxoResolvido, true);
+    } catch (_) {}
+    // Ciclo já concluído por outro caminho — a PRÓXIMA ocorrência deste
+    // mesmo id deve nascer PENDENTE de novo (ver
+    // [AlarmeAgendadoCloudService.sinalizarNovoCiclo]). Necessário aqui
+    // porque, quando é a PRÓPRIA Cloud Function agendada quem resolve o
+    // ciclo (aparelho desligado), nenhum caminho local chega a sinalizar
+    // isso sozinho.
+    AlarmeAgendadoCloudService().sinalizarNovoCiclo(idAlarme.toString());
+    return;
+  }
 
   try {
     await NotificacaoService.cancelarNotificacaoCheckin(idAlarme);

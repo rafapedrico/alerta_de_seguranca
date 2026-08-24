@@ -10,10 +10,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// `alertaDisparado` quando a Cloud Function de monitoramento agendado
 /// (ver `cloud_functions/scheduledAlarmMonitor.ts`) detecta que o horário
 /// limite foi ultrapassado sem confirmação.
+///
+/// CORREÇÃO (2026-08-23, checagem pré-disparo local + sincronização
+/// imediata de pausa/cancelamento): dois novos status, escritos
+/// diretamente pelo APP (nunca pela Cloud Function) assim que o usuário
+/// cancela/pausa um alarme/rotina pela interface — ver
+/// [AlarmeAgendadoCloudService.marcarCancelado]/[marcarPausado] e
+/// `RotinaAlarmeService.cancelarAlarme`/`pausarAlarme`. Qualquer status
+/// diferente de [pendente] (inclusive estes dois) sinaliza que a nuvem
+/// já é dona do desfecho do ciclo — ver
+/// [AlarmeAgendadoCloudService.statusJaResolvidoNaNuvem], consultado
+/// pelo alarme local ANTES de tocar sirene ou enviar SMS/Push, evitando
+/// duplicidade quando o aparelho religa ou reconecta depois que a nuvem
+/// já assumiu o ciclo sozinha.
 enum AlarmeAgendadoStatus {
   pendente,
   confirmadoSeguro,
-  alertaDisparado;
+  alertaDisparado,
+  cancelado,
+  pausado;
 
   /// Valor exatamente como gravado no Firestore (mesma grafia lida pela
   /// Cloud Function em TypeScript, ver `cloud_functions/`).
@@ -25,8 +40,19 @@ enum AlarmeAgendadoStatus {
         return 'CONFIRMADO_SEGURA';
       case AlarmeAgendadoStatus.alertaDisparado:
         return 'ALERTA_DISPARADO';
+      case AlarmeAgendadoStatus.cancelado:
+        return 'CANCELADO';
+      case AlarmeAgendadoStatus.pausado:
+        return 'PAUSADO';
     }
   }
+
+  /// `true` para qualquer status diferente de [pendente] — a nuvem já
+  /// assumiu o desfecho deste ciclo (confirmado seguro, alerta já
+  /// disparado pela Cloud Function, cancelado ou pausado pelo usuário) e
+  /// o alarme local NÃO deve mais agir (tocar sirene, enviar SMS/Push)
+  /// para este mesmo ciclo. Ver [AlarmeAgendadoCloudService.statusJaResolvidoNaNuvem].
+  bool get jaResolvidoNaNuvem => this != AlarmeAgendadoStatus.pendente;
 
   static AlarmeAgendadoStatus fromFirestore(String? valor) {
     switch (valor) {
@@ -34,6 +60,10 @@ enum AlarmeAgendadoStatus {
         return AlarmeAgendadoStatus.confirmadoSeguro;
       case 'ALERTA_DISPARADO':
         return AlarmeAgendadoStatus.alertaDisparado;
+      case 'CANCELADO':
+        return AlarmeAgendadoStatus.cancelado;
+      case 'PAUSADO':
+        return AlarmeAgendadoStatus.pausado;
       case 'PENDENTE':
       default:
         return AlarmeAgendadoStatus.pendente;

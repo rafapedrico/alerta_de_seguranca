@@ -41,6 +41,11 @@
   "meuPerfilTitulo": "Meu Perfil",
   "meuPerfilTelefoneTitulo": "Meu número de contato",
   "meuPerfilTelefoneNaoCadastrado": "Nenhum telefone cadastrado",
+  "completarPerfilTitulo": "Complete seu perfil",
+  "completarPerfilIntroducao": "Precisamos do seu número de telefone para que seus contatos de emergência consigam te adicionar e receber seus alertas.",
+  "telefoneJaEmUso": "Este número já está cadastrado em outra conta do Guardião X. Use outro número ou entre em contato com o suporte.",
+  "telefoneSalvoComSucesso": "Telefone salvo com sucesso!",
+  "meuPerfilTelefoneEditarTooltip": "Editar número de contato",
   "sairDaContaTitulo": "Sair da conta",
   "sairDaContaConfirmar": "Sair",
   "alertaRecebidoTitulo": "Alerta de segurança recebido",
@@ -775,7 +780,7 @@
     }
   },
   "smsTentativaDesarmeMotivoPadrao": "O PIN foi digitado incorretamente 2 vezes seguidas ao tentar desarmar antecipadamente o sistema de segurança.",
-  "smsTentativaDesarmeCorpo": "⚠️ ALERTA DE SEGURANÇA: TENTATIVA DE DESARME COM SENHA INCORRETA!\n{motivo}\nLocalização: {localizacao}",
+  "smsTentativaDesarmeCorpo": "Alerta de Segurança, desarme incorreto. {localizacao}",
   "@smsTentativaDesarmeCorpo": {
     "placeholders": {
       "motivo": {

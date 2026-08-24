@@ -19,9 +19,12 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.example.security_check_app"
     // Fixado em 36 (em vez de flutter.compileSdkVersion) — 35 atendia o
-    // requisito mínimo do plugin audioplayers, mas o flutter_secure_storage
-    // (dependência transitiva do flutter_facebook_auth, ver
-    // social_auth_service.dart) pede 36.
+    // requisito mínimo do plugin audioplayers; o requisito de 36 vinha do
+    // flutter_secure_storage (dependência transitiva do
+    // flutter_facebook_auth, removido em 2026-08-23). NÃO baixado de
+    // volta por precaução — nunca confirmado se nenhuma outra dependência
+    // já passou a depender de 36 nesse meio tempo; baixar sem checar isso
+    // é mais risco do que vale a pena.
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -48,10 +51,10 @@ android {
         applicationId = "com.rmfglobal.guardiaox"
         // Fixado em 23 (em vez de flutter.minSdkVersion, que resolvia 21)
         // — exigido pelo flutter_secure_storage (dependência transitiva do
-        // flutter_facebook_auth, ver pubspec.yaml/social_auth_service.dart):
-        // a lib usa APIs indisponíveis abaixo do Android 6.0 (API 23) e o
-        // merge do manifest falha sem isso. Único efeito colateral: o app
-        // deixa de instalar em Android 5.0/5.1 (API 21-22).
+        // flutter_facebook_auth, removido em 2026-08-23; ver comentário do
+        // compileSdk acima sobre não baixar isso de volta sem checar).
+        // Único efeito colateral: o app deixa de instalar em Android
+        // 5.0/5.1 (API 21-22).
         minSdkVersion = flutter.minSdkVersion
         // CORREÇÃO (2026-08-14): este valor tinha ficado divergente do
         // próprio comentário original ("acompanhar o compileSdk acima") —

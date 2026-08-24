@@ -15,8 +15,9 @@ subprojects {
 
 // CORREÇÃO (build quebrado após atualização do Flutter/AGP/Gradle,
 // 2026-08-10): alguns plugins de terceiros mais antigos (ex:
-// flutter_facebook_auth, audioplayers_android) ainda declaram
-// sourceCompatibility Java 8 nos PRÓPRIOS módulos, enquanto o app raiz
+// audioplayers_android; também se aplicava ao flutter_facebook_auth,
+// removido em 2026-08-23) ainda declaram sourceCompatibility Java 8 nos
+// PRÓPRIOS módulos, enquanto o app raiz
 // (ver android/app/build.gradle) usa Java 17 — Gradle rejeita essa
 // mistura ("Inconsistent JVM-target compatibility"). Força TODOS os
 // módulos (inclusive os dos plugins) a usar o mesmo alvo Java 17, sem

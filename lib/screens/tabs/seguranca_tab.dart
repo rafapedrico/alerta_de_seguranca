@@ -102,6 +102,22 @@ class _SegurancaTabState extends State<SegurancaTab> {
     super.initState();
     _carregarConfiguracoesSeguranca();
 
+    // CORREÇÃO DE BUG REAL (2026-08-23, relatado pelo usuário): a Tela de
+    // Início ocupa o MESMO slot, dentro de `HomeScreen`, da IndexedStack
+    // que hospeda esta aba — navegar até "Início" (inclusive via
+    // Configurações -> ícone de casa) troca `IndexedStack(...)` por
+    // `InicioDashboard()` no mesmo lugar da árvore de widgets, o que
+    // DESTRÓI e recria o State desta tela ao voltar (`initState` roda de
+    // novo do zero). Sem isto, `_isTimerAtivo`/`_segundosRestantes` e o
+    // `Timer.periodic` visual eram perdidos — a aba voltava mostrando
+    // "Fazer Check-in" como se nenhum cronômetro estivesse ativo, mesmo
+    // com o alarme NATIVO (`AlarmeService.agendarAlarmeEmergencia`,
+    // Doze-proof) e o dead man's switch na nuvem
+    // (`BackgroundLocationHeartbeatService`) continuando 100% ativos por
+    // baixo — nenhum dos dois depende do State desta tela. Ver
+    // [_restaurarCronometroAtivoSePersistido].
+    _restaurarCronometroAtivoSePersistido();
+
     // Regra de negócio 1 (Permissão ao Iniciar): assim que a tela de
     // Segurança é aberta, o app já verifica/solicita a permissão de
     // localização do Android, garantindo que o GPS esteja liberado antes
@@ -291,6 +307,57 @@ class _SegurancaTabState extends State<SegurancaTab> {
   }
 
 
+  /// Restaura a EXIBIÇÃO do cronômetro de check-in, se algum ciclo ainda
+  /// estiver em andamento, ao (re)montar esta tela — ver a correção de
+  /// bug real documentada em [initState]. Lê o timestamp de expiração
+  /// persistido em disco (`DatabaseHelper.salvarContextoTimerAtivo`,
+  /// gravado no INÍCIO do cronômetro, ANTES do alarme nativo ser
+  /// agendado) e, se ele ainda estiver no futuro, recalcula
+  /// `_segundosRestantes` a partir do tempo REAL restante e retoma a
+  /// contagem visual normalmente — sem reagendar o alarme nativo nem
+  /// re-registrar o heartbeat na nuvem, já que nenhum dos dois foi
+  /// perdido (são independentes do State desta tela).
+  Future<void> _restaurarCronometroAtivoSePersistido() async {
+    try {
+      final config = await _db.getUserConfig();
+      if (config == null) return;
+
+      final timestampStr = config['timestamp_expiracao_alarme'] as String?;
+      final epochMs = timestampStr != null ? int.tryParse(timestampStr) : null;
+      if (epochMs == null) return;
+
+      final restante =
+          DateTime.fromMillisecondsSinceEpoch(epochMs).difference(DateTime.now());
+      // Prazo já vencido — ou o alerta real já está em andamento na tela
+      // dedicada [CronometroDisparadoScreen], ou o ciclo genuinamente
+      // expirou enquanto esta tela estava desmontada. De qualquer forma,
+      // não há contagem visual para retomar aqui; mantém o estado ocioso
+      // normal.
+      if (restante.inSeconds <= 0) return;
+
+      if (!mounted) return;
+
+      _cancelarTimerPrincipal();
+      _disparoJaExecutadoNesteCiclo = false;
+      setState(() {
+        _segundosRestantes = restante.inSeconds;
+        _isTimerAtivo = true;
+        _contextoController.text = (config['contexto_timer_ativo'] as String?) ?? '';
+      });
+
+      // Retoma o loop de localização em segundo plano (interrompido pelo
+      // dispose() do State anterior, ver [dispose]) e a contagem visual.
+      _locationService.iniciarCicloDeAtualizacao();
+      _iniciarTimerVisual();
+
+      debugPrint(
+          '⏱️ [SegurancaTab] Cronômetro ativo restaurado ao reabrir a aba '
+          '— ${restante.inSeconds}s restantes.');
+    } catch (e) {
+      debugPrint('⚠️ [SegurancaTab] Falha ao restaurar cronômetro ativo: $e');
+    }
+  }
+
   void _iniciarTimer() {
     _carregarConfiguracoesSeguranca();
     int totalSegundos = (_horaSelecionada * 3600) + (_minutoSelecionada * 60);
@@ -365,6 +432,15 @@ class _SegurancaTabState extends State<SegurancaTab> {
       contexto: _contextoController.text.trim(),
     );
 
+    _iniciarTimerVisual();
+  }
+
+  /// Cria o `Timer.periodic` que só decrementa `_segundosRestantes` e
+  /// atualiza a UI a cada segundo — extraído de [_iniciarTimer] para ser
+  /// reaproveitado também por [_restaurarCronometroAtivoSePersistido]
+  /// (retomada da contagem visual ao reabrir esta aba com um cronômetro
+  /// já em andamento), sem duplicar a lógica do tick.
+  void _iniciarTimerVisual() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       // Guarda defensiva extra: se por qualquer motivo esta referência de
       // Timer não for mais a atual (ex: foi substituída por um cancel +
@@ -442,6 +518,12 @@ class _SegurancaTabState extends State<SegurancaTab> {
     // ciclo (ver [BackgroundLocationHeartbeatService.cancelarCheckinAtivo]) —
     // não altera o status já gravado, apenas para de atualizá-lo.
     BackgroundLocationHeartbeatService().cancelarCheckinAtivo();
+    // CORREÇÃO DE BUG REAL (2026-08-23): limpa o timestamp de expiração
+    // persistido — sem isto, [_restaurarCronometroAtivoSePersistido]
+    // poderia "ressuscitar" este ciclo já encerrado como se ainda
+    // estivesse ativo, na próxima vez que esta tela for recriada. Ver
+    // [DatabaseHelper.limparContextoTimerAtivo].
+    unawaited(_db.limparContextoTimerAtivo());
 
     if (!mounted) return;
     setState(() {

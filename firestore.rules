@@ -15,9 +15,10 @@ service cloud.firestore {
 
       // Criação do perfil (cadastro, ver
       // FirebaseSyncService.criarPerfilInicial) — só o próprio dono, e
-      // NUNCA definindo os campos do ciclo do Plano Free (ver abaixo).
+      // NUNCA definindo os campos do ciclo do Plano Free (ver abaixo) NEM
+      // `telefone` (ver bloqueio de `update` logo abaixo — mesmo motivo).
       allow create: if request.auth != null && request.auth.uid == usuarioId &&
-          !request.resource.data.keys().hasAny(['isPremium', 'cycleStartDate', 'blockedAt']);
+          !request.resource.data.keys().hasAny(['isPremium', 'cycleStartDate', 'blockedAt', 'telefone']);
 
       // Atualizações do próprio dono (localização periódica, contatos de
       // emergência, fcmToken, etc.) — PROTEÇÃO DE SERVIDOR do ciclo do
@@ -28,9 +29,18 @@ service cloud.firestore {
       // só a Cloud Function `sincronizarCicloPlano`/
       // `cancelarPremiumDoProprioUsuario` (Admin SDK, ignora estas regras)
       // pode gravá-los. Ver `functions/planoCicloService.js`.
+      //
+      // `telefone` também bloqueado aqui (decisão de arquitetura
+      // 2026-08-23 — remoção do SMS OTP): sem prova de posse por SMS, a
+      // ÚNICA rede de segurança contra sequestro de alerta de emergência é
+      // a unicidade estrita garantida pela Cloud Function
+      // `atualizarTelefonePerfil` (Admin SDK, ignora estas regras) via
+      // `telefones_reservados/{telefone}` — permitir a escrita direta
+      // aqui reabriria exatamente o buraco que a reespecificação de
+      // 2026-08-16 fechou (qualquer um digitar o número de outra pessoa).
       allow update: if request.auth != null && request.auth.uid == usuarioId &&
           !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['isPremium', 'cycleStartDate', 'blockedAt']);
+              .hasAny(['isPremium', 'cycleStartDate', 'blockedAt', 'telefone']);
 
       allow delete: if false;
 
@@ -177,6 +187,18 @@ service cloud.firestore {
       // regras) — ver exclusaoContaService.js. Nunca acessível ao
       // cliente, nem para o próprio ex-titular (que, a essa altura, nem
       // tem mais uma sessão autenticada válida).
+      allow read, write: if false;
+    }
+
+    match /telefones_reservados/{telefone} {
+      // Índice de unicidade de telefone (decisão de arquitetura
+      // 2026-08-23 — remoção do SMS OTP): gravado/apagado EXCLUSIVAMENTE
+      // pela Cloud Function `atualizarTelefonePerfil` (Admin SDK, ignora
+      // estas regras) — ver telefonePerfilService.js. Escrita direta do
+      // cliente aqui contornaria a checagem de unicidade por completo
+      // (bastaria sobrescrever a própria reserva de outra conta), então
+      // fica negada por completo, inclusive leitura (não é dado que o
+      // cliente precisa consultar diretamente).
       allow read, write: if false;
     }
   }

@@ -3,14 +3,6 @@
     <!-- Nome exibido embaixo do ícone do app no launcher do Android. -->
     <string name="app_name">Guardião-X</string>
 
-    <!-- Login social com Facebook (ver lib/services/social_auth_service.dart)
-         — valores reais do app "Guardião-X" cadastrado em
-         developers.facebook.com (Configurações > Básico), preenchidos em
-         2026-08-07. -->
-    <string name="facebook_app_id">1053780267051671</string>
-    <string name="fb_login_protocol_scheme">fb1053780267051671</string>
-    <string name="facebook_client_token">32cdc22743159f24dadae84b30af82ca</string>
-
     <!-- Modo "Despertador de Emergência" — notificação de controle do
          AlertaRecebidoAlarmService (ver essa classe para o comentário
          completo). Texto nativo (não passa pelo l10n do Flutter, igual

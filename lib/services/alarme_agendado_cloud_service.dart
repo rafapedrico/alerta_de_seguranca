@@ -201,4 +201,112 @@ class AlarmeAgendadoCloudService {
           '⚠️ [AlarmeAgendadoCloudService] Falha ao marcar alarme #$idAlarme como alerta disparado: $e');
     }
   }
+
+  /// Marca o alarme como CANCELADO — chamado IMEDIATAMENTE por
+  /// `RotinaAlarmeService.cancelarAlarme`/`pausarAlarmePorHoje` assim que
+  /// o usuário cancela um alarme/rotina pela interface (ou pula só o
+  /// disparo de hoje), ANTES de qualquer outra coisa acontecer.
+  ///
+  /// CORREÇÃO (2026-08-23, sincronização imediata): sem isto, cancelar
+  /// pelo app só afetava o `AlarmManager` local — o documento na nuvem
+  /// continuava PENDENTE até o próximo ciclo do heartbeat (até 1 minuto
+  /// depois), e a Cloud Function agendada (`monitorarAlarmesAgendados`,
+  /// que roda a cada 2 minutos) podia disparar um alerta FALSO nesse
+  /// intervalo para um alarme que o usuário já tinha cancelado. Gravar
+  /// aqui, na hora do próprio gesto de cancelar, fecha essa janela de
+  /// corrida.
+  Future<void> marcarCancelado(String idAlarme) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documento(idAlarme).set(
+        {
+          'status': AlarmeAgendadoStatus.cancelado.valorFirestore,
+          'canceladoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [AlarmeAgendadoCloudService] Alarme #$idAlarme marcado como CANCELADO.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [AlarmeAgendadoCloudService] Falha ao marcar alarme #$idAlarme como cancelado: $e');
+    }
+  }
+
+  /// Marca o alarme como PAUSADO — chamado IMEDIATAMENTE por
+  /// `RotinaAlarmeService.pausarAlarme` assim que o usuário pausa um
+  /// alarme/rotina pela interface, mesmo motivo/urgência de
+  /// [marcarCancelado] (fechar a janela de corrida com a Cloud Function
+  /// agendada). Revertido para PENDENTE (com timestamp novo) somente
+  /// quando o usuário reativa o alarme — ver
+  /// [sinalizarNovoCiclo]/`RotinaAlarmeService.despausarAlarme`.
+  Future<void> marcarPausado(String idAlarme) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documento(idAlarme).set(
+        {
+          'status': AlarmeAgendadoStatus.pausado.valorFirestore,
+          'pausadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      ).timeout(_timeoutFirestore);
+      debugPrint(
+          '☁️ [AlarmeAgendadoCloudService] Alarme #$idAlarme marcado como PAUSADO.');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [AlarmeAgendadoCloudService] Falha ao marcar alarme #$idAlarme como pausado: $e');
+    }
+  }
+
+  /// Consulta o status ATUAL do alarme [idAlarme] na nuvem — checagem
+  /// PRÉ-DISPARO usada por `RotinaAlarmeService` nos três callbacks
+  /// headless do alarme local (check-in, tolerância expirada e janela
+  /// final expirada) ANTES de tocar sirene ou enviar SMS/Push. Retorna
+  /// `true` somente se a nuvem já assumiu o desfecho deste ciclo — ver
+  /// [AlarmeAgendadoStatus.jaResolvidoNaNuvem]; `false` (nunca lança
+  /// exceção) tanto se o documento ainda não existe quanto se ainda está
+  /// PENDENTE, casos em que o fluxo local segue normalmente, como já
+  /// validado.
+  ///
+  /// CORREÇÃO (2026-08-23, alarme duplicado ao religar o aparelho):
+  /// cobre exatamente o cenário testado fisicamente pelo usuário — o
+  /// aparelho fica desligado durante o horário do alarme, a nuvem dispara
+  /// o alerta híbrido sozinha (Push FCM) via `scheduledAlarmMonitor.js`,
+  /// e só DEPOIS o aparelho é religado. O `android_alarm_manager_plus`
+  /// reagenda (`rescheduleOnReboot: true`) o alarme de check-in para o
+  /// mesmo instante — já no passado — e o dispara imediatamente ao
+  /// religar, o que sem esta checagem tocaria a sirene e reenviaria
+  /// SMS/Push duplicados para um ciclo que a nuvem já concluiu.
+  ///
+  /// Diferente do resto desta classe (que usa [_firebaseDisponivel], uma
+  /// leitura SÍNCRONA de `uidAtual`), aguarda
+  /// [FirebaseAuthService.aguardarUidPronto] antes de consultar: esta
+  /// checagem tipicamente acontece nos primeiríssimos instantes de um
+  /// isolate headless recém-criado (reboot do aparelho), exatamente o
+  /// cenário em que `uidAtual` síncrono pode retornar `null` mesmo
+  /// havendo uma sessão salva em disco ainda sendo restaurada (mesma
+  /// corrida documentada em [FirebaseAuthService.aguardarUidPronto]).
+  Future<bool> statusJaResolvidoNaNuvem(String idAlarme) async {
+    if (Firebase.apps.isEmpty) return false;
+    try {
+      final uid = await FirebaseAuthService().aguardarUidPronto();
+      if (uid == null) return false;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection(_colecao)
+          .doc('${uid}_$idAlarme')
+          .get()
+          .timeout(_timeoutFirestore);
+      if (!snapshot.exists) return false;
+
+      final status = AlarmeAgendadoStatus.fromFirestore(
+        snapshot.data()?['status'] as String?,
+      );
+      return status.jaResolvidoNaNuvem;
+    } catch (e) {
+      debugPrint(
+          '⚠️ [AlarmeAgendadoCloudService] Falha ao consultar status prévio do alarme #$idAlarme: $e');
+      return false;
+    }
+  }
 }

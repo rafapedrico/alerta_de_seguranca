@@ -18,13 +18,14 @@ import '../services/notificacao_service.dart';
 import '../services/social_auth_service.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
 import 'cadastro_screen.dart';
-import 'verificacao_telefone_screen.dart';
+import 'completar_perfil_screen.dart';
 
-/// Provedores de login social suportados (ver [SocialAuthService]) — usado
-/// só para saber QUAL botão mostra o spinner de carregamento na
-/// [LoginScreen], já que os 3 ficam desabilitados juntos durante qualquer
+/// Provedores de login social suportados (ver [SocialAuthService]) —
+/// Facebook removido em 2026-08-23 (decisão de arquitetura). Usado só
+/// para saber QUAL botão mostra o spinner de carregamento na
+/// [LoginScreen], já que os 2 ficam desabilitados juntos durante qualquer
 /// autenticação em andamento.
-enum _ProvedorSocial { google, facebook, apple }
+enum _ProvedorSocial { google, apple }
 
 /// Tela de Login do "SOS Security Personal".
 ///
@@ -37,9 +38,9 @@ enum _ProvedorSocial { google, facebook, apple }
 /// reenviar a mensagem de verificação — em NENHUMA hipótese de erro ou
 /// e-mail não verificado a navegação para a Home acontece.
 ///
-/// Login social (Google/Facebook/Apple, ver [SocialAuthService]) abaixo
-/// da opção de e-mail/senha: como são identidades federadas em que o
-/// próprio provedor já garante a posse do e-mail, o Firebase marca
+/// Login social (Google/Apple, ver [SocialAuthService]) abaixo da opção
+/// de e-mail/senha: como são identidades federadas em que o próprio
+/// provedor já garante a posse do e-mail, o Firebase marca
 /// `emailVerified == true` automaticamente nessas contas — a barreira de
 /// e-mail verificado acima é específica do cadastro por e-mail/senha
 /// (onde o Firebase NÃO garante isso sozinho) e não se aplica aqui.
@@ -215,15 +216,15 @@ class _LoginScreenState extends State<LoginScreen> {
   /// para o login por e-mail/senha, que já grava isso via
   /// [CadastroScreen]).
   ///
-  /// REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): quando [viaLoginSocial] é
+  /// DECISÃO DE ARQUITETURA (2026-08-23): quando [viaLoginSocial] é
   /// `true` E a conta ainda não tem `usuarios/{uid}.telefone` gravado
-  /// (nenhum dos 3 provedores sociais devolve telefone verificado por
-  /// padrão), o fluxo é OBRIGATORIAMENTE desviado para
-  /// [VerificacaoTelefoneScreen] (SMS OTP) ANTES de qualquer outra coisa
-  /// — inclusive antes do Assistente de Configuração Inicial. Só depois
-  /// do telefone verificado (ou já existente) é que
-  /// [_decidirProximaTelaAposLogin] decide entre Onboarding e o fluxo
-  /// principal.
+  /// (nenhum dos provedores sociais devolve telefone por padrão), o fluxo
+  /// é desviado para [CompletarPerfilScreen] (telefone como campo de
+  /// perfil comum, sem SMS OTP — substituiu `VerificacaoTelefoneScreen`)
+  /// ANTES de qualquer outra coisa — inclusive antes do Assistente de
+  /// Configuração Inicial. Só depois do telefone salvo (ou já existente)
+  /// é que [_decidirProximaTelaAposLogin] decide entre Onboarding e o
+  /// fluxo principal.
   Future<void> _finalizarLoginComSucesso({required bool viaLoginSocial}) async {
     unawaited(FcmService().inicializar());
     unawaited(ContatosEmergenciaService.sincronizarAgora());
@@ -239,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
         appNavigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) =>
-                VerificacaoTelefoneScreen(aoConcluir: _decidirProximaTelaAposLogin),
+                CompletarPerfilScreen(aoConcluir: _decidirProximaTelaAposLogin),
           ),
         );
         return;
@@ -254,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// [OnboardingService]) e o fluxo principal direto
   /// ([_navegarParaFluxoPrincipal]). Extraído de [_finalizarLoginComSucesso]
   /// para ser reutilizável como o callback `aoConcluir` de
-  /// [VerificacaoTelefoneScreen] — por isso usa [appNavigatorKey] (nunca
+  /// [CompletarPerfilScreen] — por isso usa [appNavigatorKey] (nunca
   /// `Navigator.of(context)`/`mounted` desta State): quando chamado a
   /// partir de lá (ou do próprio [OnboardingScreen] mais adiante),
   /// `_LoginScreenState` já foi substituída/descartada havia muito tempo
@@ -582,11 +583,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Os 3 botões de login social (Google, Facebook, Apple), centralizados
-  /// lado a lado — círculos escuros com o ícone da marca, mesmo tema da
-  /// tela. Desabilitados juntos (ver [_autenticando]) enquanto qualquer
-  /// autenticação estiver em andamento; o botão do provedor em voo mostra
-  /// um spinner discreto no lugar do ícone.
+  /// Os 2 botões de login social (Google, Apple — Facebook removido em
+  /// 2026-08-23), centralizados lado a lado — círculos escuros com o
+  /// ícone da marca, mesmo tema da tela. Desabilitados juntos (ver
+  /// [_autenticando]) enquanto qualquer autenticação estiver em
+  /// andamento; o botão do provedor em voo mostra um spinner discreto no
+  /// lugar do ícone.
   Widget _buildBotoesLoginSocial() {
     final l10n = AppLocalizations.of(context)!;
     return Row(
@@ -599,16 +601,6 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => _fazerLoginSocial(
             _ProvedorSocial.google,
             SocialAuthService().signInWithGoogle,
-          ),
-        ),
-        const SizedBox(width: 20),
-        _buildBotaoSocial(
-          provedor: _ProvedorSocial.facebook,
-          tooltip: l10n.loginSocialFacebookTooltip,
-          icone: const FaIcon(FontAwesomeIcons.facebook, color: Color(0xFF1877F2), size: 22),
-          onPressed: () => _fazerLoginSocial(
-            _ProvedorSocial.facebook,
-            SocialAuthService().signInWithFacebook,
           ),
         ),
         const SizedBox(width: 20),

@@ -22,7 +22,7 @@ dependencies:
   # Firebase — projeto real "guardiaox" já configurado (ver
   # android/app/google-services.json). firebase_auth ativado (login/cadastro
   # reais por e-mail/senha, ver lib/services/firebase_auth_service.dart, e
-  # login social Google/Facebook/Apple, ver
+  # login social Google/Apple, ver
   # lib/services/social_auth_service.dart). firebase_messaging ativado para
   # o Push App-para-App de alerta híbrido (ver lib/services/fcm_service.dart)
   # e cloud_functions para as chamadas callable da aba Monitoramento (ver
@@ -51,20 +51,19 @@ dependencies:
   # Credential Manager APIs") — na prática, travava indefinidamente
   # após obter o token nativo com sucesso, sem nunca completar nem
   # lançar exceção do lado Dart (confirmado via logcat: só o Google
-  # especificamente, e-mail/senha e Facebook — mesmo caminho de
-  # Firebase Auth — continuaram funcionando normalmente). A 7.x
-  # reescreve a API por completo (singleton `GoogleSignIn.instance`,
-  # `initialize()` obrigatório antes de qualquer outra chamada,
-  # `authenticate()` no lugar de `signIn()`) — ver
-  # `social_auth_service.dart`.
+  # especificamente e e-mail/senha — mesmo caminho de Firebase Auth —
+  # continuaram funcionando normalmente). A 7.x reescreve a API por
+  # completo (singleton `GoogleSignIn.instance`, `initialize()`
+  # obrigatório antes de qualquer outra chamada, `authenticate()` no
+  # lugar de `signIn()`) — ver `social_auth_service.dart`.
   google_sign_in: ^7.2.0
 
-  # Login social Facebook/Apple (ver lib/services/social_auth_service.dart)
-  # — versões travadas na major mais recente ainda compatível com
-  # firebase_auth ^4.16.0 (subir pra firebase_auth 6.x seria uma migração
-  # maior, fora do escopo deste recurso; `flutter pub outdated` mostra as
-  # versões mais novas incompatíveis).
-  flutter_facebook_auth: ^7.1.0
+  # Login social Apple (ver lib/services/social_auth_service.dart) —
+  # Facebook removido em 2026-08-23 (decisão de arquitetura). Versão
+  # travada na major mais recente ainda compatível com firebase_auth
+  # ^4.16.0 (subir pra firebase_auth 6.x seria uma migração maior, fora
+  # do escopo deste recurso; `flutter pub outdated` mostra as versões
+  # mais novas incompatíveis).
   sign_in_with_apple: ^7.0.1
 
   # Consulta o preço REAL da assinatura mensal do Plano Premium

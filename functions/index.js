@@ -223,6 +223,13 @@ exports.monitorarExpiracaoMonitoramento =
 exports.excluirContaCompleta =
   require("./exclusaoContaService").excluirContaCompleta;
 
+// Unicidade estrita de telefone SEM SMS OTP (decisão de arquitetura
+// 2026-08-23 — remoção do Firebase Phone Auth para zerar custo de SMS,
+// mantendo o motor de segurança via checagem server-side em vez de prova
+// de posse; ver telefonePerfilService.js).
+exports.atualizarTelefonePerfil =
+  require("./telefonePerfilService").atualizarTelefonePerfil;
+
 // Ciclo recorrente de 30 dias do Plano Free (10 dias ativos + 20 dias
 // bloqueados, ver planoCicloService.js) — Admin SDK é a ÚNICA forma de
 // gravar `isPremium`/`cycleStartDate`/`blockedAt` em `usuarios/{uid}`

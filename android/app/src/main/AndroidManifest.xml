@@ -129,32 +129,10 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Login social com Facebook (ver
-             lib/services/social_auth_service.dart) — boilerplate padrão
-             exigido pela Facebook SDK nativa (o plugin flutter_facebook_auth
-             não contribui isso automaticamente via merge de manifest, ver
-             comentário em strings.xml sobre os valores placeholder). -->
-        <meta-data
-            android:name="com.facebook.sdk.ApplicationId"
-            android:value="@string/facebook_app_id"/>
-        <meta-data
-            android:name="com.facebook.sdk.ClientToken"
-            android:value="@string/facebook_client_token"/>
-        <activity
-            android:name="com.facebook.FacebookActivity"
-            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
-            android:label="@string/app_name"
-            android:exported="false"/>
-        <activity
-            android:name="com.facebook.CustomTabActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="@string/fb_login_protocol_scheme"/>
-            </intent-filter>
-        </activity>
+        <!-- Login social com Facebook REMOVIDO em 2026-08-23 (decisão de
+             arquitetura) — este boilerplate (meta-data ApplicationId/
+             ClientToken + FacebookActivity/CustomTabActivity) ficava aqui
+             para a Facebook SDK nativa, agora sem uso. -->
 
         <!-- Canal padrão do firebase_messaging para mensagens que
              chegam sem um canal explícito — mesmo id do canal de

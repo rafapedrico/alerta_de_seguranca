@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,6 +22,18 @@ import 'plano_ciclo_service.dart';
 /// entrada do callback, indicando que a execução ficou travada nesta
 /// chamada.
 const Duration _timeoutFirestore = Duration(seconds: 8);
+
+/// Resultado de [FirebaseSyncService.salvarTelefonePerfil].
+enum ResultadoSalvarTelefone {
+  sucesso,
+
+  /// Unicidade estrita rejeitou: o número já está reservado por OUTRA
+  /// conta (`already-exists` da Cloud Function `atualizarTelefonePerfil`).
+  telefoneEmUso,
+
+  /// Falha genérica (rede, timeout, erro inesperado do servidor).
+  erro,
+}
 
 /// Serviço centralizado de sincronização com o Firebase/Firestore,
 /// atuando como uma camada de resiliência EXTRA e totalmente independente
@@ -94,15 +107,17 @@ class FirebaseSyncService {
 
   /// Cria (via merge) o documento `usuarios/{uid}` logo após o cadastro
   /// bem-sucedido no Firebase Auth ([FirebaseAuthService.criarConta]).
-  /// [telefone] deve já vir normalizado em E.164 (ver
-  /// `normalizarTelefoneE164` usado em [CadastroScreen]) — é por ele que
-  /// a Cloud Function resolve, na hora de um alerta, quais contatos de
-  /// emergência têm conta no app (ver `alertaHibridoService.js`).
   ///
+  /// NÃO grava `telefone` (decisão de arquitetura 2026-08-23 — remoção do
+  /// SMS OTP): esse campo agora passa OBRIGATORIAMENTE por
+  /// [salvarTelefonePerfil] (Cloud Function `atualizarTelefonePerfil`),
+  /// única forma de garantir a unicidade estrita que substitui a antiga
+  /// prova de posse por SMS — nunca deve ser incluído num `set`/`update`
+  /// direto do cliente (ver bloqueio equivalente em `firestore.rules`).
+  /// [CadastroScreen] chama os dois métodos em sequência.
   Future<void> criarPerfilInicial({
     required String nome,
     required String email,
-    required String telefone,
   }) async {
     if (!_firebaseDisponivel) return;
     try {
@@ -110,7 +125,6 @@ class FirebaseSyncService {
         {
           'nome': nome,
           'email': email,
-          'telefone': telefone,
           'criadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -137,12 +151,8 @@ class FirebaseSyncService {
   /// completo, mesmo já vindo prontos em [User.displayName]/[User.email]
   /// assim que o Firebase Auth aceita a credencial do provedor. Mesma
   /// família do bug de `telefone` nunca gravado para logins sociais (ver
-  /// [obterTelefoneAtual]) — só que para nome e e-mail, capturáveis
-  /// automaticamente aqui. Diferente de `telefone` (que, por segurança,
-  /// desde 2026-08-16 só é gravado no cadastro por e-mail/senha, nunca
-  /// editável depois — ver [obterTelefoneAtual]), nome/e-mail não têm
-  /// esse mesmo risco de sequestro de alertas, então continuam
-  /// sincronizados aqui a cada login.
+  /// [salvarTelefonePerfil]) — só que para nome e e-mail, capturáveis
+  /// automaticamente aqui.
   ///
   /// [nome]/[email] nulos ou vazios são omitidos do merge (nunca
   /// sobrescreve um valor real já gravado por um `null`/string vazia vindo
@@ -179,21 +189,9 @@ class FirebaseSyncService {
   }
 
   /// Lê o `telefone` atual gravado em `usuarios/{uid}` — usado por
-  /// [ConfiguracoesTab] (seção "Meu Perfil") para EXIBIR (somente
-  /// leitura) o número já cadastrado. `null` se não houver sessão, o
-  /// documento não existir ainda, ou o campo nunca ter sido gravado.
-  ///
-  /// REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): existia um método
-  /// `atualizarTelefone` que permitia editar este campo livremente a
-  /// qualquer momento pela tela de Configurações — removido por permitir
-  /// que qualquer usuário digitasse um número ARBITRÁRIO/de terceiros e
-  /// passasse a "sequestrar" os alertas de emergência endereçados ao
-  /// dono real daquele número (a Cloud Function resolve o destinatário
-  /// do Push pelo `telefone` gravado aqui). Os únicos fluxos que gravam
-  /// `telefone` agora são [CadastroScreen] (cadastro por e-mail/senha) e
-  /// [gravarTelefoneVerificado] (login social, ver
-  /// `VerificacaoTelefoneScreen` — SMS OTP obrigatório no primeiro
-  /// login, fechando o trade-off que existia antes desta correção).
+  /// [ConfiguracoesTab] (seção "Meu Perfil") para exibir o número já
+  /// cadastrado. `null` se não houver sessão, o documento não existir
+  /// ainda, ou o campo nunca ter sido gravado.
   Future<String?> obterTelefoneAtual() async {
     if (!_firebaseDisponivel) return null;
     try {
@@ -205,27 +203,41 @@ class FirebaseSyncService {
     }
   }
 
-  /// Grava o `telefone` em `usuarios/{uid}` — chamado EXCLUSIVAMENTE por
-  /// [VerificacaoTelefoneScreen], depois que o número já foi comprovado
-  /// via SMS OTP e vinculado à sessão atual com
-  /// `User.linkWithCredential(PhoneAuthCredential)` (ver
-  /// `FirebaseAuthService`). Nunca deve ser chamado a partir de um campo
-  /// de texto livre — é exatamente essa brecha (edição livre sem
-  /// verificação) que esta reespecificação de segurança fecha (ver
-  /// [obterTelefoneAtual]).
+  /// Grava/atualiza o `telefone` em `usuarios/{uid}` — ÚNICO caminho
+  /// permitido para esse campo (ver bloqueio em `firestore.rules`), usado
+  /// por [CadastroScreen], `CompletarPerfilScreen` (primeiro login social
+  /// sem telefone) e [ConfiguracoesTab] (edição em "Meu Perfil").
   ///
-  /// [telefone] já deve vir normalizado em E.164 (ver [TelefoneUtils]).
-  Future<bool> gravarTelefoneVerificado(String telefone) async {
-    if (!_firebaseDisponivel) return false;
+  /// DECISÃO DE ARQUITETURA (2026-08-23): remoção do Firebase Phone
+  /// Auth/SMS OTP (zerar custo de SMS + simplificar onboarding), com
+  /// diretriz mandatória de não regredir o motor de segurança. Sem prova
+  /// de posse por SMS, a Cloud Function `atualizarTelefonePerfil` (Admin
+  /// SDK) impõe UNICIDADE ESTRITA server-side (`telefones_reservados/
+  /// {telefone}`) como a rede de segurança que substitui a antiga
+  /// verificação: não prova que quem está salvando é o dono de verdade do
+  /// número, mas impede que duas contas fiquem com o MESMO telefone ao
+  /// mesmo tempo — o cenário concreto de sequestro que a reespecificação
+  /// de 2026-08-16 existia para barrar.
+  ///
+  /// [telefone] já deve vir normalizado em E.164 (ver [TelefoneUtils]) —
+  /// a Cloud Function revalida de qualquer forma, nunca confia no
+  /// cliente.
+  Future<ResultadoSalvarTelefone> salvarTelefonePerfil(String telefone) async {
     try {
-      await _documentoUsuario.set(
-        {'telefone': telefone},
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
-      return true;
+      await FirebaseFunctions.instance
+          .httpsCallable('atualizarTelefonePerfil')
+          .call<Map<String, dynamic>>({'telefone': telefone})
+          .timeout(_timeoutFirestore);
+      return ResultadoSalvarTelefone.sucesso;
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'already-exists') {
+        return ResultadoSalvarTelefone.telefoneEmUso;
+      }
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao salvar telefone do perfil: ${e.code} ${e.message}');
+      return ResultadoSalvarTelefone.erro;
     } catch (e) {
-      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar telefone verificado: $e');
-      return false;
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao salvar telefone do perfil: $e');
+      return ResultadoSalvarTelefone.erro;
     }
   }
 

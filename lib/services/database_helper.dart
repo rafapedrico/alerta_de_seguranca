@@ -506,10 +506,10 @@ class DatabaseHelper {
       ''');
     }
     // Migration from v18 to v19: cria a coluna 'telefone' em 'user_config'
-    // — cache local do número de contato já VERIFICADO por SMS OTP (ver
-    // VerificacaoTelefoneScreen/FirebaseSyncService.gravarTelefoneVerificado),
-    // usado como fallback de exibição em "Meu Perfil" quando o Firestore
-    // (fonte de verdade) não estiver acessível no momento (sem internet).
+    // — cache local do número de contato (ver
+    // `FirebaseSyncService.salvarTelefonePerfil`), usado como fallback de
+    // exibição em "Meu Perfil" quando o Firestore (fonte de verdade) não
+    // estiver acessível no momento (sem internet).
     if (oldVersion < 19) {
       try {
         await db.execute('ALTER TABLE user_config ADD COLUMN telefone TEXT');
@@ -551,9 +551,8 @@ class DatabaseHelper {
     );
   }
 
-  /// Grava/atualiza o cache LOCAL do número de contato já verificado por
-  /// SMS OTP (ver [VerificacaoTelefoneScreen]/
-  /// `FirebaseSyncService.gravarTelefoneVerificado` — o Firestore continua
+  /// Grava/atualiza o cache LOCAL do número de contato (ver
+  /// `FirebaseSyncService.salvarTelefonePerfil` — o Firestore continua
   /// sendo a fonte de verdade; este cache só existe para exibição em "Meu
   /// Perfil" quando o Firestore não estiver acessível). Autossuficiente:
   /// cria a linha de `user_config` se ainda não existir uma (cenário
@@ -1125,6 +1124,33 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       'contexto_timer_ativo': contexto,
       'timestamp_expiracao_alarme':
           timestampExpiracao.millisecondsSinceEpoch.toString(),
+    });
+  }
+
+  /// Limpa a dica de contexto e o timestamp de expiração persistidos por
+  /// [salvarContextoTimerAtivo] — chamado por `SegurancaTab._pararTimer`
+  /// sempre que o cronômetro de check-in é encerrado por qualquer
+  /// caminho NORMAL (PIN correto, alerta já disparado localmente).
+  ///
+  /// CORREÇÃO DE BUG REAL (2026-08-23): sem isto, esses dois campos
+  /// ficavam para sempre no banco após QUALQUER ciclo — a próxima vez
+  /// que `SegurancaTab` fosse recriada (ver bug de perda de State ao
+  /// navegar para "Início", corrigido em `SegurancaTab._restaurarCronometroAtivoSePersistido`)
+  /// poderia "ressuscitar" um ciclo já encerrado há muito tempo como se
+  /// ainda estivesse ativo, sempre que, por coincidência, esse timestamp
+  /// antigo ainda estivesse no futuro (cronômetros longos) ou fosse mal
+  /// interpretado. `limparAguardandoConfirmacaoPin` já limpava os dois
+  /// campos, mas só no caminho de PÓS-disparo (PIN digitado na tela de
+  /// bloqueio) — este método cobre o caminho, muito mais comum, de
+  /// desarme NORMAL antes do prazo vencer.
+  Future<void> limparContextoTimerAtivo() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    final id = config['id'] as int;
+    await updateUserConfig({
+      'id': id,
+      'contexto_timer_ativo': null,
+      'timestamp_expiracao_alarme': null,
     });
   }
 

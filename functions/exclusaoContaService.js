@@ -45,6 +45,15 @@ const db = getFirestore();
  * daqui) que não contém, por si só, nenhum dado pessoal identificável
  * além da própria referência de uid, já órfã depois deste processo.
  *
+ * Também libera `telefones_reservados/{telefone}` (ver
+ * `telefonePerfilService.js` — unicidade estrita sem OTP, decisão de
+ * arquitetura 2026-08-23) SE o usuário tiver um telefone gravado — sem
+ * isso, o número ficaria permanentemente preso e ninguém mais (nem o
+ * próprio dono, numa conta nova) conseguiria cadastrá-lo de novo. Lição
+ * do bug da "conta fantasma" do Auth (mesmo dia): a liberação acontece
+ * no MESMO Promise.all que apaga `usuarios/{uid}`, nunca numa etapa
+ * separada que possa ficar pra trás se algo falhar no meio do caminho.
+ *
  * @param {string} uid
  */
 async function excluirDadosFirestore(uid) {
@@ -59,6 +68,17 @@ async function excluirDadosFirestore(uid) {
           .collection("monitoramento").doc("atual")
           .delete().catch(() => {}),
   );
+
+  const usuarioSnap = await db.collection("usuarios").doc(uid).get();
+  const telefone = usuarioSnap.exists ? usuarioSnap.data().telefone : null;
+  if (telefone) {
+    const refReserva = db.collection("telefones_reservados").doc(telefone);
+    const reservaSnap = await refReserva.get();
+    // Defensivo: só apaga se a reserva for realmente deste uid.
+    if (reservaSnap.exists && reservaSnap.data().uid === uid) {
+      operacoes.push(refReserva.delete());
+    }
+  }
 
   operacoes.push(db.collection("usuarios").doc(uid).delete());
 
@@ -133,6 +153,12 @@ async function registrarRevogacao(uid) {
  * exclusão outra vez; apagar o Auth primeiro removeria essa chance de
  * nova tentativa.
  */
+// Reexportadas para reuso por `liberarTelefoneOrfaoService.js` (auto-cura
+// de conta fantasma no fluxo de verificação de telefone) — mesma lógica
+// de limpeza, sem duplicar código.
+exports.excluirDadosFirestore = excluirDadosFirestore;
+exports.excluirArquivosStorage = excluirArquivosStorage;
+
 exports.excluirContaCompleta = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "É necessário estar autenticado.");

@@ -2,19 +2,22 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-/// Serviço de login social (Google, Facebook e Apple) via Firebase Auth —
+/// Serviço de login social (Google e Apple) via Firebase Auth —
 /// complementa [FirebaseAuthService] (e-mail/senha, ver
 /// `lib/services/firebase_auth_service.dart`), sem alterar nada lá.
 ///
-/// CONTRATO comum aos 3 métodos, para a [LoginScreen] poder tratar todos
+/// Facebook REMOVIDO em 2026-08-23 (decisão de arquitetura — reduzir
+/// superfície de manutenção; o login social ficou restrito a provedores
+/// que o próprio Firebase Auth garante e-mail verificado automaticamente).
+///
+/// CONTRATO comum aos 2 métodos, para a [LoginScreen] poder tratar ambos
 /// da mesma forma:
 /// - Retorna `null` quando o PRÓPRIO USUÁRIO cancela o fluxo (fechou o
-///   seletor de conta Google, cancelou o diálogo do Facebook, fechou a
-///   aba do Apple Sign In) — nunca lança exceção só por cancelamento.
+///   seletor de conta Google, fechou a aba do Apple Sign In) — nunca
+///   lança exceção só por cancelamento.
 /// - Qualquer outra falha real (rede, configuração ausente/incorreta,
 ///   credencial rejeitada pelo Firebase) propaga a exceção original
 ///   (`FirebaseAuthException` ou a exceção nativa do respectivo plugin)
@@ -26,23 +29,6 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 ///   app cadastrado no Firebase Console (Project Settings > app Android
 ///   "guardiaox") — sem isso o Google devolve `DEVELOPER_ERROR` mesmo com
 ///   o código 100% correto.
-/// - **Facebook**: App ID + Client Token reais já preenchidos em
-///   2026-08-07 (ver `android/app/src/main/res/values/strings.xml`, chaves
-///   `facebook_app_id`/`facebook_client_token` — app "Guardião-X" em
-///   developers.facebook.com). Ainda faltam 2 passos manuais fora do
-///   código, ambos exigindo login em conta/console de terceiros:
-///   1. Cadastrar o pacote (`com.example.security_check_app`) + o key
-///      hash da assinatura deste app em developers.facebook.com >
-///      Configurações > Básico > plataforma Android. Key hash do
-///      keystore de DEBUG atual: `/u/eOdSKbTsSmyrjqJ2iQEf3McY=` (gerar de
-///      novo se o keystore de debug mudar; hash de RELEASE é outro,
-///      precisa ser adicionado à parte antes de publicar).
-///   2. Habilitar o provedor "Facebook" no Firebase Console (Authentication
-///      > Sign-in method) informando o App ID e o **App Secret** (não é o
-///      Client Token — fica em developers.facebook.com > Configurações >
-///      Básico > "Chave secreta do aplicativo", exige reautenticação para
-///      revelar). Sem isso o Firebase rejeita a credencial do Facebook
-///      mesmo com o app Android 100% configurado.
 /// - **Apple**: "Sign in with Apple" exige Apple Developer Program (pago)
 ///   + um Services ID + um domínio/endpoint de redirect verificado — ver
 ///   [_appleWebAuthOptions] abaixo (hoje só placeholders). Sem isso o
@@ -161,70 +147,6 @@ class SocialAuthService {
     try {
       await _auth.signOut();
     } catch (_) {}
-  }
-
-  // ================================================================
-  // FACEBOOK
-  // ================================================================
-  Future<UserCredential?> signInWithFacebook() async {
-    final LoginResult result = await FacebookAuth.instance.login(
-      permissions: const ['email', 'public_profile'],
-      // Força o token "clássico" (compatível com
-      // FacebookAuthProvider.credential) em vez do "limited" (JWT restrito
-      // a rastreamento no iOS, que o Firebase não aceita aqui) — este app
-      // só tem alvo Android, onde a SDK nativa sempre devolve clássico de
-      // qualquer forma, mas deixar explícito documenta a intenção e
-      // protege uma futura adição de projeto iOS.
-      loginTracking: LoginTracking.enabled,
-      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15, via
-      // logcat no Motorola Razr — Android 16): o padrão
-      // `LoginBehavior.nativeWithFallback` tenta primeiro entregar o
-      // login ao APP do Facebook (`com.facebook.katana`, quando
-      // instalado no aparelho) — que precisa abrir o Chrome para
-      // completar o OAuth. O Logcat mostrou esse handoff se repetindo
-      // ~13 vezes em ~17s e finalmente sendo REJEITADO pelo Android:
-      // ```
-      // ActivityTaskManager: Background activity launch blocked!
-      //   goo.gle/android-bal [callingPackage: com.facebook.katana;
-      //   callingUidProcState: SERVICE; ...]
-      // ```
-      // Ou seja: o app do Facebook tenta abrir o navegador a partir de um
-      // SERVIÇO em segundo plano (não uma Activity visível) — a MESMA
-      // restrição de "Background Activity Launch" do Android 12+/16 já
-      // enfrentada em `VolumeSosService.kt` hoje, só que desta vez dentro
-      // do app de TERCEIRO (Facebook), fora do nosso controle de código.
-      // `LoginBehavior.dialogOnly` pula esse handoff por completo: abre o
-      // login DENTRO deste app (Custom Tab/diálogo, a partir da nossa
-      // PRÓPRIA Activity em primeiro plano — sempre um contexto válido
-      // para o Android, nunca bloqueado por BAL), nunca delegando a
-      // nenhum app externo.
-      loginBehavior: LoginBehavior.dialogOnly,
-    );
-
-    switch (result.status) {
-      case LoginStatus.success:
-        final AccessToken? token = result.accessToken;
-        if (token == null) return null;
-        if (token is! ClassicToken) {
-          throw FirebaseAuthException(
-            code: 'facebook-limited-token-unsupported',
-            message:
-                'Token do Facebook em modo "limited" não é compatível com '
-                'o Firebase Auth (esperado apenas em iOS).',
-          );
-        }
-        final OAuthCredential credential =
-            FacebookAuthProvider.credential(token.tokenString);
-        return _auth.signInWithCredential(credential);
-      case LoginStatus.cancelled:
-        return null; // Cancelado pelo usuário
-      case LoginStatus.failed:
-      case LoginStatus.operationInProgress:
-        throw FirebaseAuthException(
-          code: 'facebook-login-failed',
-          message: result.message ?? 'Falha no login com Facebook.',
-        );
-    }
   }
 
   // ================================================================

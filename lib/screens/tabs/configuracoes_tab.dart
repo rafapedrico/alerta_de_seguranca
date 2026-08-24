@@ -64,19 +64,22 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   Map<String, dynamic>? _userConfig;
   bool _loading = true;
 
-  // Seção "Meu Perfil" (ver FirebaseSyncService) — exibe o número
-  // vinculado à conta atual (Firebase/SQLite), SOMENTE LEITURA.
+  // Seção "Meu Perfil" (ver FirebaseSyncService) — exibe e permite editar
+  // o número vinculado à conta atual (Firebase/SQLite).
   //
-  // REESPECIFICAÇÃO DE SEGURANÇA (2026-08-16): esta seção já foi editável
-  // (permitia digitar qualquer número, ver histórico do PR), mas isso
-  // abria uma brecha real — qualquer usuário podia digitar um número
-  // ARBITRÁRIO/de terceiros e passar a receber, no lugar do dono
-  // verdadeiro do número, os alertas de emergência endereçados a ele
-  // (a Cloud Function resolve o destinatário pelo telefone cadastrado em
-  // `usuarios/{uid}.telefone`). O campo agora só reflete o que já está
-  // gravado na conta — nenhuma edição livre é mais permitida por aqui.
+  // HISTÓRICO: entre 2026-08-16 e 2026-08-23 este campo foi somente
+  // leitura (só editável via SMS OTP) — reespecificação de segurança que
+  // fechou a brecha de sequestro de alerta (digitar o número de outra
+  // pessoa e passar a receber os alertas endereçados a ela). A remoção do
+  // SMS OTP (decisão de arquitetura 2026-08-23) reabriu a edição direta,
+  // mas SEM reabrir aquela brecha: toda escrita passa por
+  // [FirebaseSyncService.salvarTelefonePerfil] (Cloud Function
+  // `atualizarTelefonePerfil`), que impõe unicidade estrita server-side
+  // (`firestore.rules` nega escrita direta do cliente neste campo) — não
+  // prova posse do número, mas impede duas contas com o MESMO telefone.
   String? _telefoneAtual;
   bool _carregandoTelefone = true;
+  bool _salvandoTelefone = false;
 
   // Estado local do Alerta Sonoro Customizável (Etapa 1 - Expansão
   // Global): número do som selecionado (1-10) e duração do toque em
@@ -113,11 +116,11 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   }
 
   /// Firestore continua sendo a fonte de verdade — só cai para o cache
-  /// local (`user_config.telefone`, gravado por
-  /// `VerificacaoTelefoneScreen` no momento da verificação por SMS OTP)
-  /// quando a leitura online falhar (ex: sem internet no momento), para
-  /// nunca exibir "sem telefone" indevidamente a um usuário que já
-  /// verificou o número, só porque está offline agora.
+  /// local (`user_config.telefone`, gravado por [_editarTelefone]/
+  /// `CompletarPerfilScreen`/`CadastroScreen` sempre que o telefone é
+  /// salvo com sucesso) quando a leitura online falhar (ex: sem internet
+  /// no momento), para nunca exibir "sem telefone" indevidamente a um
+  /// usuário que já tem número cadastrado, só porque está offline agora.
   Future<void> _carregarTelefoneAtual() async {
     var telefone = await FirebaseSyncService().obterTelefoneAtual();
     if (telefone == null || telefone.trim().isEmpty) {
@@ -134,6 +137,101 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
         _carregandoTelefone = false;
       });
     }
+  }
+
+  /// Abre o diálogo de edição do telefone de contato e, se confirmado,
+  /// grava via [FirebaseSyncService.salvarTelefonePerfil] (unicidade
+  /// estrita server-side — ver comentário em [_telefoneAtual]). Erros de
+  /// "já em uso" ficam visíveis DENTRO do próprio diálogo (o usuário pode
+  /// tentar outro número sem reabrir o fluxo); qualquer outro erro fecha
+  /// o diálogo e mostra um SnackBar genérico.
+  Future<void> _editarTelefone() async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: _telefoneAtual ?? '');
+    final formKey = GlobalKey<FormState>();
+    String? erroDialogo;
+
+    final numeroSalvo = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.meuPerfilTelefoneEditarTooltip),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.phone,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.campoCelularLabel,
+                errorText: erroDialogo,
+              ),
+              validator: (valor) {
+                if (valor == null || valor.trim().isEmpty) {
+                  return l10n.campoCelularObrigatorio;
+                }
+                if (TelefoneUtils.normalizarE164(valor) == null) {
+                  return l10n.campoCelularInvalido;
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _salvandoTelefone ? null : () => Navigator.of(ctx).pop(),
+              child: Text(l10n.cancelar),
+            ),
+            FilledButton(
+              onPressed: _salvandoTelefone
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() != true) return;
+                      final numero = TelefoneUtils.normalizarE164(controller.text)!;
+                      setDialogState(() => _salvandoTelefone = true);
+                      final resultado =
+                          await FirebaseSyncService().salvarTelefonePerfil(numero);
+                      setDialogState(() => _salvandoTelefone = false);
+                      switch (resultado) {
+                        case ResultadoSalvarTelefone.sucesso:
+                          if (ctx.mounted) Navigator.of(ctx).pop(numero);
+                          return;
+                        case ResultadoSalvarTelefone.telefoneEmUso:
+                          setDialogState(() => erroDialogo = l10n.telefoneJaEmUso);
+                          return;
+                        case ResultadoSalvarTelefone.erro:
+                          setDialogState(() => erroDialogo = l10n.erroLoginGenerico);
+                          return;
+                      }
+                    },
+              child: _salvandoTelefone
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.salvar),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (numeroSalvo == null || !mounted) return;
+
+    try {
+      await _db.salvarTelefoneLocal(numeroSalvo);
+    } catch (e) {
+      debugPrint('⚠️ [ConfiguracoesTab] Falha ao gravar telefone no SQLite local: $e');
+    }
+    setState(() => _telefoneAtual = numeroSalvo);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.telefoneSalvoComSucesso),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -1451,6 +1549,11 @@ Future<void> _selecionarSom(int? numero) async {
                     : Colors.orange.shade600,
                 fontSize: 13,
               ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: AppLocalizations.of(context)!.meuPerfilTelefoneEditarTooltip,
+              onPressed: _editarTelefone,
             ),
           ),
 

@@ -17,15 +17,18 @@
  *   usuarioId: string (uid do Firebase Auth, dono do alarme)
  *   dataHoraDisparo: Timestamp
  *   prazoFinalEpochMs: number (dataHoraDisparo + tolerância + janela final)
- *   status: "PENDENTE" | "CONFIRMADO_SEGURA" | "ALERTA_DISPARADO"
+ *   status: "PENDENTE" | "CONFIRMADO_SEGURA" | "ALERTA_DISPARADO" |
+ *           "CANCELADO" | "PAUSADO"
  *   ultimaLocalizacao: { lat, lng, timestamp }
  *   contatosEmergencia: {nome, telefone}[]
  *   etiqueta: string
  *   contextoPersonalizado: string
  *
- * Ciclo de vida do `status` (escrito por três atores diferentes):
+ * Ciclo de vida do `status` (escrito por QUATRO atores diferentes — esta
+ * função SÓ considera documentos PENDENTE, ver a query abaixo, então
+ * CANCELADO/PAUSADO ficam automaticamente fora do escopo dela):
  * 1. App (heartbeat) — `BackgroundLocationHeartbeatService` cria/atualiza
- *    o documento como PENDENTE a cada 2 min, sempre que faltar ≤48h para
+ *    o documento como PENDENTE a cada 1 min, sempre que faltar ≤48h para
  *    o próximo disparo de um alarme de rotina ativo (só anexa
  *    `ultimaLocalizacao` quando faltar ≤2h — dead man's switch com
  *    registro antecipado, localização só quando realmente relevante).
@@ -36,6 +39,15 @@
  *    real dispararia localmente — dataHoraDisparo + tolerância + janela
  *    final, não o horário bruto do alarme), marca ALERTA_DISPARADO e
  *    aciona o PIPELINE HÍBRIDO de entrega (ver `alertaHibridoService.js`).
+ * 4. App (cancelar/pausar, 2026-08-23) — `RotinaAlarmeService.cancelarAlarme`/
+ *    `pausarAlarme`/`pausarAlarmePorHoje` marcam CANCELADO/PAUSADO
+ *    IMEDIATAMENTE ao gesto do usuário na interface (ver
+ *    `AlarmeAgendadoCloudService.marcarCancelado`/`marcarPausado`),
+ *    ANTES do próximo ciclo do heartbeat — fecha a janela de corrida em
+ *    que esta função poderia encontrar o documento ainda PENDENTE e
+ *    disparar um alerta FALSO para um alarme já cancelado/pausado pelo
+ *    usuário. Revertido para PENDENTE (com novo timestamp) quando o
+ *    usuário reativa o alarme.
  *
  * REGRA DE NEGÓCIO (celular desligado/sem sinal): é exatamente este o
  * cenário em que esta função age — o app local nunca teve chance de

@@ -5,12 +5,12 @@ import 'package:flutter/foundation.dart';
 /// (e-mail/senha), com barreira estrita de e-mail verificado: nenhuma
 /// sessão dá acesso ao app sem que `emailVerified == true` (ver
 /// verificação em [LoginScreen] e envio do e-mail em [CadastroScreen]).
-/// Login social (Google/Facebook/Apple) fica em [SocialAuthService] —
-/// cada um deles, no primeiro login sem telefone cadastrado, passa por
-/// uma barreira própria de verificação por SMS OTP antes de liberar o
-/// acesso (ver [enviarCodigoVerificacaoTelefone]/[vincularTelefoneVerificado]
-/// e `VerificacaoTelefoneScreen`) — nenhum atalho ou bypass de
-/// autenticação deve existir neste serviço.
+/// Login social (Google/Apple) fica em [SocialAuthService] — cada um
+/// deles, no primeiro login sem telefone cadastrado, passa por
+/// `CompletarPerfilScreen` (nome + telefone como campo de perfil comum,
+/// sem SMS OTP — decisão de arquitetura 2026-08-23; unicidade garantida
+/// server-side, ver `FirebaseSyncService.salvarTelefonePerfil`) antes de
+/// liberar o acesso.
 ///
 /// POLÍTICA DE SEGURANÇA (Opção A): sessões do Firebase Auth NUNCA
 /// sobrevivem a um cold start NORMAL — `main()` chama [logout] logo após
@@ -133,51 +133,12 @@ class FirebaseAuthService {
     return _auth.sendPasswordResetEmail(email: email);
   }
 
-  /// Envia o SMS de verificação para [telefone] (já em E.164) — usado por
-  /// `VerificacaoTelefoneScreen` no fluxo obrigatório de OTP exigido no
-  /// primeiro login social sem telefone cadastrado (reespecificação de
-  /// segurança, 2026-08-16). Repassa direto para
-  /// `FirebaseAuth.verifyPhoneNumber`: toda a máquina de estados do fluxo
-  /// (código enviado, verificação automática no Android, timeout) já é
-  /// coberta pelos callbacks que quem chama fornece.
-  Future<void> enviarCodigoVerificacaoTelefone({
-    required String telefone,
-    required PhoneVerificationCompleted aoCompletarAutomaticamente,
-    required PhoneVerificationFailed aoFalhar,
-    required PhoneCodeSent aoEnviarCodigo,
-    required PhoneCodeAutoRetrievalTimeout aoExpirarAutoRetrieval,
-    int? forcarReenvioToken,
-    Duration timeout = const Duration(seconds: 60),
-  }) {
-    return _auth.verifyPhoneNumber(
-      phoneNumber: telefone,
-      verificationCompleted: aoCompletarAutomaticamente,
-      verificationFailed: aoFalhar,
-      codeSent: aoEnviarCodigo,
-      codeAutoRetrievalTimeout: aoExpirarAutoRetrieval,
-      forceResendingToken: forcarReenvioToken,
-      timeout: timeout,
-    );
-  }
-
-  /// Vincula [credential] (obtida via [enviarCodigoVerificacaoTelefone] +
-  /// o código de 6 dígitos digitado, ou automaticamente pelo Android via
-  /// `verificationCompleted`) à sessão ATUALMENTE autenticada — é isso
-  /// que torna o número gravado em `usuarios/{uid}.telefone` (ver
-  /// `FirebaseSyncService.gravarTelefoneVerificado`) verificável de
-  /// verdade, não apenas texto digitado: o Firebase só aceita o link se
-  /// esse MESMO número não estiver já vinculado a NENHUMA outra conta
-  /// (lança `FirebaseAuthException(code: 'credential-already-in-use')`
-  /// caso contrário — tratado explicitamente em `VerificacaoTelefoneScreen`,
-  /// já que é exatamente o tipo de tentativa de sequestro de número de
-  /// terceiros que esta reespecificação de segurança existe para barrar).
-  Future<UserCredential> vincularTelefoneVerificado(PhoneAuthCredential credential) {
-    final usuario = _auth.currentUser;
-    if (usuario == null) {
-      throw StateError('Nenhuma sessão autenticada para vincular o telefone.');
-    }
-    return usuario.linkWithCredential(credential);
-  }
+  // Métodos de verificação de telefone por SMS OTP (Firebase Phone Auth)
+  // REMOVIDOS em 2026-08-23 (decisão de arquitetura: zerar custo de SMS +
+  // simplificar onboarding). O telefone agora é um campo de perfil comum,
+  // gravado via `FirebaseSyncService.salvarTelefonePerfil` — ver
+  // `telefonePerfilService.js` para a garantia de unicidade que substitui
+  // a antiga prova de posse por SMS.
 
   Future<void> logout() async {
     try {

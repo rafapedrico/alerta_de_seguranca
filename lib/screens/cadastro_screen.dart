@@ -68,18 +68,33 @@ class _CadastroScreenState extends State<CadastroScreen> {
       );
 
       final uid = credencial.user?.uid;
+      bool telefoneEmUso = false;
       if (uid != null) {
+        await FirebaseSyncService().criarPerfilInicial(
+          nome: _nomeController.text.trim(),
+          email: _emailController.text.trim(),
+        );
+
         // Se chegou até aqui, o validador do campo (ver
         // `_buildCampoCelular`) já garantiu que o número é válido em
         // alguma interpretação internacional razoável — o fallback ao
         // texto bruto é só uma rede de segurança, nunca deve ser
-        // efetivamente usado na prática.
-        await FirebaseSyncService().criarPerfilInicial(
-          nome: _nomeController.text.trim(),
-          email: _emailController.text.trim(),
-          telefone: TelefoneUtils.normalizarE164(_celularController.text.trim()) ??
+        // efetivamente usado na prática. `telefone` passa OBRIGATORIAMENTE
+        // por `salvarTelefonePerfil` (unicidade estrita server-side, ver
+        // `telefonePerfilService.js`) — nunca gravado direto por
+        // `criarPerfilInicial` (decisão de arquitetura 2026-08-23).
+        final resultado = await FirebaseSyncService().salvarTelefonePerfil(
+          TelefoneUtils.normalizarE164(_celularController.text.trim()) ??
               _celularController.text.trim(),
         );
+        // A conta em si já foi criada nesse ponto mesmo se o telefone
+        // colidir com outra conta — não é um estado novo/pior do que já
+        // existia para outros abandonos de cadastro (ex: fechar o app
+        // antes de confirmar o e-mail); o usuário pode ajustar o telefone
+        // depois em Configurações > Meu Perfil assim que confirmar o
+        // e-mail e conseguir logar.
+        telefoneEmUso = resultado == ResultadoSalvarTelefone.telefoneEmUso;
+
         await FirebaseAuthService().enviarEmailVerificacao();
       }
 
@@ -90,11 +105,17 @@ class _CadastroScreenState extends State<CadastroScreen> {
       await FirebaseAuthService().logout();
 
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.cadastroEmailVerificacaoEnviado),
+          content: Text(
+            telefoneEmUso
+                ? '${l10n.cadastroEmailVerificacaoEnviado} ${l10n.telefoneJaEmUso}'
+                : l10n.cadastroEmailVerificacaoEnviado,
+          ),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 6),
+          backgroundColor: telefoneEmUso ? Colors.orange.shade800 : null,
         ),
       );
       Navigator.of(context).pop();
