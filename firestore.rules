@@ -190,6 +190,43 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /suporte_tickets/{ticketId} {
+      // Chat de Suporte Interno com IA (decisão de arquitetura
+      // 2026-08-24, substitui a Central de Atendimento via WhatsApp) —
+      // ver functions/suporteChatService.js. `status`/`atendenteId` são
+      // avançados EXCLUSIVAMENTE pela Cloud Function (Admin SDK, ignora
+      // estas regras) — inclusive o próprio handoff pra humano (a
+      // callable `solicitarAtendenteHumano` também usa Admin SDK); o
+      // cliente nunca escreve o status diretamente.
+      allow read: if request.auth != null &&
+          (request.auth.uid == resource.data.uid || request.auth.token.admin == true);
+
+      allow create: if request.auth != null &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.status == 'ia_ativa' &&
+          request.resource.data.keys().hasOnly(['uid', 'status', 'idioma', 'planoNoMomento', 'criadoEm']);
+
+      allow update, delete: if false;
+
+      match /mensagens/{mensagemId} {
+        // Leitura: dono do ticket ou atendente (custom claim `admin`).
+        allow read: if request.auth != null &&
+            (get(/databases/$(database)/documents/suporte_tickets/$(ticketId)).data.uid == request.auth.uid ||
+             request.auth.token.admin == true);
+
+        // O cliente só escreve a PRÓPRIA pergunta (autor 'usuario') —
+        // respostas 'ia'/'atendente'/'sistema' são exclusividade da
+        // Cloud Function via Admin SDK, senão qualquer um poderia
+        // forjar uma resposta "da IA"/"do atendente" pra si mesmo.
+        allow create: if request.auth != null &&
+            get(/databases/$(database)/documents/suporte_tickets/$(ticketId)).data.uid == request.auth.uid &&
+            request.resource.data.autor == 'usuario' &&
+            request.resource.data.keys().hasOnly(['autor', 'texto', 'criadoEm']);
+
+        allow update, delete: if false;
+      }
+    }
+
     match /telefones_reservados/{telefone} {
       // Índice de unicidade de telefone (decisão de arquitetura
       // 2026-08-23 — remoção do SMS OTP): gravado/apagado EXCLUSIVAMENTE

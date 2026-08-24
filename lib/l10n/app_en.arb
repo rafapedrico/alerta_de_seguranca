@@ -486,7 +486,7 @@
   "faqPergunta9": "How are emergency alerts shared?",
   "faqResposta9": "All security alert messages are sent in two standard ways: from app to app, and by SMS to the mobile numbers registered on the \"Settings\" page.",
   "faqPergunta11": "How does the customer support service work?",
-  "faqResposta11": "Customer support is provided via WhatsApp — tap the contact button on the Home screen to talk directly with our support team. Requests made through the \"Talk to a human agent\" menu follow the policy rules set by the RMF Global company, where Premium plan users get exclusive access to this support within up to 48 hours.",
+  "faqResposta11": "Customer support is now provided through an integrated Support Chat, right in the app and on the website — tap the support button on the Home screen to start a conversation. Your questions about the app, plans, and how to use it are answered instantly by an AI assistant. If the assistant can't safely resolve your issue, or if you'd rather talk to a person, just ask — the conversation is forwarded to a human agent on our team.",
   "faqPergunta12": "Will emergency alert messages only be sent to registered numbers that have the Guardian-X app installed?",
   "faqResposta12": "No. We recommend that both phones have the app installed, but even if the recipient's phone doesn't have Guardian-X, the emergency alert is still sent via SMS.",
   "termosAppBarTitulo": "Terms and Privacy",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "Subscribe to Premium Plan"
+  "planoBloqueadoModalBotaoAssinar": "Subscribe to Premium Plan",
+  "suporteChatBotaoInicio": "Talk to Support",
+  "suporteChatAppBarTitulo": "Support",
+  "suporteChatHint": "Type your message...",
+  "suporteChatEnviar": "Send",
+  "suporteChatVazio": "How can we help? Send your first message.",
+  "suporteChatFalarComAtendente": "Talk to a human",
+  "suporteChatConfirmarAtendente": "Got it — a member of our team will assist you shortly.",
+  "suporteChatAguardandoHumano": "Waiting for human support...",
+  "suporteChatEmAtendimentoHumano": "You're being helped by a human agent.",
+  "suporteChatResolvido": "This conversation has been closed.",
+  "suporteChatErroEnviar": "Couldn't send your message. Please try again."
 }

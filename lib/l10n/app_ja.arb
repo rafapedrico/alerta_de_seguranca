@@ -486,7 +486,7 @@
   "faqPergunta9": "緊急アラートはどのように共有されますか？",
   "faqResposta9": "すべてのセキュリティアラートメッセージは、アプリ間、および「設定」ページに登録された携帯電話番号へのSMSという2つの標準的な方法で送信されます。",
   "faqPergunta11": "カスタマーサポートサービスはどのように機能しますか？",
-  "faqResposta11": "カスタマーサポートはWhatsAppでご利用いただけます — ホーム画面の連絡先ボタンをタップすると、サポートチームと直接やり取りできます。「有人担当者と話す」メニューから行われたリクエストは、RMF Global社が定めたポリシー規定に従い、プレミアムプランのユーザーは最大48時間以内にこのサポートを優先的に受けられます。",
+  "faqResposta11": "カスタマーサポートは現在、アプリとサイトに統合されたサポートチャットでご利用いただけます — ホーム画面のサポートボタンをタップして会話を始めてください。アプリ、プラン、使い方に関する質問には、AIアシスタントがすぐに回答します。アシスタントが安全に解決できない場合、または人と話したい場合は、そう伝えるだけで — 会話は当社の人間の担当者に引き継がれます。",
   "faqPergunta12": "緊急アラートメッセージは、守護者-Xアプリがインストールされている登録番号にのみ送信されますか？",
   "faqResposta12": "いいえ。両方の携帯電話にアプリをインストールしておくことを推奨しますが、受信側の携帯電話に守護者-Xがインストールされていない場合でも、緊急アラートはSMS経由で送信されます。",
   "termosAppBarTitulo": "利用規約とプライバシー",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "プレミアムプランに登録"
+  "planoBloqueadoModalBotaoAssinar": "プレミアムプランに登録",
+  "suporteChatBotaoInicio": "サポートに連絡する",
+  "suporteChatAppBarTitulo": "サポート",
+  "suporteChatHint": "メッセージを入力...",
+  "suporteChatEnviar": "送信",
+  "suporteChatVazio": "どのようにお手伝いできますか?最初のメッセージを送信してください。",
+  "suporteChatFalarComAtendente": "オペレーターと話す",
+  "suporteChatConfirmarAtendente": "了解しました — 担当者がまもなく対応いたします。",
+  "suporteChatAguardandoHumano": "担当者の対応を待っています...",
+  "suporteChatEmAtendimentoHumano": "現在、担当者が対応しています。",
+  "suporteChatResolvido": "このやり取りは終了しました。",
+  "suporteChatErroEnviar": "メッセージを送信できませんでした。もう一度お試しください。"
 }

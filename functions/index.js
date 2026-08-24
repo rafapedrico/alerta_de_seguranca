@@ -242,3 +242,19 @@ exports.sincronizarCicloPlano = planoCicloService.sincronizarCicloPlano;
 // - Callable do botão "Cancelar Plano Premium" (self-downgrade apenas).
 exports.cancelarPremiumDoProprioUsuario =
   planoCicloService.cancelarPremiumDoProprioUsuario;
+
+// Chat de Suporte Interno com IA (decisão de arquitetura 2026-08-24,
+// substitui a Central de Atendimento via WhatsApp) — ver
+// suporteChatService.js e suporteConhecimentoBase.js.
+const suporteChatService = require("./suporteChatService");
+// - Trigger: responde automaticamente toda pergunta do usuário via
+// Claude (Sonnet 5), com prompt caching na base de conhecimento e
+// handoff pra atendente humano quando necessário.
+exports.aoReceberMensagemSuporte = suporteChatService.aoReceberMensagemSuporte;
+// - Callable do botão "Falar com atendente" (escalonamento manual,
+// determinístico).
+exports.solicitarAtendenteHumano = suporteChatService.solicitarAtendenteHumano;
+// - Callables do futuro Painel de Atendimento (Admin) — exigem a custom
+// claim `admin: true`.
+exports.responderComoAtendente = suporteChatService.responderComoAtendente;
+exports.encerrarTicketSuporte = suporteChatService.encerrarTicketSuporte;

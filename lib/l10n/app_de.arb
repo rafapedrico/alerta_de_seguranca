@@ -486,7 +486,7 @@
   "faqPergunta9": "Wie werden Notfallalarme geteilt?",
   "faqResposta9": "Alle Sicherheitsalarm-Nachrichten werden auf zwei Standardwegen gesendet: von App zu App und per SMS an die auf der Seite „Einstellungen“ registrierten Handynummern.",
   "faqPergunta11": "Wie funktioniert der Kundenservice?",
-  "faqResposta11": "Der Kundenservice erfolgt über WhatsApp — tippen Sie auf die Kontakt-Schaltfläche auf dem Startbildschirm, um direkt mit unserem Support-Team zu sprechen. Anfragen über das Menü „Mit einem persönlichen Mitarbeiter sprechen“ folgen den Regeln der von der RMF Global festgelegten Richtlinie, wobei Nutzer des Premium-Plans exklusiven Zugang zu diesem Support innerhalb von bis zu 48 Stunden erhalten.",
+  "faqResposta11": "Der Kundensupport erfolgt jetzt über einen integrierten Support-Chat, direkt in der App und auf der Website — tippen Sie auf die Support-Schaltfläche auf dem Startbildschirm, um ein Gespräch zu beginnen. Ihre Fragen zur App, zu den Plänen und zur Nutzung werden sofort von einem KI-Assistenten beantwortet. Wenn der Assistent Ihr Anliegen nicht sicher lösen kann oder Sie lieber mit einer Person sprechen möchten, fragen Sie einfach danach — das Gespräch wird an einen menschlichen Mitarbeiter unseres Teams weitergeleitet.",
   "faqPergunta12": "Werden Notfallalarm-Nachrichten nur an registrierte Nummern gesendet, auf denen die Wächter-X-App installiert ist?",
   "faqResposta12": "Nein. Wir empfehlen, dass beide Telefone die App installiert haben, aber selbst wenn das Zieltelefon Wächter-X nicht hat, wird der Notfallalarm weiterhin per SMS gesendet.",
   "termosAppBarTitulo": "Bedingungen und Datenschutz",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "Premium-Plan abonnieren"
+  "planoBloqueadoModalBotaoAssinar": "Premium-Plan abonnieren",
+  "suporteChatBotaoInicio": "Support kontaktieren",
+  "suporteChatAppBarTitulo": "Support",
+  "suporteChatHint": "Nachricht eingeben...",
+  "suporteChatEnviar": "Senden",
+  "suporteChatVazio": "Wie können wir helfen? Senden Sie Ihre erste Nachricht.",
+  "suporteChatFalarComAtendente": "Mit einem Mitarbeiter sprechen",
+  "suporteChatConfirmarAtendente": "Alles klar — ein Mitglied unseres Teams meldet sich in Kürze.",
+  "suporteChatAguardandoHumano": "Warten auf menschlichen Support...",
+  "suporteChatEmAtendimentoHumano": "Sie werden von einem Mitarbeiter betreut.",
+  "suporteChatResolvido": "Dieses Gespräch wurde beendet.",
+  "suporteChatErroEnviar": "Nachricht konnte nicht gesendet werden. Bitte erneut versuchen."
 }

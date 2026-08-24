@@ -1,13 +1,13 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/locale_service.dart';
 import '../../services/plano_ciclo_service.dart';
 import '../../services/premium_price_service.dart';
 import '../faq_screen.dart';
+import '../suporte_chat_screen.dart';
 import '../termos_privacidade_screen.dart';
 
 /// Conteúdo da nova Tela de Início (Dashboard) exibida no lugar das 4 abas
@@ -19,13 +19,6 @@ class InicioDashboard extends StatelessWidget {
   const InicioDashboard({super.key});
 
   static const String _site = 'https://www.meuguardiaox.com.br';
-  // Número oficial de contato do WhatsApp (atualizado em 2026-08-08) —
-  // formato de exibição com código do país (+1, EUA/Canadá) para
-  // leitura humana, e formato só-dígitos (sem "+", espaços ou símbolos)
-  // exigido pelo link direto `wa.me`, com mensagem pré-preenchida.
-  static const String _whatsappNumero = '+1 581 709 5728';
-  static const String _whatsappUrl =
-      'https://wa.me/15817095728?text=Olá!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Guardião-X';
 
   // Pacote Android definitivo (com.rmfglobal.guardiaox, ver
   // android/app/build.gradle) — usado só para montar o link da Play Store.
@@ -470,18 +463,20 @@ class InicioDashboard extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: ElevatedButton.icon(
-              onPressed: () => _abrirUrl(_whatsappUrl),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SuporteChatScreen()),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: _corDestaquePremium,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 elevation: 0,
               ),
-              icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 22),
-              label: const Text(
-                _whatsappNumero,
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              icon: const Icon(Icons.chat_bubble_outline, size: 22),
+              label: Text(
+                l10n.suporteChatBotaoInicio,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ),
           ),

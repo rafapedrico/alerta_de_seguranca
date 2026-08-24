@@ -486,7 +486,7 @@
   "faqPergunta9": "Como é feito o compartilhamento dos alertas de emergência?",
   "faqResposta9": "Todas as mensagens de alerta de segurança são enviadas de duas formas padrão: de aplicativo para aplicativo e por SMS para os números de celular cadastrados na página de \"Configurações\".",
   "faqPergunta11": "Como funciona o serviço de atendimento ao consumidor?",
-  "faqResposta11": "O atendimento ao consumidor é feito pelo WhatsApp — toque no botão de contato na Tela de Início para falar diretamente com a nossa equipe de suporte. As solicitações feitas no menu \"Falar com o atendente físico\" seguem as normas da política estabelecida pela empresa RMF Global, onde os usuários do Plano Premium têm exclusividade a este atendimento num prazo de até 48 horas.",
+  "faqResposta11": "O atendimento ao consumidor agora é feito por um Chat de Suporte integrado, direto no app e no site — toque no botão de suporte na Tela de Início para conversar. Suas dúvidas sobre o app, planos e uso são respondidas na hora por um assistente com inteligência artificial. Se o assistente não conseguir resolver com segurança, ou se você preferir falar com uma pessoa, é só pedir — a conversa é encaminhada para um atendente humano da nossa equipe.",
   "faqPergunta12": "As mensagens de alerta de emergência só serão enviadas para os números cadastrados que tiverem o aplicativo Guardião-X instalado no celular?",
   "faqResposta12": "Não. Recomendamos que ambos os celulares tenham o aplicativo instalado, mas mesmo se o celular de destino não tiver o Guardião-X, o alerta de emergência ainda é enviado por SMS.",
   "termosAppBarTitulo": "Termos e Privacidade",
@@ -1066,5 +1066,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "Assinar Plano Premium"
+  "planoBloqueadoModalBotaoAssinar": "Assinar Plano Premium",
+  "suporteChatBotaoInicio": "Falar com o Suporte",
+  "suporteChatAppBarTitulo": "Suporte",
+  "suporteChatHint": "Digite sua mensagem...",
+  "suporteChatEnviar": "Enviar",
+  "suporteChatVazio": "Como podemos ajudar? Envie sua primeira mensagem.",
+  "suporteChatFalarComAtendente": "Falar com atendente",
+  "suporteChatConfirmarAtendente": "Combinado — você será atendido por uma pessoa da nossa equipe em breve.",
+  "suporteChatAguardandoHumano": "Aguardando atendimento humano...",
+  "suporteChatEmAtendimentoHumano": "Você está sendo atendido por um atendente humano.",
+  "suporteChatResolvido": "Este atendimento foi encerrado.",
+  "suporteChatErroEnviar": "Não foi possível enviar sua mensagem. Tente novamente."
 }

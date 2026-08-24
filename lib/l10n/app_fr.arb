@@ -486,7 +486,7 @@
   "faqPergunta9": "Comment le partage des alertes d'urgence est-il effectué ?",
   "faqResposta9": "Tous les messages d'alerte de sécurité sont envoyés de deux manières standard : d'application à application et par SMS aux numéros de téléphone enregistrés dans la page « Paramètres ».",
   "faqPergunta11": "Comment fonctionne le service client ?",
-  "faqResposta11": "Le service client est assuré par WhatsApp : appuyez sur le bouton de contact sur l'écran d'accueil pour parler directement à notre équipe d'assistance. Les demandes effectuées via le menu « Parler à un agent physique » suivent les règles de la politique établie par l'entreprise RMF Global, les utilisateurs du forfait Premium bénéficiant d'une exclusivité pour ce service dans un délai maximal de 48 heures.",
+  "faqResposta11": "L'assistance client est désormais assurée par un Chat de Support intégré, directement dans l'application et sur le site — appuyez sur le bouton de support sur l'écran d'accueil pour démarrer une conversation. Vos questions sur l'application, les forfaits et l'utilisation reçoivent une réponse instantanée grâce à un assistant doté d'intelligence artificielle. Si l'assistant ne peut pas résoudre votre demande en toute sécurité, ou si vous préférez parler à une personne, il vous suffit de le demander — la conversation est transférée à un agent humain de notre équipe.",
   "faqPergunta12": "Les messages d'alerte d'urgence ne seront-ils envoyés qu'aux numéros enregistrés ayant l'application Gardien-X installée ?",
   "faqResposta12": "Non. Nous recommandons que les deux téléphones aient l'application installée, mais même si le téléphone destinataire n'a pas Gardien-X, l'alerte d'urgence est tout de même envoyée par SMS.",
   "termosAppBarTitulo": "Conditions et Confidentialité",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "S'abonner au Forfait Premium"
+  "planoBloqueadoModalBotaoAssinar": "S'abonner au Forfait Premium",
+  "suporteChatBotaoInicio": "Contacter le support",
+  "suporteChatAppBarTitulo": "Support",
+  "suporteChatHint": "Écrivez votre message...",
+  "suporteChatEnviar": "Envoyer",
+  "suporteChatVazio": "Comment pouvons-nous vous aider ? Envoyez votre premier message.",
+  "suporteChatFalarComAtendente": "Parler à un humain",
+  "suporteChatConfirmarAtendente": "Compris — un membre de notre équipe vous répondra bientôt.",
+  "suporteChatAguardandoHumano": "En attente d'un agent humain...",
+  "suporteChatEmAtendimentoHumano": "Vous êtes pris en charge par un agent humain.",
+  "suporteChatResolvido": "Cette conversation a été clôturée.",
+  "suporteChatErroEnviar": "Impossible d'envoyer votre message. Réessayez."
 }

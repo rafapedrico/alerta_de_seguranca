@@ -486,7 +486,7 @@
   "faqPergunta9": "Come avviene la condivisione degli allarmi di emergenza?",
   "faqResposta9": "Tutti i messaggi di allarme di sicurezza vengono inviati in due modi standard: da app ad app e via SMS ai numeri di cellulare registrati nella pagina \"Impostazioni\".",
   "faqPergunta11": "Come funziona il servizio di assistenza clienti?",
-  "faqResposta11": "L'assistenza clienti è fornita tramite WhatsApp — tocca il pulsante di contatto nella Schermata Iniziale per parlare direttamente con il nostro team di supporto. Le richieste effettuate nel menu \"Parla con un operatore fisico\" seguono le norme della politica stabilita dall'azienda RMF Global, dove gli utenti del piano Premium hanno l'esclusività di questa assistenza entro un termine massimo di 48 ore.",
+  "faqResposta11": "L'assistenza clienti ora è fornita tramite una Chat di Supporto integrata, direttamente nell'app e nel sito — tocca il pulsante di supporto nella Schermata Iniziale per iniziare una conversazione. Le tue domande sull'app, sui piani e sull'utilizzo ricevono una risposta immediata da un assistente con intelligenza artificiale. Se l'assistente non riesce a risolvere il tuo caso in sicurezza, o se preferisci parlare con una persona, basta chiederlo — la conversazione viene inoltrata a un operatore umano del nostro team.",
   "faqPergunta12": "I messaggi di allarme di emergenza verranno inviati solo ai numeri registrati che hanno l'app Guardiano-X installata?",
   "faqResposta12": "No. Consigliamo che entrambi i telefoni abbiano l'app installata, ma anche se il telefono di destinazione non ha Guardiano-X, l'allarme di emergenza viene comunque inviato tramite SMS.",
   "termosAppBarTitulo": "Termini e Privacy",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "Abbonati al Piano Premium"
+  "planoBloqueadoModalBotaoAssinar": "Abbonati al Piano Premium",
+  "suporteChatBotaoInicio": "Contatta il supporto",
+  "suporteChatAppBarTitulo": "Supporto",
+  "suporteChatHint": "Scrivi il tuo messaggio...",
+  "suporteChatEnviar": "Invia",
+  "suporteChatVazio": "Come possiamo aiutarti? Invia il tuo primo messaggio.",
+  "suporteChatFalarComAtendente": "Parla con un operatore",
+  "suporteChatConfirmarAtendente": "Perfetto — un membro del nostro team ti risponderà a breve.",
+  "suporteChatAguardandoHumano": "In attesa di un operatore...",
+  "suporteChatEmAtendimentoHumano": "Sei assistito da un operatore umano.",
+  "suporteChatResolvido": "Questa conversazione è stata chiusa.",
+  "suporteChatErroEnviar": "Impossibile inviare il messaggio. Riprova."
 }

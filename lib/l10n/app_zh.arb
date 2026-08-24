@@ -486,7 +486,7 @@
   "faqPergunta9": "紧急警报是如何共享的？",
   "faqResposta9": "所有安全警报消息均以两种标准方式发送：应用程序之间，以及通过短信发送到「设置」页面中登记的手机号码。",
   "faqPergunta11": "客户服务是如何运作的？",
-  "faqResposta11": "客户服务通过WhatsApp提供 — 点击主屏幕上的联系按钮即可直接与我们的客服团队沟通。通过「与人工客服交谈」菜单提出的请求将遵循RMF Global公司制定的政策规定，其中高级套餐用户将在最长48小时内享有此项服务的优先权。",
+  "faqResposta11": "客户服务现在通过应用内和网站上集成的支持聊天提供 — 点击主屏幕上的支持按钮即可开始对话。关于应用、套餐和使用方法的问题会由AI助手即时解答。如果助手无法安全解决您的问题，或您更希望与人工沟通，只需提出 — 对话将转接给我们团队的人工客服。",
   "faqPergunta12": "紧急警报消息是否只会发送给安装了守护者-X应用的已登记号码？",
   "faqResposta12": "不是。我们建议双方手机都安装该应用，但即使接收方手机未安装守护者-X，紧急警报仍会通过短信发送。",
   "termosAppBarTitulo": "条款与隐私",
@@ -794,5 +794,16 @@
       }
     }
   },
-  "planoBloqueadoModalBotaoAssinar": "订阅高级计划"
+  "planoBloqueadoModalBotaoAssinar": "订阅高级计划",
+  "suporteChatBotaoInicio": "联系客服",
+  "suporteChatAppBarTitulo": "客服",
+  "suporteChatHint": "输入您的消息...",
+  "suporteChatEnviar": "发送",
+  "suporteChatVazio": "有什么可以帮您?发送您的第一条消息。",
+  "suporteChatFalarComAtendente": "转接人工客服",
+  "suporteChatConfirmarAtendente": "好的,我们的客服人员将很快为您服务。",
+  "suporteChatAguardandoHumano": "正在等待人工客服...",
+  "suporteChatEmAtendimentoHumano": "您正在与人工客服沟通。",
+  "suporteChatResolvido": "此对话已结束。",
+  "suporteChatErroEnviar": "消息发送失败,请重试。"
 }
