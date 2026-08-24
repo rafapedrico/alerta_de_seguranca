@@ -224,6 +224,13 @@ section {
   font-weight: 800;
   font-size: 36px;
   color: var(--text);
+  /* Nunca encolhe: como o nome tem white-space:nowrap (não pode quebrar
+     linha), um .brand "espremível" pelo flex acabava vazando o texto
+     por cima do primeiro link do menu em telas de notebook comuns
+     (1366/1440px) — o tamanho grande foi desenhado pra monitores bem
+     largos (--container-w: 1680px); ver @media (max-width: 1500px)
+     abaixo, que reduz brand/nav-links/nav-cta pra caber sem sobrepor. */
+  flex-shrink: 0;
 }
 
 .brand img {
@@ -1024,6 +1031,42 @@ section {
 }
 
 /* ---------- Responsivo ---------- */
+
+/* Navbar compacta em telas "desktop normal" (notebooks 1366/1440px,
+   por exemplo) — acima de 1500px mantém o brand/nav-links/nav-cta no
+   tamanho grande original (desenhado pra monitores largos,
+   --container-w: 1680px); abaixo disso, .site-header .nav-wrap não
+   tinha espaço suficiente pros 3 grupos (logo + 4 links + 2 botões)
+   numa linha só, e como nada ali quebra linha (white-space: nowrap no
+   nome da marca e nos botões), o texto "Guardião X" vazava por cima do
+   primeiro link do menu ("Recursos") em vez de simplesmente
+   apertar. Faixa restrita a min-width: 721px de propósito — não deve
+   encostar em nada do menu hambúrguer mobile (max-width: 720px, mais
+   abaixo), inclusive o font-size de .nav-links a. */
+@media (max-width: 1500px) and (min-width: 721px) {
+  .brand {
+    font-size: 26px;
+    gap: 12px;
+  }
+  .brand img {
+    width: 52px;
+    height: 52px;
+  }
+  .nav-links {
+    gap: 28px;
+  }
+  .nav-links a {
+    font-size: 16.5px;
+  }
+  .nav-cta {
+    gap: 10px;
+  }
+  .nav-cta .btn {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 960px) {
   .hero .container {
     grid-template-columns: 1fr;
