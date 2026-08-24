@@ -12,9 +12,23 @@
  * 2. `aoReceberMensagemSuporte` (abaixo) dispara nessa criação, monta o
  *    histórico (últimas `SUPORTE_HISTORICO_MAX_MENSAGENS`, ver
  *    `constantes.js` — pedido explícito do usuário pra economizar
- *    tokens de entrada) + a mensagem atual, chama o Claude com prompt
- *    caching na base de conhecimento (ver `suporteConhecimentoBase.js`)
- *    e grava a resposta como nova mensagem `autor: "ia"`.
+ *    tokens de entrada) + a mensagem atual, chama o modelo (Sonnet 5)
+ *    via OpenRouter com prompt caching na base de conhecimento (ver
+ *    `suporteConhecimentoBase.js`) e grava a resposta como nova
+ *    mensagem `autor: "ia"`.
+ *
+ *    CHAMADA VIA OPENROUTER (decisão de arquitetura 2026-08-24, item 2
+ *    — usa os créditos já ativos do usuário lá, em vez da API direta da
+ *    Anthropic): endpoint de chat completions compatível com o formato
+ *    da OpenAI (`OPENROUTER_CHAT_COMPLETIONS_URL`, ver `constantes.js`),
+ *    chamado via `fetch` nativo do Node 20 — sem SDK adicional. O
+ *    prompt caching da Anthropic é acessível através do OpenRouter com
+ *    a MESMA sintaxe `cache_control` nos blocos de conteúdo da mensagem
+ *    de sistema (confirmado em openrouter.ai/docs/features/
+ *    prompt-caching); só muda que aqui o "system" vai como a PRIMEIRA
+ *    mensagem do array `messages` (`role: "system"`), não como campo
+ *    `system` separado — isso é formato OpenAI-compatível, não da
+ *    Anthropic.
  * 3. Handoff pra humano (pedido explícito do usuário, 2026-08-24):
  *    - Se a IA achar que não sabe resolver com segurança, ela mesma
  *      inicia a resposta com `SUPORTE_MARCA_ESCALONAMENTO` — o código
@@ -45,11 +59,11 @@ const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const {getFirestore, Timestamp} = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
-const Anthropic = require("@anthropic-ai/sdk");
 
 const {BASE_CONHECIMENTO} = require("./suporteConhecimentoBase");
 const {
   SUPORTE_MODELO_IA,
+  OPENROUTER_CHAT_COMPLETIONS_URL,
   SUPORTE_HISTORICO_MAX_MENSAGENS,
   SUPORTE_MAX_TOKENS_RESPOSTA,
   SUPORTE_MARCA_ESCALONAMENTO,
@@ -58,15 +72,16 @@ const {
 const db = getFirestore();
 
 // Secret do Firebase Functions v2 (`firebase functions:secrets:set
-// ANTHROPIC_API_KEY`) — NUNCA hardcoded nem em variável de ambiente
-// comum. Precisa ser declarado em `secrets: [anthropicApiKey]` em toda
-// função abaixo que chama a API da Anthropic.
-const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
+// OPENROUTER_API_KEY`) — NUNCA hardcoded nem em variável de ambiente
+// comum. Precisa ser declarado em `secrets: [openRouterApiKey]` em toda
+// função abaixo que chama o OpenRouter.
+const openRouterApiKey = defineSecret("OPENROUTER_API_KEY");
 
 // Mensagem de fallback (curta, poucos idiomas) pro raro caso da própria
-// chamada à IA falhar (rede, rate limit, etc.) — fica só num punhado de
-// idiomas porque é caminho de erro, não a resposta normal da IA (essa
-// sim responde em qualquer um dos 11 via `_instrucoesResposta`).
+// chamada à IA falhar (rede, rate limit, créditos do OpenRouter
+// esgotados, etc.) — fica só num punhado de idiomas porque é caminho de
+// erro, não a resposta normal da IA (essa sim responde em qualquer um
+// dos 11 via `_instrucoesResposta`).
 const TEXTOS_ERRO_IA = {
   pt: "Estamos com uma instabilidade momentânea no suporte automático. Tente novamente em alguns instantes, ou toque em \"Falar com atendente\".",
   en: "Automated support is temporarily unavailable. Please try again in a moment, or tap \"Talk to a human\".",
@@ -83,7 +98,7 @@ function _textoErroIA(idioma) {
 
 /**
  * Instruções de resposta — bloco PEQUENO e variável por idioma, mantido
- * FORA do bloco com `cache_control` (ver `_montarSystemBlocks`) pra não
+ * FORA do bloco com `cache_control` (ver `_montarSystemContent`) pra não
  * fragmentar o cache da base de conhecimento entre os 11 idiomas.
  * @param {string} idioma
  * @return {string}
@@ -97,14 +112,17 @@ function _instrucoesResposta(idioma) {
 }
 
 /**
- * Monta o array `system` da Messages API: bloco 1 = base de conhecimento
- * ESTÁTICA (idêntica pra qualquer usuário/idioma) com `cache_control`,
- * bloco 2 = instruções pequenas e variáveis por idioma, sem cache — é
- * assim que o mesmo cache da base de conhecimento é reaproveitado entre
- * TODOS os idiomas em vez de um cache por idioma.
+ * Monta o `content` (array de blocos) da mensagem `role: "system"`:
+ * bloco 1 = base de conhecimento ESTÁTICA (idêntica pra qualquer
+ * usuário/idioma) com `cache_control`, bloco 2 = instruções pequenas e
+ * variáveis por idioma, sem cache — é assim que o mesmo cache da base
+ * de conhecimento é reaproveitado entre TODOS os idiomas em vez de um
+ * cache por idioma. Sintaxe idêntica à API direta da Anthropic; só o
+ * envelope muda (aqui é `messages[0]`, não um campo `system` à parte —
+ * ver cabeçalho do arquivo).
  * @param {string} idioma
  */
-function _montarSystemBlocks(idioma) {
+function _montarSystemContent(idioma) {
   return [
     {
       type: "text",
@@ -118,10 +136,56 @@ function _montarSystemBlocks(idioma) {
   ];
 }
 
+/**
+ * Chama o OpenRouter (formato de chat completions compatível com a
+ * OpenAI) e devolve o texto da resposta. Lança erro em caso de falha —
+ * quem chama decide o que fazer (ver uso abaixo).
+ * @param {Array<object>} messages
+ * @return {Promise<{texto: string, usage: object}>}
+ */
+async function _chamarOpenRouter(messages) {
+  const resposta = await fetch(OPENROUTER_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openRouterApiKey.value()}`,
+      "Content-Type": "application/json",
+      // Recomendado pelo OpenRouter para identificar a origem das
+      // chamadas no painel de uso deles — não é autenticação.
+      "HTTP-Referer": "https://www.meuguardiaox.com.br",
+      "X-Title": "Guardião X — Suporte",
+    },
+    body: JSON.stringify({
+      model: SUPORTE_MODELO_IA,
+      max_tokens: SUPORTE_MAX_TOKENS_RESPOSTA,
+      messages,
+    }),
+  });
+
+  if (!resposta.ok) {
+    const corpo = await resposta.text();
+    if (resposta.status === 402) {
+      // Créditos do OpenRouter esgotados — vale destacar no log
+      // separado de um erro genérico, já que é uma causa acionável
+      // (recarregar a conta), não um bug.
+      throw new Error(`OpenRouter sem créditos (402): ${corpo}`);
+    }
+    if (resposta.status === 429) {
+      throw new Error(`OpenRouter rate limit (429): ${corpo}`);
+    }
+    throw new Error(`OpenRouter HTTP ${resposta.status}: ${corpo}`);
+  }
+
+  const dados = await resposta.json();
+  const texto = dados.choices && dados.choices[0] && dados.choices[0].message ?
+    dados.choices[0].message.content || "" :
+    "";
+  return {texto, usage: dados.usage || {}};
+}
+
 exports.aoReceberMensagemSuporte = onDocumentCreated(
     {
       document: "suporte_tickets/{ticketId}/mensagens/{mensagemId}",
-      secrets: [anthropicApiKey],
+      secrets: [openRouterApiKey],
     },
     async (event) => {
       const snap = event.data;
@@ -172,40 +236,32 @@ exports.aoReceberMensagemSuporte = onDocumentCreated(
           .map((d) => d.data())
           .reverse(); // mais antiga -> mais nova, ordem que a API espera
 
-      const messages = historico
-          .map((m) => ({
-            role: m.autor === "usuario" ? "user" : "assistant",
-            content: m.texto,
-          }))
-          .concat([{role: "user", content: mensagem.texto}]);
-
       const idioma = ticket.idioma || "pt";
-      const client = new Anthropic({apiKey: anthropicApiKey.value()});
+
+      const messages = [
+        {role: "system", content: _montarSystemContent(idioma)},
+        ...historico.map((m) => ({
+          role: m.autor === "usuario" ? "user" : "assistant",
+          content: m.texto,
+        })),
+        {role: "user", content: mensagem.texto},
+      ];
 
       let respostaBruta;
       try {
-        const response = await client.messages.create({
-          model: SUPORTE_MODELO_IA,
-          max_tokens: SUPORTE_MAX_TOKENS_RESPOSTA,
-          system: _montarSystemBlocks(idioma),
-          messages,
-        });
+        const {texto, usage} = await _chamarOpenRouter(messages);
+        respostaBruta = texto;
 
+        const cache = usage.prompt_tokens_details || {};
         logger.info(
             `[Suporte] Ticket ${ticketId} — cache_read=` +
-            `${response.usage.cache_read_input_tokens} cache_write=` +
-            `${response.usage.cache_creation_input_tokens} input=` +
-            `${response.usage.input_tokens} output=` +
-            `${response.usage.output_tokens}`);
-
-        const textBlock = response.content.find((b) => b.type === "text");
-        respostaBruta = textBlock ? textBlock.text : "";
+            `${cache.cached_tokens ?? 0} cache_write=` +
+            `${cache.cache_write_tokens ?? 0} prompt=` +
+            `${usage.prompt_tokens ?? "?"} completion=` +
+            `${usage.completion_tokens ?? "?"} custo_usd=` +
+            `${usage.cost ?? "?"}`);
       } catch (e) {
-        if (e instanceof Anthropic.RateLimitError) {
-          logger.warn(`[Suporte] Rate limit da IA no ticket ${ticketId}: ${e}`);
-        } else {
-          logger.error(`[Suporte] Falha ao chamar a IA no ticket ${ticketId}: ${e}`);
-        }
+        logger.error(`[Suporte] Falha ao chamar a IA (OpenRouter) no ticket ${ticketId}: ${e}`);
         // Mantém o ticket em "ia_ativa" — o usuário pode tentar de novo
         // (nova mensagem) ou pedir atendente manualmente.
         await mensagensRef.add({

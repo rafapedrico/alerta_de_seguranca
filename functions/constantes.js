@@ -13,8 +13,20 @@ const JANELA_EXPIRACAO_MONITORAMENTO_MS = 24 * 60 * 60 * 1000;
 // WhatsApp).
 //
 // Modelo: Sonnet 5, escolhido pelo usuário por custo-benefício frente ao
-// Opus 5 para um caso de uso de suporte conversacional.
-const SUPORTE_MODELO_IA = "claude-sonnet-5";
+// Opus 5 para um caso de uso de suporte conversacional. Chamado via
+// OpenRouter (decisão de arquitetura 2026-08-24, item 2) em vez da API
+// direta da Anthropic — usa os créditos já ativos do usuário lá. O ID
+// abaixo é o slug do OpenRouter, não o model id direto da Anthropic
+// (que seria "claude-sonnet-5"); confirmado em openrouter.ai/anthropic/
+// claude-sonnet-5 (o usuário havia sugerido "anthropic/claude-3.5-sonnet",
+// um modelo antigo — corrigido aqui pro Sonnet 5 de fato, que é o
+// modelo que decidimos usar).
+const SUPORTE_MODELO_IA = "anthropic/claude-sonnet-5";
+
+// Endpoint de chat completions do OpenRouter (compatível com o formato
+// da OpenAI) — ver `suporteChatService.js`, que chama via `fetch` nativo
+// do Node 20 (sem SDK adicional).
+const OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Quantas mensagens ANTERIORES da conversa (já persistidas antes da que
 // acabou de chegar) são enviadas como histórico pra IA — pedido
@@ -40,6 +52,7 @@ const SUPORTE_MARCA_ESCALONAMENTO = "[[ESCALAR_ATENDENTE]]";
 module.exports = {
   JANELA_EXPIRACAO_MONITORAMENTO_MS,
   SUPORTE_MODELO_IA,
+  OPENROUTER_CHAT_COMPLETIONS_URL,
   SUPORTE_HISTORICO_MAX_MENSAGENS,
   SUPORTE_MAX_TOKENS_RESPOSTA,
   SUPORTE_MARCA_ESCALONAMENTO,
