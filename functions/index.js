@@ -254,7 +254,11 @@ exports.aoReceberMensagemSuporte = suporteChatService.aoReceberMensagemSuporte;
 // - Callable do botão "Falar com atendente" (escalonamento manual,
 // determinístico).
 exports.solicitarAtendenteHumano = suporteChatService.solicitarAtendenteHumano;
-// - Callables do futuro Painel de Atendimento (Admin) — exigem a custom
-// claim `admin: true`.
+// - Callables do Painel de Atendimento (Admin, módulo Tickets/M2) —
+// exigem a custom claim `role` em ["atendente", "supervisor", "admin"].
 exports.responderComoAtendente = suporteChatService.responderComoAtendente;
 exports.encerrarTicketSuporte = suporteChatService.encerrarTicketSuporte;
+// - Resumo seguro (nome/email/telefone) de quem abriu o ticket, sem
+// expor o documento completo de `usuarios/{uid}` (ver
+// suporteChatService.js).
+exports.obterResumoUsuarioSuporte = suporteChatService.obterResumoUsuarioSuporte;

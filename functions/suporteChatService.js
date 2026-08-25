@@ -47,11 +47,11 @@
  *      "em_atendimento_humano" e grava `atendenteId`.
  *    - `encerrarTicketSuporte` fecha o ticket ("resolvido").
  *
- * Nenhuma dessas 3 callables abaixo é usada pelo usuário comum, exceto
- * `solicitarAtendenteHumano` — as outras duas exigem a custom claim
- * `admin: true` no token do Firebase Auth (setada manualmente via Admin
- * SDK/console pra cada atendente autorizado da RMF Global; não existe
- * fluxo de autopromoção a admin em lugar nenhum do app).
+ * Nenhuma das callables abaixo é usada pelo usuário comum, exceto
+ * `solicitarAtendenteHumano` — as demais exigem a custom claim `role`
+ * ("atendente"/"supervisor"/"admin", ver `ROLES_COM_ACESSO_TICKETS`)
+ * setada exclusivamente via `functions/scripts/definirRoleAdmin.js`; não
+ * existe fluxo de autopromoção em lugar nenhum do app.
  */
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
@@ -470,4 +470,39 @@ exports.encerrarTicketSuporte = onCall(async (request) => {
     atualizadoEm: Timestamp.now(),
   });
   return {ok: true};
+});
+
+/**
+ * Callable usada pelo Painel Web de Admin (módulo Tickets, M2) pra
+ * identificar quem abriu um ticket — exige role "atendente",
+ * "supervisor" ou "admin". Devolve SÓ um subconjunto seguro de
+ * `usuarios/{uid}` (nome/email/telefone): o documento completo tem
+ * campos estritamente privados (`fcmToken`, localização, dados do ciclo
+ * do Plano Free) que NUNCA podem vazar pro painel — por isso não dá pra
+ * simplesmente abrir leitura de `usuarios/*` pra essas roles no
+ * Firestore Rules (ver firestore.rules → `match /usuarios/{usuarioId}`),
+ * e esta callable via Admin SDK existe exatamente pra filtrar isso.
+ * `uid` pode não corresponder a nenhum documento (ex: visitante anônimo
+ * do site que nunca criou conta) — nesse caso devolve tudo `null`, sem
+ * erro, pra UI mostrar "visitante" em vez de quebrar.
+ */
+exports.obterResumoUsuarioSuporte = onCall(async (request) => {
+  if (!_temAcessoPainelTickets(request)) {
+    throw new HttpsError("permission-denied", "Apenas atendentes autorizados.");
+  }
+  const {uid} = request.data || {};
+  if (!uid || typeof uid !== "string") {
+    throw new HttpsError("invalid-argument", "uid é obrigatório.");
+  }
+
+  const snap = await db.collection("usuarios").doc(uid).get();
+  if (!snap.exists) {
+    return {nome: null, email: null, telefone: null};
+  }
+  const dados = snap.data();
+  return {
+    nome: dados.nome || null,
+    email: dados.email || null,
+    telefone: dados.telefone || null,
+  };
 });
