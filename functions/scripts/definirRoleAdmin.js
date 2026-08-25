@@ -22,12 +22,21 @@
  * Exemplo:
  *   node scripts/definirRoleAdmin.js atendente1@rmfglobal.com atendente
  *
- * Pré-requisito: rodar autenticado com credenciais que tenham acesso
- * de Admin SDK ao projeto (`gcloud auth application-default login` ou
- * a variável GOOGLE_APPLICATION_CREDENTIALS apontando pra uma service
- * account do projeto guardiaox — a mesma credencial que o
- * `firebase emulators`/deploy já usa costuma bastar via
- * `firebase login` + `google-auth-library` interno do admin SDK).
+ * Pré-requisito (confirmado nesta máquina — sem `gcloud` instalado, o
+ * Admin SDK não acha credencial automática): baixe uma chave de conta
+ * de serviço do projeto e aponte a variável de ambiente
+ * GOOGLE_APPLICATION_CREDENTIALS pra ela antes de rodar:
+ *
+ *   1. Firebase Console → guardiaox → ⚙ Configurações do projeto →
+ *      aba "Contas de serviço" → "Gerar nova chave privada" (baixa um
+ *      .json).
+ *   2. Salve esse arquivo FORA do repositório (ex: na sua pasta de
+ *      usuário) — nunca commitar essa chave.
+ *   3a. PowerShell:
+ *       $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\caminho\chave.json"
+ *       node scripts/definirRoleAdmin.js <email> <role>
+ *   3b. Git Bash:
+ *       GOOGLE_APPLICATION_CREDENTIALS="/c/caminho/chave.json" node scripts/definirRoleAdmin.js <email> <role>
  */
 
 const admin = require("firebase-admin");
@@ -45,8 +54,14 @@ async function main() {
     console.error(`Role inválida: "${role}". Use uma de: ${ROLES_VALIDAS.join(", ")}`);
     process.exit(1);
   }
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.error(
+        "GOOGLE_APPLICATION_CREDENTIALS não definida — veja o cabeçalho " +
+        "deste arquivo pra como baixar a chave de conta de serviço.");
+    process.exit(1);
+  }
 
-  admin.initializeApp();
+  admin.initializeApp({projectId: "guardiaox"});
 
   const usuario = await admin.auth().getUserByEmail(email);
   await admin.auth().setCustomUserClaims(usuario.uid, {role});
