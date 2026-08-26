@@ -212,10 +212,22 @@ async function inicializarChat(widget) {
   unsubMensagens = onSnapshot(
       query(mensagensRef, orderBy("criadoEm")),
       (snap) => renderizarMensagens(mensagensEl, snap.docs),
+      (e) => {
+        // Sem isto, uma falha do listener (regra negada, token expirado
+        // etc.) simplesmente para de entregar atualizações em silêncio —
+        // a última renderização fica "congelada" e uma resposta nova do
+        // atendente/IA nunca aparece, sem nenhum indício visível do motivo.
+        console.error("[SuporteChat] Falha no listener de mensagens:", e);
+        mensagensEl.innerHTML = '<p class="suporte-chat-vazio">Não foi possível manter a conexão com o suporte. Recarregue a página.</p>';
+      },
   );
-  unsubTicket = onSnapshot(ticketRef, (snap) => {
-    if (snap.exists()) renderizarBanner(bannerEl, snap.data().status);
-  });
+  unsubTicket = onSnapshot(
+      ticketRef,
+      (snap) => {
+        if (snap.exists()) renderizarBanner(bannerEl, snap.data().status);
+      },
+      (e) => console.error("[SuporteChat] Falha no listener do ticket:", e),
+  );
 
   formEl.addEventListener("submit", async (ev) => {
     ev.preventDefault();

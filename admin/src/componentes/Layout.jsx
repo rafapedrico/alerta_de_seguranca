@@ -10,8 +10,8 @@ import {useAuth} from "../contexto/AuthContext";
  */
 const ITENS_NAV = [
   {rota: "/tickets", rotulo: "Tickets de Suporte", roles: ["atendente", "supervisor", "admin"]},
-  {rota: null, rotulo: "Monitoramento de Alertas", roles: ["supervisor", "admin"]},
-  {rota: null, rotulo: "Gestão de Planos", roles: ["admin"]},
+  {rota: "/alertas", rotulo: "Monitoramento de Alertas", roles: ["supervisor", "admin"]},
+  {rota: "/planos", rotulo: "Gestão de Planos", roles: ["admin"]},
 ];
 
 export function Layout({children}) {

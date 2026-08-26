@@ -73,9 +73,13 @@ export function TicketDetalhe() {
       collection(db, "suporte_tickets", ticketId, "mensagens"),
       orderBy("criadoEm", "asc"),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setMensagens(snap.docs.map((d) => ({id: d.id, ...d.data()})));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setMensagens(snap.docs.map((d) => ({id: d.id, ...d.data()})));
+      },
+      (e) => console.error("[TicketDetalhe] mensagens", e),
+    );
     return unsub;
   }, [ticketId]);
 

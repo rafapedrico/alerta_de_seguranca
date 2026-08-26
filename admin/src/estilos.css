@@ -450,3 +450,155 @@ body {
   opacity: 0.6;
   cursor: default;
 }
+
+/* Módulo de Monitoramento de Alertas (M3) */
+
+.lista-alertas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cartao-alerta {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cartao-alerta-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cartao-alerta-usuario {
+  margin: 0;
+}
+
+.cartao-alerta button {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.cartao-alerta button:hover {
+  color: var(--text);
+  border-color: var(--text-secondary);
+}
+
+.cartao-alerta button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.link-mapa {
+  color: var(--primary-light);
+  font-size: 13px;
+  margin-right: 12px;
+}
+
+/* Módulo de Gestão de Planos (M3) */
+
+.cartao-secao {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.cartao-secao h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.lista-parametros {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.texto-aviso {
+  color: #f0ad4e;
+}
+
+.form-busca {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.form-busca input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.form-busca button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.form-busca button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cartao-usuario-plano {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cartao-usuario-plano button {
+  align-self: flex-start;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.cartao-usuario-plano button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.badge-plano-premium {
+  background: var(--primary);
+  color: #fff;
+}

@@ -262,3 +262,18 @@ exports.encerrarTicketSuporte = suporteChatService.encerrarTicketSuporte;
 // expor o documento completo de `usuarios/{uid}` (ver
 // suporteChatService.js).
 exports.obterResumoUsuarioSuporte = suporteChatService.obterResumoUsuarioSuporte;
+
+// Monitoramento de Alertas do Painel de Admin (M3) — ver
+// alertaMonitoramentoService.js. Exige role "supervisor"/"admin".
+const alertaMonitoramentoService = require("./alertaMonitoramentoService");
+exports.listarAlertasMonitoramento =
+  alertaMonitoramentoService.listarAlertasMonitoramento;
+exports.encerrarAlertaMonitoramento =
+  alertaMonitoramentoService.encerrarAlertaMonitoramento;
+
+// Gestão de Planos do Painel de Admin (M3) — ver planoAdminService.js.
+// Exige role "admin". Nunca concede Premium (só visualiza/revoga).
+const planoAdminService = require("./planoAdminService");
+exports.obterParametrosPlanos = planoAdminService.obterParametrosPlanos;
+exports.buscarUsuarioPlano = planoAdminService.buscarUsuarioPlano;
+exports.revogarPremiumAdmin = planoAdminService.revogarPremiumAdmin;

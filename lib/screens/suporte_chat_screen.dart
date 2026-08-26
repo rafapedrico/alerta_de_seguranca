@@ -263,6 +263,24 @@ class _ListaMensagens extends StatelessWidget {
           .orderBy('criadoEm')
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          // Sem este ramo, uma falha do listener (regra negada, token
+          // expirado etc.) cai no mesmo estado visual de "sem mensagens
+          // ainda" abaixo — o usuário não recebe nenhum indício de que a
+          // conversa parou de atualizar em tempo real.
+          debugPrint('⚠️ [SuporteChat] Falha no listener de mensagens: ${snapshot.error}');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                l10n.suporteChatErroEnviar,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white38),
+              ),
+            ),
+          );
+        }
+
         final docs = snapshot.data?.docs ?? const [];
         if (docs.isEmpty) {
           return Center(
