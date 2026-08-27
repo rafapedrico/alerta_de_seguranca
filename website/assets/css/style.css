@@ -188,12 +188,18 @@ section {
   width: 100%;
 }
 
-/* Botões com conteúdo longo e imprevisível (ex: endereço de e-mail) — evita
-   que o texto transborde o card em vez de quebrar/reduzir dentro dele. */
+/* Botões com conteúdo longo e imprevisível (ex: endereço de e-mail) — a
+   fonte encolhe com a viewport (clamp) para o texto caber SEMPRE em uma
+   única linha dentro da moldura, do desktop ao celular pequeno, sem
+   quebrar a palavra no meio. */
 .btn-wrap-text {
-  white-space: normal;
-  word-break: break-all;
-  font-size: 19px;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  font-size: clamp(11px, 3.4vw, 16px);
+  padding-left: 18px;
+  padding-right: 18px;
+  letter-spacing: -0.01em;
 }
 
 /* ---------- Header ---------- */
@@ -1239,6 +1245,41 @@ section {
     min-width: 0;
     flex: 1 1 220px;
   }
+
+  /* Título e subtítulo das páginas internas (Suporte, Termos, etc.)
+     centralizados no celular — fica mais harmônico com os cards de
+     suporte, que já são centralizados. */
+  .page-hero {
+    text-align: center;
+  }
+
+  /* Botões dos cards de suporte ("Ver perguntas frequentes",
+     "Exclusão de dados", "Iniciar conversa"): fonte e padding reduzidos
+     para o texto caber em uma linha dentro da moldura, sem transbordar.
+     O botão de e-mail tem regra própria (.btn-wrap-text) e fica de fora. */
+  .support-card .btn:not(.btn-wrap-text) {
+    font-size: clamp(14px, 3.9vw, 18px);
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  /* CTA final ("Não encontrou o que precisava?" / "Pronto para ficar
+     protegido?"): fonte menor e sem cortar palavras — a frase fecha em
+     2 linhas limpas, sem hifenização nem letra cortada. */
+  .cta-final {
+    padding: 64px 24px;
+  }
+
+  .cta-final h2 {
+    font-size: clamp(26px, 7vw, 34px);
+    overflow-wrap: normal;
+    word-break: keep-all;
+    hyphens: none;
+  }
+
+  .cta-final p {
+    font-size: 18px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1287,5 +1328,13 @@ section {
   .step-card,
   .support-card {
     padding: 32px 24px;
+  }
+
+  /* E-mail de suporte no rodapé em uma linha só nos celulares estreitos. */
+  .footer-col li a[href^="mailto:"] {
+    display: inline-block;
+    font-size: clamp(13px, 3.8vw, 18px);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
   }
 }
