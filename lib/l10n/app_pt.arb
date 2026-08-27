@@ -384,7 +384,7 @@
   "beneficioTresCamadas": "Duas camadas de proteção para garantir a chegada dos alertas de emergência com a localização e fotos. (Aplicativo e SMS).",
   "beneficioTempoEspera": "Tempo de espera para alterações e visualizações de dados críticos.",
   "agoraNao": "Agora não",
-  "assinarPreco": "Assinar R$ 9,90/mês",
+  "assinarPreco": "Assinar por R$ 11,99/mês",
   "planoPremiumAtivado": "🎉 Plano Premium ativado!",
   "visualDoChatTitulo": "Visual do Chat",
   "alertaSonoroTitulo": "Alerta Sonoro",
@@ -416,8 +416,8 @@
       }
     }
   },
-  "premiumPrecoGenerico": "Assine o Premium",
-  "premiumAssinarBotaoGenerico": "Assinar Premium",
+  "premiumPrecoGenerico": "R$ 11,99/mês",
+  "premiumAssinarBotaoGenerico": "Assinar por R$ 11,99/mês",
   "verMais": "Ver mais",
   "alarmeRotinaAtivoDescricao": "Alarme de rotina ativo.\nConfirme sua segurança para pausar.",
   "alarmeRotinaFaseFinalDescricao": "ÚLTIMA CHANCE! O alarme tocou novamente.\nDigite seu PIN em até 60 segundos ou um alerta de emergência será enviado.",
