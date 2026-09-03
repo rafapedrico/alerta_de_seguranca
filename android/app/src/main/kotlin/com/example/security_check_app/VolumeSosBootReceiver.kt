@@ -3,6 +3,9 @@ package com.example.security_check_app
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 
 /**
  * Reinicia o [VolumeSosService] (Foreground Service que monitora o botão
@@ -25,6 +28,18 @@ import android.content.Intent
  * PRÓPRIO SISTEMA (uid=system) sempre alcançam receivers não-exportados;
  * essa flag só impede que OUTROS APPS instalados no aparelho consigam
  * disparar este receiver artificialmente.
+ *
+ * CORREÇÃO (2026-09-02): NÃO chama mais `VolumeSosService.iniciar()`
+ * diretamente aqui dentro de `onReceive()`. A partir do Android 15/API 35
+ * (nosso targetSdk), iniciar um Foreground Service de tipo restrito
+ * (`VolumeSosService` é "specialUse") de forma síncrona a partir de um
+ * BroadcastReceiver de BOOT_COMPLETED passou a ser proibido pelo sistema
+ * — o Play Console reportou isso como aviso de pré-lançamento na versão de
+ * Produção (o stack trace citado por ele, de um plugin do Firebase Functions
+ * sem nenhum receiver/serviço, era um artefato de minificação R8; a
+ * violação real era esta classe). A chamada agora é delegada para
+ * [VolumeSosBootWorker] via WorkManager, que executa fora dessa janela
+ * síncrona restrita.
  */
 class VolumeSosBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -37,7 +52,12 @@ class VolumeSosBootReceiver : BroadcastReceiver() {
         }
 
         try {
-            VolumeSosService.iniciar(context)
+            val request = OneTimeWorkRequestBuilder<VolumeSosBootWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "volume_sos_boot_restart",
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
         } catch (_: Exception) {
             // Silenciosamente ignorado: pior caso é o mesmo comportamento
             // histórico (usuário precisa abrir o app manualmente uma
