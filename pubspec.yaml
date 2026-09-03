@@ -1,7 +1,7 @@
 name: security_check_app
 description: A security check application for personal safety.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -72,6 +72,12 @@ dependencies:
   # Carteira de Créditos (removida em 2026-08-11 junto com o WhatsApp de
   # contingência que ela financiava).
   in_app_purchase: ^3.2.0
+  # Dependência transitiva de in_app_purchase (implementação Android) —
+  # declarada aqui de forma direta porque PremiumPurchaseService importa
+  # GooglePlayPurchaseParam diretamente (necessário para amarrar a compra
+  # ao uid via `applicationUserName`/obfuscatedAccountId, ver
+  # `lib/services/premium_purchase_service.dart`).
+  in_app_purchase_android: ^0.5.2
 
   # Encryption
   encrypt: ^5.0.3
