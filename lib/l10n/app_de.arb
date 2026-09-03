@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Diese E-Mail ist bereits registriert",
   "erroCadastroSenhaFraca": "Das Passwort ist zu schwach",
   "erroCadastroGenerico": "Konto konnte nicht erstellt werden. Bitte erneut versuchen",
+  "erroLoginSemConexao": "Keine Internetverbindung. Überprüfen Sie Ihr Netzwerk und versuchen Sie es erneut",
+  "erroLoginContaDesabilitada": "Dieses Konto wurde deaktiviert. Bitte wenden Sie sich an den Support",
+  "erroCadastroSemConexao": "Keine Internetverbindung. Überprüfen Sie Ihr Netzwerk und versuchen Sie es erneut",
+  "erroCadastroOperacaoNaoPermitida": "Registrierung per E-Mail und Passwort ist vorübergehend nicht verfügbar",
   "cadastroEmailVerificacaoEnviado": "Eine Bestätigungs-E-Mail wurde gesendet. Bitte überprüfen Sie Ihren Posteingang, bevor Sie sich anmelden.",
   "emailNaoVerificadoTitulo": "E-Mail nicht bestätigt",
   "emailNaoVerificadoMensagem": "Sie müssen Ihre E-Mail bestätigen, bevor Sie sich anmelden können. Überprüfen Sie Ihren Posteingang (und den Spam-Ordner).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Anmeldesitzung löschen",
   "loginLimparSessaoConfirmacao": "Soziale Anmeldesitzung gelöscht. Versuchen Sie es erneut.",
   "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode.",
+  "loginSocialCredencialInvalida": "Ihr Konto konnte bei diesem Anbieter nicht bestätigt werden. Bitte erneut versuchen",
+  "loginSocialProvedorIndisponivel": "Diese Anmeldemethode ist vorübergehend nicht verfügbar",
   "onboardingTitulo": "Sicherheitseinrichtung",
   "onboardingIntroducao": "Damit der Notfallknopf und die Warnungen zuverlässig funktionieren, auch bei gesperrtem Bildschirm, erteilen Sie bitte die unten stehenden Berechtigungen. Sie können diese Berechtigungen jederzeit in den Betriebssystemeinstellungen des Geräts bearbeiten.",
   "onboardingBadgeEssencial": "Erforderlich",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Free-Plan: alle Funktionen sind ab {data} wieder verfügbar",
+  "planoFreeIndicadorBloqueado": "Free-Plan: gesperrt — noch {dias} Tage, bis alle Funktionen am {data} wieder verfügbar sind",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Premium-Plan: vollständiger Schutz ohne Unterbrechungen",
+  "premiumCompraConcedidaMensagem": "Premium erfolgreich aktiviert! Genieße vollständigen Schutz ohne Unterbrechungen.",
+  "premiumCompraFalhaMensagem": "Dein Abo konnte gerade nicht bestätigt werden. Wir versuchen es automatisch erneut.",
   "planoBloqueadoModalTitulo": "Deine kostenlosen Tage für diesen Monat sind aufgebraucht",
-  "planoBloqueadoModalConteudo": "Deine 10 kostenlosen Tage in diesem Monat sind abgelaufen. Diese Telefonnummer erhält am {data} wieder vollen Zugriff. Für ununterbrochenen 24/7-Schutz abonniere den Premium-Plan.",
+  "planoBloqueadoModalConteudo": "Deine 10 kostenlosen Tage in diesem Monat sind abgelaufen. Noch {dias} Tage, bis diese Telefonnummer am {data} wieder vollen Zugriff erhält. Für ununterbrochenen 24/7-Schutz abonniere den Premium-Plan.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Cet e-mail est déjà utilisé",
   "erroCadastroSenhaFraca": "Le mot de passe est trop faible",
   "erroCadastroGenerico": "Impossible de créer le compte. Veuillez réessayer",
+  "erroLoginSemConexao": "Pas de connexion internet. Vérifiez votre réseau et réessayez",
+  "erroLoginContaDesabilitada": "Ce compte a été désactivé. Contactez le support",
+  "erroCadastroSemConexao": "Pas de connexion internet. Vérifiez votre réseau et réessayez",
+  "erroCadastroOperacaoNaoPermitida": "L'inscription par e-mail et mot de passe est temporairement indisponible",
   "cadastroEmailVerificacaoEnviado": "Un e-mail de confirmation a été envoyé. Veuillez vérifier votre boîte de réception avant de vous connecter.",
   "emailNaoVerificadoTitulo": "E-mail non vérifié",
   "emailNaoVerificadoMensagem": "Vous devez confirmer votre e-mail avant de vous connecter. Vérifiez votre boîte de réception (et le dossier spam).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Effacer la session de connexion",
   "loginLimparSessaoConfirmacao": "Session de connexion sociale effacée. Essayez de vous reconnecter.",
   "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion.",
+  "loginSocialCredencialInvalida": "Impossible de vérifier votre compte avec ce fournisseur. Veuillez réessayer",
+  "loginSocialProvedorIndisponivel": "Cette méthode de connexion est temporairement indisponible",
   "onboardingTitulo": "Configuration de sécurité",
   "onboardingIntroducao": "Pour que le bouton panique et les alertes fonctionnent de façon fiable, même écran verrouillé, accordez les autorisations ci-dessous. Vous pouvez modifier ces autorisations à tout moment dans les paramètres du système d'exploitation de l'appareil.",
   "onboardingBadgeEssencial": "Essentiel",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Forfait Gratuit : les fonctionnalités complètes seront de nouveau disponibles le {data}",
+  "planoFreeIndicadorBloqueado": "Forfait Gratuit : verrouillé — il reste {dias} jours avant le déblocage complet, le {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Forfait Premium : protection complète sans interruption",
+  "premiumCompraConcedidaMensagem": "Premium activé avec succès ! Profitez d'une protection complète, sans interruption.",
+  "premiumCompraFalhaMensagem": "Impossible de confirmer votre abonnement pour le moment. Nous réessaierons automatiquement.",
   "planoBloqueadoModalTitulo": "Vos jours gratuits de ce mois sont terminés",
-  "planoBloqueadoModalConteudo": "Vos 10 jours gratuits de ce mois ont expiré. Ce numéro de téléphone retrouvera l'accès complet le {data}. Pour une protection 24h/24 et 7j/7 sans interruption, abonnez-vous au Forfait Premium.",
+  "planoBloqueadoModalConteudo": "Vos 10 jours gratuits de ce mois ont expiré. Il reste {dias} jours avant que ce numéro de téléphone retrouve l'accès complet, le {data}. Pour une protection 24h/24 et 7j/7 sans interruption, abonnez-vous au Forfait Premium.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

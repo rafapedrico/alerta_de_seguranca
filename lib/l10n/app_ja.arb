@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "このメールアドレスは既に登録されています",
   "erroCadastroSenhaFraca": "パスワードが弱すぎます",
   "erroCadastroGenerico": "アカウントを作成できませんでした。もう一度お試しください",
+  "erroLoginSemConexao": "インターネットに接続されていません。ネットワークを確認してもう一度お試しください",
+  "erroLoginContaDesabilitada": "このアカウントは無効化されています。サポートにお問い合わせください",
+  "erroCadastroSemConexao": "インターネットに接続されていません。ネットワークを確認してもう一度お試しください",
+  "erroCadastroOperacaoNaoPermitida": "メールアドレスとパスワードでの登録は一時的にご利用いただけません",
   "cadastroEmailVerificacaoEnviado": "確認メールを送信しました。ログインする前に受信箱をご確認ください。",
   "emailNaoVerificadoTitulo": "メールが未確認です",
   "emailNaoVerificadoMensagem": "ログインする前にメールアドレスの確認が必要です。受信箱（迷惑メールフォルダも）をご確認ください。",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "ログインセッションをクリア",
   "loginLimparSessaoConfirmacao": "ソーシャルログインセッションをクリアしました。もう一度ログインしてください。",
   "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。",
+  "loginSocialCredencialInvalida": "このプロバイダでアカウントを確認できませんでした。もう一度お試しください",
+  "loginSocialProvedorIndisponivel": "このログイン方法は一時的にご利用いただけません",
   "onboardingTitulo": "セキュリティ設定",
   "onboardingIntroducao": "画面がロックされていても緊急ボタンとアラートが確実に機能するように、以下の権限を許可してください。これらの権限は、端末のオペレーティングシステムの設定からいつでも編集できます。",
   "onboardingBadgeEssencial": "必須",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "フリープラン: {data}に全機能が再び利用可能になります",
+  "planoFreeIndicadorBloqueado": "フリープラン: ロック中 — 全機能再開まであと{dias}日（{data}）",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "プレミアムプラン: 中断のない完全保護",
+  "premiumCompraConcedidaMensagem": "プレミアムが有効になりました！中断のない完全な保護をお楽しみください。",
+  "premiumCompraFalhaMensagem": "現在サブスクリプションを確認できませんでした。自動的に再試行します。",
   "planoBloqueadoModalTitulo": "今月の無料日数が終了しました",
-  "planoBloqueadoModalConteudo": "今月の10日間の無料期間が終了しました。この電話番号は{data}に再び全機能にアクセスできるようになります。24時間365日、中断のない保護のために、プレミアムプランにご登録ください。",
+  "planoBloqueadoModalConteudo": "今月の10日間の無料期間が終了しました。この電話番号が再び全機能にアクセスできるようになるまで、あと{dias}日（{data}）です。24時間365日、中断のない保護のために、プレミアムプランにご登録ください。",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

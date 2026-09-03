@@ -199,11 +199,32 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Mensagens específicas para os códigos de [FirebaseAuthException] mais
+  /// relevantes ao login social — os 3 provedores (Google/Apple) chegam
+  /// aqui pelo mesmo caminho ([_fazerLoginSocial]), então cobre os casos
+  /// comuns aos três em vez de duplicar por provedor. Qualquer código não
+  /// listado (ou qualquer exceção que não seja [FirebaseAuthException] —
+  /// ex: falha nativa do Google Sign-In/Credential Manager antes mesmo de
+  /// chegar ao Firebase, tratada pelo `catch` genérico de
+  /// [_fazerLoginSocial]) cai no texto genérico.
   String _mensagemErroLoginSocial(FirebaseAuthException e) {
-    if (e.code == 'account-exists-with-different-credential') {
-      return AppLocalizations.of(context)!.loginSocialContaExistente;
+    final l10n = AppLocalizations.of(context)!;
+    switch (e.code) {
+      case 'account-exists-with-different-credential':
+        return l10n.loginSocialContaExistente;
+      case 'invalid-credential':
+        return l10n.loginSocialCredencialInvalida;
+      case 'user-disabled':
+        return l10n.erroLoginContaDesabilitada;
+      case 'network-request-failed':
+        return l10n.erroLoginSemConexao;
+      case 'too-many-requests':
+        return l10n.erroLoginMuitasTentativas;
+      case 'operation-not-allowed':
+        return l10n.loginSocialProvedorIndisponivel;
+      default:
+        return l10n.erroLoginGenerico;
     }
-    return AppLocalizations.of(context)!.erroLoginGenerico;
   }
 
   /// Passos comuns pós-login bem-sucedido, compartilhados entre o login
@@ -284,6 +305,10 @@ class _LoginScreenState extends State<LoginScreen> {
         return AppLocalizations.of(context)!.campoEmailInvalido;
       case 'too-many-requests':
         return AppLocalizations.of(context)!.erroLoginMuitasTentativas;
+      case 'user-disabled':
+        return AppLocalizations.of(context)!.erroLoginContaDesabilitada;
+      case 'network-request-failed':
+        return AppLocalizations.of(context)!.erroLoginSemConexao;
       default:
         return AppLocalizations.of(context)!.erroLoginGenerico;
     }

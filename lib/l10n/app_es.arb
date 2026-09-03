@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Este correo ya está registrado",
   "erroCadastroSenhaFraca": "La contraseña es demasiado débil",
   "erroCadastroGenerico": "No se pudo crear la cuenta. Inténtalo de nuevo",
+  "erroLoginSemConexao": "Sin conexión a internet. Verifica tu red e inténtalo de nuevo",
+  "erroLoginContaDesabilitada": "Esta cuenta ha sido deshabilitada. Contacta con soporte",
+  "erroCadastroSemConexao": "Sin conexión a internet. Verifica tu red e inténtalo de nuevo",
+  "erroCadastroOperacaoNaoPermitida": "El registro con correo y contraseña no está disponible temporalmente",
   "cadastroEmailVerificacaoEnviado": "Se envió un correo de confirmación. Por favor, revisa tu bandeja de entrada antes de iniciar sesión.",
   "emailNaoVerificadoTitulo": "Correo no verificado",
   "emailNaoVerificadoMensagem": "Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada (y la carpeta de spam).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Borrar sesión de inicio",
   "loginLimparSessaoConfirmacao": "Sesión de inicio social borrada. Intenta iniciar sesión de nuevo.",
   "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión.",
+  "loginSocialCredencialInvalida": "No se pudo verificar tu cuenta con este proveedor. Inténtalo de nuevo",
+  "loginSocialProvedorIndisponivel": "Este método de inicio de sesión no está disponible temporalmente",
   "onboardingTitulo": "Configuración de Seguridad",
   "onboardingIntroducao": "Para que el botón de pánico y las alertas funcionen de forma confiable, incluso con la pantalla bloqueada, concede los permisos a continuación. Puedes editar estos permisos en cualquier momento en la configuración del sistema operativo del dispositivo.",
   "onboardingBadgeEssencial": "Esencial",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Plan Gratuito: las funciones completas se desbloquean de nuevo el {data}",
+  "planoFreeIndicadorBloqueado": "Plan Gratuito: bloqueado — quedan {dias} días para desbloquear de nuevo, el {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Plan Premium: protección completa sin interrupciones",
+  "premiumCompraConcedidaMensagem": "¡Premium activado con éxito! Disfruta de protección completa, sin interrupciones.",
+  "premiumCompraFalhaMensagem": "No pudimos confirmar tu suscripción ahora. Lo intentaremos de nuevo automáticamente.",
   "planoBloqueadoModalTitulo": "Tus días gratuitos de este mes terminaron",
-  "planoBloqueadoModalConteudo": "Tus 10 días gratuitos de este mes han expirado. Este número de teléfono volverá a tener acceso completo el {data}. Para protección 24/7 sin interrupciones, suscríbete al Plan Premium.",
+  "planoBloqueadoModalConteudo": "Tus 10 días gratuitos de este mes han expirado. Faltan {dias} días para que este número de teléfono vuelva a tener acceso completo, el {data}. Para protección 24/7 sin interrupciones, suscríbete al Plan Premium.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

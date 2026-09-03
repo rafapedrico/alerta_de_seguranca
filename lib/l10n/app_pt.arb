@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Este e-mail já está cadastrado",
   "erroCadastroSenhaFraca": "A senha é muito fraca",
   "erroCadastroGenerico": "Não foi possível criar a conta. Tente novamente",
+  "erroLoginSemConexao": "Sem conexão com a internet. Verifique sua rede e tente novamente",
+  "erroLoginContaDesabilitada": "Esta conta foi desabilitada. Entre em contato com o suporte",
+  "erroCadastroSemConexao": "Sem conexão com a internet. Verifique sua rede e tente novamente",
+  "erroCadastroOperacaoNaoPermitida": "Cadastro por e-mail e senha está temporariamente indisponível",
   "cadastroEmailVerificacaoEnviado": "Um e-mail de confirmação foi enviado. Por favor, verifique sua caixa de entrada antes de realizar o login.",
   "emailNaoVerificadoTitulo": "E-mail não verificado",
   "emailNaoVerificadoMensagem": "Você precisa confirmar seu e-mail antes de entrar. Verifique sua caixa de entrada (e a pasta de spam).",
@@ -977,6 +981,8 @@
   "loginLimparSessaoBotao": "Limpar sessão de login",
   "loginLimparSessaoConfirmacao": "Sessão de login social limpa. Tente entrar novamente.",
   "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login.",
+  "loginSocialCredencialInvalida": "Não foi possível validar sua conta com este provedor. Tente novamente",
+  "loginSocialProvedorIndisponivel": "Este método de login está temporariamente indisponível",
   "onboardingTitulo": "Configuração de Segurança",
   "onboardingIntroducao": "Para que o botão de pânico e os alertas funcionem de forma confiável, mesmo com a tela bloqueada, conceda as permissões abaixo. Você pode editar estas permissões a qualquer momento nas configurações do sistema operacional do aparelho.",
   "onboardingBadgeEssencial": "Essencial",
@@ -1048,19 +1054,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Plano Free: recursos completos liberados novamente em {data}",
+  "planoFreeIndicadorBloqueado": "Plano Free: bloqueado — faltam {dias} dias para os recursos completos liberarem de novo, em {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Plano Premium: proteção completa sem interrupções",
+  "premiumCompraConcedidaMensagem": "Premium ativado com sucesso! Aproveite a proteção completa, sem interrupções.",
+  "premiumCompraFalhaMensagem": "Não foi possível confirmar sua assinatura agora. Vamos tentar novamente automaticamente.",
   "planoBloqueadoModalTitulo": "Seus dias gratuitos deste mês acabaram",
-  "planoBloqueadoModalConteudo": "Seus 10 dias mensais gratuitos expiraram. Este número de telefone terá acesso aos recursos completos novamente em {data}. Para proteção 24/7 sem interrupções, assine o Plano Premium.",
+  "planoBloqueadoModalConteudo": "Seus 10 dias mensais gratuitos expiraram. Faltam {dias} dias para este número de telefone ter acesso aos recursos completos novamente, em {data}. Para proteção 24/7 sem interrupções, assine o Plano Premium.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

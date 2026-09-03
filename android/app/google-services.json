@@ -51,6 +51,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "555863351772-cjf4rh2t9nhj5a7caq6plibtb10a0n9u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "d5ff6070cd773efff3c5e3a90701cd4c73faa4ca"
+          }
+        },
+        {
           "client_id": "555863351772-gjn1v3brvbv0f2pau77vm4q3s96dkfm9.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

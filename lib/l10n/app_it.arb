@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Questa e-mail è già registrata",
   "erroCadastroSenhaFraca": "La password è troppo debole",
   "erroCadastroGenerico": "Impossibile creare l'account. Riprova",
+  "erroLoginSemConexao": "Nessuna connessione a internet. Controlla la rete e riprova",
+  "erroLoginContaDesabilitada": "Questo account è stato disabilitato. Contatta il supporto",
+  "erroCadastroSemConexao": "Nessuna connessione a internet. Controlla la rete e riprova",
+  "erroCadastroOperacaoNaoPermitida": "La registrazione con e-mail e password è temporaneamente non disponibile",
   "cadastroEmailVerificacaoEnviado": "È stata inviata un'e-mail di conferma. Controlla la tua casella di posta prima di accedere.",
   "emailNaoVerificadoTitulo": "E-mail non verificata",
   "emailNaoVerificadoMensagem": "Devi confermare la tua e-mail prima di accedere. Controlla la tua casella di posta (e la cartella spam).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Cancella sessione di accesso",
   "loginLimparSessaoConfirmacao": "Sessione di accesso social cancellata. Prova ad accedere di nuovo.",
   "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso.",
+  "loginSocialCredencialInvalida": "Impossibile verificare il tuo account con questo provider. Riprova",
+  "loginSocialProvedorIndisponivel": "Questo metodo di accesso è temporaneamente non disponibile",
   "onboardingTitulo": "Configurazione di Sicurezza",
   "onboardingIntroducao": "Perché il pulsante di panico e gli avvisi funzionino in modo affidabile, anche a schermo bloccato, concedi i permessi qui sotto. Puoi modificare questi permessi in qualsiasi momento nelle impostazioni del sistema operativo del dispositivo.",
   "onboardingBadgeEssencial": "Essenziale",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Piano Free: le funzioni complete tornano disponibili il {data}",
+  "planoFreeIndicadorBloqueado": "Piano Free: bloccato — mancano {dias} giorni allo sblocco completo, il {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Piano Premium: protezione completa senza interruzioni",
+  "premiumCompraConcedidaMensagem": "Premium attivato con successo! Goditi la protezione completa, senza interruzioni.",
+  "premiumCompraFalhaMensagem": "Non è stato possibile confermare il tuo abbonamento ora. Riproveremo automaticamente.",
   "planoBloqueadoModalTitulo": "I tuoi giorni gratuiti di questo mese sono terminati",
-  "planoBloqueadoModalConteudo": "I tuoi 10 giorni gratuiti di questo mese sono scaduti. Questo numero di telefono avrà di nuovo accesso completo il {data}. Per una protezione 24/7 senza interruzioni, abbonati al Piano Premium.",
+  "planoBloqueadoModalConteudo": "I tuoi 10 giorni gratuiti di questo mese sono scaduti. Mancano {dias} giorni prima che questo numero di telefono riabbia accesso completo, il {data}. Per una protezione 24/7 senza interruzioni, abbonati al Piano Premium.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

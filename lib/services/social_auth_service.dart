@@ -103,8 +103,22 @@ class SocialAuthService {
           .timeout(const Duration(seconds: 45));
       final GoogleSignInAuthentication googleAuth =
           googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+      // Defensivo: `idToken` é nullable no plugin (`GoogleSignInAuthentication`,
+      // ver `google_sign_in` 7.x) — na prática só deveria vir nulo se o
+      // `serverClientId` estiver mal configurado ou o Google devolver uma
+      // resposta incompleta. Sem esta checagem, `GoogleAuthProvider.credential`
+      // seguiria adiante com `idToken: null` e o Firebase falharia mais
+      // abaixo com um erro genérico difícil de diagnosticar — melhor
+      // sinalizar aqui, no ponto exato da causa.
+      if (idToken == null) {
+        throw FirebaseAuthException(
+          code: 'invalid-credential',
+          message: 'O Google não retornou um idToken válido para esta conta.',
+        );
+      }
       final OAuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
+        idToken: idToken,
       );
       return await _auth.signInWithCredential(credential);
     } on GoogleSignInException catch (e) {

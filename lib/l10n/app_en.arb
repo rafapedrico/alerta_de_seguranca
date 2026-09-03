@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "This email is already registered",
   "erroCadastroSenhaFraca": "The password is too weak",
   "erroCadastroGenerico": "Couldn't create the account. Please try again",
+  "erroLoginSemConexao": "No internet connection. Check your network and try again",
+  "erroLoginContaDesabilitada": "This account has been disabled. Please contact support",
+  "erroCadastroSemConexao": "No internet connection. Check your network and try again",
+  "erroCadastroOperacaoNaoPermitida": "Sign-up with email and password is temporarily unavailable",
   "cadastroEmailVerificacaoEnviado": "A confirmation email has been sent. Please check your inbox before signing in.",
   "emailNaoVerificadoTitulo": "Email not verified",
   "emailNaoVerificadoMensagem": "You need to confirm your email before signing in. Check your inbox (and spam folder).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Clear login session",
   "loginLimparSessaoConfirmacao": "Social login session cleared. Try signing in again.",
   "loginSocialContaExistente": "An account with this email already exists using a different sign-in method.",
+  "loginSocialCredencialInvalida": "Couldn't verify your account with this provider. Please try again",
+  "loginSocialProvedorIndisponivel": "This sign-in method is temporarily unavailable",
   "onboardingTitulo": "Security Setup",
   "onboardingIntroducao": "For the panic button and alerts to work reliably, even with the screen locked, grant the permissions below. You can edit these permissions at any time in your device's operating system settings.",
   "onboardingBadgeEssencial": "Essential",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Free Plan: full features unlock again on {data}",
+  "planoFreeIndicadorBloqueado": "Free Plan: locked — {dias} days left until full features unlock again, on {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Premium Plan: full protection with no interruptions",
+  "premiumCompraConcedidaMensagem": "Premium activated successfully! Enjoy full protection with no interruptions.",
+  "premiumCompraFalhaMensagem": "We couldn't confirm your subscription right now. We'll try again automatically.",
   "planoBloqueadoModalTitulo": "Your free days for this month are over",
-  "planoBloqueadoModalConteudo": "Your 10 free days this month have expired. This phone number will have full access to features again on {data}. For 24/7 protection with no interruptions, subscribe to the Premium Plan.",
+  "planoBloqueadoModalConteudo": "Your 10 free days this month have expired. {dias} days left until this phone number has full access to features again, on {data}. For 24/7 protection with no interruptions, subscribe to the Premium Plan.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

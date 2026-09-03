@@ -141,6 +141,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
         return AppLocalizations.of(context)!.erroCadastroSenhaFraca;
       case 'invalid-email':
         return AppLocalizations.of(context)!.campoEmailInvalido;
+      case 'network-request-failed':
+        return AppLocalizations.of(context)!.erroCadastroSemConexao;
+      case 'operation-not-allowed':
+        return AppLocalizations.of(context)!.erroCadastroOperacaoNaoPermitida;
       default:
         return AppLocalizations.of(context)!.erroCadastroGenerico;
     }

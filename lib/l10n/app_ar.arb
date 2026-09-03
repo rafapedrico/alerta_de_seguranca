@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "هذا البريد الإلكتروني مسجل بالفعل",
   "erroCadastroSenhaFraca": "كلمة المرور ضعيفة جدًا",
   "erroCadastroGenerico": "تعذر إنشاء الحساب. حاول مرة أخرى",
+  "erroLoginSemConexao": "لا يوجد اتصال بالإنترنت. تحقق من شبكتك وحاول مرة أخرى",
+  "erroLoginContaDesabilitada": "تم تعطيل هذا الحساب. يرجى التواصل مع الدعم",
+  "erroCadastroSemConexao": "لا يوجد اتصال بالإنترنت. تحقق من شبكتك وحاول مرة أخرى",
+  "erroCadastroOperacaoNaoPermitida": "التسجيل بالبريد الإلكتروني وكلمة المرور غير متاح مؤقتًا",
   "cadastroEmailVerificacaoEnviado": "تم إرسال بريد إلكتروني للتأكيد. يرجى التحقق من صندوق الوارد قبل تسجيل الدخول.",
   "emailNaoVerificadoTitulo": "البريد الإلكتروني غير موثّق",
   "emailNaoVerificadoMensagem": "يجب تأكيد بريدك الإلكتروني قبل تسجيل الدخول. تحقق من صندوق الوارد (ومجلد البريد العشوائي).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "مسح جلسة الدخول",
   "loginLimparSessaoConfirmacao": "تم مسح جلسة الدخول الاجتماعي. حاول تسجيل الدخول مرة أخرى.",
   "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة.",
+  "loginSocialCredencialInvalida": "تعذر التحقق من حسابك مع هذا المزود. حاول مرة أخرى",
+  "loginSocialProvedorIndisponivel": "طريقة تسجيل الدخول هذه غير متاحة مؤقتًا",
   "onboardingTitulo": "إعداد الأمان",
   "onboardingIntroducao": "لكي يعمل زر الذعر والتنبيهات بشكل موثوق، حتى مع قفل الشاشة، امنح الأذونات أدناه. يمكنك تعديل هذه الأذونات في أي وقت من إعدادات نظام تشغيل الجهاز.",
   "onboardingBadgeEssencial": "أساسي",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "الخطة المجانية: ستتوفر الميزات الكاملة مجددًا في {data}",
+  "planoFreeIndicadorBloqueado": "الخطة المجانية: محظورة — يتبقّى {dias} يومًا لإعادة تفعيل كل الميزات، في {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "الخطة المميزة: حماية كاملة دون انقطاع",
+  "premiumCompraConcedidaMensagem": "تم تفعيل الخطة المميزة بنجاح! استمتع بحماية كاملة دون انقطاع.",
+  "premiumCompraFalhaMensagem": "تعذّر تأكيد اشتراكك الآن. سنحاول مرة أخرى تلقائيًا.",
   "planoBloqueadoModalTitulo": "انتهت أيامك المجانية لهذا الشهر",
-  "planoBloqueadoModalConteudo": "انتهت أيامك العشرة المجانية لهذا الشهر. سيستعيد هذا الرقم الوصول الكامل في {data}. للحصول على حماية على مدار الساعة دون انقطاع، اشترك في الخطة المميزة.",
+  "planoBloqueadoModalConteudo": "انتهت أيامك العشرة المجانية لهذا الشهر. يتبقّى {dias} يومًا حتى يستعيد هذا الرقم الوصول الكامل، في {data}. للحصول على حماية على مدار الساعة دون انقطاع، اشترك في الخطة المميزة.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

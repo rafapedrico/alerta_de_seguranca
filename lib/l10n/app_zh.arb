@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "该邮箱已被注册",
   "erroCadastroSenhaFraca": "密码强度太弱",
   "erroCadastroGenerico": "无法创建账户，请重试",
+  "erroLoginSemConexao": "没有网络连接。请检查网络后重试",
+  "erroLoginContaDesabilitada": "此账户已被禁用。请联系支持团队",
+  "erroCadastroSemConexao": "没有网络连接。请检查网络后重试",
+  "erroCadastroOperacaoNaoPermitida": "邮箱和密码注册暂时不可用",
   "cadastroEmailVerificacaoEnviado": "确认邮件已发送。请在登录前检查您的收件箱。",
   "emailNaoVerificadoTitulo": "邮箱未验证",
   "emailNaoVerificadoMensagem": "登录前需要验证您的邮箱。请检查收件箱（以及垃圾邮件文件夹）。",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "清除登录会话",
   "loginLimparSessaoConfirmacao": "社交登录会话已清除,请重新尝试登录。",
   "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。",
+  "loginSocialCredencialInvalida": "无法通过该提供商验证您的账户，请重试",
+  "loginSocialProvedorIndisponivel": "此登录方式暂时不可用",
   "onboardingTitulo": "安全设置",
   "onboardingIntroducao": "为了让紧急按钮和警报即使在锁屏状态下也能可靠工作，请授予以下权限。您可以随时在设备的操作系统设置中编辑这些权限。",
   "onboardingBadgeEssencial": "必需",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "免费计划：完整功能将于 {data} 重新开放",
+  "planoFreeIndicadorBloqueado": "免费计划：已锁定 — 距完整功能重新开放还剩 {dias} 天（{data}）",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "高级计划：全天候保护，无中断",
+  "premiumCompraConcedidaMensagem": "高级计划已成功激活！尽享全天候无中断保护。",
+  "premiumCompraFalhaMensagem": "暂时无法确认您的订阅，我们将自动重试。",
   "planoBloqueadoModalTitulo": "本月的免费天数已用完",
-  "planoBloqueadoModalConteudo": "您本月的10天免费时间已到期。此电话号码将于{data}重新获得完整功能访问权限。如需全天候无中断保护，请订阅高级计划。",
+  "planoBloqueadoModalConteudo": "您本月的10天免费时间已到期。距此电话号码重新获得完整功能访问权限还剩 {dias} 天（{data}）。如需全天候无中断保护，请订阅高级计划。",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }

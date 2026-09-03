@@ -32,6 +32,10 @@
   "erroCadastroEmailEmUso": "Этот e-mail уже зарегистрирован",
   "erroCadastroSenhaFraca": "Слишком простой пароль",
   "erroCadastroGenerico": "Не удалось создать аккаунт. Попробуйте снова",
+  "erroLoginSemConexao": "Нет подключения к интернету. Проверьте сеть и попробуйте снова",
+  "erroLoginContaDesabilitada": "Этот аккаунт отключён. Обратитесь в поддержку",
+  "erroCadastroSemConexao": "Нет подключения к интернету. Проверьте сеть и попробуйте снова",
+  "erroCadastroOperacaoNaoPermitida": "Регистрация по e-mail и паролю временно недоступна",
   "cadastroEmailVerificacaoEnviado": "Письмо с подтверждением отправлено. Проверьте почту перед входом.",
   "emailNaoVerificadoTitulo": "E-mail не подтверждён",
   "emailNaoVerificadoMensagem": "Перед входом необходимо подтвердить e-mail. Проверьте почтовый ящик (и папку «Спам»).",
@@ -705,6 +709,8 @@
   "loginLimparSessaoBotao": "Очистить сеанс входа",
   "loginLimparSessaoConfirmacao": "Сеанс социального входа очищен. Попробуйте войти снова.",
   "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа.",
+  "loginSocialCredencialInvalida": "Не удалось подтвердить аккаунт через этого провайдера. Попробуйте снова",
+  "loginSocialProvedorIndisponivel": "Этот способ входа временно недоступен",
   "onboardingTitulo": "Настройка безопасности",
   "onboardingIntroducao": "Чтобы кнопка паники и оповещения работали надёжно, даже при заблокированном экране, предоставьте разрешения ниже. Вы можете изменить эти разрешения в любой момент в настройках операционной системы устройства.",
   "onboardingBadgeEssencial": "Обязательно",
@@ -776,19 +782,27 @@
       }
     }
   },
-  "planoFreeIndicadorBloqueado": "Бесплатный план: полный доступ к функциям снова откроется {data}",
+  "planoFreeIndicadorBloqueado": "Бесплатный план: заблокирован — осталось {dias} дн. до полной разблокировки, {data}",
   "@planoFreeIndicadorBloqueado": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
     }
   },
   "planoFreeIndicadorPremium": "Премиум-план: полная защита без перерывов",
+  "premiumCompraConcedidaMensagem": "Премиум успешно активирован! Пользуйтесь полной защитой без перерывов.",
+  "premiumCompraFalhaMensagem": "Не удалось подтвердить вашу подписку сейчас. Мы повторим попытку автоматически.",
   "planoBloqueadoModalTitulo": "Ваши бесплатные дни в этом месяце закончились",
-  "planoBloqueadoModalConteudo": "Ваши 10 бесплатных дней в этом месяце истекли. Этот номер телефона снова получит полный доступ {data}. Для круглосуточной защиты без перерывов оформите Премиум-план.",
+  "planoBloqueadoModalConteudo": "Ваши 10 бесплатных дней в этом месяце истекли. Осталось {dias} дн. до полного восстановления доступа для этого номера телефона, {data}. Для круглосуточной защиты без перерывов оформите Премиум-план.",
   "@planoBloqueadoModalConteudo": {
     "placeholders": {
+      "dias": {
+        "type": "int"
+      },
       "data": {
         "type": "String"
       }
