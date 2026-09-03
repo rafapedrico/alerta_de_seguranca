@@ -277,3 +277,22 @@ const planoAdminService = require("./planoAdminService");
 exports.obterParametrosPlanos = planoAdminService.obterParametrosPlanos;
 exports.buscarUsuarioPlano = planoAdminService.buscarUsuarioPlano;
 exports.revogarPremiumAdmin = planoAdminService.revogarPremiumAdmin;
+
+// Validação real de compra do Plano Premium via Google Play Billing —
+// ver premiumPurchaseService.js. Esta é a ÚNICA forma automática (não
+// manual) de conceder `isPremium: true`.
+const premiumPurchaseService = require("./premiumPurchaseService");
+// - Callable chamada pelo purchaseStream do app assim que uma compra é
+// entregue (ver PremiumPurchaseService.comprarPremium no Flutter).
+exports.validarCompraPremium = premiumPurchaseService.validarCompraPremium;
+// - Job diário: revoga automaticamente o Premium de quem cancelou/deixou
+// expirar a assinatura real (rede de segurança sem RTDN, ver
+// documentação no topo do arquivo).
+exports.reverificarAssinaturasPremium =
+  premiumPurchaseService.reverificarAssinaturasPremium;
+// - Reconciliação MANUAL (admin) de uma compra que falhou por problema de
+// infraestrutura (não de fraude) — roda a MESMA verificação real contra a
+// Play Store de `validarCompraPremium`, nunca um atalho sem ela. Exige
+// role "admin".
+exports.reconciliarCompraPremiumAdmin =
+  premiumPurchaseService.reconciliarCompraPremiumAdmin;
