@@ -40,6 +40,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "atualizadoEm", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "contas_excluidas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "retencaoProcessada", "order": "ASCENDING" },
+        { "fieldPath": "excluidoEmMs", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

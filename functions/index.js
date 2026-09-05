@@ -215,13 +215,21 @@ exports.monitorarExpiracaoMonitoramento =
   require("./monitoramentoExpiracaoMonitor").monitorarExpiracaoMonitoramento;
 
 // Configurações > Minha Conta > Excluir Conta e Dados (ver
-// exclusaoContaService.js): apaga Firestore + Storage + o registro no
-// Firebase Authentication do usuário autenticado, com Admin SDK (única
-// forma de contornar tanto `firestore.rules` — que nega `delete` ao
-// cliente de propósito — quanto a exigência de reautenticação recente do
-// SDK cliente do Auth).
+// exclusaoContaService.js): apaga Firestore + o registro no Firebase
+// Authentication do usuário autenticado, com Admin SDK (única forma de
+// contornar tanto `firestore.rules` — que nega `delete` ao cliente de
+// propósito — quanto a exigência de reautenticação recente do SDK
+// cliente do Auth). Histórico de alertas/fotos NÃO é apagado aqui — ver
+// retenção de 30 dias logo abaixo.
 exports.excluirContaCompleta =
   require("./exclusaoContaService").excluirContaCompleta;
+
+// Job agendado (retenção de 30 dias, pedido explícito do usuário,
+// 2026-09-04): purga definitivamente o histórico de alertas/localizações/
+// fotografias das contas excluídas há mais de 30 dias — ver
+// retencaoAlertasService.js.
+exports.purgarHistoricoRetidoAposExclusao =
+  require("./retencaoAlertasService").purgarHistoricoRetidoAposExclusao;
 
 // Unicidade estrita de telefone SEM SMS OTP (decisão de arquitetura
 // 2026-08-23 — remoção do Firebase Phone Auth para zerar custo de SMS,

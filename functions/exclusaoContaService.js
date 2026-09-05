@@ -34,11 +34,23 @@ const db = getFirestore();
 
 /**
  * Apaga todos os documentos do Firestore associados a [uid]:
- * - `usuarios/{uid}` (documento principal) e suas subcoleções
- *   `alertas/*` e `monitoramento/atual`.
+ * - `usuarios/{uid}` (documento principal) e sua subcoleção
+ *   `monitoramento/atual`.
  * - `alarmes_agendados/*` cujo campo `usuarioId` seja [uid].
  * - `permissoes_monitoramento/*` em que [uid] seja `uidAlvo` OU
  *   `uidSolicitante` (compartilhamento bilateral de localização).
+ *
+ * NÃO apaga `usuarios/{uid}/alertas/*` (histórico de alertas, localizações
+ * e fotografias) nem as fotos do SOS em `sos_fotos/{uid}/` no Storage —
+ * RETENÇÃO DELIBERADA DE 30 DIAS (reespecificação do usuário, 2026-09-04,
+ * ver `website/exclusao-dados.html`/`privacidade.html` e
+ * `excluirContaItemHistorico` no app): por motivos de segurança, esse
+ * histórico serve de prova em caso de incidentes e só é apagado de
+ * verdade pela function agendada [purgarHistoricoRetidoAposExclusao] em
+ * `retencaoAlertasService.js`, 30 dias depois de [registrarRevogacao] ter
+ * gravado `excluidoEm`. Ficam órfãos (mas inertes: sem o uid no Auth,
+ * ninguém jamais volta a autenticar como esse usuário para lê-los —
+ * `firestore.rules` restringe `alertas` ao próprio dono) até lá.
  *
  * NÃO tenta limpar `entregas_alerta/*\/confirmacoes/{uid}` — coleção
  * interna e opaca do pipeline de Push (sem índice viável por uid a partir
@@ -59,9 +71,19 @@ const db = getFirestore();
 async function excluirDadosFirestore(uid) {
   const operacoes = [];
 
-  const alertasSnap = await db
-      .collection("usuarios").doc(uid).collection("alertas").get();
-  for (const doc of alertasSnap.docs) operacoes.push(doc.ref.delete());
+  // BUG REAL CORRIGIDO (auditoria de exclusão de conta, 2026-09-04): esta
+  // subcoleção (ver `relatorioFalhaService.js`) normalmente se autolimpa —
+  // o próprio app apaga cada documento assim que o processa (ver
+  // `RelatorioFalhaEntregaService._ingerirRelatorio` no Flutter) — mas um
+  // relatório gerado e ainda não processado no momento da exclusão (app
+  // fechado, nudge perdido) ficava permanentemente órfão: sem o `uid` no
+  // Auth, ninguém jamais volta a autenticar como esse usuário para apagá-lo,
+  // e `firestore.rules` restringe `relatoriosFalha` ao próprio dono — os
+  // nomes/telefones de terceiros ali dentro (`contatosFalha`) ficariam
+  // presos para sempre.
+  const relatoriosFalhaSnap = await db
+      .collection("usuarios").doc(uid).collection("relatoriosFalha").get();
+  for (const doc of relatoriosFalhaSnap.docs) operacoes.push(doc.ref.delete());
 
   operacoes.push(
       db.collection("usuarios").doc(uid)
@@ -99,13 +121,53 @@ async function excluirDadosFirestore(uid) {
 }
 
 /**
+ * DECISÃO DE ARQUITETURA DELIBERADA (auditoria de exclusão de conta,
+ * 2026-09-04) — `suporte_tickets/{ticketId}` (+ subcoleção `mensagens`) e
+ * `suporte_limites/{uid}` (ver `suporteChatService.js`) NÃO são apagados
+ * por [excluirDadosFirestore], PROPOSITALMENTE: um agressor que force a
+ * vítima a excluir a conta (ou que exclua a própria conta após ser
+ * denunciado) não deve conseguir apagar junto o histórico de conversas com
+ * o Suporte/IA — que pode conter relatos, pedidos de ajuda ou evidências
+ * relevantes para uma investigação/auditoria posterior. O documento fica
+ * apenas orfão de uma conta que não existe mais (o campo `uid` deixa de
+ * corresponder a qualquer usuário do Auth), nunca acessível a mais
+ * ninguém por `firestore.rules` além do Painel de Admin
+ * (`temRolePainel`). NÃO remover esta retenção sem entender o motivo
+ * acima — se um pedido de exclusão granular desses dados surgir no
+ * futuro, resolver via solicitação manual ao DPO (ver
+ * `exclusao-dados.html`), nunca pelo fluxo automático desta função.
+ */
+
+/**
  * Apaga todas as fotos do SOS enviadas por [uid] (`sos_fotos/{uid}/*` no
  * Storage — ver `storage.rules`).
+ *
+ * NÃO é mais chamada por [excluirContaCompleta] diretamente — ver
+ * RETENÇÃO DELIBERADA DE 30 DIAS documentada em [excluirDadosFirestore].
+ * Chamada só pela function agendada [purgarHistoricoRetidoAposExclusao]
+ * em `retencaoAlertasService.js`, ao final do prazo de retenção. Mantida
+ * exportada e sem nenhuma outra mudança de comportamento.
  * @param {string} uid
  */
 async function excluirArquivosStorage(uid) {
   const bucket = getStorage().bucket();
   await bucket.deleteFiles({prefix: `sos_fotos/${uid}/`});
+}
+
+/**
+ * Apaga definitivamente `usuarios/{uid}/alertas/*` (histórico de alertas,
+ * localizações e fotografias enviadas) — chamada EXCLUSIVAMENTE pela
+ * function agendada [purgarHistoricoRetidoAposExclusao] em
+ * `retencaoAlertasService.js`, ao final do prazo de retenção de 30 dias
+ * (ver RETENÇÃO DELIBERADA documentada em [excluirDadosFirestore]).
+ * Extraída como função própria (em vez de inline lá) justamente porque
+ * NÃO roda mais no momento da exclusão da conta em si.
+ * @param {string} uid
+ */
+async function excluirHistoricoAlertas(uid) {
+  const alertasSnap = await db
+      .collection("usuarios").doc(uid).collection("alertas").get();
+  await Promise.all(alertasSnap.docs.map((doc) => doc.ref.delete()));
 }
 
 /**
@@ -135,12 +197,24 @@ async function excluirArquivosStorage(uid) {
  * de processar uma notificação de renovação, para reconhecer contas já
  * excluídas e tratar cobranças pós-exclusão como reembolso automático.
  *
+ * TAMBÉM é o âncora da RETENÇÃO DE 30 DIAS do histórico de alertas (ver
+ * [excluirDadosFirestore]): `excluidoEmMs` (epoch, mais fácil de comparar
+ * numa query do que o ISO string de `excluidoEm`, mantido por
+ * compatibilidade) + `retencaoProcessada: false` são o que a function
+ * agendada [purgarHistoricoRetidoAposExclusao] em
+ * `retencaoAlertasService.js` usa para achar, todo dia, quais contas já
+ * passaram do prazo de 30 dias e ainda não tiveram o histórico
+ * definitivamente apagado.
+ *
  * @param {string} uid
  */
 async function registrarRevogacao(uid) {
+  const agora = new Date();
   await db.collection("contas_excluidas").doc(uid).set({
-    excluidoEm: new Date().toISOString(),
+    excluidoEm: agora.toISOString(),
+    excluidoEmMs: agora.getTime(),
     motivo: "exclusao_de_conta_pelo_usuario",
+    retencaoProcessada: false,
   });
 }
 
@@ -148,16 +222,21 @@ async function registrarRevogacao(uid) {
  * Callable `onCall` acionada pelo app (ver `ExclusaoContaService` no
  * Flutter) depois da confirmação do PIN de segurança na
  * `ExcluirContaScreen`. Ordem deliberada: registro de revogação ->
- * Firestore -> Storage -> Auth por último — se algo falhar antes de
- * chegar no Auth, o usuário ainda consegue logar de novo e tentar a
- * exclusão outra vez; apagar o Auth primeiro removeria essa chance de
- * nova tentativa.
+ * Firestore -> Auth por último — se algo falhar antes de chegar no Auth,
+ * o usuário ainda consegue logar de novo e tentar a exclusão outra vez;
+ * apagar o Auth primeiro removeria essa chance de nova tentativa.
+ *
+ * Storage (`sos_fotos/{uid}/`) DELIBERADAMENTE não é apagado aqui mais —
+ * ver RETENÇÃO DE 30 DIAS documentada em [excluirDadosFirestore]/
+ * [excluirArquivosStorage]: quem apaga de verdade, ao final do prazo, é a
+ * function agendada em `retencaoAlertasService.js`.
  */
-// Reexportadas para reuso por `liberarTelefoneOrfaoService.js` (auto-cura
-// de conta fantasma no fluxo de verificação de telefone) — mesma lógica
-// de limpeza, sem duplicar código.
+// Reexportadas para reuso por `retencaoAlertasService.js` (purga definitiva
+// do histórico retido, 30 dias depois) — mesma lógica de limpeza, sem
+// duplicar código.
 exports.excluirDadosFirestore = excluirDadosFirestore;
 exports.excluirArquivosStorage = excluirArquivosStorage;
+exports.excluirHistoricoAlertas = excluirHistoricoAlertas;
 
 exports.excluirContaCompleta = onCall(async (request) => {
   if (!request.auth) {
@@ -169,7 +248,10 @@ exports.excluirContaCompleta = onCall(async (request) => {
     await registrarRevogacao(uid);
   } catch (e) {
     // Best-effort: a ausência deste marcador nunca deve impedir a
-    // exclusão real da conta em si, que é o que o usuário pediu.
+    // exclusão real da conta em si, que é o que o usuário pediu. Note que
+    // isto também significa que o histórico de alertas deste uid pode
+    // ficar retido além dos 30 dias normais, até alguém notar/corrigir —
+    // preferível a apagar peças de evidência sem o marcador de segurança.
     logger.error(`[excluirContaCompleta] Falha ao registrar revogação de ${uid}:`, e);
   }
 
@@ -181,20 +263,12 @@ exports.excluirContaCompleta = onCall(async (request) => {
   }
 
   try {
-    await excluirArquivosStorage(uid);
-  } catch (e) {
-    // Best-effort: mídias órfãs no Storage são um problema bem menor do
-    // que travar a exclusão da conta por completo — não interrompe.
-    logger.error(`[excluirContaCompleta] Falha ao excluir Storage de ${uid}:`, e);
-  }
-
-  try {
     await getAuth().deleteUser(uid);
   } catch (e) {
     logger.error(`[excluirContaCompleta] Falha ao excluir usuário do Auth ${uid}:`, e);
     throw new HttpsError("internal", "Falha ao excluir o cadastro de autenticação.");
   }
 
-  logger.info(`[excluirContaCompleta] Conta ${uid} excluída com sucesso.`);
+  logger.info(`[excluirContaCompleta] Conta ${uid} excluída com sucesso — histórico de alertas/fotos retido por 30 dias.`);
   return {sucesso: true};
 });
