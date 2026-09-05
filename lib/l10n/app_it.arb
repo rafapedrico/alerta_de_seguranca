@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "Invia di nuovo l'e-mail",
   "emailVerificacaoReenviada": "E-mail di verifica inviata di nuovo.",
   "emailVerificacaoReenvioFalhou": "Impossibile reinviare l'e-mail. Riprova più tardi.",
+  "verificarEmailTitulo": "Conferma la tua e-mail",
+  "verificarEmailMensagem": "Abbiamo inviato un'e-mail di conferma a {email}. Controlla la tua casella di posta e la cartella spam.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "L'ho verificata, accedi",
+  "verificarEmailAindaNaoConfirmado": "Non abbiamo ancora rilevato la conferma. Controlla di aver cliccato sul link nell'e-mail (e la cartella spam) e riprova.",
+  "verificarEmailReenvioMuitasTentativas": "Hai richiesto troppi reinvii in poco tempo. Attendi qualche minuto prima di riprovare.",
+  "verificarEmailBotaoReenviarCooldown": "Reinvia tra {segundos}s",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "Il Mio Profilo",
   "meuPerfilTelefoneTitulo": "Il mio numero di contatto",
   "meuPerfilTelefoneNaoCadastrado": "Nessun telefono registrato",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Consigliato",
   "onboardingStatusConcedida": "Concesso",
   "onboardingStatusPendente": "In sospeso",
+  "onboardingStatusParcial": "Parziale",
   "onboardingBotaoAbrirConfiguracoes": "Apri Impostazioni",
   "onboardingBotaoContinuar": "Continua",
   "onboardingAvisoEssenciaisPendentes": "Concedi i permessi essenziali per completare la configurazione.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Permette agli avvisi di emergenza di comparire subito, con suono, e ai promemoria programmati (check-in, timer) di scattare all'ora esatta.",
   "onboardingLocalizacaoTitulo": "Posizione sempre attiva",
   "onboardingLocalizacaoConteudo": "Con \"Consenti sempre\", la tua posizione viene inviata ai tuoi contatti di emergenza anche con l'app chiusa o lo schermo spento — essenziale in un vero SOS.",
+  "onboardingLocalizacaoStatusParcial": "Parziale (richiede \"Consenti sempre\")",
   "onboardingCameraTitulo": "Accesso alla fotocamera",
   "onboardingCameraConteudo": "Usata solo dal pulsante di panico, per allegare una foto del luogo all'avviso inviato ai tuoi contatti di emergenza.",
   "onboardingTelaCheiaTitulo": "Avvisi a schermo intero",

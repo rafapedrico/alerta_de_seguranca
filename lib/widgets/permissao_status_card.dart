@@ -24,6 +24,7 @@ class PermissaoStatusCard extends StatelessWidget {
     required this.status,
     required this.aoConceder,
     this.aoAbrirConfiguracoes,
+    this.textoStatusParcial,
   });
 
   final IconData icone;
@@ -33,6 +34,15 @@ class PermissaoStatusCard extends StatelessWidget {
   final StatusPermissaoOnboarding status;
   final VoidCallback aoConceder;
   final VoidCallback? aoAbrirConfiguracoes;
+
+  /// Texto exibido na tag de status quando [status] é
+  /// [StatusPermissaoOnboarding.parcial], substituindo o genérico
+  /// `l10n.onboardingStatusParcial` ("Parcial") por uma orientação mais
+  /// específica de item — ex: para Localização, "Parcial (requer
+  /// \"Permitir o tempo todo\")" (ver [PermissoesStatusScreen]/
+  /// [OnboardingScreen]), deixando claro que falta só o grau "sempre",
+  /// não a permissão básica. `null` usa o texto genérico.
+  final String? textoStatusParcial;
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +56,15 @@ class PermissaoStatusCard extends StatelessWidget {
         textoStatus = l10n.onboardingStatusConcedida;
         break;
       case StatusPermissaoOnboarding.parcial:
+        // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+        // testes reais mostraram o card de Localização marcado como
+        // "Pendente", em cinza, mesmo com a permissão básica ("durante o
+        // uso") já concedida e faltando só o grau "sempre"): este branch
+        // reaproveitava por engano o MESMO texto do caso `pendente`
+        // (embora já usasse a cor laranja correta) — visualmente
+        // indistinguível de uma permissão totalmente negada.
         corStatus = Colors.orange.shade700;
-        textoStatus = l10n.onboardingStatusPendente;
+        textoStatus = textoStatusParcial ?? l10n.onboardingStatusParcial;
         break;
       case StatusPermissaoOnboarding.pendente:
         corStatus = Colors.grey.shade600;

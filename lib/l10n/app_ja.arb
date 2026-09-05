@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "メールを再送信",
   "emailVerificacaoReenviada": "確認メールを再送信しました。",
   "emailVerificacaoReenvioFalhou": "メールを再送信できませんでした。しばらくしてから再度お試しください。",
+  "verificarEmailTitulo": "メールを確認してください",
+  "verificarEmailMensagem": "{email} 宛てに確認メールを送信しました。受信箱と迷惑メールフォルダをご確認ください。",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "確認しました、ログイン",
+  "verificarEmailAindaNaoConfirmado": "確認がまだ検出されていません。メール内のリンクをクリックしたか（迷惑メールフォルダも）確認して、もう一度お試しください。",
+  "verificarEmailReenvioMuitasTentativas": "短時間に再送信の要求が多すぎます。数分待ってから再度お試しください。",
+  "verificarEmailBotaoReenviarCooldown": "{segundos}秒後に再送信可能",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "マイプロフィール",
   "meuPerfilTelefoneTitulo": "自分の連絡先電話番号",
   "meuPerfilTelefoneNaoCadastrado": "電話番号が登録されていません",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "推奨",
   "onboardingStatusConcedida": "許可済み",
   "onboardingStatusPendente": "未許可",
+  "onboardingStatusParcial": "一部許可",
   "onboardingBotaoAbrirConfiguracoes": "設定を開く",
   "onboardingBotaoContinuar": "続ける",
   "onboardingAvisoEssenciaisPendentes": "設定を完了するには必須の権限を許可してください。",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "緊急アラートが音とともにすぐに表示されるようにし、予定されたリマインダー(チェックイン、タイマー)が正確な時刻に作動するようにします。",
   "onboardingLocalizacaoTitulo": "位置情報を常にオンにする",
   "onboardingLocalizacaoConteudo": "「常に許可」にすると、アプリが閉じていたり画面が消えていたりしても、位置情報が緊急連絡先に送信されます — 本物のSOSでは不可欠です。",
+  "onboardingLocalizacaoStatusParcial": "一部許可（「常に許可」が必要）",
   "onboardingCameraTitulo": "カメラへのアクセス",
   "onboardingCameraConteudo": "緊急ボタンでのみ使用し、緊急連絡先に送るアラートに現場の写真を添付します。",
   "onboardingTelaCheiaTitulo": "全画面アラート",

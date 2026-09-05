@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "重新发送邮件",
   "emailVerificacaoReenviada": "验证邮件已重新发送。",
   "emailVerificacaoReenvioFalhou": "无法重新发送邮件，请稍后重试。",
+  "verificarEmailTitulo": "确认您的邮箱",
+  "verificarEmailMensagem": "我们已向 {email} 发送了确认邮件。请检查您的收件箱和垃圾邮件文件夹。",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "已验证，登录",
+  "verificarEmailAindaNaoConfirmado": "我们还未检测到确认。请检查您是否点击了邮件中的链接（以及垃圾邮件文件夹），然后重试。",
+  "verificarEmailReenvioMuitasTentativas": "您在短时间内请求了太多次重新发送。请等待几分钟后再试。",
+  "verificarEmailBotaoReenviarCooldown": "{segundos}秒后可重新发送",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "我的资料",
   "meuPerfilTelefoneTitulo": "我的联系电话",
   "meuPerfilTelefoneNaoCadastrado": "未登记电话号码",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "建议",
   "onboardingStatusConcedida": "已授权",
   "onboardingStatusPendente": "待处理",
+  "onboardingStatusParcial": "部分授权",
   "onboardingBotaoAbrirConfiguracoes": "打开设置",
   "onboardingBotaoContinuar": "继续",
   "onboardingAvisoEssenciaisPendentes": "请授予必需权限以完成设置。",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "让紧急警报立即弹出并带有提示音，并让预定提醒（签到、计时器）准时触发。",
   "onboardingLocalizacaoTitulo": "始终开启定位",
   "onboardingLocalizacaoConteudo": "选择“始终允许”后，即使应用已关闭或屏幕熄灭，您的位置也会发送给紧急联系人——在真实的SOS中至关重要。",
+  "onboardingLocalizacaoStatusParcial": "部分授权（需要“始终允许”）",
   "onboardingCameraTitulo": "相机权限",
   "onboardingCameraConteudo": "仅在紧急按钮中使用，用于在发送给紧急联系人的警报中附上现场照片。",
   "onboardingTelaCheiaTitulo": "全屏警报",

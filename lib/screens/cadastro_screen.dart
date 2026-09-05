@@ -4,18 +4,19 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../utils/telefone_utils.dart';
+import 'verificar_email_screen.dart';
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
 ///
 /// Cria a conta real no Firebase Auth (e-mail/senha), grava o perfil
 /// inicial em `usuarios/{uid}` (nome, e-mail, telefone em E.164) via
 /// [FirebaseSyncService] e envia o e-mail de verificação.
-/// `createUserWithEmailAndPassword` autentica
-/// automaticamente o usuário recém-criado — mas como o e-mail ainda não
-/// foi confirmado, essa sessão é encerrada IMEDIATAMENTE em seguida e o
-/// usuário é devolvido à LoginScreen (nunca entra direto no app sem
-/// verificar o e-mail primeiro; é lá que a barreira de `emailVerified`
-/// é aplicada de verdade no próximo login).
+/// `createUserWithEmailAndPassword` autentica automaticamente o usuário
+/// recém-criado — essa sessão é MANTIDA (nunca encerrada aqui) e a tela
+/// avança para [VerificarEmailScreen], que decide o que fazer com ela a
+/// partir daí: só ela pode reenviar o e-mail, confirmar a verificação (e
+/// então seguir DIRETO para o app, sem pedir login de novo) ou desistir
+/// (aí sim encerrando a sessão e voltando ao Login) — nunca esta tela.
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
 
@@ -51,11 +52,13 @@ class _CadastroScreenState extends State<CadastroScreen> {
   }
 
   /// Cria a conta real no Firebase Auth, grava o perfil inicial no
-  /// Firestore e envia o e-mail de verificação. Sempre encerra a sessão
-  /// recém-criada antes de retornar à LoginScreen — em NENHUMA hipótese
-  /// (sucesso ou falha) esta tela navega para dentro do app. Em caso de
-  /// falha (e-mail já cadastrado, senha fraca, etc.), exibe o erro em
-  /// vez disso.
+  /// Firestore e envia o e-mail de verificação — depois avança para
+  /// [VerificarEmailScreen] (`pushReplacement`, substituindo esta tela na
+  /// pilha), mantendo a sessão recém-criada ativa: é a PRÓXIMA tela quem
+  /// decide o que fazer com ela dali em diante (reenviar, confirmar e
+  /// seguir direto para o app, ou desistir e encerrar a sessão). Em caso
+  /// de falha na CRIAÇÃO DA CONTA em si (e-mail já cadastrado, senha
+  /// fraca, etc.), exibe o erro e permanece nesta tela.
   Future<void> _criarConta() async {
     if (_formKey.currentState?.validate() != true) return;
     if (_criandoConta) return;
@@ -94,31 +97,37 @@ class _CadastroScreenState extends State<CadastroScreen> {
         // depois em Configurações > Meu Perfil assim que confirmar o
         // e-mail e conseguir logar.
         telefoneEmUso = resultado == ResultadoSalvarTelefone.telefoneEmUso;
-
-        await FirebaseAuthService().enviarEmailVerificacao();
       }
 
-      // Encerra a sessão automática do createUserWithEmailAndPassword —
-      // o e-mail ainda não foi verificado, então este usuário NÃO deve
-      // permanecer autenticado. O login real (com a barreira de
-      // emailVerified) só acontece na LoginScreen.
-      await FirebaseAuthService().logout();
+      // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+      // "tratamento de erros robusto... limites de envio/throttling"):
+      // isolado num try/catch PRÓPRIO, separado do try/catch de
+      // `FirebaseAuthException` mais abaixo — a conta e o perfil JÁ foram
+      // criados com sucesso neste ponto, então uma falha só ao ENVIAR o
+      // e-mail (rede instável, `too-many-requests` do próprio Firebase
+      // Auth) NUNCA deve ser reportada como "falha ao criar conta" (que
+      // enganaria o usuário a tentar cadastrar de novo um e-mail que já
+      // existe). Falha aqui é só um aviso, não um bloqueio — o usuário
+      // sempre pode reenviar manualmente na tela seguinte.
+      String? avisoEnvioEmail;
+      try {
+        await FirebaseAuthService().enviarEmailVerificacao();
+      } on FirebaseAuthException catch (e) {
+        if (mounted) avisoEnvioEmail = _mensagemErroEnvioVerificacao(e);
+      } catch (e) {
+        debugPrint('⚠️ [CadastroScreen] Falha ao enviar e-mail de verificação: $e');
+      }
 
       if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            telefoneEmUso
-                ? '${l10n.cadastroEmailVerificacaoEnviado} ${l10n.telefoneJaEmUso}'
-                : l10n.cadastroEmailVerificacaoEnviado,
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => VerificarEmailScreen(
+            email: _emailController.text.trim(),
+            avisoEnvioEmail: avisoEnvioEmail,
+            avisoTelefoneEmUso: telefoneEmUso,
           ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 6),
-          backgroundColor: telefoneEmUso ? Colors.orange.shade800 : null,
         ),
       );
-      Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -131,6 +140,21 @@ class _CadastroScreenState extends State<CadastroScreen> {
     } finally {
       if (mounted) setState(() => _criandoConta = false);
     }
+  }
+
+  /// Mensagem de erro específica para uma falha no ENVIO do e-mail de
+  /// verificação (ver [_criarConta]) — nunca confundida com
+  /// [_mensagemErroCadastro] (falha em CRIAR a conta em si).
+  /// `too-many-requests` ganha uma mensagem própria e orientativa: o
+  /// Firebase Auth também limita a TAXA de envio deste e-mail específico
+  /// (não só tentativas de login), então é um erro real e esperado em
+  /// testes/reenvios rápidos, nunca um bug.
+  String _mensagemErroEnvioVerificacao(FirebaseAuthException e) {
+    final l10n = AppLocalizations.of(context)!;
+    if (e.code == 'too-many-requests') {
+      return l10n.verificarEmailReenvioMuitasTentativas;
+    }
+    return l10n.emailVerificacaoReenvioFalhou;
   }
 
   String _mensagemErroCadastro(FirebaseAuthException e) {

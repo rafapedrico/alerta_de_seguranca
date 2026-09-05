@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "ईमेल पुनः भेजें",
   "emailVerificacaoReenviada": "सत्यापन ईमेल फिर से भेजा गया।",
   "emailVerificacaoReenvioFalhou": "ईमेल फिर से नहीं भेजा जा सका। कृपया बाद में पुनः प्रयास करें।",
+  "verificarEmailTitulo": "अपना ईमेल सत्यापित करें",
+  "verificarEmailMensagem": "हमने {email} पर एक पुष्टिकरण ईमेल भेजा है। कृपया अपना इनबॉक्स और स्पैम फ़ोल्डर जांचें।",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "मैंने सत्यापित कर लिया, साइन इन करें",
+  "verificarEmailAindaNaoConfirmado": "हमें अभी तक पुष्टि नहीं मिली है। जांचें कि क्या आपने ईमेल में लिंक पर क्लिक किया (और स्पैम फ़ोल्डर) और फिर से प्रयास करें।",
+  "verificarEmailReenvioMuitasTentativas": "आपने थोड़े समय में बहुत सारे पुनः भेजने का अनुरोध किया है। फिर से प्रयास करने से पहले कुछ मिनट प्रतीक्षा करें।",
+  "verificarEmailBotaoReenviarCooldown": "{segundos} सेकंड में पुनः भेजें",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "मेरी प्रोफ़ाइल",
   "meuPerfilTelefoneTitulo": "मेरा संपर्क फ़ोन नंबर",
   "meuPerfilTelefoneNaoCadastrado": "कोई फ़ोन नंबर दर्ज नहीं है",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "अनुशंसित",
   "onboardingStatusConcedida": "स्वीकृत",
   "onboardingStatusPendente": "लंबित",
+  "onboardingStatusParcial": "आंशिक",
   "onboardingBotaoAbrirConfiguracoes": "सेटिंग्स खोलें",
   "onboardingBotaoContinuar": "जारी रखें",
   "onboardingAvisoEssenciaisPendentes": "सेटअप पूरा करने के लिए आवश्यक अनुमतियाँ दें।",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "आपातकालीन अलर्ट को तुरंत ध्वनि के साथ दिखाने देता है, और निर्धारित रिमाइंडर (चेक-इन, टाइमर) को सही समय पर सक्रिय होने देता है।",
   "onboardingLocalizacaoTitulo": "स्थान हमेशा सक्रिय",
   "onboardingLocalizacaoConteudo": "\"हमेशा अनुमति दें\" के साथ, आपका स्थान आपके आपातकालीन संपर्कों को तब भी भेजा जाता है जब ऐप बंद हो या स्क्रीन बंद हो — असली SOS में यह ज़रूरी है।",
+  "onboardingLocalizacaoStatusParcial": "आंशिक (\"हमेशा अनुमति दें\" ज़रूरी है)",
   "onboardingCameraTitulo": "कैमरा एक्सेस",
   "onboardingCameraConteudo": "केवल पैनिक बटन में उपयोग होता है, ताकि आपके आपातकालीन संपर्कों को भेजे गए अलर्ट में जगह की एक फोटो जोड़ी जा सके।",
   "onboardingTelaCheiaTitulo": "पूर्ण-स्क्रीन अलर्ट",

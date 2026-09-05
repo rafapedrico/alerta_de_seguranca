@@ -353,6 +353,25 @@ class _LoginScreenState extends State<LoginScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } on FirebaseAuthException catch (e) {
+      // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+      // "tratamento de erros robusto... limites de envio/throttling"):
+      // `too-many-requests` (o Firebase Auth também limita a TAXA deste
+      // e-mail especificamente, não só tentativas de login) ganha
+      // mensagem própria e orientativa — mesmo texto já usado em
+      // [VerificarEmailScreen] para o mesmo cenário — em vez do genérico
+      // "falha ao reenviar", que sugeria (incorretamente) um erro/bug.
+      debugPrint('⚠️ [LoginScreen] Falha ao reenviar e-mail de verificação: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'too-many-requests'
+              ? AppLocalizations.of(context)!.verificarEmailReenvioMuitasTentativas
+              : AppLocalizations.of(context)!.emailVerificacaoReenvioFalhou),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     } catch (e) {
       debugPrint('⚠️ [LoginScreen] Falha ao reenviar e-mail de verificação: $e');
       if (!mounted) return;

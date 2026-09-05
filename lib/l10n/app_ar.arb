@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "إعادة إرسال البريد الإلكتروني",
   "emailVerificacaoReenviada": "تمت إعادة إرسال بريد التحقق.",
   "emailVerificacaoReenvioFalhou": "تعذرت إعادة إرسال البريد الإلكتروني. حاول مرة أخرى لاحقًا.",
+  "verificarEmailTitulo": "أكّد بريدك الإلكتروني",
+  "verificarEmailMensagem": "أرسلنا بريدًا إلكترونيًا للتأكيد إلى {email}. تحقق من صندوق الوارد ومجلد البريد العشوائي.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "لقد أكّدته، تسجيل الدخول",
+  "verificarEmailAindaNaoConfirmado": "لم نكتشف التأكيد بعد. تحقق من أنك نقرت على الرابط في البريد الإلكتروني (ومجلد البريد العشوائي) وحاول مرة أخرى.",
+  "verificarEmailReenvioMuitasTentativas": "لقد طلبت إعادة إرسال البريد عدة مرات في وقت قصير. انتظر بضع دقائق قبل المحاولة مرة أخرى.",
+  "verificarEmailBotaoReenviarCooldown": "إعادة الإرسال خلال {segundos} ثانية",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "ملفي الشخصي",
   "meuPerfilTelefoneTitulo": "رقم هاتفي للتواصل",
   "meuPerfilTelefoneNaoCadastrado": "لا يوجد رقم هاتف مسجل",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "موصى به",
   "onboardingStatusConcedida": "ممنوح",
   "onboardingStatusPendente": "معلّق",
+  "onboardingStatusParcial": "جزئي",
   "onboardingBotaoAbrirConfiguracoes": "فتح الإعدادات",
   "onboardingBotaoContinuar": "متابعة",
   "onboardingAvisoEssenciaisPendentes": "امنح الأذونات الأساسية لإكمال الإعداد.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "يسمح بظهور تنبيهات الطوارئ فورًا مع صوت، وبتشغيل التذكيرات المجدولة (تسجيلات الوصول، المؤقت) في الوقت المحدد بالضبط.",
   "onboardingLocalizacaoTitulo": "الموقع نشط دائمًا",
   "onboardingLocalizacaoConteudo": "باستخدام \"السماح طوال الوقت\"، يتم إرسال موقعك إلى جهات اتصال الطوارئ حتى مع إغلاق التطبيق أو إطفاء الشاشة — أمر أساسي في حالة طوارئ حقيقية.",
+  "onboardingLocalizacaoStatusParcial": "جزئي (يتطلب \"السماح طوال الوقت\")",
   "onboardingCameraTitulo": "الوصول إلى الكاميرا",
   "onboardingCameraConteudo": "تُستخدم فقط في زر الذعر، لإرفاق صورة للموقع بالتنبيه المرسل إلى جهات اتصال الطوارئ.",
   "onboardingTelaCheiaTitulo": "تنبيهات ملء الشاشة",

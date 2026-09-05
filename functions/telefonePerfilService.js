@@ -36,6 +36,7 @@
 
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const {getAuth} = require("firebase-admin/auth");
 const {normalizarTelefoneE164} = require("./telefoneUtils");
 const logger = require("firebase-functions/logger");
 
@@ -71,6 +72,49 @@ exports.atualizarTelefonePerfil = onCall(async (request) => {
 
   const refReservaNova = db.collection("telefones_reservados").doc(telefone);
   const refUsuario = db.collection("usuarios").doc(uid);
+
+  // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+  // "Este número já está cadastrado em..." mesmo o número não existindo de
+  // verdade): uma reserva em `telefones_reservados` pode ficar ÓRFÃ se a
+  // conta dona dela for excluída do Firebase Auth por um caminho que não
+  // passe por `excluirContaCompleta` (que já libera a reserva no MESMO
+  // Promise.all que apaga `usuarios/{uid}`, ver `exclusaoContaService.js`)
+  // — ex: exclusão manual do usuário direto no Console do Firebase durante
+  // testes/suporte. O documento sobrevive apontando para um uid que não
+  // existe mais no Auth, bloqueando para sempre uma tentativa legítima
+  // (de outra pessoa, ou da mesma pessoa numa conta nova) de usar aquele
+  // número. Antes de bloquear, confirma que a conta dona da reserva
+  // REALMENTE ainda existe no Auth — só então trata como conflito de
+  // verdade; senão, libera a reserva órfã e segue.
+  const reservaPreCheckSnap = await refReservaNova.get();
+  if (reservaPreCheckSnap.exists && reservaPreCheckSnap.data().uid !== uid) {
+    const outroUid = reservaPreCheckSnap.data().uid;
+    let outraContaExiste = true;
+    try {
+      await getAuth().getUser(outroUid);
+    } catch (e) {
+      if (e.code === "auth/user-not-found") {
+        outraContaExiste = false;
+      } else {
+        // Falha de rede/serviço ao verificar (não "usuário não existe") —
+        // nunca libera por engano nesse caso: trata como se a conta ainda
+        // existisse, mesma blindagem permissiva do resto do projeto (uma
+        // falha técnica nunca deve, por si só, relaxar uma trava de
+        // segurança).
+        logger.error(
+            `[atualizarTelefonePerfil] Falha ao verificar se ${outroUid} ` +
+            "ainda existe no Auth (mantendo a reserva por precaução):", e);
+      }
+    }
+    if (!outraContaExiste) {
+      logger.info(
+          `[atualizarTelefonePerfil] Reserva órfã de ${telefone} (uid ` +
+          `${outroUid} não existe mais no Auth) — liberando.`);
+      await refReservaNova.delete().catch((e) => {
+        logger.error(`[atualizarTelefonePerfil] Falha ao liberar reserva órfã de ${telefone}:`, e);
+      });
+    }
+  }
 
   try {
     await db.runTransaction(async (tx) => {

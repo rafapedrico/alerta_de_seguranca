@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "Отправить письмо повторно",
   "emailVerificacaoReenviada": "Письмо с подтверждением отправлено повторно.",
   "emailVerificacaoReenvioFalhou": "Не удалось повторно отправить письмо. Попробуйте позже.",
+  "verificarEmailTitulo": "Подтвердите свой e-mail",
+  "verificarEmailMensagem": "Мы отправили письмо с подтверждением на {email}. Проверьте почтовый ящик и папку «Спам».",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "Я подтвердил(а), войти",
+  "verificarEmailAindaNaoConfirmado": "Мы пока не обнаружили подтверждение. Проверьте, что вы перешли по ссылке в письме (и папку «Спам»), и попробуйте снова.",
+  "verificarEmailReenvioMuitasTentativas": "Вы запросили слишком много повторных отправок за короткое время. Подождите несколько минут перед следующей попыткой.",
+  "verificarEmailBotaoReenviarCooldown": "Повторная отправка через {segundos} с",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "Мой профиль",
   "meuPerfilTelefoneTitulo": "Мой контактный телефон",
   "meuPerfilTelefoneNaoCadastrado": "Телефон не указан",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Рекомендуется",
   "onboardingStatusConcedida": "Предоставлено",
   "onboardingStatusPendente": "Ожидает",
+  "onboardingStatusParcial": "Частично",
   "onboardingBotaoAbrirConfiguracoes": "Открыть настройки",
   "onboardingBotaoContinuar": "Продолжить",
   "onboardingAvisoEssenciaisPendentes": "Предоставьте обязательные разрешения, чтобы завершить настройку.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Позволяет экстренным оповещениям появляться сразу же со звуком, а запланированным напоминаниям (чек-ины, таймер) срабатывать точно в срок.",
   "onboardingLocalizacaoTitulo": "Постоянная геолокация",
   "onboardingLocalizacaoConteudo": "С разрешением «Всегда разрешать» ваше местоположение отправляется контактам экстренной связи, даже если приложение закрыто или экран выключен — это важно при реальном SOS.",
+  "onboardingLocalizacaoStatusParcial": "Частично (требуется «Всегда разрешать»)",
   "onboardingCameraTitulo": "Доступ к камере",
   "onboardingCameraConteudo": "Используется только кнопкой паники, чтобы прикрепить фото места к оповещению, отправляемому вашим контактам экстренной связи.",
   "onboardingTelaCheiaTitulo": "Оповещения на весь экран",

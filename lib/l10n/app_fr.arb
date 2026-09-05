@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "Renvoyer l'e-mail",
   "emailVerificacaoReenviada": "E-mail de vérification renvoyé.",
   "emailVerificacaoReenvioFalhou": "Impossible de renvoyer l'e-mail. Veuillez réessayer plus tard.",
+  "verificarEmailTitulo": "Confirmez votre e-mail",
+  "verificarEmailMensagem": "Nous avons envoyé un e-mail de confirmation à {email}. Vérifiez votre boîte de réception et le dossier spam.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "Je l'ai vérifié, se connecter",
+  "verificarEmailAindaNaoConfirmado": "Nous n'avons pas encore détecté la confirmation. Vérifiez que vous avez cliqué sur le lien de l'e-mail (et le dossier spam) et réessayez.",
+  "verificarEmailReenvioMuitasTentativas": "Vous avez demandé trop de renvois en peu de temps. Attendez quelques minutes avant de réessayer.",
+  "verificarEmailBotaoReenviarCooldown": "Renvoyer dans {segundos}s",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "Mon Profil",
   "meuPerfilTelefoneTitulo": "Mon numéro de contact",
   "meuPerfilTelefoneNaoCadastrado": "Aucun téléphone enregistré",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Recommandé",
   "onboardingStatusConcedida": "Accordée",
   "onboardingStatusPendente": "En attente",
+  "onboardingStatusParcial": "Partiel",
   "onboardingBotaoAbrirConfiguracoes": "Ouvrir les Paramètres",
   "onboardingBotaoContinuar": "Continuer",
   "onboardingAvisoEssenciaisPendentes": "Accordez les autorisations essentielles pour terminer la configuration.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Permet aux alertes d'urgence d'apparaître immédiatement, avec un son, et aux rappels programmés (check-ins, minuteur) de se déclencher à l'heure exacte.",
   "onboardingLocalizacaoTitulo": "Localisation toujours active",
   "onboardingLocalizacaoConteudo": "Avec « Toujours autoriser », votre position est envoyée à vos contacts d'urgence même avec l'application fermée ou l'écran éteint — essentiel lors d'un SOS réel.",
+  "onboardingLocalizacaoStatusParcial": "Partiel (nécessite « Toujours autoriser »)",
   "onboardingCameraTitulo": "Accès à l'appareil photo",
   "onboardingCameraConteudo": "Utilisé uniquement par le bouton panique, pour joindre une photo des lieux à l'alerte envoyée à vos contacts d'urgence.",
   "onboardingTelaCheiaTitulo": "Alertes plein écran",

@@ -153,6 +153,7 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
                         _localizacao != StatusPermissaoOnboarding.concedida
                             ? openAppSettings
                             : null,
+                    textoStatusParcial: l10n.onboardingLocalizacaoStatusParcial,
                   ),
                   PermissaoStatusCard(
                     icone: Icons.battery_saver_rounded,

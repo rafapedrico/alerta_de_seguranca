@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "E-Mail erneut senden",
   "emailVerificacaoReenviada": "Bestätigungs-E-Mail erneut gesendet.",
   "emailVerificacaoReenvioFalhou": "E-Mail konnte nicht erneut gesendet werden. Bitte versuchen Sie es später erneut.",
+  "verificarEmailTitulo": "Bestätigen Sie Ihre E-Mail",
+  "verificarEmailMensagem": "Wir haben eine Bestätigungs-E-Mail an {email} gesendet. Überprüfen Sie Ihren Posteingang und den Spam-Ordner.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "Ich habe sie bestätigt, anmelden",
+  "verificarEmailAindaNaoConfirmado": "Wir haben die Bestätigung noch nicht erkannt. Prüfen Sie, ob Sie auf den Link in der E-Mail geklickt haben (und den Spam-Ordner), und versuchen Sie es erneut.",
+  "verificarEmailReenvioMuitasTentativas": "Sie haben in kurzer Zeit zu viele erneute Sendungen angefordert. Warten Sie einige Minuten, bevor Sie es erneut versuchen.",
+  "verificarEmailBotaoReenviarCooldown": "Erneut senden in {segundos}s",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "Mein Profil",
   "meuPerfilTelefoneTitulo": "Meine Kontakttelefonnummer",
   "meuPerfilTelefoneNaoCadastrado": "Keine Telefonnummer registriert",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Empfohlen",
   "onboardingStatusConcedida": "Erteilt",
   "onboardingStatusPendente": "Ausstehend",
+  "onboardingStatusParcial": "Teilweise",
   "onboardingBotaoAbrirConfiguracoes": "Einstellungen öffnen",
   "onboardingBotaoContinuar": "Weiter",
   "onboardingAvisoEssenciaisPendentes": "Erteilen Sie die erforderlichen Berechtigungen, um die Einrichtung abzuschließen.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Ermöglicht, dass Notfallwarnungen sofort mit Ton erscheinen und geplante Erinnerungen (Check-ins, Timer) genau zur richtigen Zeit ausgelöst werden.",
   "onboardingLocalizacaoTitulo": "Standort immer aktiv",
   "onboardingLocalizacaoConteudo": "Mit „Immer zulassen“ wird Ihr Standort auch bei geschlossener App oder ausgeschaltetem Bildschirm an Ihre Notfallkontakte gesendet — unverzichtbar bei einem echten Notfall.",
+  "onboardingLocalizacaoStatusParcial": "Teilweise (erfordert „Immer zulassen“)",
   "onboardingCameraTitulo": "Kamerazugriff",
   "onboardingCameraConteudo": "Wird nur beim Notfallknopf verwendet, um ein Foto des Ortes an die an Ihre Notfallkontakte gesendete Warnung anzuhängen.",
   "onboardingTelaCheiaTitulo": "Vollbildwarnungen",

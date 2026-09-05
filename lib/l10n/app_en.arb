@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "Resend email",
   "emailVerificacaoReenviada": "Verification email resent.",
   "emailVerificacaoReenvioFalhou": "Couldn't resend the email. Please try again later.",
+  "verificarEmailTitulo": "Confirm your email",
+  "verificarEmailMensagem": "We sent a confirmation email to {email}. Check your inbox and spam folder.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "I've verified it, sign in",
+  "verificarEmailAindaNaoConfirmado": "We still haven't detected the confirmation. Check that you clicked the link in the email (and the spam folder) and try again.",
+  "verificarEmailReenvioMuitasTentativas": "You requested too many resends in a short time. Wait a few minutes before trying again.",
+  "verificarEmailBotaoReenviarCooldown": "Resend in {segundos}s",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "My Profile",
   "meuPerfilTelefoneTitulo": "My contact phone number",
   "meuPerfilTelefoneNaoCadastrado": "No phone number registered",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Recommended",
   "onboardingStatusConcedida": "Granted",
   "onboardingStatusPendente": "Pending",
+  "onboardingStatusParcial": "Partial",
   "onboardingBotaoAbrirConfiguracoes": "Open Settings",
   "onboardingBotaoContinuar": "Continue",
   "onboardingAvisoEssenciaisPendentes": "Grant the essential permissions to finish setup.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Lets emergency alerts appear right away, with sound, and scheduled reminders (check-ins, timer) fire at the exact time.",
   "onboardingLocalizacaoTitulo": "Always-on location",
   "onboardingLocalizacaoConteudo": "With \"Allow all the time\", your location is sent to your emergency contacts even with the app closed or the screen off — essential in a real SOS.",
+  "onboardingLocalizacaoStatusParcial": "Partial (requires \"Allow all the time\")",
   "onboardingCameraTitulo": "Camera access",
   "onboardingCameraConteudo": "Used only by the panic button, to attach a photo of the scene to the alert sent to your emergency contacts.",
   "onboardingTelaCheiaTitulo": "Full-screen alerts",

@@ -42,6 +42,26 @@
   "emailNaoVerificadoReenviar": "Reenviar correo",
   "emailVerificacaoReenviada": "Correo de verificación reenviado.",
   "emailVerificacaoReenvioFalhou": "No se pudo reenviar el correo. Inténtalo de nuevo más tarde.",
+  "verificarEmailTitulo": "Confirma tu correo",
+  "verificarEmailMensagem": "Enviamos un correo de confirmación a {email}. Revisa tu bandeja de entrada y la carpeta de spam.",
+  "@verificarEmailMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verificarEmailBotaoJaVerifiquei": "Ya lo verifiqué, entrar",
+  "verificarEmailAindaNaoConfirmado": "Aún no detectamos la confirmación. Revisa si hiciste clic en el enlace del correo (y la carpeta de spam) e inténtalo de nuevo.",
+  "verificarEmailReenvioMuitasTentativas": "Pediste demasiados reenvíos en poco tiempo. Espera unos minutos antes de intentarlo de nuevo.",
+  "verificarEmailBotaoReenviarCooldown": "Reenviar en {segundos}s",
+  "@verificarEmailBotaoReenviarCooldown": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
   "meuPerfilTitulo": "Mi Perfil",
   "meuPerfilTelefoneTitulo": "Mi número de contacto",
   "meuPerfilTelefoneNaoCadastrado": "Ningún teléfono registrado",
@@ -718,6 +738,7 @@
   "onboardingBadgeRecomendado": "Recomendado",
   "onboardingStatusConcedida": "Concedido",
   "onboardingStatusPendente": "Pendiente",
+  "onboardingStatusParcial": "Parcial",
   "onboardingBotaoAbrirConfiguracoes": "Abrir Configuración",
   "onboardingBotaoContinuar": "Continuar",
   "onboardingAvisoEssenciaisPendentes": "Concede los permisos esenciales para completar la configuración.",
@@ -725,6 +746,7 @@
   "onboardingNotificacoesConteudo": "Permite que las alertas de emergencia aparezcan al instante, con sonido, y que los avisos programados (check-ins, temporizador) se disparen a la hora exacta.",
   "onboardingLocalizacaoTitulo": "Ubicación siempre activa",
   "onboardingLocalizacaoConteudo": "Con \"Permitir todo el tiempo\", tu ubicación se envía a tus contactos de emergencia incluso con la app cerrada o la pantalla apagada — esencial en un SOS real.",
+  "onboardingLocalizacaoStatusParcial": "Parcial (requiere \"Permitir todo el tiempo\")",
   "onboardingCameraTitulo": "Acceso a la cámara",
   "onboardingCameraConteudo": "Se usa solo en el botón de pánico, para adjuntar una foto del lugar a la alerta enviada a tus contactos de emergencia.",
   "onboardingTelaCheiaTitulo": "Alertas en pantalla completa",
