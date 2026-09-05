@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'premium_purchase_service.dart';
+
 /// Consulta o preço REAL do Plano Premium mensal diretamente da loja
 /// (Google Play Billing / Apple App Store, conforme a plataforma) via
 /// `in_app_purchase` — nunca um valor fixo no código. `ProductDetails.price`
@@ -9,24 +11,17 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 /// lógica de conversão/formatação de moeda aqui: repassamos exatamente
 /// o que a loja devolve.
 ///
-/// ⚠️ AÇÃO NECESSÁRIA ANTES DE PUBLICAR: [idProdutoPremium] abaixo é um
-/// id de PLACEHOLDER — não existia NENHUM produto de assinatura
-/// configurado neste projeto até esta implementação (o botão "Assinar
-/// Premium" só abria a página da loja, sem nenhuma integração de
-/// compra real, ver `InicioDashboard._abrirPlayStore`). Substitua pelo
-/// id exato cadastrado no Play Console (Monetise > Products >
-/// Subscriptions) e, se houver app iOS, no App Store Connect. Sem um
-/// produto REAL publicado (mesmo que só em teste interno) com esse id,
-/// [obterPrecoFormatado] sempre retorna `null` e a UI permanece no
-/// texto genérico de fallback — nunca quebra, só não mostra preço.
+/// O produto de assinatura em si (compra real, `buyNonConsumable` +
+/// validação de recibo) é responsabilidade de [PremiumPurchaseService] —
+/// este serviço aqui SÓ lê o preço para exibição, nunca compra nada.
 class PremiumPriceService {
   PremiumPriceService._internal();
   static final PremiumPriceService _instance = PremiumPriceService._internal();
   factory PremiumPriceService() => _instance;
 
-  /// TODO(loja): substituir pelo id real do produto de assinatura
-  /// mensal do Plano Premium — ver aviso na documentação da classe.
-  static const String idProdutoPremium = 'guardiao_premium_mensal';
+  /// Id do produto de assinatura mensal cadastrado no Play Console —
+  /// mesmo id usado por [PremiumPurchaseService] para a compra real.
+  static const String idProdutoPremium = PremiumPurchaseService.idProdutoPremium;
 
   ProductDetails? _detalhesCache;
   Future<ProductDetails?>? _consultaEmAndamento;

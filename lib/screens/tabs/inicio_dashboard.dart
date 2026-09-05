@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/locale_service.dart';
 import '../../services/plano_ciclo_service.dart';
 import '../../services/premium_price_service.dart';
+import '../../services/premium_purchase_service.dart';
 import '../faq_screen.dart';
 import '../suporte_chat_screen.dart';
 import '../termos_privacidade_screen.dart';
@@ -20,13 +21,6 @@ class InicioDashboard extends StatelessWidget {
 
   static const String _site = 'https://www.meuguardiaox.com.br';
 
-  // Pacote Android definitivo (com.rmfglobal.guardiaox, ver
-  // android/app/build.gradle) — usado só para montar o link da Play Store.
-  static const String _androidPackageId = 'com.rmfglobal.guardiaox';
-  static const String _playStoreWebUrl =
-      'https://play.google.com/store/apps/details?id=$_androidPackageId';
-  static const String _playStoreAppUrl = 'market://details?id=$_androidPackageId';
-
   static const Color _corDestaquePremium = Color(0xFF9C6BFF);
 
   static Future<void> _abrirUrl(String url) async {
@@ -36,22 +30,6 @@ class InicioDashboard extends StatelessWidget {
     } catch (e) {
       debugPrint('⚠️ [InicioDashboard] Falha ao abrir URL "$url": $e');
     }
-  }
-
-  /// Abre a área de assinatura/compra do app na Play Store — tenta
-  /// primeiro o app nativo da Play Store (`market://`) e cai para o link
-  /// web caso o dispositivo não tenha a Play Store instalada.
-  static Future<void> _abrirPlayStore() async {
-    final uri = Uri.parse(_playStoreAppUrl);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return;
-      }
-    } catch (e) {
-      debugPrint('⚠️ [InicioDashboard] Falha ao abrir a Play Store nativa: $e');
-    }
-    await _abrirUrl(_playStoreWebUrl);
   }
 
   @override
@@ -217,7 +195,8 @@ class InicioDashboard extends StatelessWidget {
         final bool ativo = status.ativo;
         final String texto = ativo
             ? l10n.planoFreeIndicadorAtivo(status.diasRestantesAtivos)
-            : l10n.planoFreeIndicadorBloqueado(_formatarData(status.dataRenovacao));
+            : l10n.planoFreeIndicadorBloqueado(
+                status.diasParaRenovacao, _formatarData(status.dataRenovacao));
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -303,7 +282,12 @@ class InicioDashboard extends StatelessWidget {
             : l10n.premiumAssinarBotaoGenerico,
         onBotaoPrincipal: () {
           Navigator.of(ctx).pop();
-          _abrirPlayStore();
+          // Compra REAL via Google Play Billing (ver PremiumPurchaseService)
+          // — não mais um deep-link pra página da loja. O resultado chega
+          // de forma assíncrona pelo purchaseStream global (ver o
+          // SnackBar em main.dart::_SecurityCheckAppState), então este
+          // método não precisa ser aguardado aqui.
+          PremiumPurchaseService().comprarPremium();
         },
         botaoSecundarioTexto: l10n.agoraNao,
         // O botão "Cancelar Plano Premium" só é exibido quando o plano
