@@ -126,10 +126,26 @@ class OnboardingService {
   // LOCALIZAÇÃO SEMPRE ATIVA (essencial)
   // ================================================================
 
+  /// CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+  /// "aparece como pendente mesmo já concedida no sistema"): antes, este
+  /// método consultava `Geolocator.checkPermission()` — a ÚNICA checagem
+  /// de permissão desta classe que não passa pelo `permission_handler`
+  /// (todos os outros itens — bateria, notificação, câmera — usam
+  /// `Permission.xxx.status`, ver acima/abaixo). Em alguns fabricantes/
+  /// versões de Android (confirmado: Motorola, Android 16), o plugin
+  /// `geolocator` pode devolver `LocationPermission.unableToDetermine`
+  /// mesmo com a permissão JÁ concedida de verdade no sistema — um "não
+  /// sei dizer" que o código anterior tratava, por omissão (nenhum branch
+  /// cobria esse valor), como [StatusPermissaoOnboarding.pendente] — o
+  /// PIOR estado possível, escondendo uma permissão real já concedida.
+  /// Agora usa `permission_handler`, que lê o status direto do SO Android
+  /// sem essa ambiguidade — mesmo pacote/padrão já usado sem problema por
+  /// todo o resto desta classe.
   Future<StatusPermissaoOnboarding> statusLocalizacao() async {
-    final status = await Geolocator.checkPermission();
-    if (status == LocationPermission.always) return StatusPermissaoOnboarding.concedida;
-    if (status == LocationPermission.whileInUse) return StatusPermissaoOnboarding.parcial;
+    final sempre = await Permission.locationAlways.status;
+    if (sempre.isGranted) return StatusPermissaoOnboarding.concedida;
+    final duranteUso = await Permission.location.status;
+    if (duranteUso.isGranted) return StatusPermissaoOnboarding.parcial;
     return StatusPermissaoOnboarding.pendente;
   }
 
@@ -138,10 +154,11 @@ class OnboardingService {
   /// (ver [OnboardingScreen]) bloqueia a conclusão: "sempre" é o ideal
   /// (pedido explícito do usuário), mas "durante o uso" já permite o botão
   /// de pânico manual funcionar — só o heartbeat de segundo plano depende
-  /// de verdade de "sempre".
+  /// de verdade de "sempre". Mesma correção de [statusLocalizacao] acima
+  /// (via `permission_handler`, não `geolocator`) e pelo mesmo motivo.
   Future<bool> localizacaoAoMenosConcedida() async {
-    final status = await Geolocator.checkPermission();
-    return status == LocationPermission.always || status == LocationPermission.whileInUse;
+    final duranteUso = await Permission.location.status;
+    return duranteUso.isGranted;
   }
 
   /// O Android, desde a versão 11, NÃO permite pedir "Permitir o tempo
