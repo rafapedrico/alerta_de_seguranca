@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -89,42 +91,89 @@ class SocialAuthService {
   /// erro claro (capturado pelo `catch` genérico de
   /// [LoginScreen._fazerLoginSocial]) em vez de um spinner infinito sem
   /// nenhum feedback.
+  /// CORREÇÃO (2026-09-05, pedido explícito do usuário — "login com Google
+  /// falhando silenciosamente no app baixado da Play Store: é acionado,
+  /// mas não abre o seletor de contas e não mostra nenhum erro"): cada
+  /// etapa agora tem seu PRÓPRIO try/catch, só para `debugPrint` — nunca
+  /// muda o TIPO da exceção relançada (a UI, ver
+  /// `LoginScreen._fazerLoginSocial`/`_mensagemErroLoginSocial`, continua
+  /// tratando `FirebaseAuthException`/`GoogleSignInException` exatamente
+  /// como antes) — só identifica em qual das 4 etapas a falha aconteceu,
+  /// ANTES de propagar. Combinado com a mudança em `LoginScreen`, que
+  /// agora exibe o texto EXATO de `e.toString()` num diálogo (com botão
+  /// "Copiar"), em vez de só a mensagem genérica — essencial para
+  /// diagnosticar remotamente uma falha que só reproduz em produção
+  /// (assinatura/SHA de release, Play Services desatualizado, etc.), sem
+  /// acesso a logcat do aparelho do usuário.
   Future<UserCredential?> signInWithGoogle() async {
-    try {
-      if (!_googleSignInInicializado) {
+    if (!_googleSignInInicializado) {
+      try {
         await GoogleSignIn.instance
             .initialize(serverClientId: _googleServerClientId)
             .timeout(const Duration(seconds: 15));
         _googleSignInInicializado = true;
+      } catch (e, s) {
+        debugPrint('❌ [SocialAuthService] Etapa 1/4 (initialize) falhou: $e\n$s');
+        rethrow;
       }
+    }
 
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+    final GoogleSignInAccount googleUser;
+    try {
+      googleUser = await GoogleSignIn.instance
           .authenticate()
           .timeout(const Duration(seconds: 45));
-      final GoogleSignInAuthentication googleAuth =
-          googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
-      // Defensivo: `idToken` é nullable no plugin (`GoogleSignInAuthentication`,
-      // ver `google_sign_in` 7.x) — na prática só deveria vir nulo se o
-      // `serverClientId` estiver mal configurado ou o Google devolver uma
-      // resposta incompleta. Sem esta checagem, `GoogleAuthProvider.credential`
-      // seguiria adiante com `idToken: null` e o Firebase falharia mais
-      // abaixo com um erro genérico difícil de diagnosticar — melhor
-      // sinalizar aqui, no ponto exato da causa.
-      if (idToken == null) {
-        throw FirebaseAuthException(
-          code: 'invalid-credential',
-          message: 'O Google não retornou um idToken válido para esta conta.',
-        );
-      }
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        idToken: idToken,
-      );
-      return await _auth.signInWithCredential(credential);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        return null; // Cancelado pelo usuário
+        return null; // Cancelado pelo usuário — nunca é um erro.
       }
+      debugPrint('❌ [SocialAuthService] Etapa 2/4 (authenticate) falhou: '
+          '${e.code} — ${e.description}');
+      rethrow;
+    } catch (e, s) {
+      // Cobre principalmente o `TimeoutException` dos 45s (ver histórico
+      // documentado acima: Credential Manager pendurado para sempre em
+      // aparelhos com Play Services desatualizado) e qualquer
+      // `PlatformException` nativa não modelada como `GoogleSignInException`.
+      debugPrint('❌ [SocialAuthService] Etapa 2/4 (authenticate) falhou '
+          '(${e.runtimeType}): $e\n$s');
+      rethrow;
+    }
+
+    final String? idToken;
+    try {
+      idToken = googleUser.authentication.idToken;
+    } catch (e, s) {
+      debugPrint('❌ [SocialAuthService] Etapa 3/4 (ler idToken) falhou: $e\n$s');
+      rethrow;
+    }
+    // Defensivo: `idToken` é nullable no plugin (`GoogleSignInAuthentication`,
+    // ver `google_sign_in` 7.x) — na prática só deveria vir nulo se o
+    // `serverClientId` estiver mal configurado ou o Google devolver uma
+    // resposta incompleta. Sem esta checagem, `GoogleAuthProvider.credential`
+    // seguiria adiante com `idToken: null` e o Firebase falharia mais
+    // abaixo com um erro genérico difícil de diagnosticar — melhor
+    // sinalizar aqui, no ponto exato da causa.
+    if (idToken == null) {
+      debugPrint('❌ [SocialAuthService] Etapa 3/4 (ler idToken) falhou: '
+          'idToken nulo (serverClientId mal configurado ou resposta '
+          'incompleta do Google) — conta: ${googleUser.email}.');
+      throw FirebaseAuthException(
+        code: 'invalid-credential',
+        message: 'O Google não retornou um idToken válido para esta conta.',
+      );
+    }
+
+    try {
+      final OAuthCredential credential = GoogleAuthProvider.credential(idToken: idToken);
+      return await _auth.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ [SocialAuthService] Etapa 4/4 (signInWithCredential) '
+          'falhou: ${e.code} — ${e.message}');
+      rethrow;
+    } catch (e, s) {
+      debugPrint('❌ [SocialAuthService] Etapa 4/4 (signInWithCredential) '
+          'falhou (${e.runtimeType}): $e\n$s');
       rethrow;
     }
   }

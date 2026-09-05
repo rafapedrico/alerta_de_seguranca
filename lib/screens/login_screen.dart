@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../app_navigator.dart';
@@ -176,27 +177,80 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       await _finalizarLoginComSucesso(viaLoginSocial: true);
     } on FirebaseAuthException catch (e) {
+      debugPrint('⚠️ [LoginScreen] Falha no login social ($provedor): ${e.code} — ${e.message}');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_mensagemErroLoginSocial(e)),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    } catch (e) {
-      debugPrint('⚠️ [LoginScreen] Falha inesperada no login social ($provedor): $e');
+      await _exibirDialogoErroLoginSocial(_mensagemErroLoginSocial(e), e.toString());
+    } catch (e, s) {
+      // CORREÇÃO (2026-09-05, pedido explícito do usuário — "login com
+      // Google falhando silenciosamente no app da Play Store, sem abrir
+      // o seletor de contas e sem nenhum erro visível"): antes, este
+      // catch genérico (cobre qualquer falha nativa do Google Sign-In/
+      // Credential Manager ANTES de sequer chegar ao Firebase — ver
+      // `SocialAuthService.signInWithGoogle`, agora com try/catch próprio
+      // por etapa) só mostrava o texto fixo `erroLoginGenerico` num
+      // SnackBar, escondendo por completo a causa real — impossível de
+      // diagnosticar remotamente sem acesso ao logcat do aparelho do
+      // usuário. Agora exibe também o texto EXATO da exceção, com botão
+      // "Copiar", num diálogo (mais espaço que um SnackBar).
+      debugPrint('⚠️ [LoginScreen] Falha inesperada no login social ($provedor): $e\n$s');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.erroLoginGenerico),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
-        ),
+      await _exibirDialogoErroLoginSocial(
+        AppLocalizations.of(context)!.erroLoginGenerico,
+        '${e.runtimeType}: $e',
       );
     } finally {
       if (mounted) setState(() => _provedorSocialCarregando = null);
     }
+  }
+
+  /// Diálogo de falha no login social — mostra a mensagem amigável
+  /// (mesma de sempre) E o texto técnico EXATO da exceção logo abaixo,
+  /// selecionável e com botão "Copiar" (ver [_fazerLoginSocial]). Único
+  /// propósito: diagnosticar uma falha que só reproduz no app instalado
+  /// via Play Store, sem acesso a logcat do aparelho.
+  Future<void> _exibirDialogoErroLoginSocial(String mensagemAmigavel, String detalheTecnico) async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.erroLoginTituloDialogo),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(mensagemAmigavel),
+              const SizedBox(height: 14),
+              Text(
+                l10n.erroLoginDetalhesTecnicos,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                detalheTecnico,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 11.5),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: detalheTecnico));
+              if (!ctx.mounted) return;
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(content: Text(l10n.erroLoginDetalhesCopiados)),
+              );
+            },
+            child: Text(l10n.erroLoginBotaoCopiar),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.fechar),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Mensagens específicas para os códigos de [FirebaseAuthException] mais
