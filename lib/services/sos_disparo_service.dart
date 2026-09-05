@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
-import 'plano_limite_service.dart';
 import 'retry_upload_service.dart';
 import 'sos_dispatch_native_service.dart';
 
@@ -93,21 +92,21 @@ class SosDisparoService {
   /// EventChannel do `VolumeSosService`) e `'sos_manual'` para o botão
   /// da aba Segurança.
   Future<void> executarP1LocalizacaoImediata({required String origem}) async {
-    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
-    if (!podeDisparar) {
-      debugPrint(
-          '🚫 [SosDisparoService] Limite mensal de alertas do Plano Gratuito atingido — SOS ($origem) cancelado.');
-      return;
-    }
-
+    // REESPECIFICAÇÃO DO USUÁRIO (2026-09-04): o antigo teto separado de 5
+    // alertas/mês (PlanoLimiteService, removido) contradizia a regra
+    // oficial do Plano Free — "dentro dos 10 dias ativos, todos os
+    // recursos são liberados, sem nenhum teto numérico adicional". O
+    // chamador (ver `main.dart::_dispararSequenciaUnificadaDeSos` /
+    // `SegurancaTab._confirmarEDispararSosManual`) já checa a janela de
+    // 10 dias ativos ANTES de chegar aqui; o canal SMS/Push em si também
+    // se protege de forma independente (ver
+    // `EmergencyAlertService._enviarSms`/`FirebaseSyncService`).
     final bool reivindicado = await _reivindicarDisparoUnico();
     if (!reivindicado) {
       debugPrint(
           '🔁 [SosDisparoService] Disparo duplicado detectado (outro engine já iniciou a sequência há poucos segundos) — P1 ($origem) não reenviado.');
       return;
     }
-
-    await PlanoLimiteService().incrementarAlertaUsado();
 
     // CORREÇÃO DE REGRESSÃO (bug real, 2026-08-07): a versão anterior
     // fazia `await FirebaseAuthService().aguardarUidPronto()` AQUI, ANTES
@@ -174,12 +173,6 @@ class SosDisparoService {
   /// SMS usa a mensagem de fallback (sem link real) — a entrega de P2
   /// nunca pode depender de um único canal funcionando.
   Future<void> dispararFotoCapturada(XFile foto, {required String origem}) async {
-    try {
-      await PlanoLimiteService().incrementarFotoUsada();
-    } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Erro no contador de fotos: $e');
-    }
-
     String? fotoUrl;
 
     // Mesma janela crítica do P1 (ver executarP1LocalizacaoImediata):

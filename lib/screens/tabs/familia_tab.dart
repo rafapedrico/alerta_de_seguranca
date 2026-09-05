@@ -11,6 +11,7 @@ import '../../services/emergency_alert_service.dart';
 import '../../services/firebase_sync_service.dart';
 import '../../models/alarme_rotina.dart';
 import '../../widgets/pin_dialog.dart';
+import '../../widgets/plano_bloqueado_dialog.dart';
 
 /// Aba responsável pelo gerenciador de múltiplos alarmes de rotina de
 /// check-in, no estilo do despertador do iPhone: uma lista de alarmes,
@@ -195,6 +196,15 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
 
 Future<void> _alternarAtivo(AlarmeRotina alarme, bool ativo) async {
     if (alarme.id == null) return;
+
+    // REGRA DE NEGÓCIO (pedido explícito do usuário, 2026-09-04): reativar
+    // um alarme pelo switch é, na prática, o mesmo "recurso" que salvar um
+    // alarme novo — fora dos 10 dias ativos do mês (e sem Premium), não
+    // pode funcionar. Checado ANTES de qualquer outra coisa, senão o
+    // switch viraria um atalho para contornar a mesma trava do botão
+    // "Salvar Alarme" (ver modal de criação/edição mais abaixo).
+    if (ativo && !await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+    if (!mounted) return;
 
     final bool estaPausado = _pausadoHojeMap[alarme.id] ?? false;
 
@@ -648,6 +658,19 @@ Future<void> _despausarAlarmeManual(AlarmeRotina alarme) async {
                             ),
                           ),
                           onPressed: () async {
+                            // REGRA DE NEGÓCIO (pedido explícito do usuário,
+                            // 2026-09-04): fora dos 10 dias ativos do mês (e
+                            // sem Premium), o app não deve salvar NENHUM
+                            // alarme de rotina novo/editado — exibe o mesmo
+                            // aviso de upsell já usado em outros pontos do
+                            // app (SOS manual/físico) e interrompe aqui,
+                            // ANTES de qualquer escrita no SQLite. Mesma
+                            // trava única do ciclo do Plano Free (ver
+                            // PlanoCicloService) — nunca um teto numérico
+                            // separado.
+                            if (!await garantirRecursoLiberadoOuExibirUpsell(ctx)) return;
+                            if (!ctx.mounted) return;
+
                             final etiqueta = etiquetaController.text.trim();
                             final contexto = contextoController.text.trim();
 

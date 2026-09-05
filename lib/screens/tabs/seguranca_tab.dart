@@ -358,7 +358,18 @@ class _SegurancaTabState extends State<SegurancaTab> {
     }
   }
 
-  void _iniciarTimer() {
+  Future<void> _iniciarTimer() async {
+    // REGRA DE NEGÓCIO (Cronômetro Regressivo, pedido explícito do
+    // usuário, 2026-09-04 — mesma trava já aplicada ao Alarme de Rotina e
+    // ao SOS): dentro dos 10 dias ativos do mês (ou Premium), o recurso
+    // funciona normalmente; fora dessa janela, o botão verde não deve
+    // sequer iniciar a contagem — exibe o aviso de upsell e interrompe
+    // aqui, ANTES de qualquer `setState`/agendamento. Mesma trava única
+    // do ciclo do Plano Free (ver PlanoCicloService), nunca um teto
+    // numérico separado.
+    if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+    if (!mounted) return;
+
     _carregarConfiguracoesSeguranca();
     int totalSegundos = (_horaSelecionada * 3600) + (_minutoSelecionada * 60);
 
@@ -788,13 +799,15 @@ class _SegurancaTabState extends State<SegurancaTab> {
   /// a tela e pode ter tocado por engano. O diálogo permanece aberto até
   /// o usuário decidir (sem timeout automático).
   Future<void> _confirmarEDispararSosManual() async {
-    // BLOQUEIO DE MENSAGENS/ALERTAS do ciclo do Plano Free (ver
-    // PlanoCicloService): checado ANTES de exibir o diálogo de
-    // confirmação — fora dos 10 dias ativos do mês, sem Premium, exibe o
-    // modal de upsell e interrompe o fluxo aqui, sem abrir a câmera nem
-    // disparar SMS/Push (o disparo em si já seria bloqueado mais abaixo
-    // em EmergencyAlertService/FirebaseSyncService de qualquer forma —
-    // este precheck só evita a UI de "SOS enviado" enganosa).
+    // ÚNICA trava do Plano Free (reespecificação do usuário, 2026-09-04):
+    // dentro dos 10 dias ativos do mês (ou Premium), TODOS os recursos
+    // são liberados; fora deles, NENHUMA mensagem é enviada. Checado
+    // ANTES de exibir o diálogo de confirmação — fora da janela ativa,
+    // exibe o modal de upsell e interrompe o fluxo aqui, sem abrir a
+    // câmera nem disparar SMS/Push (o disparo em si já seria bloqueado
+    // mais abaixo em EmergencyAlertService/FirebaseSyncService/
+    // CapturaDissuasaoService de qualquer forma — este precheck só evita
+    // a UI de "SOS enviado" enganosa).
     if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
     if (!mounted) return;
 
@@ -830,8 +843,11 @@ class _SegurancaTabState extends State<SegurancaTab> {
       // aviso por cima do botão/câmera: a tela vermelha de dissuasão
       // exibida após a foto já confirma visualmente o disparo.
       unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: 'sos_manual'));
-      // P2: abre a câmera (Recurso de Captura e Dissuasão) — checa o
-      // limite mensal de fotos do Plano Gratuito internamente.
+      // P2: abre a câmera (Recurso de Captura e Dissuasão) — checa a
+      // mesma janela de 10 dias ativos internamente (ver
+      // CapturaDissuasaoService); o precheck no topo deste método já
+      // garante que chegamos aqui liberados, mas a checagem interna é
+      // mantida como segunda linha de defesa.
       await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: 'sos_manual');
     } catch (e) {
       debugPrint('⚠️ Falha ao disparar SOS manual: $e');

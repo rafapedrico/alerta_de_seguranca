@@ -155,6 +155,14 @@ class RotinaAlarmPlugin : FlutterPlugin {
                         try {
                             // 1. Desliga o som nativo
                             RotinaAlarmSomBridge.pararSom()
+                            // 1b. Cancela a notificação full-screen-intent (ver
+                            // documentação completa em
+                            // [RotinaAlarmWakeService.cancelarNotificacaoFullScreen])
+                            // — sem isso, o toque de alarme do PRÓPRIO
+                            // aparelho (tocado pela notificação, não por
+                            // este app) continua sozinho mesmo com o som
+                            // Dart já parado.
+                            RotinaAlarmWakeService.cancelarNotificacaoFullScreen(context)
                             // 2. O segredo da vitória: Força a Activity nativa do Android a fechar e sumir!
                             fecharActivityAtiva()
                             result.success(true)
@@ -180,6 +188,11 @@ class RotinaAlarmPlugin : FlutterPlugin {
                                 "silenciarSomSemFechar: parando apenas o som nativo (Activity permanece aberta)",
                             )
                             RotinaAlarmSomBridge.pararSom()
+                            // Ver comentário completo em "pararAlarme" acima —
+                            // mesmo motivo, aplicado aqui também para que o
+                            // botão "Interromper Alarme" já silencie o toque
+                            // nativo da notificação, não só o som Dart.
+                            RotinaAlarmWakeService.cancelarNotificacaoFullScreen(context)
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("ROTINA_ALARME_ERROR", "Falha ao silenciar som: ${e.message}", null)

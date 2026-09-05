@@ -65,6 +65,23 @@ class PlanoCicloStatus {
     return diff.ceil().clamp(0, _duracaoCicloDias);
   }
 
+  /// 🧪 BANDEIRA DE TESTE TEMPORÁRIA (2026-09-04, pedido explícito do
+  /// usuário) — força o app a se comportar como se o ciclo do Plano Free
+  /// já tivesse passado dos 10 dias ativos, SEM alterar `cycleStartDate`
+  /// de verdade no Firestore nem a data do sistema do aparelho. Único
+  /// propósito: validar de ponta a ponta a desativação automática dos
+  /// alarmes de rotina e o aviso no botão "Salvar Alarme" ao expirar o
+  /// ciclo, sem esperar até a renovação real. `isPremium` continua
+  /// respeitado normalmente (uma conta Premium de verdade não é afetada).
+  ///
+  /// ⚠️ OBRIGATÓRIO: voltar para `false` assim que o teste for confirmado
+  /// — NUNCA subir para produção com isto em `true`.
+  ///
+  /// REVERTIDO PARA PRODUÇÃO (2026-09-04): segunda rodada de teste
+  /// confirmada com sucesso (aba Monitoramento em vermelho + bloqueio do
+  /// Cronômetro Regressivo) — voltando a `false`.
+  static const bool debugForcarPlanoFreeBloqueado = false;
+
   /// Constrói o status a partir dos dados brutos de `usuarios/{uid}`.
   /// Blindado contra documento ausente/campo nunca gravado: nesse caso,
   /// assume um ciclo começando AGORA (dia 1, ativo) — nunca bloqueia por
@@ -76,8 +93,9 @@ class PlanoCicloStatus {
     final DateTime inicio = timestamp?.toDate() ?? DateTime.now();
     final int diaAtual =
         DateTime.now().difference(inicio).inDays.clamp(0, 1 << 30) + 1;
-    final bool dentroDaJanelaAtiva = diaAtual <= _duracaoAtivoDias ||
-        diaAtual > _duracaoCicloDias; // ciclo vencido -> permissivo
+    final bool dentroDaJanelaAtiva = !debugForcarPlanoFreeBloqueado &&
+        (diaAtual <= _duracaoAtivoDias ||
+            diaAtual > _duracaoCicloDias); // ciclo vencido -> permissivo
     return PlanoCicloStatus(
       isPremium: isPremium,
       cycleStartDate: inicio,
@@ -100,9 +118,8 @@ class PlanoCicloStatus {
 ///
 /// LIMITE HONESTO deste modelo (documentado aqui para nunca ser
 /// esquecido): o BLOQUEIO em si (impedir o envio do SMS/Push, recusar
-/// compartilhar localização) é aplicado no CLIENTE, checando estes
-/// campos — mesma filosofia já usada por [PlanoLimiteService] (limite
-/// mensal de alertas) neste projeto. Um cliente adulterado/recompilado
+/// compartilhar localização, abrir a câmera) é aplicado no CLIENTE,
+/// checando estes campos. Um cliente adulterado/recompilado
 /// sem essas checagens poderia, em tese, ignorá-las. O que ESTE serviço
 /// resolve de verdade é: (1) o ciclo não pode ser resetado reinstalando o
 /// app ou limpando dados locais, e (2) `isPremium`/`cycleStartDate` não
@@ -220,17 +237,20 @@ class PlanoCicloService {
     }
   }
 
-  /// PONTO ÚNICO DE DECISÃO usado por todos os bloqueios de mensagens/
-  /// alertas (SMS + Push, ver [EmergencyAlertService]/[FirebaseSyncService])
-  /// e de localização em tempo real (ver [MonitoramentoService]).
+  /// PONTO ÚNICO DE DECISÃO — ÚNICA trava do Plano Free no app
+  /// (reespecificação do usuário, 2026-09-04: sem nenhum teto numérico
+  /// adicional) — usado por todos os bloqueios de mensagens/alertas (SMS
+  /// + Push, ver [EmergencyAlertService]/[FirebaseSyncService]), de
+  /// localização em tempo real (ver [MonitoramentoService]) e de captura
+  /// de foto (ver `CapturaDissuasaoService`).
   ///
   /// Retorna `true` (libera o recurso) quando: Premium ativo, dentro dos
   /// 10 dias ativos do ciclo gratuito, OU — de propósito — sempre que o
   /// status não pôde ser determinado agora (sem sessão/Firebase
-  /// indisponível, falha de rede, timeout). Esta última blindagem segue a
-  /// MESMA filosofia já adotada por [PlanoLimiteService] neste projeto:
-  /// uma falha/atraso técnico no controle de MONETIZAÇÃO nunca deve, por
-  /// si só, silenciar um recurso de SEGURANÇA (SOS, alerta de pânico).
+  /// indisponível, falha de rede, timeout). Esta última blindagem é
+  /// deliberada: uma falha/atraso técnico no controle de MONETIZAÇÃO
+  /// nunca deve, por si só, silenciar um recurso de SEGURANÇA (SOS,
+  /// alerta de pânico).
   Future<bool> podeUsarRecursosAvancados() async {
     final status = await obterStatusAtualizado();
     return status?.ativo ?? true;

@@ -80,16 +80,9 @@ export function Planos() {
               <strong>{parametros.duracaoAtivaDias} dias ativos</strong> por ciclo.
             </li>
             <li>
-              Limite mensal de produção: <strong>{parametros.limiteAlertasGratuitoProducao} alertas</strong> /{" "}
-              <strong>{parametros.limiteFotosGratuitoProducao} fotos</strong> (Plano Free).
+              Dentro dos dias ativos (ou Premium), todos os recursos são liberados sem nenhum teto numérico
+              adicional; fora dessa janela, nenhuma mensagem é enviada.
             </li>
-            {parametros.limitesAtuaisSaoDeTeste && (
-              <li className="texto-aviso">
-                Atenção: no código-fonte esses limites estão temporariamente elevados para{" "}
-                {parametros.limiteAlertasGratuitoAtual} / {parametros.limiteFotosGratuitoAtual}{" "}
-                (TODO de teste ainda não revertido em <code>plano_limite_service.dart</code>).
-              </li>
-            )}
           </ul>
         )}
       </section>

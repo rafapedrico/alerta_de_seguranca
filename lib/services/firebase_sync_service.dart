@@ -102,8 +102,22 @@ class FirebaseSyncService {
   /// EmergencyAlertService._enviarSms). Falha ao determinar o status (sem
   /// sessão, sem rede) é tratada como liberado por padrão dentro do
   /// próprio PlanoCicloService, nunca aqui.
-  Future<bool> _podeUsarRecursoAvancado() =>
-      PlanoCicloService().podeUsarRecursosAvancados();
+  ///
+  /// DIAGNÓSTICO REFORÇADO (auditoria de disparo de SOS, 2026-09-04):
+  /// loga o status COMPLETO (não só o booleano) em todo caminho — permite
+  /// diferenciar, só pelo log, um Push que saiu por Premium genuíno, por
+  /// estar dentro dos 10 dias ativos, ou pelo fallback permissivo de falha
+  /// (`status == null`), já que as 3 causas produzem o mesmo resultado.
+  Future<bool> _podeUsarRecursoAvancado() async {
+    final status = await PlanoCicloService().obterStatusAtualizado();
+    final bool ativo = status?.ativo ?? true;
+    debugPrint(ativo
+        ? '🔓 [FirebaseSyncService] Envio liberado — isPremium=${status?.isPremium}, '
+            'diaAtualCiclo=${status?.diaAtualCiclo}/30, statusNulo=${status == null}.'
+        : '🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos — '
+            'bloqueado. isPremium=${status?.isPremium}, diaAtualCiclo=${status?.diaAtualCiclo}/30.');
+    return ativo;
+  }
 
   /// Cria (via merge) o documento `usuarios/{uid}` logo após o cadastro
   /// bem-sucedido no Firebase Auth ([FirebaseAuthService.criarConta]).

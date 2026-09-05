@@ -3,7 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../app_navigator.dart';
 import '../screens/camera_captura_screen.dart';
-import 'plano_limite_service.dart';
+import 'plano_ciclo_service.dart';
 
 /// Orquestra a abertura do recurso de Captura e Dissuasão
 /// ([CameraCapturaScreen]) a partir de qualquer ponto de disparo de
@@ -16,17 +16,32 @@ class CapturaDissuasaoService {
 
   /// [origemUnificada], quando informado, identifica a sequência
   /// unificada de SOS (ver [SosDisparoService]/[CameraCapturaScreen]) —
-  /// repassado direto para a tela, sem alterar a checagem de limite do
-  /// plano nem o retry-loop de navegação abaixo.
-  Future<void> abrirCapturaSePermitido({String? origemUnificada}) async {
+  /// repassado direto para a tela, sem alterar a checagem de plano nem o
+  /// retry-loop de navegação abaixo.
+  ///
+  /// Retorna `true` só quando a [CameraCapturaScreen] foi de fato
+  /// empurrada para a navegação — `false` em qualquer caminho que NÃO
+  /// abre a câmera (fora da janela de 10 dias ativos do Plano Free,
+  /// `NavigatorState` indisponível). Usado por
+  /// `main.dart::_dispararSequenciaUnificadaDeSos` para decidir se a
+  /// tela preta do cold-start via botão físico ([_TelaPretaAguardandoSos])
+  /// precisa de um fallback de saída — ver documentação completa lá.
+  Future<bool> abrirCapturaSePermitido({String? origemUnificada}) async {
     try {
-      // 1. Verifica se o plano permite tirar fotos
-      final bool permitido = await PlanoLimiteService().podeTirarFoto();
-      debugPrint('📷 [CapturaDissuasaoService] podeTirarFoto() retornou: $permitido');
+      // 1. Verifica se o Plano Free está dentro da janela de 10 dias
+      // ativos (ou se é Premium) — ver PlanoCicloService. REESPECIFICAÇÃO
+      // DO USUÁRIO (2026-09-04): antes a foto era gated por um teto
+      // separado de 2/mês (PlanoLimiteService, removido), que contradizia
+      // a regra oficial "todos os recursos liberados dentro dos 10 dias
+      // ativos" — agora usa a MESMA trava única de SMS/Push (ver
+      // `EmergencyAlertService._enviarSms`/`FirebaseSyncService`), sem
+      // nenhum teto numérico adicional.
+      final bool permitido = await PlanoCicloService().podeUsarRecursosAvancados();
+      debugPrint('📷 [CapturaDissuasaoService] podeUsarRecursosAvancados() retornou: $permitido');
       if (!permitido) {
         debugPrint(
-            '📷 [CapturaDissuasaoService] Limite mensal de fotos do Plano Gratuito atingido — captura não será aberta.');
-        return;
+            '📷 [CapturaDissuasaoService] Plano Free fora da janela de 10 dias ativos do mês — captura não será aberta.');
+        return false;
       }
 
       // 2. Apenas verifica o status da permissão de CÂMERA, sem solicitar.
@@ -58,7 +73,7 @@ class CapturaDissuasaoService {
       if (navigatorState == null) {
         debugPrint(
             '⚠️ [CapturaDissuasaoService] NavigatorState indisponível após aguardar — captura não pôde ser aberta.');
-        return;
+        return false;
       }
 
       // 4. Navega para a CameraCapturaScreen
@@ -69,8 +84,10 @@ class CapturaDissuasaoService {
           fullscreenDialog: true,
         ),
       );
+      return true;
     } catch (e) {
       debugPrint('⚠️ [CapturaDissuasaoService] Falha ao tentar abrir a tela de captura: $e');
+      return false;
     }
   }
 }

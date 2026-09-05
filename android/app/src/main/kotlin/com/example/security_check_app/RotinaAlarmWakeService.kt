@@ -2,11 +2,14 @@ package com.example.security_check_app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -187,28 +190,158 @@ class RotinaAlarmWakeService : Service() {
         }
     }
 
+    /**
+     * CORREÇÃO DE BUG REAL (2026-09-04 — pedido explícito do usuário: "com
+     * o aparelho desbloqueado e o app em segundo plano, só aparece uma
+     * notificação, sem tocar o alarme até tocar nela"): o `startActivity()`
+     * direto abaixo, chamado a partir de um Foreground Service, está
+     * sujeito à MESMA restrição de "Background Activity Launch" (BAL) do
+     * Android 10+/12+ já diagnosticada e corrigida em
+     * [VolumeSosService.forcarAberturaLockscreenCameraActivity] (ver aquele
+     * comentário para o log real de `ActivityTaskManager: Background
+     * activity launch blocked!` que motivou a correção lá) — com o app
+     * fora do primeiro plano (mesmo desbloqueado), o Android pode
+     * simplesmente recusar abrir [RotinaCheckinAlarmActivity], deixando só
+     * o WakeLock e a notificação MÍNIMA/silenciosa de
+     * [iniciarEmForeground] (que existe só para o Android permitir o
+     * Foreground Service em si, não para alertar o usuário).
+     *
+     * FIX: o MESMO mecanismo já validado no botão físico — uma notificação
+     * com `setFullScreenIntent(..., true)` é a exceção OFICIAL do Android
+     * a essa restrição (documentada desde o Android 10): quando postada,
+     * o próprio sistema abre a Activity do `PendingIntent`
+     * automaticamente, mesmo com o app em segundo plano ou a tela
+     * bloqueada, sem passar pelo BAL. Continua tentando o `startActivity()`
+     * direto também (mais rápido quando funciona — app já em primeiro
+     * plano, ou aparelhos/versões onde o BAL não bloqueia — e inofensivo
+     * quando falha, já que a notificação full-screen acima cobre o caso).
+     */
     private fun iniciarTelaDoAlarme(
         idAlarme: Int,
         tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
     ) {
         Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
+
+        val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+            putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
+            putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
+        }
+
+        postarNotificacaoFullScreen(intent, idAlarme)
+
         try {
-            val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
-                addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
-                )
-                putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
-                putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
-            }
             startActivity(intent)
         } catch (e: Exception) {
-            // Falha silenciosa: o WakeLock adquirido acima já ajuda o
-            // caminho Dart/headless a completar seu trabalho mesmo que a
-            // Activity não abra por algum motivo específico de fabricante.
-            Log.d(TAG, "iniciarTelaDoAlarme: falha ao iniciar Activity: ${e.message}")
+            // Falha silenciosa: a notificação full-screen-intent acima já
+            // cobre a abertura da tela; o WakeLock adquirido também ajuda
+            // o caminho Dart/headless a completar seu trabalho mesmo que
+            // esta chamada direta não funcione neste aparelho/versão.
+            Log.d(TAG, "iniciarTelaDoAlarme: falha ao iniciar Activity diretamente (esperado em " +
+                "Android 12+/BAL) — a notificação full-screen-intent cobre a abertura: ${e.message}")
         }
+    }
+
+    /** Ver documentação completa em [iniciarTelaDoAlarme]. */
+    private fun postarNotificacaoFullScreen(intentAbrir: Intent, idAlarme: Int) {
+        try {
+            criarCanalFullScreenSeNecessario()
+
+            val flagsImutavel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE
+            } else {
+                0
+            }
+            val pendingAbrir = PendingIntent.getActivity(
+                this,
+                idAlarme,
+                intentAbrir,
+                PendingIntent.FLAG_UPDATE_CURRENT or flagsImutavel,
+            )
+
+            val notificacao = NotificationCompat.Builder(this, CANAL_FULLSCREEN_ID)
+                .setContentTitle(getString(R.string.alerta_rotina_fisico_titulo))
+                .setContentText(getString(R.string.alerta_rotina_fisico_corpo))
+                .setSmallIcon(applicationInfo.icon)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .setContentIntent(pendingAbrir)
+                .setFullScreenIntent(pendingAbrir, true)
+                .build()
+
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(NOTIFICATION_ID_FULLSCREEN, notificacao)
+            Log.d(TAG, "postarNotificacaoFullScreen: notificação full-screen-intent postada (bypass de BAL).")
+        } catch (e: Exception) {
+            Log.w(TAG, "postarNotificacaoFullScreen: falha ao postar notificação full-screen.", e)
+        }
+    }
+
+    /** Canal dedicado à notificação full-screen-intent de
+     * [postarNotificacaoFullScreen] — `IMPORTANCE_HIGH` é exigido pelo
+     * Android para que `setFullScreenIntent` realmente acorde/abra a
+     * Activity automaticamente (canais de importância menor só mostram a
+     * notificação normal, sem abrir nada sozinha) — DIFERENTE do canal
+     * `rotina_alarme_wake_channel` de [iniciarEmForeground] (`IMPORTANCE_MIN`,
+     * só existe para o próprio Foreground Service ser permitido, nunca
+     * pensado para alertar o usuário).
+     *
+     * MITIGAÇÃO (2026-09-04 — pedido explícito do usuário, confirmado em
+     * teste físico): com a TELA JÁ ACESA e desbloqueada (app só em
+     * segundo plano), o Android — de PROPÓSITO, documentado oficialmente
+     * desde a versão 10 — NÃO abre sozinho um full-screen-intent; mostra
+     * só o banner da notificação e espera o toque. Isso é uma proteção
+     * deliberada da plataforma (nenhum app comum consegue "sequestrar" a
+     * tela enquanto o usuário está usando o aparelho para outra coisa) —
+     * NÃO existe bypass público para isto, nem mesmo para apps de
+     * despertador. O que dá pra fazer: o som da PRÓPRIA notificação (que
+     * toca imediatamente ao ser postada, mesmo sem abrir a tela) usa o
+     * canal de ALARME (`AudioAttributes.USAGE_ALARM`) em vez do toque
+     * padrão de notificação — ganha foco de áudio/ignora o Modo Não
+     * Perturbe e chama atenção IMEDIATA mesmo nesse cenário limitado,
+     * ainda que o loop completo do som customizado só comece de fato
+     * depois do toque na notificação (que aí sim abre a tela e o
+     * `AudioPlayer` Dart assume, ver [RotinaCheckinAlarmActivity]).
+     *
+     * ID do canal com sufixo `_v2`: parâmetros de som/vibração de um
+     * `NotificationChannel` já criado no aparelho são IMUTÁVEIS — o
+     * Android ignora silenciosamente qualquer nova tentativa de
+     * `createNotificationChannel` com o mesmo id mas configuração
+     * diferente. Mudar o id força a criação de um canal novo com o som
+     * de alarme de verdade em qualquer instalação já existente (em vez
+     * de depender do usuário desinstalar/reinstalar o app).
+     */
+    private fun criarCanalFullScreenSeNecessario() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (manager.getNotificationChannel(CANAL_FULLSCREEN_ID) != null) return
+
+        val somDeAlarme = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val atributosDeAlarme = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        val canal = NotificationChannel(
+            CANAL_FULLSCREEN_ID,
+            "Alarme de rotina (abertura)",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Usado internamente para abrir a tela do alarme de rotina mesmo com o app em segundo plano ou a tela bloqueada."
+            setShowBadge(false)
+            setSound(somDeAlarme, atributosDeAlarme)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0L, 500L, 250L, 500L, 250L, 500L)
+            setBypassDnd(true)
+        }
+        manager.createNotificationChannel(canal)
     }
 
     /**
@@ -292,6 +425,15 @@ class RotinaAlarmWakeService : Service() {
         Log.d(TAG, "onDestroy")
         desregistrarReceiverDeDesbloqueio()
         liberarWakeLock()
+        // CORREÇÃO DE BUG REAL (2026-09-04 — confirmado em teste físico e
+        // no log: `FlashNotifController`/`MediaProvider` mostraram o toque
+        // de alarme padrão do aparelho — `Platinum.ogg` — continuando a
+        // tocar por ~37s DEPOIS do PIN correto já ter sido digitado): ver
+        // documentação completa em [cancelarNotificacaoFullScreen].
+        // Defensivo aqui também (além de [parar] abaixo, o ponto normal de
+        // saída) para cobrir qualquer caminho de encerramento do Service
+        // que não passe por lá.
+        cancelarNotificacaoFullScreen(applicationContext)
         super.onDestroy()
     }
 
@@ -299,6 +441,14 @@ class RotinaAlarmWakeService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 7712
+
+        /** Id/canal da notificação full-screen-intent de
+         * [postarNotificacaoFullScreen] — diferente de [NOTIFICATION_ID]
+         * (a notificação PERSISTENTE/silenciosa deste Foreground Service):
+         * esta é disparada uma única vez por alarme e some sozinha
+         * (`setAutoCancel(true)`) assim que a Activity abre. */
+        private const val NOTIFICATION_ID_FULLSCREEN = 7713
+        private const val CANAL_FULLSCREEN_ID = "rotina_alarme_fullscreen_channel_v2"
 
         /**
          * Libera o WakeLock e encerra este Service — chamado pelo lado
@@ -311,9 +461,43 @@ class RotinaAlarmWakeService : Service() {
             try {
                 Log.d(TAG, "parar: marcando fluxo como resolvido e parando o Service")
                 RotinaAlarmFluxoState.marcarResolvido(context)
+                cancelarNotificacaoFullScreen(context)
                 context.stopService(Intent(context, RotinaAlarmWakeService::class.java))
             } catch (e: Exception) {
                 Log.d(TAG, "parar: falha: ${e.message}")
+            }
+        }
+
+        /**
+         * CORREÇÃO DE BUG REAL (2026-09-04 — pedido explícito do usuário,
+         * confirmado em teste físico via logcat): a notificação
+         * full-screen-intent de [postarNotificacaoFullScreen] usa
+         * `category=alarm` + o som/canal de ALARME do sistema (mitigação
+         * do cenário "tela acesa, app em segundo plano" — ver comentário
+         * completo em [criarCanalFullScreenSeNecessario]). O log confirmou
+         * `MediaProvider`/`FlashNotifController` (recurso do Motorola)
+         * tratando isso como um alarme de verdade e tocando o toque padrão
+         * do aparelho (`Platinum.ogg`) POR CONTA PRÓPRIA — e continuando a
+         * tocar por dezenas de segundos MESMO DEPOIS do PIN correto já ter
+         * sido digitado e o som do `AudioPlayer` Dart já ter sido parado,
+         * porque `setAutoCancel(true)` só remove a notificação quando o
+         * USUÁRIO toca nela diretamente — nunca quando o app resolve o
+         * alarme sozinho por outro caminho (PIN digitado direto na tela já
+         * aberta, sem precisar tocar na notificação). Sintoma real
+         * reportado: "quando digito a senha corretamente o som do
+         * Guardião-X desliga e fica tocando somente o alarme nativo do
+         * celular" — que na really era esta MESMA notificação, sozinha,
+         * ainda ativa. `NotificationManager.cancel()` aqui é o que
+         * realmente encerra esse efeito, chamado em todo ponto em que o
+         * alarme é considerado resolvido/encerrado (ver [parar] acima e
+         * [onDestroy]).
+         */
+        fun cancelarNotificacaoFullScreen(context: Context) {
+            try {
+                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.cancel(NOTIFICATION_ID_FULLSCREEN)
+            } catch (e: Exception) {
+                Log.d(TAG, "cancelarNotificacaoFullScreen: falha: ${e.message}")
             }
         }
     }

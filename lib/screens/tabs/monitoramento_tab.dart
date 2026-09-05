@@ -7,6 +7,7 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/monitoramento_service.dart';
+import '../../services/plano_ciclo_service.dart';
 import '../../services/wallpaper_service.dart';
 import '../../widgets/monitoramento_decisao_dialog.dart';
 import '../../widgets/plano_bloqueado_dialog.dart';
@@ -50,6 +51,26 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _pedidosSub;
   final Set<String> _pedidosJaNotificados = {};
 
+  // ==========================================================
+  // TRAVA DO CICLO DO PLANO FREE (pedido explícito do usuário, 2026-09-04)
+  // ==========================================================
+  // `null` = ainda não chegou nenhum snapshot nesta sessão (blindagem
+  // permissiva — ver [_planoBloqueado]). Assinado via
+  // [PlanoCicloService.statusStream] (mesma fonte reativa já usada pelo
+  // indicador da InicioDashboard) em vez de uma leitura única, para que
+  // TODOS os controles desta aba (botão "Solicitar Localização", os dois
+  // switches de cada card) reflitam a mudança de "ativo" para "bloqueado"
+  // em tempo real, sem exigir um pull-to-refresh manual.
+  StreamSubscription<PlanoCicloStatus?>? _statusPlanoSub;
+  PlanoCicloStatus? _statusPlano;
+
+  /// `true` só quando já temos confirmação de que o ciclo está FORA da
+  /// janela de 10 dias ativos (e sem Premium) — `_statusPlano == null`
+  /// (stream ainda sem nenhum valor, ou sem sessão/Firebase indisponível)
+  /// NUNCA bloqueia nada, mesma blindagem permissiva usada em todo o
+  /// resto do app.
+  bool get _planoBloqueado => _statusPlano?.ativo == false;
+
   @override
   void initState() {
     super.initState();
@@ -58,12 +79,17 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     _pedidosSub = _servico
         .pedidosRecebidosPendentesStream()
         .listen(_aoAtualizarPedidosRecebidos);
+    _statusPlanoSub = PlanoCicloService().statusStream().listen((status) {
+      if (!mounted) return;
+      setState(() => _statusPlano = status);
+    });
   }
 
   @override
   void dispose() {
     MonitoramentoService.versaoMonitoramento.removeListener(_aoAlterarLocal);
     _pedidosSub?.cancel();
+    _statusPlanoSub?.cancel();
     super.dispose();
   }
 
@@ -115,6 +141,17 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   /// Acionado pelo botão "+" do AppBar global (ver HomeScreen), mesmo
   /// padrão de [FamiliaTabState.abrirModalAdicionarAlarme].
   Future<void> abrirModalAdicionarContato() async {
+    // REGRA DE NEGÓCIO (pedido explícito do usuário, 2026-09-04): fora dos
+    // 10 dias ativos do mês (e sem Premium), não é possível cadastrar
+    // NENHUM contato novo de monitoramento — exibe o aviso de upsell e
+    // interrompe aqui, ANTES de abrir o próprio diálogo de cadastro.
+    // [adicionarContato] em si é uma gravação 100% local (SQLite, sem
+    // chamada de rede/Cloud Function) — diferente de
+    // solicitar/compartilhar localização, não precisa de uma segunda
+    // trava no lado do serviço.
+    if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+    if (!mounted) return;
+
     final l10n = AppLocalizations.of(context)!;
     final nomeController = TextEditingController();
     final telefoneController = TextEditingController();
@@ -598,6 +635,13 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     );
     if (!mounted) return;
 
+    // BLOQUEIO do ciclo do Plano Free (ver PlanoCicloService) — mesmo
+    // modal de upsell dedicado usado pelos demais controles desta aba.
+    if (resultado == MonitoramentoService.statusBloqueadoPlanoFree) {
+      await _exibirUpsellPlanoBloqueado();
+      return;
+    }
+
     final mensagem = switch (resultado) {
       'sucesso' => bloquear
           ? l10n.monitoramentoContatoBloqueadoSucesso
@@ -708,6 +752,14 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     bool bloqueado,
     AppLocalizations l10n,
   ) {
+    // REGRA DE NEGÓCIO (pedido explícito do usuário, 2026-09-04): fora dos
+    // 10 dias ativos do mês (e sem Premium), este switch aparece travado
+    // em vermelho — independente do estado real de `bloqueado` salvo no
+    // Firestore — e qualquer toque mostra o aviso de upsell em vez de
+    // tentar a escrita (que [_alternarBloqueioSolicitante] também recusa,
+    // ver `MonitoramentoService.definirBloqueioPorTelefone`; isto só evita
+    // o round-trip de rede e já avisa visualmente ANTES do toque).
+    final bool bloqueadoPeloPlano = _planoBloqueado;
     return Row(
       children: [
         Expanded(
@@ -720,22 +772,28 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
               ),
               const SizedBox(height: 4),
               _linhaStatus(
-                icone: bloqueado ? Icons.block : Icons.check_circle,
-                cor: bloqueado ? Colors.red.shade700 : Colors.green.shade700,
-                texto: bloqueado
-                    ? l10n.monitoramentoIndicadorBloqueado
-                    : l10n.monitoramentoIndicadorLiberado,
+                icone: bloqueadoPeloPlano
+                    ? Icons.lock_outline
+                    : (bloqueado ? Icons.block : Icons.check_circle),
+                cor: bloqueadoPeloPlano || bloqueado ? Colors.red.shade700 : Colors.green.shade700,
+                texto: bloqueadoPeloPlano
+                    ? l10n.monitoramentoRecursoBloqueadoPlano
+                    : (bloqueado
+                        ? l10n.monitoramentoIndicadorBloqueado
+                        : l10n.monitoramentoIndicadorLiberado),
               ),
             ],
           ),
         ),
         Switch(
-          value: !bloqueado,
+          value: bloqueadoPeloPlano ? false : !bloqueado,
           activeColor: Colors.green.shade600,
           activeTrackColor: Colors.green.shade100,
           inactiveThumbColor: Colors.red.shade600,
           inactiveTrackColor: Colors.red.shade100,
-          onChanged: (valor) => _alternarBloqueioComConfirmacao(contato, !valor),
+          onChanged: bloqueadoPeloPlano
+              ? (_) => _exibirUpsellPlanoBloqueado()
+              : (valor) => _alternarBloqueioComConfirmacao(contato, !valor),
         ),
       ],
     );
@@ -901,13 +959,25 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   }
 
   Widget _botaoSolicitar(int id, AppLocalizations l10n) {
+    // REGRA DE NEGÓCIO (pedido explícito do usuário, 2026-09-04): fora dos
+    // 10 dias ativos do mês (e sem Premium), o botão já aparece em
+    // vermelho — refletindo visualmente o mesmo bloqueio que
+    // [_solicitarLocalizacao] já aplicaria via o retorno do serviço — e o
+    // toque mostra o aviso de upsell diretamente, sem round-trip de rede.
+    final bool bloqueado = _planoBloqueado;
     return Align(
       alignment: Alignment.centerLeft,
       child: OutlinedButton.icon(
-        onPressed: () => _solicitarLocalizacao(id),
-        icon: const Icon(Icons.location_searching, size: 18),
-        label: Text(l10n.monitoramentoSolicitarLocalizacao),
-        style: OutlinedButton.styleFrom(foregroundColor: _corDestaque),
+        onPressed: () =>
+            bloqueado ? _exibirUpsellPlanoBloqueado() : _solicitarLocalizacao(id),
+        icon: Icon(bloqueado ? Icons.lock_outline : Icons.location_searching, size: 18),
+        label: Text(
+          bloqueado ? l10n.monitoramentoRecursoBloqueadoPlano : l10n.monitoramentoSolicitarLocalizacao,
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: bloqueado ? Colors.red.shade700 : _corDestaque,
+          side: bloqueado ? BorderSide(color: Colors.red.shade300) : null,
+        ),
       ),
     );
   }
@@ -974,9 +1044,15 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     required AppLocalizations l10n,
   }) {
     final compartilhando = status == MonitoramentoService.statusAprovado;
-    final String rotuloStatus = compartilhando
-        ? l10n.monitoramentoStatusAprovado
-        : l10n.monitoramentoStatusBloqueado;
+
+    // REGRA DE NEGÓCIO (pedido explícito do usuário, 2026-09-04): mesmo
+    // tratamento de [_construirControleBloqueio] — fora dos 10 dias
+    // ativos do mês (e sem Premium), este switch aparece travado em
+    // vermelho e qualquer toque mostra o aviso de upsell diretamente.
+    final bool bloqueadoPeloPlano = _planoBloqueado;
+    final String rotuloStatus = bloqueadoPeloPlano
+        ? l10n.monitoramentoRecursoBloqueadoPlano
+        : (compartilhando ? l10n.monitoramentoStatusAprovado : l10n.monitoramentoStatusBloqueado);
 
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
@@ -993,7 +1069,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
         // quando aprovado.
         style: TextStyle(
           fontSize: 12,
-          color: compartilhando ? Colors.green.shade700 : Colors.red.shade700,
+          color: bloqueadoPeloPlano || !compartilhando ? Colors.red.shade700 : Colors.green.shade700,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1006,8 +1082,10 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       activeTrackColor: Colors.green.shade100,
       inactiveThumbColor: Colors.red.shade600,
       inactiveTrackColor: Colors.red.shade100,
-      value: compartilhando,
-      onChanged: (valor) => _alternarPermissaoCompartilhar(contato, valor),
+      value: bloqueadoPeloPlano ? false : compartilhando,
+      onChanged: bloqueadoPeloPlano
+          ? (_) => _exibirUpsellPlanoBloqueado()
+          : (valor) => _alternarPermissaoCompartilhar(contato, valor),
     );
   }
 

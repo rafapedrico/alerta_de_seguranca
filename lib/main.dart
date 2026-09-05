@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -30,7 +31,7 @@ import 'services/font_scale_service.dart';
 import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/plano_ciclo_service.dart';
-import 'services/plano_limite_service.dart';
+import 'services/premium_purchase_service.dart';
 import 'services/relatorio_falha_entrega_service.dart';
 import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
@@ -38,6 +39,7 @@ import 'services/sos_disparo_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/wallpaper_service.dart';
 import 'widgets/pin_dialog.dart';
+import 'widgets/plano_bloqueado_dialog.dart';
 
 const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
@@ -85,6 +87,45 @@ bool _servicosPosLoginJaIniciados = false;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // CORREÇÃO DE BUG REAL (2026-09-04 — pedido explícito do usuário: "o
+  // despertador de rotina acende a tela e dá um estalo, mas o som só
+  // toca depois que o usuário desliza o dedo/toca na notificação"):
+  // TODOS os `AudioPlayer` deste app (ver [AlarmeSonoroService]/
+  // `AlarmeDisparadoScreen`/`CronometroDisparadoScreen`) tocavam sem
+  // NENHUM `AudioContext` configurado — o `audioplayers` então usa o
+  // padrão da plataforma (Android: `USAGE_MEDIA`, foco de áudio comum).
+  // Um stream de mídia comum, tocado por uma Activity aberta via
+  // `Intent` em segundo plano/por cima do Keyguard (sem estar
+  // genuinamente "resumida e em foco" ainda), pode ser silenciosamente
+  // adiado/negado pelo Android até o usuário interagir com a tela —
+  // EXATAMENTE o sintoma relatado (tela acende, mas o som só começa após
+  // o toque). Isso NUNCA acontece com apps de despertador de verdade
+  // porque eles tocam o som como `USAGE_ALARM` — um uso que o Android
+  // trata como prioritário (ignora o Modo Não Perturbe, ganha foco de
+  // áudio mesmo sem a janela estar interativa, toca no volume de alarme
+  // em vez do de mídia). `AudioPlayer.global.setAudioContext(...)`
+  // configura esse contexto UMA vez, aqui em `main()` — o ÚNICO ponto de
+  // entrada Dart compartilhado por TODOS os engines/Activities deste app
+  // (normal, `RotinaCheckinAlarmActivity` do despertador/cronômetro,
+  // `LockscreenCameraActivity` do SOS físico) — afetando toda instância
+  // de `AudioPlayer` criada DEPOIS disto neste isolate, sem precisar
+  // repetir a configuração em cada tela. Fire-and-forget (sem `await`):
+  // é uma chamada de MethodChannel simples, nunca deve atrasar o
+  // primeiro frame.
+  unawaited(AudioPlayer.global.setAudioContext(AudioContext(
+    android: const AudioContextAndroid(
+      isSpeakerphoneOn: true,
+      stayAwake: true,
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.alarm,
+      audioFocus: AndroidAudioFocus.gain,
+    ),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {AVAudioSessionOptions.mixWithOthers},
+    ),
+  )));
 
   // ETAPA 1 — checagens 100% SÍNCRONAS (leitura de memória já resolvida
   // pelo binding, sem I/O nenhum): NÃO são `await`, custam
@@ -187,7 +228,31 @@ void main() {
       // Firebase pronto para usar Push/link real da foto (ver política
       // de sessão em [_iniciarFirebaseEAuth]).
       futuroFirebaseEAuthImediato!.then((_) {
-        _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico');
+        _dispararSequenciaUnificadaDeSos(origem: 'sos_fisico').then((abriuCamera) {
+          // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (Motorola
+          // Razr, 2026-09-04 — logcat mostrou os dois limites mensais do
+          // Plano Gratuito no teto exatamente neste instante): quando a
+          // câmera NÃO abre por qualquer motivo (limite mensal atingido,
+          // permissão negada, `NavigatorState` indisponível), esta engine
+          // isolada da [LockscreenCameraActivity] não tinha absolutamente
+          // NADA além de [_TelaPretaAguardandoSos] — um `Scaffold` preto
+          // vazio, sem spinner, sem texto, sem botão de voltar funcional
+          // — e ficava assim PARA SEMPRE, obrigando o usuário a forçar o
+          // fechamento do app bem no meio de uma emergência real. P1 (SMS
+          // + nuvem) já foi disparado em paralelo por
+          // [_dispararSequenciaUnificadaDeSos] independentemente deste
+          // resultado — não há mais nada útil a fazer nesta Activity
+          // isolada quando a câmera não abre, então a fecha
+          // automaticamente (`SystemNavigator.pop()`, mesmo mecanismo já
+          // usado por [CameraCapturaScreen._acionarSaidaDeSeguranca])
+          // devolvendo o aparelho à tela de bloqueio normal em vez de
+          // deixar um buraco preto sem saída.
+          if (!abriuCamera) {
+            debugPrint(
+                '🚨 [main] SOS Físico: câmera não abriu — fechando a tela preta (P1 já disparado em paralelo).');
+            SystemNavigator.pop();
+          }
+        });
       });
     });
   }
@@ -504,6 +569,7 @@ Future<void> _iniciarFirebaseEAuth({required bool preservarSessaoExistente}) asy
   } catch (e) {
     debugPrint('⚠️ [Firebase] Falha ao aplicar política de sessão: $e');
   }
+
 }
 
 /// ETAPA 3 (pedido explícito do usuário): TODOS os serviços nativos
@@ -538,7 +604,6 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   await AlarmeService.inicializar();
   await NotificacaoService.inicializar();
   await VolumeSosService().iniciarMonitoramento();
-  await PlanoLimiteService().inicializar();
 
   // Ciclo recorrente de 30 dias do Plano Free (10 dias ativos + 20 dias
   // bloqueados, ver PlanoCicloService) — dispara a sincronização/renovação
@@ -548,6 +613,23 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   // sempre fazem sua PRÓPRIA leitura fresca do Firestore quando
   // necessário, nunca dependem deste disparo já ter terminado.
   PlanoCicloService().iniciar();
+
+  // REGRA DE NEGÓCIO (Alarme de Rotina, pedido explícito do usuário,
+  // 2026-09-04): fora dos 10 dias ativos do mês (e sem Premium), nenhum
+  // alarme de rotina deve continuar agendado — ver documentação completa
+  // em [RotinaAlarmeService.desativarAlarmesSePlanoBloqueado]. Checagem
+  // própria e independente da sincronização acima (não depende dela ter
+  // terminado), fire-and-forget pelo mesmo motivo: nunca atrasar o boot.
+  unawaited(RotinaAlarmeService.desativarAlarmesSePlanoBloqueado());
+
+  // Fluxo real de compra do Plano Premium (Google Play Billing, ver
+  // PremiumPurchaseService) — assina o purchaseStream do plugin
+  // `in_app_purchase` UMA única vez por sessão do engine. Precisa
+  // acontecer aqui (boot), nunca só quando a tela de planos abre: o
+  // resultado de uma compra pode chegar minutos depois (ex: usuário
+  // trocou de forma de pagamento no meio do fluxo) e o app precisa estar
+  // ouvindo o stream o tempo todo, não só enquanto aquela tela existir.
+  PremiumPurchaseService().iniciar();
 
   // Resiliência offline do P2 do SOS (ver RetryUploadService): reagenda
   // o alarme periódico de retry (precisa do AndroidAlarmManager já
@@ -590,14 +672,52 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
 /// obturador aparecer. Compartilhado pelos DOIS pontos de entrada do
 /// botão físico (cold-start via lockscreen acima e o EventChannel de
 /// [_dispararFluxoCompletoDeSos] abaixo).
-Future<void> _dispararSequenciaUnificadaDeSos({required String origem}) async {
+///
+/// REGRA OFICIAL DO PLANO FREE (reespecificação do usuário, 2026-09-04):
+/// dentro dos 10 dias ativos do mês (ou Premium), TODOS os recursos são
+/// liberados sem nenhum teto numérico adicional; fora deles, NENHUMA
+/// mensagem é enviada — o usuário precisa esperar os 20 dias restantes ou
+/// assinar o Premium. O aviso correspondente (ver
+/// [garantirRecursoLiberadoOuExibirUpsell] em `plano_bloqueado_dialog.dart`)
+/// agora aparece TAMBÉM no gatilho FÍSICO — antes só existia no botão
+/// manual da aba Segurança (headless/tela bloqueada era sempre
+/// silencioso, ver `CapturaDissuasaoService`). RESSALVA DE SEGURANÇA
+/// registrada ao usuário nesta mudança: como o gatilho físico pode
+/// disparar com o aparelho bloqueado/escondido (o próprio motivo do
+/// [_TelaPretaAguardandoSos] existir), exibir um diálogo aqui expõe,
+/// pela primeira vez, que este é um app de pânico disfarçado para
+/// qualquer um olhando a tela naquele instante — aceito deliberadamente
+/// a pedido do usuário, mas documentado aqui para nunca ser reintroduzido
+/// "sem querer" achando que é óbvio. `appNavigatorKey` aqui é sempre o do
+/// PRÓPRIO engine desta chamada (isolado do engine principal quando
+/// disparado a frio via `LockscreenCameraActivity` — `main()`/`runApp`
+/// rodam de novo nesse cold start, ver cabeçalho do arquivo), nunca
+/// aponta para a tela errada.
+///
+/// Retorna `true` só quando a câmera foi de fato aberta (ver
+/// [CapturaDissuasaoService.abrirCapturaSePermitido]) — usado pelo
+/// cold-start via lockscreen para decidir se [_TelaPretaAguardandoSos]
+/// precisa de um fallback de saída (ver documentação completa em [main]).
+Future<bool> _dispararSequenciaUnificadaDeSos({required String origem}) async {
+  final BuildContext? contexto = appNavigatorKey.currentContext;
+
+  // Única trava do Plano Free (janela de 10 dias ativos/Premium) —
+  // checada ANTES de disparar P1, mesmo padrão do precheck já usado pelo
+  // botão manual (ver `SegurancaTab._confirmarEDispararSosManual`). Se
+  // bloqueado, nem P1 nem P2 disparam.
+  if (contexto != null && contexto.mounted) {
+    if (!await garantirRecursoLiberadoOuExibirUpsell(contexto)) return false;
+  }
+
   // Fire-and-forget: P1 (SMS + nuvem) roda em paralelo, nunca atrasa P2.
   unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: origem));
-  // CapturaDissuasaoService encapsula a checagem de limite mensal de
-  // fotos do Plano Gratuito e o retry-loop de NavigatorState — reusado
-  // aqui (em vez de `navigateToCameraCaptura` direto) para preservar
-  // essa regra também no botão físico, igual já acontecia no SOS manual.
-  await CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: origem);
+
+  // CapturaDissuasaoService encapsula o retry-loop de NavigatorState e uma
+  // SEGUNDA checagem (idempotente) da mesma janela de 10 dias ativos —
+  // reusado aqui (em vez de `navigateToCameraCaptura` direto) para
+  // preservar essa regra também no caminho sem `BuildContext` disponível
+  // (raríssimo).
+  return CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: origem);
 }
 
 /// Redireciona a navegação para a AlarmeDisparadoScreen
@@ -649,6 +769,7 @@ void _dispararFluxoCompletoDeSos({required String origem}) {
   debugPrint('🆘 [main] Disparando fluxo completo de SOS — origem: $origem');
   _dispararSequenciaUnificadaDeSos(origem: origem).catchError((e) {
     debugPrint('⚠️ [main] Falha ao processar SOS ($origem): $e');
+    return false;
   });
 }
 
@@ -679,11 +800,20 @@ class SecurityCheckApp extends StatefulWidget {
 
 class _SecurityCheckAppState extends State<SecurityCheckApp> {
   late ValueNotifier<bool> _alarmeAtivoNotifier;
+  StreamSubscription<PremiumCompraEvento>? _assinaturaComprasPremium;
 
   @override
   void initState() {
     super.initState();
     _alarmeAtivoNotifier = ValueNotifier<bool>(widget.abertoViaAlarmeRotina);
+
+    // Feedback global do resultado da compra do Plano Premium (ver
+    // PremiumPurchaseService) — precisa viver aqui, no widget raiz do
+    // app, e não numa tela específica: o purchaseStream é assíncrono e o
+    // resultado pode chegar bem depois de quem iniciou a compra ter
+    // saído da tela (ou até trocado de aba).
+    _assinaturaComprasPremium =
+        PremiumPurchaseService().eventos.listen(_aoReceberEventoDeCompraPremium);
     // Adiado (pedido explícito do usuário, 2026-08-06): este monitor só
     // importa para detectar um alarme de rotina disparando enquanto o
     // app JÁ está em uso (empurra a AlarmeDisparadoScreen por cima da
@@ -777,7 +907,46 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
   @override
   void dispose() {
     _alarmeAtivoNotifier.dispose();
+    _assinaturaComprasPremium?.cancel();
     super.dispose();
+  }
+
+  /// Feedback global (independente de qual tela iniciou a compra — ver
+  /// documentação de [PremiumPurchaseService]) para os desfechos
+  /// relevantes da compra do Plano Premium via `SnackBar`, usando o
+  /// [appNavigatorKey] em vez de um `context` de tela específica.
+  /// `pendente`/`cancelada` não mostram nada: o pagamento ainda está em
+  /// andamento, ou o usuário simplesmente desistiu — nenhum dos dois é
+  /// um erro que mereça aviso.
+  void _aoReceberEventoDeCompraPremium(PremiumCompraEvento evento) {
+    final BuildContext? context = appNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
+    switch (evento) {
+      case PremiumCompraEvento.concedida:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.premiumCompraConcedidaMensagem),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        break;
+      case PremiumCompraEvento.semDireito:
+      case PremiumCompraEvento.erro:
+      case PremiumCompraEvento.erroValidacao:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.premiumCompraFalhaMensagem),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        break;
+      case PremiumCompraEvento.pendente:
+      case PremiumCompraEvento.cancelada:
+        break;
+    }
   }
 
   /// Escolhe a tela raiz do MaterialApp. No cold start via SOS Físico

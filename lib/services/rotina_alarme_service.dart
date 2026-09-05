@@ -14,6 +14,7 @@ import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
 import 'l10n_headless_service.dart';
 import 'notificacao_service.dart';
+import 'plano_ciclo_service.dart';
 
 // Canal unificado para comunicação nativa
 const MethodChannel _canalRotinaAlarme =
@@ -267,6 +268,47 @@ class RotinaAlarmeService {
       if (candidato.isAfter(agora)) return candidato;
     }
     return null;
+  }
+
+  /// REGRA DE NEGÓCIO (Alarme de Rotina, pedido explícito do usuário,
+  /// 2026-09-04): dentro dos 10 dias ativos do mês (ou Premium), os
+  /// alarmes de rotina funcionam de forma totalmente ilimitada. Fora
+  /// dessa janela (20 dias bloqueados do Plano Free), NENHUM alarme de
+  /// rotina deve continuar agendado — chamado uma vez por sessão (ver
+  /// `main.dart::iniciarServicosPosLoginOuDashboard`, logo após
+  /// [PlanoCicloService.iniciar]) para desativar automaticamente todo
+  /// alarme que porventura ainda esteja ativo quando o ciclo vira de
+  /// "ativo" para "bloqueado" — sem exigir que o usuário abra a aba
+  /// Família e desative um por um manualmente.
+  ///
+  /// Mesmo par cancelamento nativo + `ativo = 0` no SQLite já usado pelo
+  /// switch manual da aba Família (ver `FamiliaTabState._alternarAtivo`),
+  /// para a lista já refletir o estado real na próxima vez que a aba for
+  /// aberta. `status == null` (falha ao consultar — sem sessão, sem rede)
+  /// NUNCA desativa nada, mesma blindagem permissiva já usada em todo o
+  /// resto do app: uma falha técnica no controle de monetização não deve
+  /// desligar, por conta própria, um recurso de segurança já configurado
+  /// pelo usuário.
+  static Future<void> desativarAlarmesSePlanoBloqueado() async {
+    try {
+      final status = await PlanoCicloService().obterStatusAtualizado();
+      if (status == null || status.ativo) return;
+
+      final db = DatabaseHelper();
+      final alarmes = await db.listarAlarmes();
+      final ativos = alarmes.where((mapa) => (mapa['ativo'] as int?) == 1);
+
+      for (final mapa in ativos) {
+        final id = mapa['id'] as int;
+        await cancelarAlarme(id);
+        await db.alternarAtivoAlarme(id, false);
+        debugPrint(
+            '🔒 [RotinaAlarmeService] Alarme #$id desativado automaticamente — '
+            'Plano Free fora da janela de 10 dias ativos do mês.');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [RotinaAlarmeService] Falha ao desativar alarmes por plano bloqueado: $e');
+    }
   }
 
   static Future<void> cancelarAlarme(int idAlarme) async {

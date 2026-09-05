@@ -18,4 +18,13 @@
          completo na classe). Texto nativo, mesmo motivo dos acima. -->
     <string name="alerta_sos_fisico_titulo">SOS acionado</string>
     <string name="alerta_sos_fisico_corpo">Abrindo a câmera de emergência…</string>
+
+    <!-- Notificação full-screen-intent usada por
+         RotinaAlarmWakeService.postarNotificacaoFullScreen para abrir a
+         tela do alarme de rotina mesmo com o app em segundo plano ou a
+         tela bloqueada (contornando a mesma restrição de "Background
+         Activity Launch" do Android 12+ — ver comentário completo na
+         classe). Texto nativo, mesmo motivo dos acima. -->
+    <string name="alerta_rotina_fisico_titulo">Confirmação de segurança pendente</string>
+    <string name="alerta_rotina_fisico_corpo">Toque para confirmar que está tudo bem</string>
 </resources>

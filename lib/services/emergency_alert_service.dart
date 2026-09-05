@@ -8,7 +8,6 @@ import 'database_helper.dart';
 import 'api_service.dart';
 import 'l10n_headless_service.dart';
 import 'plano_ciclo_service.dart';
-import 'plano_limite_service.dart';
 
 
 /// Serviço isolado responsável por TODO o fluxo de disparo do alerta de
@@ -316,19 +315,13 @@ class EmergencyAlertService {
     String? contexto,
     Position? posicaoEmMemoria,
   }) async {
-    // Regra de negócio (Plano Gratuito): no máximo 5 alertas de
-    // emergência por mês. Verificado ANTES de qualquer outra etapa do
-    // disparo — se o limite já tiver sido atingido, o fluxo é
-    // interrompido silenciosamente aqui (sem lançar exceção nem afetar a
-    // UI que chamou este método).
-    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
-    if (!podeDisparar) {
-      debugPrint(
-          '🚫 [EmergencyAlertService] Limite mensal de alertas do Plano Gratuito atingido — disparo cancelado.');
-      return;
-    }
-    await PlanoLimiteService().incrementarAlertaUsado();
-
+    // REESPECIFICAÇÃO DO USUÁRIO (2026-09-04): o antigo teto separado de 5
+    // alertas/mês (PlanoLimiteService, removido) contradizia a regra
+    // oficial do Plano Free — "dentro dos 10 dias ativos, todos os
+    // recursos são liberados, sem nenhum teto numérico adicional; fora
+    // deles, nenhuma mensagem é enviada". Esse bloqueio único agora vive
+    // exclusivamente dentro de [_enviarSms] (ver [PlanoCicloService]),
+    // chamado mais abaixo — nada a checar aqui antes de montar a mensagem.
     final l10n = await L10nHeadlessService.obter();
 
     String anotacoesUsuario = (contexto ?? '').trim();
@@ -463,18 +456,10 @@ class EmergencyAlertService {
       }
     }
 
-    // Regra de negócio (Plano Gratuito): mesmo limite mensal de 5 alertas
-    // se aplica aqui, evitando que tentativas repetidas de PIN incorreto
-    // esgotem a cota de SMS do usuário.
-    final bool podeDisparar = await PlanoLimiteService().podeDispararAlerta();
-    if (!podeDisparar) {
-      debugPrint(
-          '🚫 [TENTATIVA DE DESARME INCORRETA] Limite mensal de alertas do '
-          'Plano Gratuito atingido — disparo cancelado.');
-      return;
-    }
-    await PlanoLimiteService().incrementarAlertaUsado();
-
+    // REESPECIFICAÇÃO DO USUÁRIO (2026-09-04): ver comentário completo em
+    // [dispararAlertaDeEmergencia] — o teto separado de 5 alertas/mês foi
+    // removido; o único bloqueio do Plano Free agora vive dentro de
+    // [_enviarSms] (janela de 10 dias ativos, ver [PlanoCicloService]).
     List<Map<String, dynamic>> contatosEmergencia = [];
     try {
       contatosEmergencia = await _db.getContatosEmergencia();
@@ -545,11 +530,35 @@ class EmergencyAlertService {
     // automaticamente — regra de negócio explícita do produto. Falha ao
     // determinar o status (sem sessão, sem rede) é tratada como liberado
     // por padrão dentro do próprio PlanoCicloService, nunca aqui.
-    if (!await PlanoCicloService().podeUsarRecursosAvancados()) {
+    // DIAGNÓSTICO REFORÇADO (auditoria de disparo de SOS, 2026-09-04 —
+    // pedido explícito do usuário para investigar SMS não enviados):
+    // consulta o status COMPLETO (não só o booleano de
+    // [PlanoCicloService.podeUsarRecursosAvancados]) para o log abaixo
+    // mostrar EXATAMENTE por que este disparo específico foi bloqueado —
+    // `isPremium`, o dia do ciclo de 30 dias e a própria data de início
+    // gravada em `usuarios/{uid}.cycleStartDate` — em vez de só confirmar
+    // que foi bloqueado. Sem isso, é impossível diferenciar, só pelo log,
+    // uma conta genuinamente fora da janela gratuita de 10 dias (regra de
+    // negócio funcionando corretamente) de um bug real na conta/cálculo
+    // do ciclo.
+    final status = await PlanoCicloService().obterStatusAtualizado();
+    final bool ativo = status?.ativo ?? true;
+    if (!ativo) {
       debugPrint('🔒 [SMS] Plano Free fora da janela de 10 dias ativos do mês — '
-          'SMS de emergência bloqueado (ver PlanoCicloService).');
+          'SMS de emergência bloqueado (ver PlanoCicloService). '
+          'Diagnóstico: isPremium=${status?.isPremium}, '
+          'cycleStartDate=${status?.cycleStartDate.toIso8601String()}, '
+          'diaAtualCiclo=${status?.diaAtualCiclo}/30.');
       return;
     }
+    // Mesmo diagnóstico no caminho PERMITIDO (auditoria 2026-09-04): sem
+    // isto, era impossível confirmar pelo log se um SMS que saiu de fato
+    // foi por Premium genuíno (`isPremium=true`), por estar dentro dos 10
+    // dias ativos, ou pelo fallback permissivo de falha
+    // (`status == null`) — as 3 causas produzem o mesmo `ativo=true`.
+    debugPrint('🔓 [SMS] Envio liberado — isPremium=${status?.isPremium}, '
+        'diaAtualCiclo=${status?.diaAtualCiclo}/30, '
+        'statusNulo=${status == null} (null = falha ao consultar, tratado como liberado por padrão).');
 
     final List<String> numerosDestinatarios = contatosEmergencia
         .map((contato) => (contato['telefone'] as String?) ?? '')

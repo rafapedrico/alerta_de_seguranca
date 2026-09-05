@@ -6,7 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../services/device_admin_service.dart';
 import '../services/emergency_alert_service.dart';
-import '../services/plano_limite_service.dart';
 import '../services/sos_disparo_service.dart';
 
 enum _EstadoCaptura {
@@ -263,22 +262,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen> {
       // autenticada (ver SosDisparoService).
       if (foto != null) {
         await SosDisparoService().dispararFotoCapturada(foto, origem: origemUnificada);
-      } else {
-        try {
-          await PlanoLimiteService().incrementarFotoUsada();
-        } catch (e) {
-          debugPrint('⚠️ [CameraCapturaScreen] Erro no contador de fotos: $e');
-        }
       }
     } else {
       // Fluxo HISTÓRICO (timeout do cronômetro de check-in, fora do
       // escopo da unificação de SOS) — inalterado.
-      try {
-        await PlanoLimiteService().incrementarFotoUsada();
-      } catch (e) {
-        debugPrint('⚠️ [CameraCapturaScreen] Erro no contador de fotos: $e');
-      }
-
       try {
         await EmergencyAlertService().enviarSmsResgateFoto(
           login: 'familia_resgate',

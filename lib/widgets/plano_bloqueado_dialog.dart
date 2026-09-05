@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/plano_ciclo_service.dart';
+import '../services/premium_purchase_service.dart';
 
 const Color _corDestaquePremium = Color(0xFF9C6BFF);
-
-// Mesmo pacote Android usado em `InicioDashboard._androidPackageId` — só
-// para montar o link de assinatura da Play Store.
-const String _androidPackageId = 'com.rmfglobal.guardiaox';
 
 /// Verifica, NA HORA (sempre uma leitura fresca, nunca cacheada — ver
 /// [PlanoCicloService.podeUsarRecursosAvancados]), se o usuário pode usar
@@ -18,16 +14,33 @@ const String _androidPackageId = 'com.rmfglobal.guardiaox';
 /// dias ativos do mês), exibe o modal explicativo de upsell do Plano
 /// Premium e retorna `false` — o chamador DEVE interromper o fluxo
 /// (nenhum SMS/Push é disparado nem nenhuma localização é
-/// solicitada/compartilhada a partir daqui).
+/// solicitada/compartilhada, nem a câmera de Captura e Dissuasão é aberta
+/// a partir daqui).
 ///
-/// Usada exclusivamente nos pontos onde o usuário toca em algo NA TELA
-/// (botão de SOS manual, solicitar/compartilhar localização) — fluxos
-/// automáticos/headless (alarme de rotina disparando com o app fechado,
-/// botão físico) são bloqueados diretamente dentro de
+/// REGRA OFICIAL DO PLANO FREE (reespecificação do usuário, 2026-09-04):
+/// dentro dos 10 dias ativos do mês (ou com Premium), TODOS os recursos
+/// são liberados sem nenhum teto numérico adicional; fora deles, NENHUMA
+/// mensagem é enviada — o usuário precisa esperar os 20 dias restantes
+/// do ciclo ou assinar o Plano Premium. Esta é a ÚNICA trava do Plano
+/// Free no app: existiu, por um curto período, um teto separado de 5
+/// alertas/2 fotos por mês (`PlanoLimiteService`) que contradizia essa
+/// regra (bloqueava mesmo DENTRO dos 10 dias ativos) — removido.
+///
+/// Usada tanto nos pontos onde o usuário toca em algo NA TELA (botão de
+/// SOS manual, solicitar/compartilhar localização) quanto — reespecificação
+/// do usuário, 2026-09-04 — no gatilho FÍSICO (ver
+/// `main.dart::_dispararSequenciaUnificadaDeSos` para a ressalva de
+/// segurança completa dessa decisão: um diálogo aqui pode expor o
+/// disfarce do app a quem estiver olhando a tela naquele instante, já
+/// que o gatilho físico pode disparar com o aparelho bloqueado/escondido).
+/// Fluxos automáticos/headless que genuinamente não têm nenhum
+/// `BuildContext` disponível (alarme de rotina disparando com o app
+/// fechado) continuam bloqueados diretamente dentro de
 /// [EmergencyAlertService]/[FirebaseSyncService]/[MonitoramentoService],
-/// que não têm um [BuildContext] disponível para exibir este modal.
+/// sem exibir este modal.
 Future<bool> garantirRecursoLiberadoOuExibirUpsell(BuildContext context) async {
   final bool liberado = await PlanoCicloService().podeUsarRecursosAvancados();
+  debugPrint('💎 [PlanoBloqueadoDialog] garantirRecursoLiberadoOuExibirUpsell() -> liberado=$liberado');
   if (liberado) return true;
   if (!context.mounted) return false;
   await _exibirModalPlanoBloqueado(context);
@@ -43,14 +56,21 @@ Future<void> _exibirModalPlanoBloqueado(BuildContext context) async {
   final String dataFormatada = status != null
       ? _formatarData(status.dataRenovacao)
       : '—';
+  final int diasRestantes = status?.diasParaRenovacao ?? 0;
 
-  if (!context.mounted) return;
+  if (!context.mounted) {
+    debugPrint(
+        '⚠️ [PlanoBloqueadoDialog] Plano Free bloqueado, mas o contexto já não '
+        'está mais montado — aviso NÃO exibido.');
+    return;
+  }
+  debugPrint('💎 [PlanoBloqueadoDialog] Exibindo aviso de plano bloqueado...');
   await showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
       icon: const Icon(Icons.lock_clock, color: _corDestaquePremium, size: 32),
       title: Text(l10n.planoBloqueadoModalTitulo),
-      content: Text(l10n.planoBloqueadoModalConteudo(dataFormatada)),
+      content: Text(l10n.planoBloqueadoModalConteudo(diasRestantes, dataFormatada)),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
@@ -59,40 +79,25 @@ Future<void> _exibirModalPlanoBloqueado(BuildContext context) async {
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: _corDestaquePremium),
           onPressed: () {
+            debugPrint('💎 [PlanoBloqueadoDialog] Usuário tocou em "Assinar" no aviso de plano bloqueado.');
             Navigator.of(ctx).pop();
-            _abrirPlayStore();
+            // Compra REAL via Google Play Billing (ver
+            // PremiumPurchaseService) — não mais um deep-link pra página
+            // da loja. O resultado chega de forma assíncrona pelo
+            // purchaseStream global (ver o SnackBar em
+            // main.dart::_SecurityCheckAppState).
+            PremiumPurchaseService().comprarPremium();
           },
           child: Text(l10n.planoBloqueadoModalBotaoAssinar),
         ),
       ],
     ),
   );
+  debugPrint('💎 [PlanoBloqueadoDialog] Aviso de plano bloqueado fechado.');
 }
 
 String _formatarData(DateTime data) {
   final dia = data.day.toString().padLeft(2, '0');
   final mes = data.month.toString().padLeft(2, '0');
   return '$dia/$mes/${data.year}';
-}
-
-/// Mesma estratégia de [InicioDashboard._abrirPlayStore]: tenta o app
-/// nativo da Play Store primeiro, cai para o link web se indisponível.
-Future<void> _abrirPlayStore() async {
-  final uriApp = Uri.parse('market://details?id=$_androidPackageId');
-  try {
-    if (await canLaunchUrl(uriApp)) {
-      await launchUrl(uriApp, mode: LaunchMode.externalApplication);
-      return;
-    }
-  } catch (_) {
-    // Cai para o link web abaixo.
-  }
-  try {
-    await launchUrl(
-      Uri.parse('https://play.google.com/store/apps/details?id=$_androidPackageId'),
-      mode: LaunchMode.externalApplication,
-    );
-  } catch (_) {
-    // Best-effort — se nenhum dos dois funcionar, apenas não abre nada.
-  }
 }

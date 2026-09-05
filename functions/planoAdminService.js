@@ -32,14 +32,17 @@ function _ehAdmin(request) {
 }
 
 /**
- * Parâmetros operacionais dos planos — os dois primeiros são a fonte de
- * verdade real (`planoCicloService.js`, aplicada server-side); os dois
- * últimos vivem hoje só no cliente Flutter
- * (`lib/services/plano_limite_service.dart`), sem contrapartida no
- * backend — expostos aqui como METADADO informativo, não configurável,
- * pra dar visibilidade ao painel sobre o estado real do código,
- * incluindo o TODO de teste ainda não revertido (limites elevados pra
- * 999 em vez dos valores de produção 5/2).
+ * Parâmetros operacionais dos planos — fonte de verdade real
+ * (`planoCicloService.js`, aplicada server-side).
+ *
+ * REGRA ÚNICA DO PLANO FREE (reespecificação do usuário, 2026-09-04):
+ * dentro dos `duracaoAtivaDias` dias ativos do ciclo (ou Premium), TODOS
+ * os recursos são liberados sem nenhum teto numérico adicional; fora
+ * dessa janela, nenhuma mensagem é enviada. O antigo teto separado de 5
+ * alertas/2 fotos por mês (`lib/services/plano_limite_service.dart`)
+ * contradizia essa regra (bloqueava mesmo DENTRO dos dias ativos) e foi
+ * REMOVIDO por completo do app — não existe mais nenhum parâmetro de
+ * limite numérico para expor aqui.
  */
 exports.obterParametrosPlanos = onCall(async (request) => {
   if (!_ehAdmin(request)) {
@@ -48,11 +51,6 @@ exports.obterParametrosPlanos = onCall(async (request) => {
   return {
     duracaoCicloDias: DURACAO_CICLO_DIAS,
     duracaoAtivaDias: DURACAO_ATIVO_DIAS,
-    limiteAlertasGratuitoProducao: 5,
-    limiteFotosGratuitoProducao: 2,
-    limiteAlertasGratuitoAtual: 999,
-    limiteFotosGratuitoAtual: 999,
-    limitesAtuaisSaoDeTeste: true,
   };
 });
 

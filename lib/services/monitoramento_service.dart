@@ -436,6 +436,16 @@ class MonitoramentoService {
   }) async {
     if (!_firebaseDisponivel) return 'erro';
 
+    // TRAVA DO CICLO DO PLANO FREE (pedido explícito do usuário,
+    // 2026-09-04 — ver PlanoCicloService): mesmo padrão de
+    // [definirPermissaoCompartilhamento] — só a direção que LIBERA um
+    // recurso (aqui, permitir que o contato volte a enviar solicitações)
+    // é gated; BLOQUEAR nunca é, já que restringir é sempre uma ação
+    // positiva de segurança, nunca um recurso premium.
+    if (!bloquear && !await PlanoCicloService().podeUsarRecursosAvancados()) {
+      return statusBloqueadoPlanoFree;
+    }
+
     try {
       final resultado = await FirebaseFunctions.instance
           .httpsCallable('definirBloqueioSolicitante')
