@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Cancella sessione di accesso",
   "loginLimparSessaoConfirmacao": "Sessione di accesso social cancellata. Prova ad accedere di nuovo.",
   "loginSocialContaExistente": "Esiste già un account con questa e-mail che utilizza un altro metodo di accesso.",
+  "vincularContaGoogleTitulo": "Collega account Google",
+  "vincularContaGoogleMensagem": "L'e-mail {email} ha già un account con password su Guardião X. Inserisci la tua password per collegare il tuo account Google ad esso.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Collega",
+  "vincularContaGoogleJaVinculada": "Questo account Google è già collegato a un altro account.",
   "loginSocialCredencialInvalida": "Impossibile verificare il tuo account con questo provider. Riprova",
   "loginSocialProvedorIndisponivel": "Questo metodo di accesso è temporaneamente non disponibile",
   "onboardingTitulo": "Configurazione di Sicurezza",

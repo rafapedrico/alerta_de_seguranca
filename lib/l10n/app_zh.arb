@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "清除登录会话",
   "loginLimparSessaoConfirmacao": "社交登录会话已清除,请重新尝试登录。",
   "loginSocialContaExistente": "该邮箱已使用其他登录方式注册过账户。",
+  "vincularContaGoogleTitulo": "关联 Google 账号",
+  "vincularContaGoogleMensagem": "{email} 已在 Guardião X 拥有一个使用密码的账号。请输入密码以将您的 Google 账号关联到该账号。",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "关联",
+  "vincularContaGoogleJaVinculada": "此 Google 账号已关联到另一个账号。",
   "loginSocialCredencialInvalida": "无法通过该提供商验证您的账户，请重试",
   "loginSocialProvedorIndisponivel": "此登录方式暂时不可用",
   "onboardingTitulo": "安全设置",

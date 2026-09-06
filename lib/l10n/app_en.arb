@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Clear login session",
   "loginLimparSessaoConfirmacao": "Social login session cleared. Try signing in again.",
   "loginSocialContaExistente": "An account with this email already exists using a different sign-in method.",
+  "vincularContaGoogleTitulo": "Link Google account",
+  "vincularContaGoogleMensagem": "The email {email} already has a password-based account on Guardião X. Enter your password to link your Google account to it.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Link",
+  "vincularContaGoogleJaVinculada": "This Google account is already linked to another account.",
   "loginSocialCredencialInvalida": "Couldn't verify your account with this provider. Please try again",
   "loginSocialProvedorIndisponivel": "This sign-in method is temporarily unavailable",
   "onboardingTitulo": "Security Setup",

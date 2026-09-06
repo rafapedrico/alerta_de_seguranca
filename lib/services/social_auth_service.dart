@@ -77,6 +77,24 @@ class GoogleSignInCanceladoSuspeitoException implements Exception {
       'Android/Credential Manager. Exceção original: $original';
 }
 
+/// Lançada por [SocialAuthService.signInWithGoogle] quando já existe uma
+/// conta (normalmente e-mail/senha) com o MESMO e-mail desta conta Google
+/// — ver documentação completa no ponto onde é lançada. [credencialGoogle]
+/// é o credential JÁ MONTADO a partir do idToken do Google, pronto para
+/// `linkWithCredential` assim que a identidade for confirmada pela senha
+/// da conta existente (ver `LoginScreen._exibirDialogoVincularContaGoogle`).
+class ContaGoogleParaVincularException implements Exception {
+  ContaGoogleParaVincularException(this.email, this.credencialGoogle);
+
+  final String email;
+  final OAuthCredential credencialGoogle;
+
+  @override
+  String toString() =>
+      'Já existe uma conta com senha para $email — confirme a senha dela '
+      'para vincular esta conta Google.';
+}
+
 class SocialAuthService {
   SocialAuthService._internal();
   static final SocialAuthService _instance = SocialAuthService._internal();
@@ -236,12 +254,32 @@ class SocialAuthService {
       );
     }
 
+    final OAuthCredential credential = GoogleAuthProvider.credential(idToken: idToken);
     try {
-      final OAuthCredential credential = GoogleAuthProvider.credential(idToken: idToken);
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [SocialAuthService] Etapa 4/4 (signInWithCredential) '
           'falhou: ${e.code} — ${e.message}');
+      // CORREÇÃO (2026-09-06, pedido explícito do usuário — "se tentar
+      // logar de um telefone novo vai dar aviso de que este e-mail já
+      // está sendo usado... precisamos da recuperação, com confirmação
+      // de e-mail para garantir que o usuário é o real"): este código
+      // específico significa que já existe uma conta (normalmente
+      // e-mail/senha, criada em [CadastroScreen]) com o MESMO e-mail
+      // desta conta Google — o Firebase recusa a autenticação direta por
+      // segurança (não funde contas de provedores diferentes sozinho).
+      // `e.email` + `e.credential` (aqui, o [credential] que acabamos de
+      // montar) são exatamente o par que a própria documentação do
+      // Firebase Auth prevê para RESOLVER isso — ver
+      // [ContaGoogleParaVincularException], tratada por
+      // `LoginScreen._exibirDialogoVincularContaGoogle`: pede a SENHA da
+      // conta existente (prova real de identidade — não é "recuperação
+      // automática só por dizer o e-mail") e, uma vez confirmada, vincula
+      // este credential do Google a ela via `linkWithCredential` — depois
+      // disso, os dois métodos funcionam nessa MESMA conta.
+      if (e.code == 'account-exists-with-different-credential' && e.email != null) {
+        throw ContaGoogleParaVincularException(e.email!, credential);
+      }
       rethrow;
     } catch (e, s) {
       debugPrint('❌ [SocialAuthService] Etapa 4/4 (signInWithCredential) '

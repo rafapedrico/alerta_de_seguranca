@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Borrar sesión de inicio",
   "loginLimparSessaoConfirmacao": "Sesión de inicio social borrada. Intenta iniciar sesión de nuevo.",
   "loginSocialContaExistente": "Ya existe una cuenta con este correo usando otro método de inicio de sesión.",
+  "vincularContaGoogleTitulo": "Vincular cuenta de Google",
+  "vincularContaGoogleMensagem": "El correo {email} ya tiene una cuenta con contraseña en Guardião X. Escribe tu contraseña para vincular tu cuenta de Google a ella.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Vincular",
+  "vincularContaGoogleJaVinculada": "Esta cuenta de Google ya está vinculada a otra cuenta.",
   "loginSocialCredencialInvalida": "No se pudo verificar tu cuenta con este proveedor. Inténtalo de nuevo",
   "loginSocialProvedorIndisponivel": "Este método de inicio de sesión no está disponible temporalmente",
   "onboardingTitulo": "Configuración de Seguridad",

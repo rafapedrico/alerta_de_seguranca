@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Anmeldesitzung löschen",
   "loginLimparSessaoConfirmacao": "Soziale Anmeldesitzung gelöscht. Versuchen Sie es erneut.",
   "loginSocialContaExistente": "Es existiert bereits ein Konto mit dieser E-Mail über eine andere Anmeldemethode.",
+  "vincularContaGoogleTitulo": "Google-Konto verknüpfen",
+  "vincularContaGoogleMensagem": "Die E-Mail {email} hat bereits ein Konto mit Passwort bei Guardião X. Geben Sie Ihr Passwort ein, um Ihr Google-Konto damit zu verknüpfen.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Verknüpfen",
+  "vincularContaGoogleJaVinculada": "Dieses Google-Konto ist bereits mit einem anderen Konto verknüpft.",
   "loginSocialCredencialInvalida": "Ihr Konto konnte bei diesem Anbieter nicht bestätigt werden. Bitte erneut versuchen",
   "loginSocialProvedorIndisponivel": "Diese Anmeldemethode ist vorübergehend nicht verfügbar",
   "onboardingTitulo": "Sicherheitseinrichtung",

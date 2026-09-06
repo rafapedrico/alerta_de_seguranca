@@ -1006,6 +1006,17 @@
   "loginLimparSessaoBotao": "Limpar sessão de login",
   "loginLimparSessaoConfirmacao": "Sessão de login social limpa. Tente entrar novamente.",
   "loginSocialContaExistente": "Já existe uma conta com este e-mail usando outro método de login.",
+  "vincularContaGoogleTitulo": "Vincular conta Google",
+  "vincularContaGoogleMensagem": "O e-mail {email} já tem uma conta com senha no Guardião X. Digite sua senha para vincular sua conta Google a ela.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Vincular",
+  "vincularContaGoogleJaVinculada": "Esta conta Google já está vinculada a outra conta.",
   "loginSocialCredencialInvalida": "Não foi possível validar sua conta com este provedor. Tente novamente",
   "loginSocialProvedorIndisponivel": "Este método de login está temporariamente indisponível",
   "onboardingTitulo": "Configuração de Segurança",

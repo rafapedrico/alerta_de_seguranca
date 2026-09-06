@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Effacer la session de connexion",
   "loginLimparSessaoConfirmacao": "Session de connexion sociale effacée. Essayez de vous reconnecter.",
   "loginSocialContaExistente": "Un compte avec cet e-mail existe déjà avec une autre méthode de connexion.",
+  "vincularContaGoogleTitulo": "Lier le compte Google",
+  "vincularContaGoogleMensagem": "L'e-mail {email} possède déjà un compte avec mot de passe sur Guardião X. Saisissez votre mot de passe pour lier votre compte Google à celui-ci.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Lier",
+  "vincularContaGoogleJaVinculada": "Ce compte Google est déjà lié à un autre compte.",
   "loginSocialCredencialInvalida": "Impossible de vérifier votre compte avec ce fournisseur. Veuillez réessayer",
   "loginSocialProvedorIndisponivel": "Cette méthode de connexion est temporairement indisponible",
   "onboardingTitulo": "Configuration de sécurité",

@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "Очистить сеанс входа",
   "loginLimparSessaoConfirmacao": "Сеанс социального входа очищен. Попробуйте войти снова.",
   "loginSocialContaExistente": "Аккаунт с этим e-mail уже существует и использует другой способ входа.",
+  "vincularContaGoogleTitulo": "Привязать аккаунт Google",
+  "vincularContaGoogleMensagem": "У адреса {email} уже есть аккаунт с паролем в Guardião X. Введите пароль, чтобы привязать к нему аккаунт Google.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "Привязать",
+  "vincularContaGoogleJaVinculada": "Этот аккаунт Google уже привязан к другому аккаунту.",
   "loginSocialCredencialInvalida": "Не удалось подтвердить аккаунт через этого провайдера. Попробуйте снова",
   "loginSocialProvedorIndisponivel": "Этот способ входа временно недоступен",
   "onboardingTitulo": "Настройка безопасности",

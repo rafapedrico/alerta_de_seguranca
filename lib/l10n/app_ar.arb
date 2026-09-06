@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "مسح جلسة الدخول",
   "loginLimparSessaoConfirmacao": "تم مسح جلسة الدخول الاجتماعي. حاول تسجيل الدخول مرة أخرى.",
   "loginSocialContaExistente": "يوجد بالفعل حساب بهذا البريد الإلكتروني يستخدم طريقة تسجيل دخول مختلفة.",
+  "vincularContaGoogleTitulo": "ربط حساب Google",
+  "vincularContaGoogleMensagem": "البريد الإلكتروني {email} لديه بالفعل حساب بكلمة مرور في Guardião X. أدخل كلمة المرور لربط حساب Google بهذا الحساب.",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "ربط",
+  "vincularContaGoogleJaVinculada": "حساب Google هذا مرتبط بالفعل بحساب آخر.",
   "loginSocialCredencialInvalida": "تعذر التحقق من حسابك مع هذا المزود. حاول مرة أخرى",
   "loginSocialProvedorIndisponivel": "طريقة تسجيل الدخول هذه غير متاحة مؤقتًا",
   "onboardingTitulo": "إعداد الأمان",

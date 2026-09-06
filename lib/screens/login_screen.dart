@@ -14,6 +14,7 @@ import '../services/firebase_sync_service.dart';
 import '../services/onboarding_service.dart';
 import '../utils/mensagens_erro_auth.dart';
 import '../widgets/recuperar_senha_dialog.dart';
+import '../widgets/vincular_conta_google_dialog.dart';
 import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
 import '../services/notificacao_service.dart';
@@ -177,6 +178,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (!mounted) return;
       await _finalizarLoginComSucesso(viaLoginSocial: true);
+    } on ContaGoogleParaVincularException catch (e) {
+      if (!mounted) return;
+      await _exibirDialogoVincularContaGoogle(e);
     } on FirebaseAuthException catch (e, s) {
       debugPrint('⚠️ [LoginScreen] Falha no login social ($provedor): ${e.code} — ${e.message}');
       if (!mounted) return;
@@ -258,6 +262,28 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+  }
+
+  /// Abre [VincularContaGoogleDialog] (pedido explícito do usuário,
+  /// 2026-09-06 — recuperação de acesso quando o mesmo e-mail já tem
+  /// conta com senha) e, se a vinculação for concluída com sucesso,
+  /// segue DIRETO para o fluxo pós-login normal — o usuário não precisa
+  /// tentar o Google de novo, a sessão já está autenticada (login por
+  /// senha + Google vinculado na mesma chamada, ver o diálogo).
+  /// `viaLoginSocial: false`: esta conta já existia por e-mail/senha, já
+  /// tem telefone cadastrado desde o cadastro original — não faz sentido
+  /// desviar para [CompletarPerfilScreen].
+  Future<void> _exibirDialogoVincularContaGoogle(ContaGoogleParaVincularException e) async {
+    final vinculou = await showDialog<bool>(
+      context: context,
+      builder: (_) => VincularContaGoogleDialog(
+        email: e.email,
+        credencialGoogle: e.credencialGoogle,
+      ),
+    );
+    if (vinculou == true && mounted) {
+      await _finalizarLoginComSucesso(viaLoginSocial: false);
+    }
   }
 
   /// Mensagens específicas para os códigos de [FirebaseAuthException] mais

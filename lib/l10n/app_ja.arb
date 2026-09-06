@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "ログインセッションをクリア",
   "loginLimparSessaoConfirmacao": "ソーシャルログインセッションをクリアしました。もう一度ログインしてください。",
   "loginSocialContaExistente": "このメールアドレスは別のログイン方法で既に登録されています。",
+  "vincularContaGoogleTitulo": "Googleアカウントを連携",
+  "vincularContaGoogleMensagem": "{email} にはすでにパスワード付きのGuardião Xアカウントがあります。パスワードを入力してGoogleアカウントを連携してください。",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "連携する",
+  "vincularContaGoogleJaVinculada": "このGoogleアカウントはすでに別のアカウントに連携されています。",
   "loginSocialCredencialInvalida": "このプロバイダでアカウントを確認できませんでした。もう一度お試しください",
   "loginSocialProvedorIndisponivel": "このログイン方法は一時的にご利用いただけません",
   "onboardingTitulo": "セキュリティ設定",

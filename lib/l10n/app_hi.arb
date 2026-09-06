@@ -734,6 +734,17 @@
   "loginLimparSessaoBotao": "लॉगिन सत्र साफ़ करें",
   "loginLimparSessaoConfirmacao": "सोशल लॉगिन सत्र साफ़ हो गया। फिर से लॉगिन करने का प्रयास करें।",
   "loginSocialContaExistente": "इस ईमेल के साथ पहले से ही किसी अन्य साइन-इन विधि का उपयोग करने वाला खाता मौजूद है।",
+  "vincularContaGoogleTitulo": "Google खाता लिंक करें",
+  "vincularContaGoogleMensagem": "{email} पर पहले से ही पासवर्ड वाला Guardião X खाता मौजूद है। अपना Google खाता उससे लिंक करने के लिए अपना पासवर्ड दर्ज करें।",
+  "@vincularContaGoogleMensagem": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "vincularContaGoogleBotao": "लिंक करें",
+  "vincularContaGoogleJaVinculada": "यह Google खाता पहले से ही किसी दूसरे खाते से लिंक है।",
   "loginSocialCredencialInvalida": "इस प्रदाता के साथ आपका खाता सत्यापित नहीं हो सका। कृपया पुनः प्रयास करें",
   "loginSocialProvedorIndisponivel": "यह साइन-इन विधि अस्थायी रूप से अनुपलब्ध है",
   "onboardingTitulo": "सुरक्षा सेटअप",
