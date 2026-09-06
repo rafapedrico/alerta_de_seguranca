@@ -100,11 +100,17 @@ class SocialAuthService {
   /// tratando `FirebaseAuthException`/`GoogleSignInException` exatamente
   /// como antes) — só identifica em qual das 4 etapas a falha aconteceu,
   /// ANTES de propagar. Combinado com a mudança em `LoginScreen`, que
-  /// agora exibe o texto EXATO de `e.toString()` num diálogo (com botão
-  /// "Copiar"), em vez de só a mensagem genérica — essencial para
-  /// diagnosticar remotamente uma falha que só reproduz em produção
-  /// (assinatura/SHA de release, Play Services desatualizado, etc.), sem
-  /// acesso a logcat do aparelho do usuário.
+  /// agora exibe o texto EXATO de `e.toString()` (+ stack trace completo)
+  /// num diálogo (com botão "Copiar"), em vez de só a mensagem genérica —
+  /// essencial para diagnosticar remotamente uma falha que só reproduz em
+  /// produção (assinatura/SHA de release, Play Services desatualizado,
+  /// etc.), sem acesso a logcat do aparelho do usuário.
+  ///
+  /// IMPORTANTE — cada `rethrow` abaixo é OBRIGATÓRIO, nunca remover: é
+  /// ele que propaga a exceção até `LoginScreen._fazerLoginSocial`, onde
+  /// o diálogo de erro é exibido. Removê-lo faria o erro morrer
+  /// silenciosamente aqui dentro — exatamente o sintoma original que esta
+  /// correção existe para resolver.
   Future<UserCredential?> signInWithGoogle() async {
     if (!_googleSignInInicializado) {
       try {

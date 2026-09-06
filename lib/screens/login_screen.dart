@@ -176,10 +176,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (!mounted) return;
       await _finalizarLoginComSucesso(viaLoginSocial: true);
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e, s) {
       debugPrint('⚠️ [LoginScreen] Falha no login social ($provedor): ${e.code} — ${e.message}');
       if (!mounted) return;
-      await _exibirDialogoErroLoginSocial(_mensagemErroLoginSocial(e), e.toString());
+      await _exibirDialogoErroLoginSocial(
+        _mensagemErroLoginSocial(e),
+        '${e.toString()}\n\n--- Stack trace ---\n$s',
+      );
     } catch (e, s) {
       // CORREÇÃO (2026-09-05, pedido explícito do usuário — "login com
       // Google falhando silenciosamente no app da Play Store, sem abrir
@@ -190,13 +193,16 @@ class _LoginScreenState extends State<LoginScreen> {
       // por etapa) só mostrava o texto fixo `erroLoginGenerico` num
       // SnackBar, escondendo por completo a causa real — impossível de
       // diagnosticar remotamente sem acesso ao logcat do aparelho do
-      // usuário. Agora exibe também o texto EXATO da exceção, com botão
-      // "Copiar", num diálogo (mais espaço que um SnackBar).
+      // usuário. Agora exibe também o texto EXATO da exceção — incluindo
+      // o STACK TRACE completo, não só `toString()` (2ª correção, mesmo
+      // pedido: o stack trace antes só ia pro `debugPrint`, inacessível
+      // sem logcat) — com botão "Copiar", num diálogo (mais espaço que
+      // um SnackBar).
       debugPrint('⚠️ [LoginScreen] Falha inesperada no login social ($provedor): $e\n$s');
       if (!mounted) return;
       await _exibirDialogoErroLoginSocial(
         AppLocalizations.of(context)!.erroLoginGenerico,
-        '${e.runtimeType}: $e',
+        '${e.runtimeType}: $e\n\n--- Stack trace ---\n$s',
       );
     } finally {
       if (mounted) setState(() => _provedorSocialCarregando = null);
