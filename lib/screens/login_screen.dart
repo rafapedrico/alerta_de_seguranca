@@ -12,6 +12,7 @@ import '../services/fcm_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
 import '../services/onboarding_service.dart';
+import '../utils/mensagens_erro_auth.dart';
 import '../widgets/recuperar_senha_dialog.dart';
 import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
@@ -307,6 +308,15 @@ class _LoginScreenState extends State<LoginScreen> {
   /// é que [_decidirProximaTelaAposLogin] decide entre Onboarding e o
   /// fluxo principal.
   Future<void> _finalizarLoginComSucesso({required bool viaLoginSocial}) async {
+    // Revoga qualquer sessão em OUTRO aparelho da mesma conta (pedido do
+    // usuário, 2026-09-06 — recuperação de acesso ao trocar/perder o
+    // celular) — AGUARDADA (nunca unawaited) e ANTES de qualquer outra
+    // chamada autenticada abaixo: garante que este aparelho já saia com
+    // um token renovado, emitido depois da revogação (ver documentação
+    // completa em `FirebaseAuthService.revogarSessoesEmOutrosDispositivosEAtualizarToken`),
+    // antes de qualquer sincronização usar o token antigo.
+    await FirebaseAuthService().revogarSessoesEmOutrosDispositivosEAtualizarToken();
+
     unawaited(FcmService().inicializar());
     unawaited(ContatosEmergenciaService.sincronizarAgora());
     unawaited(FirebaseSyncService().sincronizarPerfilSocial(
@@ -414,20 +424,21 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } on FirebaseAuthException catch (e) {
-      // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
+      // CORREÇÃO DE BUG REAL (2026-09-05/06, pedido explícito do usuário —
       // "tratamento de erros robusto... limites de envio/throttling"):
-      // `too-many-requests` (o Firebase Auth também limita a TAXA deste
-      // e-mail especificamente, não só tentativas de login) ganha
-      // mensagem própria e orientativa — mesmo texto já usado em
-      // [VerificarEmailScreen] para o mesmo cenário — em vez do genérico
-      // "falha ao reenviar", que sugeria (incorretamente) um erro/bug.
+      // classificação compartilhada com [VerificarEmailScreen]/
+      // [CadastroScreen] (ver `classificarErroEnvioVerificacao`) — cobre
+      // `too-many-requests` (limite de TAXA deste e-mail especificamente,
+      // não só tentativas de login) E `network-request-failed` (sem
+      // conexão, nunca deve soar como "erro/bug" genérico), em vez de um
+      // único texto genérico de falha pros dois casos.
       debugPrint('⚠️ [LoginScreen] Falha ao reenviar e-mail de verificação: $e');
       if (!mounted) return;
+      final classificado =
+          classificarErroEnvioVerificacao(e, AppLocalizations.of(context)!);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.code == 'too-many-requests'
-              ? AppLocalizations.of(context)!.verificarEmailReenvioMuitasTentativas
-              : AppLocalizations.of(context)!.emailVerificacaoReenvioFalhou),
+          content: Text(classificado.mensagem),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
         ),

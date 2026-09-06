@@ -238,6 +238,13 @@ exports.purgarHistoricoRetidoAposExclusao =
 exports.atualizarTelefonePerfil =
   require("./telefonePerfilService").atualizarTelefonePerfil;
 
+// Revogação de sessões em outros aparelhos após login num aparelho novo
+// (perda/troca de celular, pedido do usuário 2026-09-06) — baseada
+// exclusivamente no UID autenticado do chamador, nunca em número de
+// telefone (ver sessaoDispositivoService.js).
+exports.revogarSessoesEmOutrosDispositivos =
+  require("./sessaoDispositivoService").revogarSessoesEmOutrosDispositivos;
+
 // Ciclo recorrente de 30 dias do Plano Free (10 dias ativos + 20 dias
 // bloqueados, ver planoCicloService.js) — Admin SDK é a ÚNICA forma de
 // gravar `isPremium`/`cycleStartDate`/`blockedAt` em `usuarios/{uid}`

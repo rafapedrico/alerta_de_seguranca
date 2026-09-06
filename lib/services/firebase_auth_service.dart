@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
@@ -190,5 +191,34 @@ class FirebaseAuthService {
     } catch (e) {
       debugPrint('⚠️ [FirebaseAuthService] Falha ao renovar o ID token: $e');
     }
+  }
+
+  /// Revoga qualquer sessão em OUTRO aparelho da MESMA conta (pedido
+  /// explícito do usuário, 2026-09-06: "perdi o celular antigo, a sessão
+  /// dele deve parar de funcionar quando eu logar de novo em um
+  /// aparelho novo") — chama a callable `revogarSessoesEmOutrosDispositivos`
+  /// (Admin SDK, ver `functions/sessaoDispositivoService.js`), que só
+  /// revoga o PRÓPRIO uid autenticado do chamador. DELIBERADAMENTE não
+  /// tem nenhuma relação com número de telefone — só o UID importa.
+  ///
+  /// ARMADILHA EVITADA: a revogação também invalidaria o token recém-emitido
+  /// deste MESMO aparelho (emitido momentos antes, portanto "anterior" ao
+  /// timestamp de revogação) — por isso [garantirTokenPronto] (renovação
+  /// explícita) é chamado logo em seguida, garantindo que este aparelho
+  /// sempre saia com um token emitido DEPOIS da revogação. Best-effort
+  /// (nunca lança): chamada uma vez por login bem-sucedido, ver
+  /// `LoginScreen._finalizarLoginComSucesso`.
+  Future<void> revogarSessoesEmOutrosDispositivosEAtualizarToken() async {
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('revogarSessoesEmOutrosDispositivos')
+          .call()
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseAuthService] Falha ao revogar sessões em outros '
+          'aparelhos (sessão antiga pode continuar ativa por mais tempo): $e');
+      return; // Sem revogação, não há necessidade de renovar nada aqui.
+    }
+    await garantirTokenPronto();
   }
 }

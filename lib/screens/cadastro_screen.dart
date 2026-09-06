@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../utils/mensagens_erro_auth.dart';
 import '../utils/telefone_utils.dart';
 import 'verificar_email_screen.dart';
 
@@ -113,7 +114,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
       try {
         await FirebaseAuthService().enviarEmailVerificacao();
       } on FirebaseAuthException catch (e) {
-        if (mounted) avisoEnvioEmail = _mensagemErroEnvioVerificacao(e);
+        if (mounted) {
+          avisoEnvioEmail =
+              classificarErroEnvioVerificacao(e, AppLocalizations.of(context)!).mensagem;
+        }
       } catch (e) {
         debugPrint('⚠️ [CadastroScreen] Falha ao enviar e-mail de verificação: $e');
       }
@@ -149,14 +153,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
   /// Firebase Auth também limita a TAXA de envio deste e-mail específico
   /// (não só tentativas de login), então é um erro real e esperado em
   /// testes/reenvios rápidos, nunca um bug.
-  String _mensagemErroEnvioVerificacao(FirebaseAuthException e) {
-    final l10n = AppLocalizations.of(context)!;
-    if (e.code == 'too-many-requests') {
-      return l10n.verificarEmailReenvioMuitasTentativas;
-    }
-    return l10n.emailVerificacaoReenvioFalhou;
-  }
-
   String _mensagemErroCadastro(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':

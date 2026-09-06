@@ -8,6 +8,7 @@ import '../app_navigator.dart';
 import '../main.dart' show TelaInicialComPossivelDialogoPin;
 import '../services/firebase_auth_service.dart';
 import '../services/onboarding_service.dart';
+import '../utils/mensagens_erro_auth.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -121,19 +122,21 @@ class _VerificarEmailScreenState extends State<VerificarEmailScreen> {
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      final tooManyRequests = e.code == 'too-many-requests';
+      final classificado = classificarErroEnvioVerificacao(
+        e, l10n,
+        cooldownPadraoSegundos: _cooldownPadraoSegundos,
+        cooldownThrottleSegundos: _cooldownAposThrottleSegundos,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(tooManyRequests
-              ? l10n.verificarEmailReenvioMuitasTentativas
-              : l10n.emailVerificacaoReenvioFalhou),
+          content: Text(classificado.mensagem),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
         ),
       );
-      // Mesmo numa falha, inicia o cooldown local — evita martelar o botão
-      // contra um limite que o próprio Firebase Auth já sinalizou ativo.
-      _iniciarCooldown(tooManyRequests ? _cooldownAposThrottleSegundos : _cooldownPadraoSegundos);
+      if (classificado.cooldownSegundos > 0) {
+        _iniciarCooldown(classificado.cooldownSegundos);
+      }
     } catch (e) {
       debugPrint('⚠️ [VerificarEmailScreen] Falha ao reenviar e-mail de verificação: $e');
       if (!mounted) return;
