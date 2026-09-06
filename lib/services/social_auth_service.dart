@@ -35,6 +35,36 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 ///   + um Services ID + um domínio/endpoint de redirect verificado — ver
 ///   [_appleWebAuthOptions] abaixo (hoje só placeholders). Sem isso o
 ///   botão abre a aba do navegador e falha no redirect de volta pro app.
+///
+/// Tempo mínimo para um `GoogleSignInExceptionCode.canceled` ser tratado
+/// como um cancelamento genuíno do usuário (ver [signInWithGoogle]) — um
+/// `canceled` chegando depois disso é tratado como uma falha real
+/// disfarçada (ex: rejeição OAuth do servidor após a conta já ter sido
+/// escolhida), nunca como desistência silenciosa.
+const Duration _limiarCancelamentoGenuino = Duration(seconds: 3);
+
+/// Lançada por [SocialAuthService.signInWithGoogle] quando o Android
+/// reporta `GoogleSignInExceptionCode.canceled` tarde demais para ser um
+/// cancelamento genuíno (ver [_limiarCancelamentoGenuino]) — carrega o
+/// tempo decorrido e a exceção original só para diagnóstico; sempre
+/// tratada pelo `catch` genérico de `LoginScreen._fazerLoginSocial`
+/// (nunca por engano como um cancelamento silencioso).
+class GoogleSignInCanceladoSuspeitoException implements Exception {
+  GoogleSignInCanceladoSuspeitoException(this.decorrido, this.original);
+
+  final Duration decorrido;
+  final GoogleSignInException original;
+
+  @override
+  String toString() =>
+      'O Google/Android reportou "cancelado" ${decorrido.inSeconds}s depois '
+      'de uma conta já ter sido selecionada no seletor — tempo longo demais '
+      'para ser uma desistência genuína do usuário. Provavelmente uma '
+      'falha real de configuração OAuth (SHA-1/pacote não propagado no '
+      'Google Cloud Console) sendo mascarada como cancelamento pelo '
+      'Android/Credential Manager. Exceção original: $original';
+}
+
 class SocialAuthService {
   SocialAuthService._internal();
   static final SocialAuthService _instance = SocialAuthService._internal();
@@ -125,16 +155,40 @@ class SocialAuthService {
     }
 
     final GoogleSignInAccount googleUser;
+    final cronometro = Stopwatch()..start();
     try {
       googleUser = await GoogleSignIn.instance
           .authenticate()
           .timeout(const Duration(seconds: 45));
     } on GoogleSignInException catch (e) {
+      // CORREÇÃO DE BUG REAL (2026-09-06, pedido explícito do usuário —
+      // "seleciona a conta e volta silenciosamente pra tela de login, sem
+      // avançar nem mostrar erro"): um cancelamento GENUÍNO (o usuário
+      // fecha o seletor de contas sem escolher nada) é praticamente
+      // instantâneo. Confirmado via logcat ao vivo (Razr, 2026-09-05): o
+      // mesmo `DEVELOPER_ERROR`/"not registered to use OAuth2.0" que já
+      // vínhamos caçando pode acontecer DEPOIS que o usuário já escolheu
+      // uma conta de verdade — e o Android/Credential Manager, em vez de
+      // propagar esse erro real, encerra a sessão e reporta pro plugin
+      // como `GoogleSignInExceptionCode.canceled` (mesmo código de uma
+      // desistência genuína), fazendo nosso `return null` de baixo (que
+      // deliberadamente nunca mostra nada, por contrato — ver
+      // documentação do cabeçalho da classe) mascarar uma falha real como
+      // se fosse uma simples desistência do usuário.
+      //
+      // Como não há como diferenciar os dois casos pelo `code` sozinho,
+      // usa o TEMPO decorrido como heurística: `canceled` chegando bem
+      // depois do início (usuário claramente já interagiu com o seletor)
+      // é tratado como uma falha disfarçada, não um cancelamento — exibe
+      // o diálogo de erro em vez de voltar em silêncio.
+      debugPrint('❌ [SocialAuthService] Etapa 2/4 (authenticate) — código: '
+          '${e.code}, descrição: ${e.description}, decorrido: ${cronometro.elapsedMilliseconds}ms');
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        return null; // Cancelado pelo usuário — nunca é um erro.
+        if (cronometro.elapsed < _limiarCancelamentoGenuino) {
+          return null; // Cancelamento rápido — genuinamente o usuário desistiu.
+        }
+        throw GoogleSignInCanceladoSuspeitoException(cronometro.elapsed, e);
       }
-      debugPrint('❌ [SocialAuthService] Etapa 2/4 (authenticate) falhou: '
-          '${e.code} — ${e.description}');
       rethrow;
     } catch (e, s) {
       // Cobre principalmente o `TimeoutException` dos 45s (ver histórico
