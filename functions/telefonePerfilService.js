@@ -43,6 +43,59 @@ const logger = require("firebase-functions/logger");
 const db = getFirestore();
 
 /**
+ * Recuperação SEGURA de número (e, por extensão, de acesso) — pedido
+ * explícito do usuário, 2026-09-06: "recuperação de número/e-mail ao
+ * trocar de conta, bloqueando o acesso da conta anterior".
+ *
+ * A ÚNICA credencial aceita como prova de identidade aqui é o E-MAIL
+ * VERIFICADO do chamador (`request.auth.token.email_verified`), NUNCA o
+ * telefone em si (ver decisão registrada em [atualizarTelefonePerfil] —
+ * "transferência automática via duplicidade de número" foi recusada por
+ * risco de sequestro de conta). Só entra em jogo quando o e-mail
+ * verificado de QUEM ESTÁ PEDINDO AGORA é EXATAMENTE o mesmo e-mail já
+ * salvo na conta ANTIGA dona do número — ou seja, só dispara quando o
+ * chamador já provou (perante o próprio Firebase, via Google Sign-In ou
+ * confirmação de e-mail) controlar a MESMA caixa de entrada da conta
+ * antiga. Isso não abre brecha nova: quem controla de verdade o e-mail
+ * de alguém já consegue recuperar a conta dessa pessoa por qualquer outro
+ * caminho padrão (ex: "esqueci minha senha") — mesmo modelo de confiança
+ * usado pelo próprio Firebase/Google em todo o ecossistema.
+ *
+ * Ao confirmar, a conta ANTIGA é BLOQUEADA por completo (nunca apagada —
+ * preserva histórico/dados para suporte e auditoria):
+ * - `disabled: true` no Firebase Auth — impede QUALQUER novo login nela,
+ *   de qualquer provedor (Google, e-mail/senha), a partir de agora.
+ * - `revokeRefreshTokens` — encerra IMEDIATAMENTE qualquer sessão já
+ *   ativa nela (mesmo mecanismo de `sessaoDispositivoService.js`).
+ * - Marcador em `usuarios/{uidAntigo}.contaBloqueadaPorRecuperacao` —
+ *   rastreável por suporte/auditoria, nunca removido silenciosamente.
+ *
+ * @param {string} telefone
+ * @param {string} uidAntigo
+ * @param {string} uidNovo
+ * @param {string} email
+ */
+async function recuperarNumeroEBloquearContaAntiga(telefone, uidAntigo, uidNovo, email) {
+  await db.collection("telefones_reservados").doc(telefone).delete();
+
+  await getAuth().updateUser(uidAntigo, {disabled: true});
+  await getAuth().revokeRefreshTokens(uidAntigo);
+
+  await db.collection("usuarios").doc(uidAntigo).set({
+    contaBloqueadaPorRecuperacao: {
+      novoUid: uidNovo,
+      email,
+      em: FieldValue.serverTimestamp(),
+    },
+  }, {merge: true});
+
+  logger.info(
+      `[atualizarTelefonePerfil] Recuperação segura: telefone ${telefone} ` +
+      `transferido de ${uidAntigo} para ${uidNovo} (mesmo e-mail verificado ` +
+      `${email}) — conta antiga bloqueada (disabled + sessões revogadas).`);
+}
+
+/**
  * Callable `onCall` — chamada por [FirebaseSyncService.salvarTelefonePerfil]
  * em 3 pontos do app: cadastro por e-mail/senha ([CadastroScreen]),
  * primeiro login social sem telefone ([CompletarPerfilScreen], substituiu
@@ -113,6 +166,21 @@ exports.atualizarTelefonePerfil = onCall(async (request) => {
       await refReservaNova.delete().catch((e) => {
         logger.error(`[atualizarTelefonePerfil] Falha ao liberar reserva órfã de ${telefone}:`, e);
       });
+    } else {
+      // RECUPERAÇÃO SEGURA (pedido explícito do usuário, 2026-09-06): a
+      // conta dona do número realmente existe — mas se o e-mail VERIFICADO
+      // de quem está pedindo agora for exatamente o mesmo já salvo nela,
+      // é prova real de que é a mesma pessoa (nunca o telefone sozinho,
+      // ver documentação completa em [recuperarNumeroEBloquearContaAntiga]).
+      const emailAtual = request.auth.token && request.auth.token.email;
+      const emailVerificado = request.auth.token && request.auth.token.email_verified === true;
+      if (emailVerificado && emailAtual) {
+        const donoSnap = await db.collection("usuarios").doc(outroUid).get();
+        const emailDono = donoSnap.exists ? donoSnap.data().email : null;
+        if (emailDono && emailDono.toLowerCase() === emailAtual.toLowerCase()) {
+          await recuperarNumeroEBloquearContaAntiga(telefone, outroUid, uid, emailAtual);
+        }
+      }
     }
   }
 

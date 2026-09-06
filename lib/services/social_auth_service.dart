@@ -41,7 +41,19 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 /// `canceled` chegando depois disso é tratado como uma falha real
 /// disfarçada (ex: rejeição OAuth do servidor após a conta já ter sido
 /// escolhida), nunca como desistência silenciosa.
-const Duration _limiarCancelamentoGenuino = Duration(seconds: 3);
+///
+/// AJUSTADO (2026-09-06, medição ao vivo via `flutter run --release` no
+/// Razr): o limiar original de 3s foi calibrado em cima de UMA variante
+/// do erro OAuth ("not registered", ~4s de atraso) — uma variante
+/// DIFERENTE do MESMO problema ("Invalid key value", SHA-1 não
+/// propagado/cadastrado) resolveu bem mais rápido, entre 1,7s e 2,5s,
+/// passando DIRETO pelo limiar antigo e voltando em silêncio de novo —
+/// exatamente o bug que esta classe existe pra evitar. 1s cobre as duas
+/// variantes já observadas com folga, mantendo margem segura acima de um
+/// cancelamento genuíno de verdade (usuário fecha o seletor SEM escolher
+/// nada — não dá tempo de nem completar `onUiEntrySelected`, muito mais
+/// rápido que 1s).
+const Duration _limiarCancelamentoGenuino = Duration(seconds: 1);
 
 /// Lançada por [SocialAuthService.signInWithGoogle] quando o Android
 /// reporta `GoogleSignInExceptionCode.canceled` tarde demais para ser um
