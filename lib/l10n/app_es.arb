@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "Ubicación en caché no disponible - esperando actualización en tiempo real.",
   "smsSosAtualizadoCorpo": "🚨 ¡SOS DE EMERGENCIA (actualización en tiempo real)!\nUbicación actualizada: {localizacao}\nContexto: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Ubicación no disponible en el momento del envío.",
-  "smsFotoCorpo": "📷 ¡EVIDENCIA FOTOGRÁFICA registrada durante el SOS!\nFoto: {fotoUrl}\nUbicación: {localizacao}",
+  "smsFotoCorpo": "📷 ¡EVIDENCIA FOTOGRÁFICA registrada durante el SOS!\nFoto: {fotoUrl}",
   "smsResgateCorpo": "🚨 ¡EVIDENCIA FOTOGRÁFICA REGISTRADA!\nFotos y ubicación enviadas a la nube.\nAcceso: {link}\nUsuario: {login}\nContraseña: {senha}\nOperación irreversible.",
   "temaAzulProfundo": "Azul Profundo",
   "temaCinzaPlatina": "Gris Platino",

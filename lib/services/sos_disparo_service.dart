@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart' show XFile;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -237,8 +238,18 @@ class SosDisparoService {
       // disponível, ou a mensagem de fallback (sem link) caso
       // contrário. Child Future totalmente independente da nuvem
       // abaixo — nunca espera/depende dela.
-      final smsFuture = fotoUrl != null
-          ? _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl!)
+      //
+      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): ver
+      // documentação completa em [_linkCurtoParaSms] — o SMS usa um link
+      // CURTO (encurtado nas próximas linhas), nunca a URL completa do
+      // Storage, para caber numa única parte de SMS e nunca precisar de
+      // concatenação multi-parte (causa raiz confirmada da foto não
+      // chegar aos contatos). O canal de nuvem (Push) abaixo continua
+      // usando a URL completa normalmente — não tem limite de caracteres.
+      final String? linkFotoParaSms =
+          fotoUrl != null ? await _linkCurtoParaSms(fotoUrl!) : null;
+      final smsFuture = linkFotoParaSms != null
+          ? _emergencyAlertService.enviarSmsComLinkDaFoto(linkFotoParaSms)
           : _dispararFotoViaSmsFallback();
 
       // Canal 2 (App-para-App): só quando o upload deu certo.
@@ -278,8 +289,9 @@ class SosDisparoService {
     }
 
     try {
+      final String linkFotoParaSms = await _linkCurtoParaSms(fotoUrl);
       await Future.wait([
-        _emergencyAlertService.enviarSmsComLinkDaFoto(fotoUrl),
+        _emergencyAlertService.enviarSmsComLinkDaFoto(linkFotoParaSms),
         FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl, origem: origem),
       ]);
       debugPrint('✅ [SosDisparoService] Retry de upload ($origem) concluído com sucesso: $fotoUrl');
@@ -288,6 +300,50 @@ class SosDisparoService {
       debugPrint('⚠️ [SosDisparoService] Retry de upload — Storage ok mas despacho falhou (mantido na fila): $e');
       return false;
     }
+  }
+
+  /// Encurta a URL completa do Firebase Storage ([fotoUrlLongo], com
+  /// ~200+ caracteres, token incluso) para um link curto próprio
+  /// (`https://www.meuguardiaox.com.br/f/<código>`, ~40 caracteres) via
+  /// a Cloud Function callable `criarLinkCurtoFoto` (ver
+  /// `functions/fotoSosLinkService.js`) — usado EXCLUSIVAMENTE para o
+  /// texto que sai pelo SMS, nunca para o canal de Push/nuvem (que não
+  /// tem limite de caracteres e continua recebendo a URL completa).
+  ///
+  /// CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06, 2
+  /// rodadas em aparelho real — Moto G7 Play): o SMS da foto com a URL
+  /// completa do Storage precisava de 2-3 partes concatenadas; o rádio
+  /// confirmava `RESULT_OK` para TODAS as partes (ver `adb logcat -s
+  /// SmsSender`), mas a mensagem simplesmente não chegava aos contatos —
+  /// sintoma de colisão do número de referência de concatenação entre
+  /// dois SMS multi-parte enviados ao mesmo número em sequência rápida
+  /// (o SMS de localização, P1, sai segundos antes). Reduzir de 3 para 2
+  /// partes NÃO resolveu (2ª rodada de teste, ainda sem entrega) — só um
+  /// SMS de UMA ÚNICA parte (sem cabeçalho de concatenação nenhum)
+  /// elimina o problema pela raiz, e a URL crua do Storage nunca cabe
+  /// nesse limite.
+  ///
+  /// NUNCA bloqueia o envio do SMS: qualquer falha ao encurtar (function
+  /// fora do ar, sem rede no momento desta chamada específica, etc.) cai
+  /// de volta na URL completa original — o mesmo comportamento (com o
+  /// mesmo risco de concatenação) que já existia antes desta correção,
+  /// nunca a ausência total do SMS.
+  Future<String> _linkCurtoParaSms(String fotoUrlLongo) async {
+    try {
+      final resultado = await FirebaseFunctions.instance
+          .httpsCallable('criarLinkCurtoFoto')
+          .call<Map<String, dynamic>>({'fotoUrl': fotoUrlLongo});
+      final String? shortId = resultado.data['shortId'] as String?;
+      if (shortId != null && shortId.isNotEmpty) {
+        final String linkCurto = 'https://www.meuguardiaox.com.br/f/$shortId';
+        debugPrint('🔗 [SosDisparoService] Link da foto encurtado para o SMS: $linkCurto');
+        return linkCurto;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [SosDisparoService] Falha ao encurtar o link da foto — '
+          'SMS usará a URL completa do Storage (risco de multi-parte): $e');
+    }
+    return fotoUrlLongo;
   }
 
   Future<String> _uploadFotoParaStorage(XFile foto, String uid) async {

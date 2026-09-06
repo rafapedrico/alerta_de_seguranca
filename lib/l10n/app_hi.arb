@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "कैश किया गया स्थान उपलब्ध नहीं - वास्तविक समय के अपडेट की प्रतीक्षा है।",
   "smsSosAtualizadoCorpo": "🚨 आपातकालीन SOS (वास्तविक समय अपडेट)!\nअद्यतन स्थान: {localizacao}\nसंदर्भ: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "भेजते समय स्थान उपलब्ध नहीं था।",
-  "smsFotoCorpo": "📷 SOS के दौरान फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो: {fotoUrl}\nस्थान: {localizacao}",
+  "smsFotoCorpo": "📷 SOS के दौरान फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो: {fotoUrl}",
   "smsResgateCorpo": "🚨 फोटोग्राफिक साक्ष्य दर्ज किया गया!\nफोटो और स्थान क्लाउड पर भेजे गए।\nएक्सेस: {link}\nलॉगिन: {login}\nपासवर्ड: {senha}\nयह क्रिया वापस नहीं ली जा सकती।",
   "temaAzulProfundo": "गहरा नीला",
   "temaCinzaPlatina": "प्लेटिनम ग्रे",

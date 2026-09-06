@@ -311,3 +311,14 @@ exports.reverificarAssinaturasPremium =
 // role "admin".
 exports.reconciliarCompraPremiumAdmin =
   premiumPurchaseService.reconciliarCompraPremiumAdmin;
+
+// Encurtador de link próprio para o SMS da foto do SOS — ver
+// fotoSosLinkService.js (correção do bug real de SMS multi-parte não
+// entregue, confirmado em teste físico em 2026-09-06).
+const fotoSosLinkService = require("./fotoSosLinkService");
+// - Callable chamada pelo app (SosDisparoService) logo após o upload da
+// foto ao Storage, antes de montar o SMS.
+exports.criarLinkCurtoFoto = fotoSosLinkService.criarLinkCurtoFoto;
+// - Rota pública (via rewrite "/f/**" do Hosting, ver firebase.json) que
+// resolve o link curto e redireciona para a foto real no Storage.
+exports.abrirFotoSos = fotoSosLinkService.abrirFotoSos;

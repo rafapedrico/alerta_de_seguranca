@@ -845,13 +845,10 @@
     }
   },
   "smsLocalizacaoIndisponivelMomentoEnvio": "Localização indisponível no momento do envio.",
-  "smsFotoCorpo": "📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\nFoto: {fotoUrl}\nLocalização: {localizacao}",
+  "smsFotoCorpo": "📷 EVIDÊNCIA FOTOGRÁFICA registrada durante o SOS!\nFoto: {fotoUrl}",
   "@smsFotoCorpo": {
     "placeholders": {
       "fotoUrl": {
-        "type": "String"
-      },
-      "localizacao": {
         "type": "String"
       }
     }

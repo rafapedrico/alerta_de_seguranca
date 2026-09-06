@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "Zwischengespeicherter Standort nicht verfügbar - Echtzeit-Update wird erwartet.",
   "smsSosAtualizadoCorpo": "🚨 NOTFALL-SOS (Echtzeit-Update)!\nAktualisierter Standort: {localizacao}\nKontext: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Standort zum Zeitpunkt des Versands nicht verfügbar.",
-  "smsFotoCorpo": "📷 FOTOGRAFISCHER BEWEIS während des SOS erfasst!\nFoto: {fotoUrl}\nStandort: {localizacao}",
+  "smsFotoCorpo": "📷 FOTOGRAFISCHER BEWEIS während des SOS erfasst!\nFoto: {fotoUrl}",
   "smsResgateCorpo": "🚨 FOTOGRAFISCHER BEWEIS ERFASST!\nFotos und Standort in die Cloud gesendet.\nZugang: {link}\nBenutzername: {login}\nPasswort: {senha}\nDieser Vorgang ist unumkehrbar.",
   "temaAzulProfundo": "Tiefblau",
   "temaCinzaPlatina": "Platingrau",

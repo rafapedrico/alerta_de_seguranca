@@ -780,13 +780,32 @@ class EmergencyAlertService {
 
   /// Canal SMS OFICIAL do P2 da sequência unificada de SOS (ver
   /// [SosDisparoService.dispararFotoCapturada]) — enviado SEMPRE, em
-  /// paralelo ao canal de nuvem (Push), com o link real da
-  /// foto ([fotoUrl], já enviada ao Firebase Storage) e a localização
-  /// atual, exatamente como pedido pelo produto: "texto com a
-  /// localização + link da foto do Storage". Diferente de
+  /// paralelo ao canal de nuvem (Push), com o link real da foto
+  /// ([fotoUrl], já enviada ao Firebase Storage). Diferente de
   /// [enviarSmsResgateFoto] (mensagem antiga com credenciais fictícias,
   /// mantida só como fallback para quando NENHUM link real está
   /// disponível — sem sessão ou falha no upload).
+  ///
+  /// CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): a
+  /// localização NÃO é mais repetida aqui — teste real (Moto G7 Play,
+  /// contato com iPhone) mostrou que o SMS de localização (P1, ~2 partes
+  /// concatenadas) chegava normalmente no iPhone, mas este SMS da foto
+  /// (antes com localização + link do Storage, ~3 partes) nunca chegava
+  /// — mesmo com o rádio do Android confirmando `RESULT_OK` para TODAS
+  /// as partes, em ambos os contatos (ver `adb logcat -s SmsSender`).
+  /// Ou seja: o envio do lado Android estava 100% correto: a perda
+  /// acontecia na remontagem das partes concatenadas do lado do
+  /// destinatário, e SMS multi-parte (concatenado via UDH) de Android
+  /// para iPhone é um cenário conhecidamente frágil nesse aspecto —
+  /// mesma categoria do problema de emoji/acentos já documentado acima
+  /// em [_emojiDecorativo]/[_transliteracaoAscii], só que agora causado
+  /// pelo tamanho da mensagem, não pela codificação. Como a localização
+  /// já chega ao contato segundos antes, pelo SMS de P1
+  /// ([dispararSosComDuplaLocalizacao]), repeti-la aqui só empurrava a
+  /// mensagem da 2ª para a 3ª parte sem agregar nenhuma informação
+  /// nova — removê-la é o suficiente para igualar o número de partes ao
+  /// do SMS de localização, que o teste real confirmou chegar
+  /// normalmente no iPhone.
   Future<void> enviarSmsComLinkDaFoto(String fotoUrl) async {
     List<Map<String, dynamic>> contatos = [];
     try {
@@ -796,14 +815,9 @@ class EmergencyAlertService {
     }
 
     final l10n = await L10nHeadlessService.obter();
-    final Position? posicao = await _obterPosicaoDeCacheImediata();
-    final String localizacaoFormatada = posicao != null
-        ? _formatarPosicao(posicao, l10n)
-        : l10n.smsLocalizacaoIndisponivelMomentoEnvio;
+    final String mensagem = l10n.smsFotoCorpo(fotoUrl);
 
-    final String mensagem = l10n.smsFotoCorpo(fotoUrl, localizacaoFormatada);
-
-    debugPrint('📋 [SMS Foto] Enviando localização + link da foto para contatos...');
+    debugPrint('📋 [SMS Foto] Enviando link da foto para contatos (localização já enviada no SMS de P1)...');
     await _enviarSms(contatos, mensagem);
 
     try {

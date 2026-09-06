@@ -26,6 +26,10 @@
       ],
       "rewrites": [
         {
+          "source": "/f/**",
+          "function": "abrirFotoSos"
+        },
+        {
           "source": "**",
           "destination": "/404.html"
         }

@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "キャッシュされた位置情報がありません - リアルタイム更新を待っています。",
   "smsSosAtualizadoCorpo": "🚨 緊急SOS（リアルタイム更新）！\n更新された位置情報：{localizacao}\n状況：{contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "送信時点で位置情報を取得できませんでした。",
-  "smsFotoCorpo": "📷 SOS中に写真証拠が記録されました！\n写真：{fotoUrl}\n位置情報：{localizacao}",
+  "smsFotoCorpo": "📷 SOS中に写真証拠が記録されました！\n写真：{fotoUrl}",
   "smsResgateCorpo": "🚨 写真証拠が記録されました！\n写真と位置情報がクラウドに送信されました。\nアクセス：{link}\nログイン：{login}\nパスワード：{senha}\nこの操作は取り消せません。",
   "temaAzulProfundo": "ディープブルー",
   "temaCinzaPlatina": "プラチナグレー",

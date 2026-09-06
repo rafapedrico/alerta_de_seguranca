@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "Cached location unavailable - waiting for a real-time update.",
   "smsSosAtualizadoCorpo": "🚨 EMERGENCY SOS (real-time update)!\nUpdated location: {localizacao}\nContext: {contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "Location unavailable at the time of sending.",
-  "smsFotoCorpo": "📷 PHOTOGRAPHIC EVIDENCE recorded during the SOS!\nPhoto: {fotoUrl}\nLocation: {localizacao}",
+  "smsFotoCorpo": "📷 PHOTOGRAPHIC EVIDENCE recorded during the SOS!\nPhoto: {fotoUrl}",
   "smsResgateCorpo": "🚨 PHOTOGRAPHIC EVIDENCE RECORDED!\nPhotos and location sent to the cloud.\nAccess: {link}\nLogin: {login}\nPassword: {senha}\nThis action cannot be undone.",
   "temaAzulProfundo": "Deep Blue",
   "temaCinzaPlatina": "Platinum Gray",

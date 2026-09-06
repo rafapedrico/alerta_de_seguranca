@@ -251,6 +251,18 @@ service cloud.firestore {
       }
     }
 
+    match /links_foto_sos/{shortId} {
+      // Encurtador de link próprio do SMS da foto do SOS (ver
+      // functions/fotoSosLinkService.js) — gravado EXCLUSIVAMENTE pela
+      // Cloud Function callable `criarLinkCurtoFoto` (Admin SDK, ignora
+      // estas regras), que valida que a URL pertence ao próprio uid
+      // autenticado antes de gravar. A resolução do link (redirecionamento
+      // real) também roda via Admin SDK, na function pública `abrirFotoSos`
+      // — o cliente (app ou o navegador de quem recebe o SMS) nunca lê nem
+      // escreve este documento diretamente pelo SDK do Firestore.
+      allow read, write: if false;
+    }
+
     match /telefones_reservados/{telefone} {
       // Índice de unicidade de telefone (decisão de arquitetura
       // 2026-08-23 — remoção do SMS OTP): gravado/apagado EXCLUSIVAMENTE

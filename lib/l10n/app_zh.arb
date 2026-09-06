@@ -645,7 +645,7 @@
   "smsLocalizacaoCacheIndisponivel": "缓存位置不可用 - 正在等待实时更新。",
   "smsSosAtualizadoCorpo": "🚨 紧急SOS（实时更新）！\n更新后的位置：{localizacao}\n背景：{contexto}",
   "smsLocalizacaoIndisponivelMomentoEnvio": "发送时位置不可用。",
-  "smsFotoCorpo": "📷 SOS期间记录的照片证据！\n照片：{fotoUrl}\n位置：{localizacao}",
+  "smsFotoCorpo": "📷 SOS期间记录的照片证据！\n照片：{fotoUrl}",
   "smsResgateCorpo": "🚨 已记录照片证据！\n照片和位置已发送至云端。\n访问：{link}\n登录名：{login}\n密码：{senha}\n此操作不可撤销。",
   "temaAzulProfundo": "深蓝",
   "temaCinzaPlatina": "铂金灰",
