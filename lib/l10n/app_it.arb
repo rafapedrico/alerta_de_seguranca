@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "Consenti di inviare la mia posizione",
-  "monitoramentoSecaoVerLocalizacao": "Posizione dei familiari",
+  "monitoramentoSecaoVerLocalizacao": "Posizione reale",
   "monitoramentoAdicionarContato": "Aggiungi Contatto",
   "monitoramentoNomeLabel": "Nome",
   "monitoramentoTelefoneLabel": "Telefono",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 Avviso di sicurezza",
   "notifMonitSolicitacaoTitulo": "📍 Richiesta di posizione",
   "notifMonitSolicitacaoCorpo": "{nome} sta richiedendo la tua posizione.",
+  "notifMonitAcaoAceitar": "Accetta",
+  "notifMonitAcaoRecusar": "Rifiuta",
   "notifMonitAprovadoTitulo": "📍 Posizione rilasciata",
   "notifMonitAprovadoCorpo": "{nome} ti ha permesso di vedere la sua posizione.",
   "notifMonitNegadoTitulo": "📍 Richiesta rifiutata",

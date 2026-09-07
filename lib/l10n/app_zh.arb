@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "允许发送我的位置",
-  "monitoramentoSecaoVerLocalizacao": "家人的位置",
+  "monitoramentoSecaoVerLocalizacao": "真实位置",
   "monitoramentoAdicionarContato": "添加联系人",
   "monitoramentoNomeLabel": "姓名",
   "monitoramentoTelefoneLabel": "电话",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 安全警报",
   "notifMonitSolicitacaoTitulo": "📍 位置请求",
   "notifMonitSolicitacaoCorpo": "{nome}正在请求您的位置。",
+  "notifMonitAcaoAceitar": "接受",
+  "notifMonitAcaoRecusar": "拒绝",
   "notifMonitAprovadoTitulo": "📍 位置已开放",
   "notifMonitAprovadoCorpo": "{nome}已允许您查看其位置。",
   "notifMonitNegadoTitulo": "📍 请求已拒绝",

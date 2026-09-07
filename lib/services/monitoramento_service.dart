@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
@@ -70,6 +71,76 @@ class MonitoramentoService {
   static final ValueNotifier<int> versaoMonitoramento = ValueNotifier<int>(0);
 
   static void _notificarAlteracao() => versaoMonitoramento.value++;
+
+  /// Janela de validade de uma marca em [marcarResolvidoDireto] — curta o
+  /// bastante para nunca bloquear um ciclo GENUÍNO futuro da MESMA
+  /// solicitação (o mesmo par de contas pode gerar o mesmo `permissaoId`
+  /// de novo em outro dia), generosa o bastante para cobrir a corrida
+  /// real observada em teste físico entre esta marca e os demais
+  /// listeners que competem para abrir o modal de decisão.
+  static const int _janelaResolvidoDiretoMs = 8000;
+
+  /// Registro COMPARTILHADO (em disco, via `SharedPreferences` — NÃO em
+  /// memória) de um `idPermissao` já resolvido direto pelas ações rápidas
+  /// [Aceitar]/[Recusar] da notificação (ver
+  /// `NotificacaoService._processarRespostaPayloadJson` e
+  /// `LoginScreen._abrirModalDecisaoAposLogin`).
+  ///
+  /// CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06, DUAS
+  /// causas raiz distintas, ambas confirmadas com teste físico real):
+  ///
+  /// 1) Tocar numa dessas ações abre o app (mesmo padrão de qualquer
+  ///    notificação com `showsUserInterface: true`) — e o app reabrindo
+  ///    (ou o próprio caminho nativo `SolicitacaoMonitoramentoWakeService`,
+  ///    ou o listener independente [pedidosRecebidosPendentesStream] de
+  ///    `MonitoramentoTab`) também detecta a MESMA solicitação (ainda
+  ///    "pendente" no instante em que competem, porque a escrita de
+  ///    [responderSolicitacao] é assíncrona e ainda não terminou) e abre
+  ///    o modal de decisão de novo — por cima da decisão que o usuário JÁ
+  ///    tinha tomado ao tocar o botão da notificação.
+  ///
+  /// 2) MAIS IMPORTANTE — o toque na ação da notificação pode ser
+  ///    entregue via `onDidReceiveBackgroundNotificationResponse`, um
+  ///    ISOLATE Dart TOTALMENTE SEPARADO do engine principal do app
+  ///    (mesma limitação já documentada para
+  ///    `firebaseMessagingBackgroundHandler` em `fcm_service.dart`).
+  ///    Isolates Dart NUNCA compartilham memória de campos `static` entre
+  ///    si — um `Set` em memória (a versão original desta correção) só
+  ///    protegia listeners rodando NO MESMO isolate; o caminho nativo
+  ///    (sempre no engine PRINCIPAL) nunca via a marca feita por essa
+  ///    outra isolate, perdendo a corrida sempre. `SharedPreferences`
+  ///    persiste em disco, lido/escrito por QUALQUER isolate/engine do
+  ///    mesmo processo — o mesmo padrão já comprovado neste projeto para
+  ///    exatamente este tipo de coordenação entre engines/isolates
+  ///    separados (ver `SosDisparoService._reivindicarDisparoUnico`).
+  static Future<void> marcarResolvidoDireto(String idPermissao) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'monitoramento_resolvido_direto_$idPermissao',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [MonitoramentoService] Falha ao marcar resolução direta ($idPermissao): $e');
+    }
+  }
+
+  /// `true` se [idPermissao] foi marcado por [marcarResolvidoDireto] há
+  /// menos de [_janelaResolvidoDiretoMs] — usado pelos demais listeners
+  /// (`MonitoramentoTab`, caminho nativo) para pular a exibição do modal
+  /// de decisão quando a resolução já está em andamento/concluída por
+  /// outro caminho.
+  static Future<bool> foiResolvidoDireto(String idPermissao) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final marcadoEm = prefs.getInt('monitoramento_resolvido_direto_$idPermissao');
+      if (marcadoEm == null) return false;
+      return DateTime.now().millisecondsSinceEpoch - marcadoEm < _janelaResolvidoDiretoMs;
+    } catch (e) {
+      debugPrint('⚠️ [MonitoramentoService] Falha ao checar resolução direta ($idPermissao): $e');
+      return false;
+    }
+  }
 
   String? get _meuUid => FirebaseAuthService().uidAtual;
 
@@ -321,7 +392,7 @@ class MonitoramentoService {
   /// Define diretamente — sem esperar uma solicitação prévia do contato —
   /// se o contato local [idContatoLocal] pode receber a MINHA localização.
   /// Usada pelo Switch de pré-autorização exibido em CADA card da lista
-  /// "Localização de familiares", via Cloud Function callable
+  /// "Localização real", via Cloud Function callable
   /// `definirPermissaoCompartilhamento`, que resolve o uid do contato pelo
   /// telefone server-side e cria/atualiza o documento em
   /// `permissoes_monitoramento` diretamente como `aprovado`/`bloqueado`
@@ -510,7 +581,7 @@ class MonitoramentoService {
 
   /// Mesma operação de [definirBloqueioPorTelefone], mas a partir do
   /// contato local [idContatoLocal] — usada pelo slider deslizante de cada
-  /// card da lista "Localização de familiares" (ver `monitoramento_tab.dart`).
+  /// card da lista "Localização real" (ver `monitoramento_tab.dart`).
   Future<String> definirBloqueioSolicitante({
     required int idContatoLocal,
     required bool bloquear,

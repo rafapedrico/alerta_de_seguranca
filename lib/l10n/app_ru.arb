@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "Разрешить отправлять моё местоположение",
-  "monitoramentoSecaoVerLocalizacao": "Местоположение родных",
+  "monitoramentoSecaoVerLocalizacao": "Реальное местоположение",
   "monitoramentoAdicionarContato": "Добавить контакт",
   "monitoramentoNomeLabel": "Имя",
   "monitoramentoTelefoneLabel": "Телефон",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 Оповещение безопасности",
   "notifMonitSolicitacaoTitulo": "📍 Запрос местоположения",
   "notifMonitSolicitacaoCorpo": "{nome} запрашивает ваше местоположение.",
+  "notifMonitAcaoAceitar": "Принять",
+  "notifMonitAcaoRecusar": "Отклонить",
   "notifMonitAprovadoTitulo": "📍 Местоположение открыто",
   "notifMonitAprovadoCorpo": "{nome} разрешил(а) вам видеть своё местоположение.",
   "notifMonitNegadoTitulo": "📍 Запрос отклонён",

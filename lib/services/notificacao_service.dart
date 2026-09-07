@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
+import '../firebase_options.dart';
 import '../screens/alarme_disparado_screen.dart';
 import '../screens/alerta_recebido_screen.dart';
 import '../screens/home_screen.dart';
@@ -18,6 +19,7 @@ import '../widgets/monitoramento_decisao_dialog.dart';
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 import 'l10n_headless_service.dart';
+import 'monitoramento_service.dart';
 import 'rotina_alarme_service.dart';
 
 /// Wrapper central do plugin `flutter_local_notifications`, responsável
@@ -150,6 +152,8 @@ class NotificacaoService {
       canalSolicitacaoMonitoramentoNome = l10n.notifCanalSolicitacaoMonitoramentoNome;
       canalSolicitacaoMonitoramentoDescricao =
           l10n.notifCanalSolicitacaoMonitoramentoDescricao;
+      _labelAcaoAceitarMonitoramento = l10n.notifMonitAcaoAceitar;
+      _labelAcaoRecusarMonitoramento = l10n.notifMonitAcaoRecusar;
       canalAlertaEnviadoNome = l10n.notifCanalAlertaEnviadoNome;
       canalAlertaEnviadoDescricao = l10n.notifCanalAlertaEnviadoDescricao;
     } catch (e) {
@@ -159,6 +163,16 @@ class NotificacaoService {
 
   /// Id da ação rápida "Cheguei bem" exibida na notificação.
   static const String acaoConfirmarId = 'confirmar_checkin_rotina';
+
+  /// Ids das ações rápidas [Aceitar]/[Recusar] da notificação de
+  /// solicitação de localização (ver [exibirNotificacaoMonitoramento] e
+  /// [_processarRespostaPayloadJson]) — pedido explícito do usuário
+  /// (2026-09-06): a decisão fica disponível direto na bandeja de
+  /// notificações, sem precisar abrir o modal de confirmação.
+  static const String acaoAceitarMonitoramentoId = 'aceitar_monitoramento';
+  static const String acaoRecusarMonitoramentoId = 'recusar_monitoramento';
+  static String _labelAcaoAceitarMonitoramento = 'Aceitar';
+  static String _labelAcaoRecusarMonitoramento = 'Recusar';
 
   static bool _inicializado = false;
 
@@ -196,13 +210,24 @@ class NotificacaoService {
   /// guardado até um login de verdade acontecer.
   static Map<String, dynamic>? payloadAlertaRecebidoPendente;
 
-  static void _capturarPayloadSolicitacaoPendente(String? payload) {
+  static void _capturarPayloadSolicitacaoPendente(String? payload, {String? actionId}) {
     if (payload == null || !payload.startsWith('{')) return;
     try {
       final dados = jsonDecode(payload) as Map<String, dynamic>;
       if (dados['tipo'] == 'monitoramento_push' &&
           dados['subTipo'] == 'solicitacao_monitoramento') {
-        payloadSolicitacaoPendente = dados;
+        // Cold start via toque numa das ações rápidas [Aceitar]/[Recusar]
+        // (ver [acaoAceitarMonitoramentoId]/[acaoRecusarMonitoramentoId])
+        // com o app 100% fechado: preserva qual ação foi tocada, para a
+        // LoginScreen aplicar a MESMA decisão depois do login, em vez de
+        // reabrir o modal por cima de uma escolha que o usuário já tinha
+        // feito.
+        payloadSolicitacaoPendente = {
+          ...dados,
+          if (actionId == acaoAceitarMonitoramentoId ||
+              actionId == acaoRecusarMonitoramentoId)
+            'acaoDireta': actionId,
+        };
       } else if (dados['tipo'] == 'alerta_recebido') {
         payloadAlertaRecebidoPendente = dados;
       }
@@ -306,6 +331,20 @@ class NotificacaoService {
     final uidSolicitante = dados['uidSolicitante'] as String?;
     if (idPermissao == null || uidSolicitante == null) return;
 
+    // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): TERCEIRA
+    // via independente para a MESMA solicitação (além do listener da
+    // `MonitoramentoTab` e do handler de FCM em primeiro plano) — ver
+    // documentação completa em
+    // [MonitoramentoService.marcarResolvidoDireto]/[foiResolvidoDireto].
+    // Sem esta checagem, tocar [Aceitar]/[Recusar] direto na notificação
+    // (que acorda a tela/traz o app à frente) corria contra este caminho
+    // nativo (`SolicitacaoMonitoramentoWakeService`), que abria o MESMO
+    // modal de decisão de novo por cima da escolha já feita. Uma pequena
+    // espera ANTES da checagem dá tempo de sobra para a marcação (em
+    // disco, cruza isolates) vencer essa corrida.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (await MonitoramentoService.foiResolvidoDireto(idPermissao)) return;
+
     final autenticado =
         Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
     final context = appNavigatorKey.currentContext;
@@ -382,7 +421,10 @@ class NotificacaoService {
       final respostaDeLancamento = detalhesLancamento?.notificationResponse;
       if (detalhesLancamento?.didNotificationLaunchApp == true &&
           respostaDeLancamento != null) {
-        _capturarPayloadSolicitacaoPendente(respostaDeLancamento.payload);
+        _capturarPayloadSolicitacaoPendente(
+          respostaDeLancamento.payload,
+          actionId: respostaDeLancamento.actionId,
+        );
       }
     } catch (e) {
       debugPrint(
@@ -463,6 +505,19 @@ class NotificacaoService {
       canalSolicitacaoMonitoramentoNome,
       description: canalSolicitacaoMonitoramentoDescricao,
       importance: Importance.max,
+      // CORREÇÃO (pedido explícito do usuário, 2026-09-06): som e vibração
+      // deixados EXPLÍCITOS na criação do canal — mesmo já sendo o padrão
+      // da própria lib, o Android trava essas configurações no momento em
+      // que o canal é criado pela PRIMEIRA vez (ver a mesma lição já
+      // documentada em [canalAlertaRecebidoId] logo abaixo), então deixar
+      // implícito arrisca depender de um default que pode mudar. `sound:
+      // null` (omitido) = toque PADRÃO do sistema Android, garantido de
+      // tocar mesmo em segundo plano (nunca depende de um arquivo de som
+      // customizado embutido no app). `vibrationPattern` também omitido de
+      // propósito — usa o padrão de vibração do próprio sistema, mais
+      // previsível entre fabricantes do que um padrão custom.
+      playSound: true,
+      enableVibration: true,
     );
     final canalAlertaEnviado = AndroidNotificationChannel(
       canalAlertaEnviadoId,
@@ -1023,6 +1078,36 @@ class NotificacaoService {
             playSound: true,
             visibility: NotificationVisibility.public,
             vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
+            // Ações rápidas [Aceitar]/[Recusar] direto na notificação
+            // (pedido explícito do usuário, 2026-09-06) — mesmo padrão já
+            // usado pela ação "Cheguei bem" do check-in de rotina
+            // ([acaoConfirmarId] acima), mas aqui com `showsUserInterface:
+            // true`: ao contrário do check-in (100% local/SQLite), a
+            // decisão aqui grava no Firestore e exige sessão autenticada
+            // (ver [MonitoramentoService.responderSolicitacao]) — a
+            // barreira de login do app (ver política de segurança em
+            // `main.dart`) precisa continuar valendo mesmo para quem
+            // decide direto pela notificação, então o toque em qualquer
+            // uma das duas ações ainda abre o app (rápido, sem exibir o
+            // modal de confirmação de novo — ver
+            // [_processarRespostaPayloadJson]), nunca decide 100%
+            // headless. O toque no CORPO da notificação (sem `actionId`)
+            // continua abrindo o modal completo normalmente, para quem
+            // preferir revisar antes de decidir.
+            actions: [
+              AndroidNotificationAction(
+                acaoRecusarMonitoramentoId,
+                _labelAcaoRecusarMonitoramento,
+                showsUserInterface: true,
+                cancelNotification: true,
+              ),
+              AndroidNotificationAction(
+                acaoAceitarMonitoramentoId,
+                _labelAcaoAceitarMonitoramento,
+                showsUserInterface: true,
+                cancelNotification: true,
+              ),
+            ],
           )
         : AndroidNotificationDetails(
             canalMonitoramentoId,
@@ -1132,7 +1217,7 @@ class NotificacaoService {
     // exibirNotificacaoMonitoramento), distintos do alarme de rotina do
     // próprio usuário tratado no restante deste método.
     if (payload.startsWith('{')) {
-      _processarRespostaPayloadJson(payload);
+      _processarRespostaPayloadJson(payload, actionId: resposta.actionId);
       return;
     }
 
@@ -1189,14 +1274,18 @@ class NotificacaoService {
   /// Decodifica um payload JSON de notificação e roteia para a tela
   /// correta conforme o campo `tipo`:
   /// - `'monitoramento_push'` (ver [exibirNotificacaoMonitoramento]): abre
-  ///   a HomeScreen diretamente na aba Monitoramento (índice 2).
+  ///   a HomeScreen diretamente na aba Monitoramento (índice 2) — ou, se
+  ///   [actionId] for uma das ações rápidas [Aceitar]/[Recusar] (ver
+  ///   [acaoAceitarMonitoramentoId]/[acaoRecusarMonitoramentoId]),
+  ///   resolve a solicitação DIRETO, sem exibir o modal de confirmação de
+  ///   novo (o usuário já decidiu ao tocar a ação específica).
   /// - qualquer outro valor (compatibilidade com payloads antigos, ver
   ///   [exibirNotificacaoAlertaRecebido]): alerta de emergência de
   ///   terceiro, navega para [AlertaRecebidoScreen].
   ///
   /// Protegido contra payload malformado — nunca deixa a interação com a
   /// notificação derrubar o app.
-  static void _processarRespostaPayloadJson(String payload) {
+  static Future<void> _processarRespostaPayloadJson(String payload, {String? actionId}) async {
     try {
       final dados = jsonDecode(payload) as Map<String, dynamic>;
 
@@ -1208,16 +1297,69 @@ class NotificacaoService {
             idPermissao != null &&
             uidSolicitante != null;
 
+        // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): o
+        // toque numa notificação (incluindo as ações rápidas
+        // [Aceitar]/[Recusar]) pode ser entregue por
+        // `onDidReceiveBackgroundNotificationResponse` — um ISOLATE Dart
+        // totalmente NOVO e separado do engine principal do app (mesma
+        // limitação já documentada em `firebaseMessagingBackgroundHandler`,
+        // em `fcm_service.dart`), onde `Firebase.apps` sempre começa
+        // VAZIO. Antes desta correção, isso fazia `autenticado` abaixo dar
+        // sempre `false` nesse cenário — mesmo com uma sessão válida
+        // persistida em disco — e a ação [Aceitar]/[Recusar] nunca
+        // chegava a chamar [MonitoramentoService.responderSolicitacao] de
+        // verdade: só caía no fallback de "sem sessão agora" (guardar o
+        // payload para a LoginScreen), que nem se aplica aqui (não há
+        // barreira de login real neste cenário — a sessão existe, só não
+        // nesta isolate específica). Resultado observado: o modal de
+        // decisão "fantasma" de [MonitoramentoTab]/do caminho nativo
+        // sempre vencia, porque a resolução direta nunca tinha, de fato,
+        // acontecido. `Firebase.initializeApp()` aqui restaura a sessão já
+        // persistida (não é um novo login) — mesmo padrão já usado com
+        // sucesso em `firebaseMessagingBackgroundHandler`.
+        if (Firebase.apps.isEmpty) {
+          try {
+            await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+          } catch (e) {
+            debugPrint('⚠️ [NotificacaoService] Falha ao inicializar Firebase nesta isolate: $e');
+          }
+        }
+
         // Redirecionamento direto (deep link): só para uma SOLICITAÇÃO
         // recebida (não uma resposta a uma solicitação já enviada) e só
         // quando o usuário já está autenticado NESTA sessão do app — fora
-        // disso (app recém-aberto por um isolate headless sem Firebase
-        // inicializado, ou sessão sem login) cai no fallback abaixo, que
-        // apenas abre a aba Monitoramento normalmente. Sem essa checagem,
-        // tentar ler `FirebaseAuth.instance` num isolate onde o Firebase
-        // nunca foi inicializado lançaria uma exceção.
+        // disso (sem login em NENHUM lugar, cenário genuinamente sem
+        // sessão) cai no fallback abaixo, que apenas abre a aba
+        // Monitoramento normalmente.
         final autenticado =
             Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
+
+        // Ação rápida [Aceitar]/[Recusar] tocada direto na notificação
+        // (pedido explícito do usuário, 2026-09-06) — resolve na hora,
+        // sem reabrir o modal, sempre que já houver sessão. A barreira de
+        // login continua obrigatória: sem sessão agora, cai no mesmo
+        // fallback de payload pendente abaixo, carregando a ação
+        // escolhida para a LoginScreen aplicar depois do login.
+        if (ehSolicitacao &&
+            autenticado &&
+            (actionId == acaoAceitarMonitoramentoId ||
+                actionId == acaoRecusarMonitoramentoId)) {
+          // Marca (em disco — ver documentação completa em
+          // [MonitoramentoService.marcarResolvidoDireto]) ANTES de
+          // escrever no Firestore, e AGUARDADA: esta função pode estar
+          // rodando numa isolate headless que o SO pode encerrar assim
+          // que ela retornar — sem `await` aqui, tanto a marca quanto a
+          // escrita abaixo arriscam nunca completar de verdade.
+          await MonitoramentoService.marcarResolvidoDireto(idPermissao);
+          await MonitoramentoService().responderSolicitacao(
+            permissaoId: idPermissao,
+            aprovar: actionId == acaoAceitarMonitoramentoId,
+            uidSolicitante: uidSolicitante,
+            nomeSolicitante: (dados['nomeSolicitante'] as String?) ?? '',
+            telefoneSolicitante: (dados['telefoneSolicitante'] as String?) ?? '',
+          );
+          return;
+        }
 
         if (ehSolicitacao && autenticado) {
           final context = appNavigatorKey.currentContext;
@@ -1236,10 +1378,18 @@ class NotificacaoService {
         if (ehSolicitacao && !autenticado) {
           // Sem sessão ativa agora (barreira de login obrigatória à
           // frente, ver política de segurança em `main.dart`) — NUNCA
-          // pula o login. Só guarda o payload para a LoginScreen abrir o
-          // modal de decisão direto assim que o login terminar com
-          // sucesso, em vez de deixar a solicitação se perder.
-          payloadSolicitacaoPendente = dados;
+          // pula o login. Só guarda o payload (+ qual ação rápida foi
+          // tocada, se alguma — ver `acaoDireta` abaixo) para a
+          // LoginScreen aplicar a MESMA decisão assim que o login
+          // terminar com sucesso, em vez de deixar a solicitação se
+          // perder ou reabrir o modal por cima de uma decisão que o
+          // usuário já tinha tomado ao tocar a ação da notificação.
+          payloadSolicitacaoPendente = {
+            ...dados,
+            if (actionId == acaoAceitarMonitoramentoId ||
+                actionId == acaoRecusarMonitoramentoId)
+              'acaoDireta': actionId,
+          };
           return;
         }
 

@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "Permitir enviar minha localização",
-  "monitoramentoSecaoVerLocalizacao": "Localização de familiares",
+  "monitoramentoSecaoVerLocalizacao": "Localização real",
   "monitoramentoAdicionarContato": "Adicionar Contato",
   "monitoramentoNomeLabel": "Nome",
   "monitoramentoTelefoneLabel": "Telefone",
@@ -952,6 +952,8 @@
       }
     }
   },
+  "notifMonitAcaoAceitar": "Aceitar",
+  "notifMonitAcaoRecusar": "Recusar",
   "notifMonitAprovadoTitulo": "📍 Localização liberada",
   "notifMonitAprovadoCorpo": "{nome} permitiu que você veja a localização dele(a).",
   "@notifMonitAprovadoCorpo": {

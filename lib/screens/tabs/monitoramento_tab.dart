@@ -23,7 +23,7 @@ const Color _corDestaque = Color(0xFF4C7040);
 /// teclado de PIN nem dispara qualquer som de alarme/sirene — apenas lê e
 /// escreve permissões e localização na nuvem.
 ///
-/// Lista única "Localização de familiares" com TODOS os contatos
+/// Lista única "Localização real" com TODOS os contatos
 /// cadastrados localmente. Cada card reúne as duas direções independentes
 /// de permissão para aquele contato:
 /// - "Solicitar Localização" (`uidSolicitante` = eu): pede para VER a
@@ -123,6 +123,22 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   Future<void> _exibirDialogoSolicitacaoRecebida(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    if (!mounted) return;
+    // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): ver
+    // documentação completa em
+    // [MonitoramentoService.marcarResolvidoDireto]/[foiResolvidoDireto] —
+    // sem esta checagem, tocar [Aceitar]/[Recusar] direto na notificação
+    // (que reabre o app) fazia este listener, ao reconectar, achar a
+    // MESMA solicitação ainda "pendente" (a escrita da resposta ainda em
+    // voo — ou processando numa isolate headless separada) e abrir o
+    // modal de decisão por cima de uma escolha que o usuário já tinha
+    // feito. Uma pequena espera ANTES da checagem dá tempo de sobra para
+    // essa marcação (em disco, cruza isolates) vencer a corrida —
+    // imperceptível no caso comum (nenhuma ação tocada, o usuário só
+    // abriu o app de verdade).
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    if (await MonitoramentoService.foiResolvidoDireto(doc.id)) return;
     if (!mounted) return;
     final dados = doc.data();
     await exibirDialogoDecisaoMonitoramento(
@@ -555,7 +571,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   }
 
   // ------------------------------------------------------------
-  // Seção "Localização de familiares" (Bloco A)
+  // Seção "Localização real" (Bloco A)
   // ------------------------------------------------------------
 
   Widget _construirCardVerLocalizacao(Map<String, dynamic> contato) {

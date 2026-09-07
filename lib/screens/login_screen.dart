@@ -17,6 +17,7 @@ import '../widgets/recuperar_senha_dialog.dart';
 import '../widgets/vincular_conta_google_dialog.dart';
 import 'onboarding_screen.dart';
 import '../services/locale_service.dart';
+import '../services/monitoramento_service.dart';
 import '../services/notificacao_service.dart';
 import '../services/social_auth_service.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
@@ -521,6 +522,32 @@ class _LoginScreenState extends State<LoginScreen> {
     final idPermissao = dados['idPermissao'] as String?;
     final uidSolicitante = dados['uidSolicitante'] as String?;
     if (idPermissao == null || uidSolicitante == null) return;
+
+    // Ação rápida [Aceitar]/[Recusar] tocada direto na notificação (ver
+    // `NotificacaoService.acaoAceitarMonitoramentoId`/
+    // `acaoRecusarMonitoramentoId`) ANTES de existir sessão — o usuário já
+    // decidiu ao tocar a ação específica; depois do login, aplica a MESMA
+    // decisão sem reabrir o modal de confirmação por cima dela.
+    final acaoDireta = dados['acaoDireta'] as String?;
+    if (acaoDireta == NotificacaoService.acaoAceitarMonitoramentoId ||
+        acaoDireta == NotificacaoService.acaoRecusarMonitoramentoId) {
+      // Ver documentação completa em
+      // [MonitoramentoService.marcarResolvidoDireto] — mesma proteção
+      // contra o modal de decisão reabrir por cima desta resolução
+      // direta, agora também no caminho de login pendente. Fire-and-forget
+      // (mesmo padrão do `responderSolicitacao` logo abaixo, nunca
+      // aguardado por este método síncrono) — a marca em disco é rápida o
+      // bastante para vencer a corrida mesmo sem `await` aqui.
+      unawaited(MonitoramentoService.marcarResolvidoDireto(idPermissao));
+      MonitoramentoService().responderSolicitacao(
+        permissaoId: idPermissao,
+        aprovar: acaoDireta == NotificacaoService.acaoAceitarMonitoramentoId,
+        uidSolicitante: uidSolicitante,
+        nomeSolicitante: (dados['nomeSolicitante'] as String?) ?? '',
+        telefoneSolicitante: (dados['telefoneSolicitante'] as String?) ?? '',
+      );
+      return;
+    }
 
     // A Home recém-empurrada acima ainda não terminou de montar neste ponto
     // — aguarda o próximo frame antes de usar o contexto do Navigator para

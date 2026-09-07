@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "Allow to send my location",
-  "monitoramentoSecaoVerLocalizacao": "Family members' location",
+  "monitoramentoSecaoVerLocalizacao": "Real location",
   "monitoramentoAdicionarContato": "Add Contact",
   "monitoramentoNomeLabel": "Name",
   "monitoramentoTelefoneLabel": "Phone",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 Security alert",
   "notifMonitSolicitacaoTitulo": "📍 Location request",
   "notifMonitSolicitacaoCorpo": "{nome} is requesting your location.",
+  "notifMonitAcaoAceitar": "Accept",
+  "notifMonitAcaoRecusar": "Decline",
   "notifMonitAprovadoTitulo": "📍 Location released",
   "notifMonitAprovadoCorpo": "{nome} allowed you to see their location.",
   "notifMonitNegadoTitulo": "📍 Request declined",

@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "السماح بإرسال موقعي",
-  "monitoramentoSecaoVerLocalizacao": "موقع أفراد العائلة",
+  "monitoramentoSecaoVerLocalizacao": "الموقع الفعلي",
   "monitoramentoAdicionarContato": "إضافة جهة اتصال",
   "monitoramentoNomeLabel": "الاسم",
   "monitoramentoTelefoneLabel": "الهاتف",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 تنبيه أمني",
   "notifMonitSolicitacaoTitulo": "📍 طلب الموقع",
   "notifMonitSolicitacaoCorpo": "{nome} يطلب موقعك.",
+  "notifMonitAcaoAceitar": "قبول",
+  "notifMonitAcaoRecusar": "رفض",
   "notifMonitAprovadoTitulo": "📍 تم إتاحة الموقع",
   "notifMonitAprovadoCorpo": "سمح لك {nome} برؤية موقعه.",
   "notifMonitNegadoTitulo": "📍 تم رفض الطلب",

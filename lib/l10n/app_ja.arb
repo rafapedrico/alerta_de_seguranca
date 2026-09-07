@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "自分の位置情報の送信を許可",
-  "monitoramentoSecaoVerLocalizacao": "家族の位置情報",
+  "monitoramentoSecaoVerLocalizacao": "実際の位置情報",
   "monitoramentoAdicionarContato": "連絡先を追加",
   "monitoramentoNomeLabel": "名前",
   "monitoramentoTelefoneLabel": "電話番号",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 セキュリティアラート",
   "notifMonitSolicitacaoTitulo": "📍 位置情報リクエスト",
   "notifMonitSolicitacaoCorpo": "{nome}があなたの位置情報をリクエストしています。",
+  "notifMonitAcaoAceitar": "承諾",
+  "notifMonitAcaoRecusar": "拒否",
   "notifMonitAprovadoTitulo": "📍 位置情報が公開されました",
   "notifMonitAprovadoCorpo": "{nome}があなたに位置情報の閲覧を許可しました。",
   "notifMonitNegadoTitulo": "📍 リクエストが拒否されました",

@@ -240,7 +240,7 @@
     }
   },
   "monitoramentoPermitirReceberLocalizacao": "मेरा स्थान भेजने की अनुमति दें",
-  "monitoramentoSecaoVerLocalizacao": "परिवार के सदस्यों का स्थान",
+  "monitoramentoSecaoVerLocalizacao": "वास्तविक स्थान",
   "monitoramentoAdicionarContato": "संपर्क जोड़ें",
   "monitoramentoNomeLabel": "नाम",
   "monitoramentoTelefoneLabel": "फ़ोन",
@@ -711,6 +711,8 @@
   "notifAlertaSegurancaGenerico": "🚨 सुरक्षा अलर्ट",
   "notifMonitSolicitacaoTitulo": "📍 स्थान अनुरोध",
   "notifMonitSolicitacaoCorpo": "{nome} आपका स्थान माँग रहा है।",
+  "notifMonitAcaoAceitar": "स्वीकार करें",
+  "notifMonitAcaoRecusar": "अस्वीकार करें",
   "notifMonitAprovadoTitulo": "📍 स्थान जारी किया गया",
   "notifMonitAprovadoCorpo": "{nome} ने आपको उनका स्थान देखने की अनुमति दी।",
   "notifMonitNegadoTitulo": "📍 अनुरोध अस्वीकृत",

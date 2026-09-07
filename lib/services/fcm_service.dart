@@ -213,7 +213,26 @@ class FcmService {
   /// Handler de PRIMEIRO PLANO (app aberto e em uso).
   Future<void> _processarMensagem(RemoteMessage mensagem) async {
     debugPrint('📩 [FCM Recebido - Foreground] ${mensagem.data}');
-    await _tratarDadosDoAlerta(mensagem.data, emPrimeiroPlano: true);
+    // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): este
+    // handler (`FirebaseMessaging.onMessage`) dispara sempre que o
+    // ENGINE principal do app está anexado e vivo — o que inclui o app
+    // rodando em segundo plano (usuário trocou para outro app/Home,
+    // processo não foi morto), não só quando ele está de fato VISÍVEL na
+    // tela. Antes, `emPrimeiroPlano` era sempre `true` aqui, então uma
+    // solicitação de monitoramento chegando nesse cenário comum (app
+    // aberto minutos atrás, agora em segundo plano) abria o modal de
+    // decisão MESMO ASSIM — só que invisível atrás da Home/outro app,
+    // sem nenhuma notificação na bandeja para avisar o usuário, e o
+    // modal só aparecia se/quando ele reabrisse o app manualmente por
+    // conta própria. `WidgetsBinding.instance.lifecycleState` distingue
+    // os dois casos: só `AppLifecycleState.resumed` significa
+    // "realmente na tela agora" — qualquer outro estado (paused,
+    // inactive, hidden, detached) cai no [_tratarPushMonitoramento] como
+    // segundo plano de verdade, que exibe a notificação com os botões
+    // [Aceitar]/[Recusar] em vez de um diálogo que ninguém vê.
+    final bool realmenteVisivel =
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    await _tratarDadosDoAlerta(mensagem.data, emPrimeiroPlano: realmenteVisivel);
   }
 
   /// Lógica compartilhada entre primeiro e segundo plano: despacha o
