@@ -52,6 +52,25 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   final Set<String> _pedidosJaNotificados = {};
 
   // ==========================================================
+  // SOBREPOSIÇÃO OTIMISTA DOS SWITCHES (pedido explícito do usuário,
+  // 2026-09-07)
+  // ==========================================================
+  // Antes, os dois switches desta aba ("Permitir enviar minha
+  // localização" e "Permitir ou Bloquear solicitação de localização")
+  // liam o estado (verde/vermelho) EXCLUSIVAMENTE do `StreamBuilder`
+  // ligado ao Firestore — a mudança visual só chegava depois da viagem
+  // de ida e volta ao servidor (até ~3s em rede mais lenta), dando a
+  // falsa impressão de que o toque não tinha funcionado e levando o
+  // usuário a tocar repetidamente. Cada mapa guarda o valor otimista por
+  // contato local (`contato['id']`) assim que o usuário toca/confirma, e
+  // é limpo automaticamente no próprio `StreamBuilder` assim que o
+  // snapshot do servidor confirma esse mesmo valor — ou revertido, se a
+  // escrita falhar (ver [_alternarBloqueioSolicitante] e
+  // [_alternarPermissaoCompartilhar]).
+  final Map<int, bool> _overrideBloqueio = {};
+  final Map<int, bool> _overrideCompartilhamento = {};
+
+  // ==========================================================
   // TRAVA DO CICLO DO PLANO FREE (pedido explícito do usuário, 2026-09-04)
   // ==========================================================
   // `null` = ainda não chegou nenhum snapshot nesta sessão (blindagem
@@ -595,10 +614,17 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: _servico.statusPermissaoStream(permissaoId),
       builder: (context, snapshot) {
-        final bloqueado = snapshot.data?.data()?['bloqueado'] as bool? ?? false;
+        final bloqueadoServidor = snapshot.data?.data()?['bloqueado'] as bool? ?? false;
+        final id = contato['id'] as int;
+        final override = _overrideBloqueio[id];
+        // O servidor já confirmou o valor otimista: some com a
+        // sobreposição, o Firestore volta a ser a fonte da verdade.
+        if (override != null && override == bloqueadoServidor) {
+          _overrideBloqueio.remove(id);
+        }
         return _construirConteudoCardVerLocalizacao(
           contato: contato,
-          bloqueado: bloqueado,
+          bloqueado: _overrideBloqueio[id] ?? bloqueadoServidor,
           l10n: l10n,
         );
       },
@@ -636,6 +662,13 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
           false;
       if (!confirmou) return;
     }
+    final id = contato['id'] as int;
+    // Atualização OTIMISTA instantânea (pedido do usuário, 2026-09-07): o
+    // Switch e o texto "Liberado"/"Bloqueado" mudam de cor no mesmo frame
+    // do toque (ou da confirmação, no caso de bloquear), sem esperar a
+    // viagem de ida e volta ao Firestore. Revertida em
+    // [_alternarBloqueioSolicitante] se a escrita falhar.
+    if (mounted) setState(() => _overrideBloqueio[id] = bloquear);
     await _alternarBloqueioSolicitante(contato, bloquear);
   }
 
@@ -650,6 +683,13 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
       bloquear: bloquear,
     );
     if (!mounted) return;
+
+    if (resultado != 'sucesso') {
+      // Escrita falhou (ou foi recusada pelo servidor): reverte a
+      // sobreposição otimista, o switch volta a refletir o valor real do
+      // Firestore no próximo rebuild.
+      setState(() => _overrideBloqueio.remove(id));
+    }
 
     // BLOQUEIO do ciclo do Plano Free (ver PlanoCicloService) — mesmo
     // modal de upsell dedicado usado pelos demais controles desta aba.
@@ -1046,9 +1086,21 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: _servico.statusPermissaoStream(permissaoId),
       builder: (context, snapshot) {
-        final status = snapshot.data?.data()?['status'] as String? ??
+        final statusServidor = snapshot.data?.data()?['status'] as String? ??
             (contato['status_compartilhamento'] as String? ??
                 MonitoramentoService.statusCompartilharInexistente);
+        final id = contato['id'] as int;
+        final compartilhandoServidor = statusServidor == MonitoramentoService.statusAprovado;
+        final override = _overrideCompartilhamento[id];
+        // O servidor já confirmou o valor otimista: some com a
+        // sobreposição, o Firestore volta a ser a fonte da verdade.
+        if (override != null && override == compartilhandoServidor) {
+          _overrideCompartilhamento.remove(id);
+        }
+        final compartilhandoAtual = _overrideCompartilhamento[id] ?? compartilhandoServidor;
+        final status = compartilhandoAtual
+            ? MonitoramentoService.statusAprovado
+            : MonitoramentoService.statusBloqueado;
         return _linhaSwitchCompartilhar(contato: contato, status: status, l10n: l10n);
       },
     );
@@ -1111,17 +1163,26 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   ) async {
     final l10n = AppLocalizations.of(context)!;
     final id = contato['id'] as int;
+    // Atualização OTIMISTA instantânea (pedido do usuário, 2026-09-07): o
+    // Switch e o rótulo "Aprovado"/"Bloqueado" mudam de cor no mesmo
+    // frame do toque, sem esperar a viagem de ida e volta ao Firestore.
+    // Revertida logo abaixo se a escrita falhar.
+    if (mounted) setState(() => _overrideCompartilhamento[id] = permitir);
     final resultado = await _servico.definirPermissaoCompartilhamento(
       idContatoLocal: id,
       permitir: permitir,
     );
-    if (!mounted || resultado == 'sucesso') return;
+    if (!mounted) return;
+    if (resultado == 'sucesso') return;
+
+    // Escrita falhou (ou foi recusada pelo servidor): reverte a
+    // sobreposição otimista, o switch volta a refletir o valor real do
+    // Firestore no próximo rebuild.
+    setState(() => _overrideCompartilhamento.remove(id));
 
     // BLOQUEIO BIDIRECIONAL de localização do ciclo do Plano Free (ver
     // PlanoCicloService) — modal de upsell dedicado, em vez do SnackBar
-    // genérico de erro. O Switch volta ao estado real (bloqueado) sozinho
-    // no próximo rebuild, já que reflete o `StreamBuilder` do Firestore,
-    // nunca um estado otimista local.
+    // genérico de erro.
     if (resultado == MonitoramentoService.statusBloqueadoPlanoFree) {
       await _exibirUpsellPlanoBloqueado();
       return;
