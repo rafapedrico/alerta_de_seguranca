@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import '../models/alarme_rotina.dart';
 import 'alarme_agendado_cloud_service.dart';
+import 'background_location_heartbeat_service.dart';
 import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_sync_service.dart';
@@ -141,10 +142,19 @@ class RotinaAlarmeService {
       final candidato = DateTime(agora.year, agora.month, agora.day, hora, minuto);
       if (candidato.isBefore(agora)) return;
       await _agendarNativo(id, candidato);
+      // Ver documentação completa em
+      // [BackgroundLocationHeartbeatService.registrarAlarmeRotinaImediatamente]
+      // — grava o dead man's switch na nuvem NA HORA do agendamento,
+      // nunca só quando faltar ≤48h para o disparo. Fire-and-forget:
+      // nunca atrasa/bloqueia o agendamento nativo já concluído acima.
+      unawaited(BackgroundLocationHeartbeatService()
+          .registrarAlarmeRotinaImediatamente(alarmeMap));
       return;
     }
 
     await _agendarNativo(id, proximoDisparo);
+    unawaited(BackgroundLocationHeartbeatService()
+        .registrarAlarmeRotinaImediatamente(alarmeMap));
   }
 
   static Future<void> _agendarNativo(int idAlarme, DateTime dataHoraDisparo) async {

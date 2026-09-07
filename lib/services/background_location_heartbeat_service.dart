@@ -170,6 +170,95 @@ class BackgroundLocationHeartbeatService {
     cancelarCheckinAtivo();
   }
 
+  /// Grava o documento `alarmes_agendados/{idAlarme}` como PENDENTE
+  /// IMEDIATAMENTE — chamado por [RotinaAlarmeService.agendarAlarme] toda
+  /// vez que um alarme de rotina é criado, editado, reativado ou
+  /// reagendado (para a PRÓXIMA ocorrência), sem esperar o próximo ciclo
+  /// do heartbeat.
+  ///
+  /// CORREÇÃO DE PONTO CEGO ARQUITETURAL (pedido explícito do usuário,
+  /// 2026-09-06): antes, o documento só nascia quando o heartbeat via o
+  /// alarme entrar na [janelaRegistro48h] — um alarme agendado para
+  /// dias/uma semana no futuro ficava, até lá, com ZERO registro na
+  /// nuvem. Se o processo Dart fosse encerrado pelo Android antes de
+  /// algum ciclo do heartbeat rodar dentro dessas 48h (nada raro em
+  /// vários dias), e o aparelho fosse destruído/roubado/sem bateria
+  /// exatamente nesse intervalo, `monitorarAlarmesAgendados`
+  /// (`functions/scheduledAlarmMonitor.js`) não tinha NENHUM documento
+  /// para agir — a rede de segurança da nuvem ficava cega justamente no
+  /// cenário que ela deveria cobrir. Gravar aqui, no instante exato do
+  /// agendamento, elimina essa janela de exposição por completo: a partir
+  /// de agora, um alarme tem cobertura na nuvem por TODA a sua vida, não
+  /// só nas últimas 48h.
+  ///
+  /// Sempre grava como um ciclo NOVO ([reiniciarCicloComoPendente], nunca
+  /// [registrarAlarmeAgendado]) — correto tanto para uma criação de
+  /// verdade quanto para o reagendamento da PRÓXIMA ocorrência de um
+  /// alarme recorrente, que deve sempre nascer como um ciclo limpo,
+  /// nunca herdar o status (CONFIRMADO_SEGURA/ALERTA_DISPARADO) do ciclo
+  /// anterior. Depois deste registro inicial, o ciclo normal do heartbeat
+  /// (a cada 1 min, dentro de 48h) assume a manutenção do MESMO
+  /// documento via [AlarmeAgendadoCloudService.registrarAlarmeAgendado]
+  /// (merge, preservando o status) — sem conflito entre os dois.
+  ///
+  /// SEM localização neste momento, de propósito: não faz sentido gastar
+  /// GPS/bateria numa leitura que pode ficar velha por dias antes do
+  /// alarme sequer entrar na janela em que a localização importa (ver
+  /// [janelaLocalizacao2h]) — a Cloud Function já trata
+  /// `ultimaLocalizacao` ausente/velha explicitamente (ver
+  /// `montarTextoLocalizacao` em `scheduledAlarmMonitor.js`), e o próprio
+  /// heartbeat periódico anexa a localização normalmente assim que o
+  /// alarme entrar nas últimas 2h.
+  ///
+  /// Nunca lança exceção nem bloqueia quem chama — mesma postura
+  /// defensiva do resto desta classe: se o Firebase não estiver
+  /// disponível nesta isolate específica (ex: reagendamento chamado de
+  /// dentro do isolate headless do alarme nativo, sem Firebase
+  /// inicializado), [AlarmeAgendadoCloudService] já faz o no-op
+  /// silencioso sozinho — o próximo ciclo do heartbeat, já no engine
+  /// principal, cobre o registro assim que o app reabrir.
+  Future<void> registrarAlarmeRotinaImediatamente(
+    Map<String, dynamic> alarmeMap,
+  ) async {
+    try {
+      final usuarioId = FirebaseAuthService().uidAtual;
+      if (usuarioId == null) return;
+
+      final idAlarme = (alarmeMap['id'] as int?)?.toString();
+      if (idAlarme == null) return;
+
+      final proximoDisparo = RotinaAlarmeService.proximoDisparoPrevisto(alarmeMap);
+      if (proximoDisparo == null) return;
+
+      final minutosTolerancia = alarmeMap['minutos_tolerancia'] as int? ?? 10;
+      final prazoFinal = proximoDisparo
+          .add(Duration(minutes: minutosTolerancia))
+          .add(RotinaAlarmeService.duracaoJanelaFinal);
+
+      final contatos = await _resolverContatosEmergencia();
+
+      final modelo = AlarmeAgendadoModel(
+        idAlarme: idAlarme,
+        usuarioId: usuarioId,
+        dataHoraDisparo: proximoDisparo,
+        prazoFinalDisparo: prazoFinal,
+        contatosEmergencia: contatos,
+        etiqueta: (alarmeMap['etiqueta'] as String?) ?? '',
+        contextoPersonalizado:
+            (alarmeMap['contexto_personalizado'] as String?) ?? '',
+      );
+
+      await AlarmeAgendadoCloudService().reiniciarCicloComoPendente(modelo);
+      debugPrint(
+          '☁️ [BackgroundLocationHeartbeatService] Alarme de rotina #$idAlarme '
+          'registrado IMEDIATAMENTE na nuvem (sem esperar a janela de 48h).');
+    } catch (e) {
+      debugPrint(
+          '⚠️ [BackgroundLocationHeartbeatService] Falha ao registrar alarme '
+          'de rotina imediatamente na nuvem: $e');
+    }
+  }
+
   Future<void> _executarCiclo() async {
     try {
       final usuarioId = FirebaseAuthService().uidAtual;
