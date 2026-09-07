@@ -14,11 +14,43 @@
       },
       "oauth_client": [
         {
+          "client_id": "555863351772-0d4c8lgd9ibna86bplk8n08m9b0qbbak.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "72c1ea7ea56e954994e0fef38d97eeab8f8c9058"
+          }
+        },
+        {
+          "client_id": "555863351772-7oeoj348mntagt5ut72r5pcqq3n6mpal.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "feefde39d48a6d3b129b2ae3a89da24047f731c6"
+          }
+        },
+        {
+          "client_id": "555863351772-9hfk1kmpq50ilq5i9o3rvbh824n5rv2e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "7cd8d787b926b547f25f2d3aa39a9052f631b0ce"
+          }
+        },
+        {
           "client_id": "555863351772-hfhu0gsamskh0dr694v46un4c10ud01j.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.rmfglobal.guardiaox",
             "certificate_hash": "749f8b8fad1878c830cb802559927bc47d0cfe01"
+          }
+        },
+        {
+          "client_id": "555863351772-mh9201vpds97sog52tk979r8a6rbtvci.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "d5ff6070cd773efff3c5e3a90701cd4c73faa4ca"
           }
         },
         {
