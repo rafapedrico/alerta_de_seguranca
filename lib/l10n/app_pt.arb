@@ -120,7 +120,7 @@
     }
   },
   "tabSeguranca": "Segurança",
-  "tabFamilia": "Família",
+  "tabFamilia": "Despertador",
   "tabMonitoramento": "Monitoramento",
   "tabHistorico": "Histórico",
   "tooltipAdicionarAlarme": "Adicionar Alarme",
@@ -499,9 +499,9 @@
   "faqBuscaHint": "Buscar em perguntas e respostas...",
   "faqNenhumaEncontrada": "Nenhuma pergunta encontrada.",
   "faqPergunta1": "Os alertas de emergência são enviados para os números cadastrados mesmo se meu celular estiver desligado ou sem sinal de internet?",
-  "faqResposta1": "Sim, os alarmes da página \"Família\" e o cronômetro regressivo da página \"Segurança\" são agendados no servidor do banco de dados do aplicativo Guardião-X. Se o cronômetro estourar o tempo de tolerância sem o desarme com a senha do PIN, ou o alarme da página \"Família\" não for desarmado após o tempo de tolerância, imediatamente é enviado um alerta de segurança com a última localização registrada na nuvem.",
+  "faqResposta1": "Sim, os alarmes da página \"Despertador\" e o cronômetro regressivo da página \"Segurança\" são agendados no servidor do banco de dados do aplicativo Guardião-X. Se o cronômetro estourar o tempo de tolerância sem o desarme com a senha do PIN, ou o alarme da página \"Despertador\" não for desarmado após o tempo de tolerância, imediatamente é enviado um alerta de segurança com a última localização registrada na nuvem.",
   "faqPergunta2": "A partir de quantos minutos se começa o envio da localização para o banco de dados do Guardião-X?",
-  "faqResposta2": "A localização começa a ser enviada 120 minutos antes do fim do cronômetro ou do tempo programado do despertador da página Família.",
+  "faqResposta2": "A localização começa a ser enviada 120 minutos antes do fim do cronômetro ou do tempo programado do despertador da página Despertador.",
   "faqPergunta3": "Por que se exige um tempo programado para a efetivação da nova senha ou para a exclusão dos contatos de emergência?",
   "faqResposta3": "Como o aplicativo Guardião-X tem o objetivo de proteger a segurança do usuário, este tempo de espera tem como finalidade evitar que pessoas não autorizadas desbloqueiem algumas das funções programadas que estão esperando o tempo para ser enviado o alerta de emergência para os números cadastrados.",
   "faqPergunta4": "Por que na página \"Histórico\" foi colocada a opção de tempo de espera caso o usuário decida restringir a visualização imediata das informações contidas sobre as mensagens de alertas enviadas?",
@@ -592,7 +592,7 @@
   "familiaAcaoPausar": "pausar",
   "familiaAcaoExcluir": "excluir",
   "familiaAcaoEditar": "editar",
-  "familiaPinMotivoTexto": "PIN digitado incorretamente 2 vezes seguidas ao tentar {acao} um alarme de rotina na aba Família.",
+  "familiaPinMotivoTexto": "PIN digitado incorretamente 2 vezes seguidas ao tentar {acao} um alarme de rotina na aba Despertador.",
   "@familiaPinMotivoTexto": {
     "placeholders": {
       "acao": {
