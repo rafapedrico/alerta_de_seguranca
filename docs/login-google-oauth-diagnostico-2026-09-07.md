@@ -3,6 +3,71 @@
 **Data:** 2026-09-07
 **Sintoma original:** login com Google falhando silenciosamente/com reautenticação recusada, especificamente no app baixado da Play Store (nunca em debug/local) — erro nativo do Google Play Services `[16] Account reauth failed`.
 
+---
+
+## ✅ RESOLUÇÃO DEFINITIVA (2026-09-07, fim do dia)
+
+**Toda a análise abaixo partiu de um SHA-1 ERRADO.** O certificado do Play App
+Signing **não é** `d5ff6070...` (esse valor foi copiado do Play Console, mas não
+corresponde à chave que assina o APK entregue). O certificado real, extraído do
+`base.apk` instalado pela Play Store em dois aparelhos (Moto G7 Play e Razr 40
+Ultra) e verificado com `apksigner`:
+
+```
+SHA-1   F7:9B:67:51:7E:A9:57:93:53:26:B6:63:0E:77:60:FA:60:76:B6:61
+        → f79b67517ea957935326b6630e7760fa6076b661
+SHA-256 26:50:A8:6C:69:51:21:BA:76:C9:8D:06:63:0E:FD:41:E8:43:DE:73:B6:32:17:23:AB:F1:AE:2D:C0:CC:49:52
+        → 2650a86c695121ba76c98d06630efd41e843de73b6321723abf1ae2dc0cc4952
+DN:     CN=Android, O=Google Inc.  (chave gerada pelo Play App Signing)
+```
+
+Nunca existiu OAuth Client para esse certificado. O log do Play Services (g7,
+versionCode 18, instalado da loja) mostrou a causa sem ambiguidade:
+
+```
+W/Auth [GetTokenResponseHandler] Server returned error: This android application
+  is not registered to use OAuth2.0, please confirm the package name and SHA-1
+  certificate fingerprint match what you registered...
+[AccountReauth_flowRunner] Flow failed: [8] ... [status=UNREGISTERED_ON_API_CONSOLE]
+[GoogleSignIn_flowRunner] Flow failed: [16] Account reauth failed
+```
+
+**Correção (100% server-side):**
+```bash
+firebase apps:android:sha:create 1:555863351772:android:f8cdca1bbe926aa74def19 \
+  F79B67517EA957935326B6630E7760FA6076B661 --project guardiaox
+firebase apps:android:sha:create 1:555863351772:android:f8cdca1bbe926aa74def19 \
+  2650A86C695121BA76C98D06630EFD41E843DE73B6321723ABF1AE2DC0CC4952 --project guardiaox
+```
+O Google auto-provisionou o OAuth Client `555863351772-0d6vepdg74rm4bqoqt2h30eobnjdcu2n`.
+O client de `d5ff6070...` (`...3ereb8cquc...`) foi mantido — inofensivo, cobre um
+eventual upgrade de chave de assinatura do Play.
+
+**Validado:** login com Google no Razr 40 Ultra (versionCode **17**, build antigo
+da Play Store, **sem rebuild nem re-upload**) passou a funcionar —
+`AccountReauth Flow completed`, zero `UNREGISTERED_ON_API_CONSOLE`, app entrou em
+"Complete seu perfil". A correção não depende de build: os pacotes 17 e 18 já
+publicados funcionam sozinhos após a propagação.
+
+**Como extrair o SHA real de novo, se precisar:**
+```bash
+adb -s <serial> shell pm path com.rmfglobal.guardiaox        # acha o base.apk
+adb -s <serial> pull <caminho>/base.apk /tmp/gx.apk
+<sdk>/build-tools/35.0.0/apksigner verify --print-certs --max-sdk-version 34 /tmp/gx.apk
+```
+(build-tools 37.0.0 falha com "ML-DSA KeyFactory not available" na assinatura v3.2
+PQC nova do Play — usar 35.0.0 ou anterior.)
+
+**Notas paralelas:**
+- A upload key (`guardiaox-upload.jks`, alias `guardiaox`) é `72c1ea7e...` — a doc
+  original dizia `749f8b8f...`, também errado.
+- Firebase App Check API está **desabilitada** no projeto 555863351772 (o app cai
+  em placeholder token). Não afeta o login; não ligar enforcement sem habilitar a API.
+
+⚠️ **Tudo abaixo desta linha é a investigação anterior, baseada no cert errado — mantido como histórico.**
+
+---
+
 ## Causa raiz confirmada
 
 O SHA-1 do certificado de **assinatura do app na Play Store** (Play App Signing) estava registrado como *SHA fingerprint* no Firebase, mas o **OAuth Client 2.0 do Android correspondente não existia** no Google Cloud — provavelmente excluído manualmente em algum momento anterior a esta investigação. Editar `google-services.json` localmente nunca afeta a nuvem; o problema sempre esteve do lado do Google Cloud Console.
