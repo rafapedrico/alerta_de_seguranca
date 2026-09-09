@@ -11,10 +11,10 @@ import 'l10n_headless_service.dart';
 /// local da categoria 'critico' (mesma tabela usada pelos disparos de
 /// emergência do próprio usuário, ver `DatabaseHelper.inserirEventoHistorico`),
 /// visível exclusivamente dentro do cofre de Auditoria de Eventos
-/// Sensíveis já existente (trava de carência de 2h, ver
-/// `DatabaseHelper.getStatusAuditoria`/`HistoricoTab`) — nunca numa
-/// notificação de tela de bloqueio, preservando o disfarce de segurança
-/// do app mesmo 48h depois de um alerta real ter sido disparado.
+/// Sensíveis já existente (trava por PIN de acesso, ver
+/// `DatabaseHelper.auditoriaDesbloqueadaNaSessao`/`HistoricoTab`) — nunca
+/// numa notificação de tela de bloqueio, preservando o disfarce de
+/// segurança do app mesmo 48h depois de um alerta real ter sido disparado.
 ///
 /// Dois caminhos alimentam este serviço, deliberadamente redundantes:
 /// 1. [processarRelatorioSilencioso] — Push data-only (nudge) recebido em

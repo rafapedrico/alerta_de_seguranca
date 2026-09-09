@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
@@ -7,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/alertas_recebidos_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/wallpaper_service.dart';
+import '../../widgets/pin_dialog.dart';
 import '../../widgets/texto_com_links.dart';
 import '../alerta_recebido_screen.dart';
 
@@ -89,7 +88,8 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   // "Alertas enviados" — a antiga AuditoriaSensivelScreen (alarmes de
   // emergência e disparos de SMS de socorro do PRÓPRIO usuário, categoria
   // 'critico'), agora integrada aqui como um filtro em vez de tela
-  // separada, mas preservando a mesma trava de carência de 2h.
+  // separada, protegida pelo PIN de acesso (ver bloco abaixo) em vez da
+  // antiga trava de carência de 2h.
   final List<String> _filtros = const [
     'todos',
     _categoriaRecebido,
@@ -122,19 +122,18 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   // Registros mais críticos do histórico (categoria 'critico' —
   // EXCLUSIVAMENTE alarmes de emergência e disparos de SMS de socorro
   // para os contatos cadastrados) só podem ser visualizados após o
-  // usuário solicitar explicitamente a liberação e aguardar um período de
-  // carência de 2 horas — mesma proteção de privacidade de antes, apenas
-  // reapresentada como filtro em vez de tela própria. Nunca aparecem
-  // misturados aos demais filtros: a separação é garantida na origem, por
-  // [DatabaseHelper.getHistorico] (exclui a categoria 'critico') e
-  // [DatabaseHelper.getEventosSensiveis] (busca exclusivamente 'critico').
+  // usuário confirmar o PIN de acesso — o mesmo cadastrado na aba
+  // Configurações (ver [DatabaseHelper.salvarOuAgendarPinReal]) — usando
+  // o mesmo teclado numérico ([exibirDialogoPin]) reaproveitado do
+  // desarme de alarmes. Nunca aparecem misturados aos demais filtros: a
+  // separação é garantida na origem, por [DatabaseHelper.getHistorico]
+  // (exclui a categoria 'critico') e [DatabaseHelper.getEventosSensiveis]
+  // (busca exclusivamente 'critico').
   final DatabaseHelper _dbAuditoria = DatabaseHelper();
   bool _carregandoAuditoria = true;
   bool _liberadoAuditoria = false;
-  bool _temSolicitacaoPendenteAuditoria = false;
-  int _msRestantesAuditoria = 0;
+  String? _pinReal;
   List<Map<String, dynamic>> _eventosSensiveis = [];
-  Timer? _tickerAuditoria;
 
   @override
   void initState() {
@@ -155,7 +154,6 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     DatabaseHelper.historicoAtualizadoNotifier.removeListener(_aoHistoricoAtualizado);
-    _tickerAuditoria?.cancel();
     super.dispose();
   }
 
@@ -192,40 +190,36 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   }
 
   Future<void> _atualizarStatusAuditoria() async {
-    final status = await _dbAuditoria.getStatusAuditoria();
+    final config = await _dbAuditoria.getUserConfig();
+    final liberado = await _dbAuditoria.auditoriaDesbloqueadaNaSessao();
     if (!mounted) return;
-
-    final liberado = status['liberado'] as bool;
 
     setState(() {
       _liberadoAuditoria = liberado;
-      _temSolicitacaoPendenteAuditoria = status['temSolicitacaoPendente'] as bool;
-      _msRestantesAuditoria = status['msRestantes'] as int;
+      _pinReal = config?['pin_real'] as String?;
       _carregandoAuditoria = false;
     });
 
-    _tickerAuditoria?.cancel();
     if (liberado) {
       final eventos = await _dbAuditoria.getEventosSensiveis();
       if (!mounted) return;
       setState(() => _eventosSensiveis = eventos);
-    } else if (_temSolicitacaoPendenteAuditoria) {
-      _tickerAuditoria =
-          Timer.periodic(const Duration(seconds: 1), (_) => _atualizarStatusAuditoria());
     }
   }
 
-  Future<void> _solicitarLiberacaoAuditoria() async {
-    await _dbAuditoria.solicitarLiberacaoAuditoria();
-    if (!mounted) return;
-    await _atualizarStatusAuditoria();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppLocalizations.of(context)!.auditoriaSolicitacaoAprovada),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-      ),
+  /// Abre o teclado numérico ([exibirDialogoPin]) pedindo o mesmo PIN de
+  /// 4 dígitos cadastrado em Configurações. Só ao confirmar o PIN correto
+  /// é que os "Alertas Enviados" são liberados para esta sessão do app —
+  /// ver [DatabaseHelper.desbloquearAuditoria].
+  Future<void> _desbloquearComPin() async {
+    await exibirDialogoPin(
+      context: context,
+      pinEsperado: _pinReal,
+      aoConfirmarPinCorreto: () async {
+        await _dbAuditoria.desbloquearAuditoria();
+        if (!mounted) return;
+        await _atualizarStatusAuditoria();
+      },
     );
   }
 
@@ -290,16 +284,6 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     setState(() {
       _eventosSensiveis.removeWhere((e) => e['id'] == id);
     });
-  }
-
-  String _formatarTempoRestanteAuditoria(int ms) {
-    final duracao = Duration(milliseconds: ms);
-    final horas = duracao.inHours;
-    final minutos = duracao.inMinutes % 60;
-    final segundos = duracao.inSeconds % 60;
-    return '${horas.toString().padLeft(2, '0')}:'
-        '${minutos.toString().padLeft(2, '0')}:'
-        '${segundos.toString().padLeft(2, '0')}';
   }
 
   Future<void> _carregarHistorico() async {
@@ -590,7 +574,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   }
 
   /// Corpo principal abaixo dos filtros: para "Alertas enviados", exibe a
-  /// UI de carência/lista liberada (migrada da antiga
+  /// UI de bloqueio por PIN/lista liberada (migrada da antiga
   /// AuditoriaSensivelScreen); para os demais filtros, a timeline normal.
   Widget _construirCorpo() {
     if (_filtroSelecionado == _categoriaEnviados) {
@@ -599,7 +583,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
       }
       return _liberadoAuditoria
           ? _construirListaLiberadaAuditoria()
-          : _construirTelaDeCarenciaAuditoria();
+          : _construirTelaBloqueadaPin();
     }
 
     if (_carregando) {
@@ -879,23 +863,21 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   // UI DE "ALERTAS ENVIADOS" (ex-AuditoriaSensivelScreen)
   // ==========================================================
 
-  Widget _construirTelaDeCarenciaAuditoria() {
+  Widget _construirTelaBloqueadaPin() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _temSolicitacaoPendenteAuditoria ? Icons.hourglass_top : Icons.lock_clock,
+            const Icon(
+              Icons.lock_outline,
               size: 72,
-              color: const Color(0xFF4C7040),
+              color: Color(0xFF4C7040),
             ),
             const SizedBox(height: 24),
             Text(
-              _temSolicitacaoPendenteAuditoria
-                  ? AppLocalizations.of(context)!.auditoriaAguardandoLiberacao
-                  : AppLocalizations.of(context)!.auditoriaRegistrosProtegidos,
+              AppLocalizations.of(context)!.auditoriaRegistrosProtegidos,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
@@ -904,63 +886,28 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
               ),
             ),
             const SizedBox(height: 12),
-            if (_temSolicitacaoPendenteAuditoria) ...[
-              Text(
-                AppLocalizations.of(context)!.auditoriaAvisoCarencia,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.auditoriaTempoRestante,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatarTempoRestanteAuditoria(_msRestantesAuditoria),
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepOrange,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              Text(
-                AppLocalizations.of(context)!.auditoriaAvisoSolicitacao,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _solicitarLiberacaoAuditoria,
-                  icon: const Icon(Icons.lock_open),
-                  label: Text(AppLocalizations.of(context)!.auditoriaSolicitarLiberacaoBotao),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C7040),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+            Text(
+              AppLocalizations.of(context)!.auditoriaAvisoSolicitacao,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _desbloquearComPin,
+                icon: const Icon(Icons.pin_outlined),
+                label: Text(AppLocalizations.of(context)!.auditoriaSolicitarLiberacaoBotao),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4C7040),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),

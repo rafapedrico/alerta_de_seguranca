@@ -772,8 +772,9 @@ class DatabaseHelper {
   /// EXCLUSIVA para os alarmes de emergência e disparos de SMS de socorro
   /// (o registro mais sensível do aplicativo). Ela NUNCA deve aparecer na
   /// tela de Histórico Geral (ver [getHistorico]), sendo retornada apenas
-  /// por [getEventosSensiveis], usada pela tela de Auditoria de Eventos
-  /// Sensíveis, protegida pela trava de segurança de 3 horas.
+  /// por [getEventosSensiveis], usada pelo filtro "Alertas enviados" da
+  /// aba Histórico, protegida pelo PIN de acesso (ver
+  /// [auditoriaDesbloqueadaNaSessao]/[desbloquearAuditoria]).
   Future<int> inserirEventoHistorico({
     required String titulo,
     required String descricao,
@@ -856,105 +857,45 @@ class DatabaseHelper {
   }
 
   // ==========================================
-  // AUDITORIA DE EVENTOS SENSÍVEIS (trava 3h)
+  // AUDITORIA DE EVENTOS SENSÍVEIS (trava por PIN)
   // ==========================================
-  // Recurso de proteção de dados que exige uma solicitação explícita do
-  // usuário e um período de carência de 3 horas antes de liberar a
-  // visualização dos eventos mais sensíveis (categoria 'seguranca'),
-  // evitando acessos rápidos e não autorizados a esses registros caso o
+  // Recurso de proteção de dados que exige a confirmação do PIN de acesso
+  // do usuário (o mesmo cadastrado em Configurações — ver
+  // [DatabaseHelper.salvarOuAgendarPinReal]) antes de liberar a
+  // visualização dos eventos mais sensíveis (categoria 'critico':
+  // alarmes de emergência e disparos de SMS de socorro do próprio
+  // usuário), evitando acesso não autorizado a esses registros caso o
   // dispositivo seja acessado por terceiros.
+  //
+  // Histórico: até 2026-09, esse acesso também exigia aguardar um prazo
+  // de carência de 2h após uma solicitação explícita (ver histórico do
+  // Git para a implementação anterior). Essa carência foi removida a
+  // pedido do responsável pelo produto — a confirmação do PIN passou a
+  // ser a única barreira de acesso.
 
-  static const int prazoAuditoriaMs = 2 * 60 * 60 * 1000; // 2 horas
+  /// true se o usuário já confirmou o PIN de acesso nesta sessão do app
+  /// (resetado a cada cold start — ver [resetarSessaoAuditoria] — e ao
+  /// bloquear manualmente de novo — ver [bloquearAuditoriaNovamente]).
+  Future<bool> auditoriaDesbloqueadaNaSessao() async {
+    final config = await getUserConfig();
+    if (config == null) return false;
+    return (config['auditoria_liberada_sessao'] as int?) == 1;
+  }
 
-  /// Registra o timestamp atual como o momento da solicitação de
-  /// liberação da auditoria sensível, e já marca a sessão atual como
-  /// tendo uma solicitação pendente (a liberação efetiva do CONTEÚDO só
-  /// ocorre quando as 3h se cumprirem, verificado em [getStatusAuditoria]).
-  Future<void> solicitarLiberacaoAuditoria() async {
+  /// Marca a sessão atual como desbloqueada, chamado depois que
+  /// [PinDialogContent] confirma que o usuário digitou o PIN de acesso
+  /// correto.
+  Future<void> desbloquearAuditoria() async {
     final config = await getUserConfig();
     if (config == null) return;
     final id = config['id'] as int;
-    final agora = DateTime.now().millisecondsSinceEpoch.toString();
-    await updateUserConfig({
-      'id': id,
-      'timestamp_solicitacao_auditoria': agora,
-      'auditoria_liberada_sessao': 0,
-    });
-  }
-
-  /// Verifica o estado atual da trava de auditoria, retornando um mapa
-  /// com:
-  /// - 'liberado': true se os registros sensíveis podem ser exibidos.
-  /// - 'msRestantes': quanto falta (em ms) para a liberação, se ainda
-  ///   houver uma solicitação pendente dentro do prazo de carência.
-  /// - 'temSolicitacaoPendente': true se existe uma solicitação em
-  ///   andamento (independente de já ter sido liberada ou não).
-  ///
-  /// Caso as 3h já tenham decorrido desde a solicitação, marca
-  /// automaticamente 'auditoria_liberada_sessao' = 1 no banco, liberando
-  /// a visualização para a sessão atual do app.
-  Future<Map<String, dynamic>> getStatusAuditoria() async {
-    final config = await getUserConfig();
-    if (config == null) {
-      return {
-        'liberado': false,
-        'msRestantes': prazoAuditoriaMs,
-        'temSolicitacaoPendente': false,
-      };
-    }
-
-    final timestampStr = config['timestamp_solicitacao_auditoria'] as String?;
-    final jaLiberadaNaSessao = (config['auditoria_liberada_sessao'] as int?) == 1;
-
-    if (timestampStr == null) {
-      return {
-        'liberado': false,
-        'msRestantes': prazoAuditoriaMs,
-        'temSolicitacaoPendente': false,
-      };
-    }
-
-    final timestampSolicitacao = int.tryParse(timestampStr);
-    if (timestampSolicitacao == null) {
-      return {
-        'liberado': false,
-        'msRestantes': prazoAuditoriaMs,
-        'temSolicitacaoPendente': false,
-      };
-    }
-
-    final agora = DateTime.now().millisecondsSinceEpoch;
-    final decorrido = agora - timestampSolicitacao;
-
-    if (decorrido >= prazoAuditoriaMs) {
-      // Prazo de segurança cumprido: libera a visualização para a
-      // sessão atual (persistido, mas será resetado no próximo cold
-      // start do app, em main.dart).
-      if (!jaLiberadaNaSessao) {
-        final id = config['id'] as int;
-        await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 1});
-      }
-      return {
-        'liberado': true,
-        'msRestantes': 0,
-        'temSolicitacaoPendente': true,
-      };
-    }
-
-    return {
-      'liberado': false,
-      'msRestantes': prazoAuditoriaMs - decorrido,
-      'temSolicitacaoPendente': true,
-    };
+    await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 1});
   }
 
   /// Deve ser chamado uma única vez, logo na inicialização do app (cold
   /// start), para resetar a flag 'auditoria_liberada_sessao'. Isso
   /// garante que, assim que o aplicativo for totalmente fechado e
-  /// reaberto, o estado de liberação seja sempre resetado — exigindo que
-  /// a trava de 2h seja reavaliada (embora, se o prazo já tiver sido
-  /// cumprido anteriormente, a tela libere novamente de forma automática
-  /// ao ser reaberta, sem exigir nova solicitação).
+  /// reaberto, o PIN precise ser confirmado de novo.
   Future<void> resetarSessaoAuditoria() async {
     final config = await getUserConfig();
     if (config == null) return;
@@ -963,19 +904,13 @@ class DatabaseHelper {
   }
 
   /// Bloqueia novamente o acesso aos registros sensíveis, acionado pelo
-  /// botão "Bloquear Novamente" na tela de Auditoria de Eventos
-  /// Sensíveis já liberada. Reseta tanto a flag de liberação da sessão
-  /// quanto o timestamp da solicitação original, exigindo uma NOVA
-  /// solicitação e uma NOVA espera de 2h para o próximo acesso.
+  /// botão "Bloquear Novamente" na aba Histórico já liberada. Exige uma
+  /// NOVA confirmação de PIN para o próximo acesso.
   Future<void> bloquearAuditoriaNovamente() async {
     final config = await getUserConfig();
     if (config == null) return;
     final id = config['id'] as int;
-    await updateUserConfig({
-      'id': id,
-      'auditoria_liberada_sessao': 0,
-      'timestamp_solicitacao_auditoria': null,
-    });
+    await updateUserConfig({'id': id, 'auditoria_liberada_sessao': 0});
   }
 
 
