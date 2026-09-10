@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "555863351772-5d4f8arf4jrk92h5o6iticdm8i0v6cen.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rmfglobal.guardiaox",
+            "certificate_hash": "72c1ea7ea56e954994e0fef38d97eeab8f8c9058"
+          }
+        },
+        {
           "client_id": "555863351772-vrlhh2c4kv0a1ci7eu34i36rq5jro327.apps.googleusercontent.com",
           "client_type": 3
         }
