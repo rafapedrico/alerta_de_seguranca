@@ -158,6 +158,7 @@ class _FaqScreenState extends State<FaqScreen> {
         // com exclusividade de até 48h para o Plano Premium.
         _FaqItem(pergunta: l10n.faqPergunta11, resposta: l10n.faqResposta11),
         _FaqItem(pergunta: l10n.faqPergunta12, resposta: l10n.faqResposta12),
+        _FaqItem(pergunta: l10n.faqPergunta13, resposta: l10n.faqResposta13),
       ];
 }
 

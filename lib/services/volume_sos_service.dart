@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// (Kotlin), responsável por:
 /// - Iniciar/parar o Foreground Service (`VolumeSosService`) que
 ///   monitora, em segundo plano, o gatilho físico de SOS: segurar o
-///   botão de Volume+ (3 incrementos consecutivos em até 3 segundos).
+///   botão de Volume+ pressionado por mais de 3 segundos.
 /// - Expor um [Stream] ([aoDispararSos]) que emite um evento sempre que
 ///   esse gatilho físico for detectado pelo lado nativo, permitindo que
 ///   a UI (main.dart) acione o [EmergencyAlertService] correspondente.

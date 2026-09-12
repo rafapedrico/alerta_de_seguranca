@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'database_helper.dart';
 import 'firebase_sync_service.dart';
+import '../utils/telefone_utils.dart';
 
 /// Serviço leve (apenas um [ValueNotifier] global) usado para sincronizar
 /// automaticamente a lista de contatos de emergência entre as telas de
@@ -51,10 +52,25 @@ class ContatosEmergenciaService {
   /// Firebase não estiver disponível ou a sincronização falhar, os
   /// contatos permanecem funcionando normalmente no fluxo 100% local
   /// (SMS nativo lê sempre do SQLite, nunca do Firestore).
+  ///
+  /// CORREÇÃO DE BUG REAL (pedido do usuário, 2026-09-11): exclui o
+  /// PRÓPRIO número do usuário ANTES de sincronizar — este campo
+  /// (`contatosEmergencia` no documento do usuário) é exatamente o que a
+  /// Cloud Function consulta para decidir a quem enviar o Push/alarme
+  /// sonoro de pânico; sem este filtro, um número próprio cadastrado por
+  /// engano como contato de emergência (ver
+  /// [TelefoneUtils.excluirProprioNumero]) fazia a vítima receber o
+  /// próprio alarme no aparelho pelo canal de nuvem, além do SMS (já
+  /// filtrado separadamente em
+  /// [EmergencyAlertService._enviarSms]).
   static Future<void> _sincronizarComFirebase() async {
     try {
       final contatos = await DatabaseHelper().getContatosEmergencia();
-      await FirebaseSyncService().sincronizarContatosEmergencia(contatos);
+      final config = await DatabaseHelper().getUserConfig();
+      final telefoneProprio = config?['telefone'] as String?;
+      final contatosParaNuvem =
+          TelefoneUtils.excluirProprioNumero(contatos, telefoneProprio);
+      await FirebaseSyncService().sincronizarContatosEmergencia(contatosParaNuvem);
     } catch (e) {
       debugPrint(
           '⚠️ [ContatosEmergenciaService] Falha ao sincronizar contatos com o Firebase: $e');

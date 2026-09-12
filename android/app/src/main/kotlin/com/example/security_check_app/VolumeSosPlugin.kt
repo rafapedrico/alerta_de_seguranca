@@ -16,8 +16,8 @@ import io.flutter.plugin.common.MethodChannel
  * - "pararServico": para o Foreground Service.
  *
  * EventChannel ("com.example.security_check_app/volume_sos_events"):
- * - Emite o evento "sos_disparado" toda vez que o gatilho físico (3
- *   incrementos de volume em até 3 segundos) for detectado pelo
+ * - Emite o evento "sos_disparado" toda vez que o gatilho físico (botão
+ *   de Volume+ mantido pressionado por 3 segundos) for detectado pelo
  *   [VolumeSosService]. O lado Dart escuta esse stream e aciona o
  *   [EmergencyAlertService] correspondente.
  *

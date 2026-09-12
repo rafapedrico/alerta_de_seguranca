@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -193,8 +194,37 @@ class SmsSender : FlutterPlugin {
             val smsManager = resolverSmsManagerAtivo(context)
             var enviados = 0
 
+            // ÚLTIMA LINHA DE DEFESA (bug real confirmado em teste físico,
+            // 2026-09-11, Motorola Razr 40 Ultra) contra o alerta de pânico
+            // voltar para o PRÓPRIO aparelho — ver documentação completa em
+            // [numerosDoProprioChip]. Diferente do filtro do lado Dart
+            // (`TelefoneUtils.excluirProprioNumero`, que depende do campo
+            // "Meu Perfil" estar preenchido), esta checagem lê o número
+            // REAL do(s) chip(s) instalado(s), funcionando mesmo quando
+            // aquele campo está vazio ou desatualizado.
+            val terminacoesProprias = numerosDoProprioChip(context)
+                .map { terminacaoComparavel(it) }
+                .filter { it.length >= DIGITOS_COMPARACAO }
+                .toSet()
+
             for (telefone in telefones) {
                 if (telefone.isBlank()) continue
+
+                if (terminacoesProprias.isNotEmpty()) {
+                    val terminacaoDestino = terminacaoComparavel(telefone)
+                    if (terminacaoDestino.length >= DIGITOS_COMPARACAO &&
+                        terminacaoDestino in terminacoesProprias
+                    ) {
+                        Log.w(
+                            TAG,
+                            "[SMS] Destino $telefone corresponde ao PRÓPRIO chip deste " +
+                                "aparelho — envio BLOQUEADO (o alerta de pânico nunca pode " +
+                                "voltar para quem o disparou).",
+                        )
+                        continue
+                    }
+                }
+
                 try {
                     val partes = smsManager.divideMessage(mensagem)
                     Log.i(TAG, "[SMS] Enviando para: $telefone (${partes.size} parte(s))...")
@@ -297,6 +327,92 @@ class SmsSender : FlutterPlugin {
          * [SubscriptionManager]) — nesse caso [resolverSmsManagerAtivo]
          * cai no `SmsManager` padrão.
          */
+        /** Quantidade de dígitos finais usada para comparar dois números de
+         * telefone "na prática" (ver [numerosDoProprioChip]/[enviar]) —
+         * ignora diferenças de formatação/DDI (com ou sem "+55", "0" de
+         * acesso nacional, espaços, parênteses) sem precisar de uma
+         * biblioteca de parsing de telefone no lado nativo: a terminação
+         * do número (DDD + assinante) já basta para identificar com
+         * segurança se é o MESMO número. */
+        private const val DIGITOS_COMPARACAO = 8
+
+        private fun terminacaoComparavel(numero: String): String =
+            numero.filter { it.isDigit() }.takeLast(DIGITOS_COMPARACAO)
+
+        /**
+         * Números de telefone do(s) PRÓPRIO(S) chip(s) deste aparelho —
+         * usados como ÚLTIMA linha de defesa em [enviar] contra o alerta de
+         * pânico voltar para o próprio aparelho da vítima.
+         *
+         * CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-11,
+         * Motorola Razr 40 Ultra): o usuário tinha o PRÓPRIO número do chip
+         * cadastrado como contato de emergência — a mensagem de
+         * localização voltou para o próprio aparelho ~10 minutos depois
+         * (latência normal de concatenação multi-parte da operadora, já
+         * documentada em `EmergencyAlertService`). A proteção existente do
+         * lado Dart (`TelefoneUtils.excluirProprioNumero`) compara com
+         * `user_config.telefone` ("Meu Perfil") — só protege quando esse
+         * campo foi preenchido corretamente. Esta checagem NATIVA lê o
+         * número REAL do(s) chip(s) via [SubscriptionManager]/
+         * [TelephonyManager] (mesma permissão READ_PHONE_STATE já
+         * concedida para [resolverSubscriptionIdAtivo]), funcionando
+         * independentemente de qualquer campo preenchido manualmente.
+         *
+         * Best-effort: várias operadoras/eSIMs não expõem o próprio número
+         * por essas APIs (retornam vazio/null) — nesse caso, o conjunto
+         * retornado fica vazio e [enviar] simplesmente não filtra nada,
+         * exatamente o comportamento anterior a esta correção. NUNCA
+         * lança exceção nem impede o envio por si só.
+         */
+        private fun numerosDoProprioChip(context: Context): Set<String> {
+            val temPermissao = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!temPermissao) return emptySet()
+
+            val numeros = mutableSetOf<String>()
+
+            try {
+                val subscriptionManager = context.getSystemService(
+                    Context.TELEPHONY_SUBSCRIPTION_SERVICE,
+                ) as? SubscriptionManager
+                val assinaturas = subscriptionManager?.activeSubscriptionInfoList ?: emptyList()
+                for (assinatura in assinaturas) {
+                    try {
+                        val numero = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            subscriptionManager?.getPhoneNumber(assinatura.subscriptionId)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            assinatura.number
+                        }
+                        if (!numero.isNullOrBlank()) numeros.add(numero)
+                    } catch (_: Exception) {
+                        // Best-effort por assinatura — segue para as demais.
+                    }
+                }
+            } catch (_: Exception) {
+                // SubscriptionManager indisponível — segue só com o
+                // fallback de TelephonyManager abaixo.
+            }
+
+            try {
+                @Suppress("DEPRECATION")
+                val numeroLinha1 =
+                    (context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager)
+                        ?.line1Number
+                if (!numeroLinha1.isNullOrBlank()) numeros.add(numeroLinha1)
+            } catch (_: Exception) {
+                // Best-effort — nunca impede o envio.
+            }
+
+            Log.d(TAG, "[SMS] ${numeros.size} número(s) do próprio chip identificado(s) " +
+                "para a checagem de autoenvio (best-effort — pode ficar vazio em algumas " +
+                "operadoras/eSIMs).")
+
+            return numeros
+        }
+
         private fun resolverSubscriptionIdAtivo(context: Context): Int? {
             val temPermissao = ContextCompat.checkSelfPermission(
                 context,

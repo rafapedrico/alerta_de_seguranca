@@ -8,6 +8,7 @@ import 'database_helper.dart';
 import 'api_service.dart';
 import 'l10n_headless_service.dart';
 import 'plano_ciclo_service.dart';
+import '../utils/telefone_utils.dart';
 
 
 /// Serviço isolado responsável por TODO o fluxo de disparo do alerta de
@@ -560,7 +561,44 @@ class EmergencyAlertService {
         'diaAtualCiclo=${status?.diaAtualCiclo}/30, '
         'statusNulo=${status == null} (null = falha ao consultar, tratado como liberado por padrão).');
 
-    final List<String> numerosDestinatarios = contatosEmergencia
+    // CORREÇÃO DE BUG REAL (pedido do usuário, 2026-09-11): exclui o
+    // PRÓPRIO número do usuário da lista de destinatários — ver
+    // documentação completa em [TelefoneUtils.excluirProprioNumero]
+    // sobre o cenário real (próprio número cadastrado por engano como
+    // contato de emergência) que fazia a vítima receber o alarme sonoro
+    // de pânico no próprio aparelho.
+    String? telefoneProprio;
+    try {
+      final config = await _db.getUserConfig();
+      telefoneProprio = config?['telefone'] as String?;
+    } catch (e) {
+      debugPrint('⚠️ [SMS] Falha ao ler o próprio telefone do usuário (filtro de '
+          'autoenvio não aplicado nesta tentativa): $e');
+    }
+
+    // DIAGNÓSTICO (bug real reportado pelo usuário, 2026-09-11 — SMS
+    // voltou para o próprio aparelho mesmo com "Meu Perfil" e o contato
+    // de emergência aparentemente com o mesmo número): loga o valor
+    // BRUTO e NORMALIZADO de cada lado da comparação, para diferenciar
+    // "o campo estava vazio no momento do disparo" de "os dois números
+    // não normalizam para o mesmo E.164" (ex: DDI/formatação divergente).
+    debugPrint('📱 [SMS] Próprio número (user_config.telefone): bruto="$telefoneProprio" '
+        'normalizado="${TelefoneUtils.normalizarE164(telefoneProprio)}".');
+    for (final contato in contatosEmergencia) {
+      debugPrint('📱 [SMS] Contato "${contato['nome']}": telefone bruto='
+          '"${contato['telefone']}" normalizado='
+          '"${TelefoneUtils.normalizarE164(contato['telefone'] as String?)}".');
+    }
+
+    final contatosSemProprioNumero =
+        TelefoneUtils.excluirProprioNumero(contatosEmergencia, telefoneProprio);
+    if (contatosSemProprioNumero.length != contatosEmergencia.length) {
+      debugPrint('🚫 [SMS] ${contatosEmergencia.length - contatosSemProprioNumero.length} '
+          'contato(s) removido(s) do envio por corresponder ao próprio número '
+          'do usuário — evita autoalerta sonoro no próprio aparelho.');
+    }
+
+    final List<String> numerosDestinatarios = contatosSemProprioNumero
         .map((contato) => (contato['telefone'] as String?) ?? '')
         .where((telefone) => telefone.isNotEmpty)
         .toList();

@@ -39,14 +39,34 @@ import androidx.core.content.ContextCompat
  * independentemente de qual Activity está em foco, pois a mudança de
  * volume é um evento do sistema, não da Window.
  *
- * REGRA DE DETECÇÃO: cada notificação do ContentObserver é comparada
- * com o nível de volume anterior do STREAM_MUSIC. Se o volume SUBIU
- * (usuário apertou Volume+) 3 vezes consecutivas dentro da janela de 3
- * segundos, o gatilho de SOS é considerado acionado e
- * [VolumeSosEventBridge.notificarSosDisparado] é chamado imediatamente.
+ * REGRA DE DETECÇÃO (reespecificada pelo usuário, 2026-09-11 — substitui
+ * a regra antiga de "3 incrementos em até 3 segundos"): o gatilho de SOS
+ * exige que o usuário mantenha o botão físico de Volume+ PRESSIONADO por
+ * pelo menos [duracaoMinimaSeguradoMs] (3 segundos) contínuos. Como nem
+ * o [ContentObserver] nem o [BroadcastReceiver] abaixo recebem o
+ * evento real de tecla pressionada/solta (ver "ESTRATÉGIA TÉCNICA"
+ * acima) — só "o nível mudou" —, a duração da segurada é inferida a
+ * partir do key-repeat nativo do Android: enquanto o botão físico
+ * permanece pressionado, o sistema gera um novo incremento de volume a
+ * cada ~50-150ms sozinho. [registrarIncrementoDetectado] rastreia o
+ * início dessa sequência contínua (reiniciando-a sempre que o intervalo
+ * entre dois incrementos ultrapassa [gapMaximoEntreIncrementosMs] — sinal
+ * de que o usuário soltou e, eventualmente, apertou de novo depois) e
+ * [verificadorDeSeguradaCompleta] confirma, exatamente 3s após o início
+ * de cada sequência, se os incrementos continuaram chegando até esse
+ * instante — só então o gatilho de SOS é considerado acionado e
+ * [VolumeSosEventBridge.notificarSosDisparado] é chamado.
  *
- * O volume é sempre restaurado ao nível anterior logo após a detecção,
- * para não incomodar o usuário aumentando o volume real da mídia.
+ * Como a maioria dos streams de áudio tem poucos níveis (ex: apenas ~7
+ * em STREAM_RING em muitos aparelhos), 3s de key-repeat saturariam o
+ * volume no valor MÁXIMO bem antes do gatilho se completar — momento a
+ * partir do qual o Android para de gerar novos incrementos mesmo com o
+ * botão ainda pressionado. [garantirMargemDeVolume] evita isso: sempre
+ * que o nível se aproxima do máximo, ele é reduzido de volta a um nível
+ * intermediário na hora, preservando margem para o key-repeat continuar
+ * gerando eventos pelos 3s inteiros. O volume real nunca fica audivelmente
+ * alterado por muito tempo (o usuário está com o dedo no botão o tempo
+ * todo, e o key-repeat volta a subir o nível imediatamente em seguida).
  *
  * WAKELOCK (correção do bug "SOS não dispara com a tela apagada"):
  * em muitos aparelhos Android (especialmente com otimizações agressivas
@@ -117,25 +137,52 @@ class VolumeSosService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
 
     private var volumeAnterior: Int = -1
-    private var contagemIncrementos: Int = 0
-    private var timestampPrimeiroIncremento: Long = 0L
 
-    /** Janela de tempo (ms) dentro da qual os incrementos consecutivos de
-     * volume devem ocorrer para caracterizar o gatilho de SOS. */
-    private val janelaDeteccaoMs = 3000L
+    /** Duração mínima (ms) que o usuário precisa MANTER o botão físico de
+     * Volume+ pressionado para caracterizar o gatilho de SOS (ver
+     * documentação completa em "REGRA DE DETECÇÃO", no topo da classe).
+     * Reduzido de 5000ms para 4500ms e depois para 3000ms a pedido do usuário (2026-09-11),
+     * após validação em aparelho real (Motorola Razr 40 Ultra) confirmar
+     * 100% de acerto/nenhum falso positivo nos 5s originais. */
+    private val duracaoMinimaSeguradoMs = 3_000L
 
-    /** Quantidade de incrementos de volume necessários dentro da janela
-     * para disparar o SOS. */
-    private val incrementosNecessarios = 3
+    /** Intervalo MÁXIMO (ms) tolerado entre dois incrementos consecutivos
+     * de uma mesma segurada contínua. Um intervalo maior indica que o
+     * usuário SOLTOU o botão físico — a próxima segurada (mesmo que
+     * comece poucos instantes depois) é contada do zero, nunca somada à
+     * anterior. */
+    private val gapMaximoEntreIncrementosMs = 600L
+
+    /** Timestamp de início da sequência atual de incrementos contínuos
+     * ("segurada" em andamento) — 0 quando nenhuma sequência está ativa. */
+    private var inicioSeguradaMs: Long = 0L
+
+    /** Timestamp do incremento mais recente dentro da sequência atual —
+     * usado tanto para decidir se o próximo incremento pertence à MESMA
+     * segurada quanto para [verificadorDeSeguradaCompleta] confirmar, ao
+     * final dos 3s, se os incrementos continuaram chegando até lá. */
+    private var ultimoIncrementoMs: Long = 0L
+
+    /** Nível esperado do STREAM_MUSIC logo após uma correção programática
+     * de margem (ver [garantirMargemDeVolume]) — permite que
+     * [processarMudancaDeVolume] reconheça e IGNORE a mudança que ELE
+     * MESMO causou, em vez de interpretá-la como o usuário soltando o
+     * botão. `null` quando não há nenhuma correção pendente. */
+    private var correcaoPendenteStreamMusic: Int? = null
+
+    /** Mesmo mecanismo de [correcaoPendenteStreamMusic], para os streams
+     * monitorados via broadcast (ver [STREAMS_MONITORADOS_VIA_BROADCAST]) —
+     * chave é o tipo do stream, valor é o nível esperado após a correção. */
+    private val correcaoPendentePorStream = HashMap<Int, Int>()
 
     /** Timestamp do último disparo de SOS efetivado. */
     private var ultimoDisparoMs: Long = 0L
 
     /** Período mínimo (ms) entre dois disparos de SOS consecutivos. Evita
-     * que uma única sequência prolongada de cliques em Volume+ (o
-     * usuário continua clicando além do mínimo de 3 incrementos) dispare
-     * vários fluxos de SOS sobrepostos — o que gerava múltiplos SMS e uma
-     * corrida entre solicitações concorrentes de permissão de câmera. */
+     * que o usuário continuar segurando o botão além dos 3s exigidos
+     * dispare vários fluxos de SOS sobrepostos — o que gerava múltiplos
+     * SMS e uma corrida entre solicitações concorrentes de permissão de
+     * câmera. */
     private val cooldownDisparoMs = 10_000L
 
     override fun onCreate() {
@@ -235,12 +282,26 @@ class VolumeSosService : Service() {
         } else {
             ultimoValorPorStream[streamType] ?: valorNovo
         }
+
+        // Reconhece e IGNORA a própria correção de margem aplicada por
+        // [garantirMargemDeVolume] — ver documentação de
+        // [correcaoPendentePorStream]. Nunca conta como "usuário soltou o
+        // botão" nem como um novo incremento.
+        val correcaoEsperada = correcaoPendentePorStream[streamType]
+        if (correcaoEsperada != null) {
+            correcaoPendentePorStream.remove(streamType)
+            if (valorNovo == correcaoEsperada) {
+                ultimoValorPorStream[streamType] = valorNovo
+                return
+            }
+        }
+
         ultimoValorPorStream[streamType] = valorNovo
 
         Log.d(TAG, "VOLUME_CHANGED_ACTION: stream=$streamType anterior=$valorAnterior novo=$valorNovo")
 
         if (valorNovo > valorAnterior) {
-            registrarIncrementoDetectado("broadcast(stream=$streamType)")
+            registrarIncrementoDetectado("broadcast(stream=$streamType)", streamType, valorNovo)
         }
     }
 
@@ -276,81 +337,177 @@ class VolumeSosService : Service() {
     /**
      * Chamado a cada notificação de mudança de volume do sistema.
      * Compara o volume atual do STREAM_MUSIC com o valor anterior — se
-     * subiu, delega a [registrarIncrementoDetectado]. Se não subiu
-     * (desceu ou permaneceu igual, ex: mudança de outro stream), reseta
-     * a contagem, pois o gatilho exige incrementos consecutivos de
-     * VOLUME+.
+     * subiu, delega a [registrarIncrementoDetectado].
      */
     private fun processarMudancaDeVolume() {
         val volumeAtual = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
 
+        // Reconhece e IGNORA a própria correção de margem aplicada por
+        // [garantirMargemDeVolume] — ver documentação de
+        // [correcaoPendenteStreamMusic]. Nunca conta como "usuário soltou
+        // o botão" nem como um novo incremento.
+        val correcaoEsperada = correcaoPendenteStreamMusic
+        if (correcaoEsperada != null) {
+            correcaoPendenteStreamMusic = null
+            if (volumeAtual == correcaoEsperada) {
+                volumeAnterior = volumeAtual
+                return
+            }
+        }
+
         if (volumeAtual > volumeAnterior) {
             Log.d(TAG, "ContentObserver: STREAM_MUSIC subiu de $volumeAnterior para $volumeAtual")
-            registrarIncrementoDetectado("contentObserver(STREAM_MUSIC)")
-        } else if (volumeAtual < volumeAnterior) {
-            // Volume desceu: reseta a contagem (o gatilho exige apenas
-            // incrementos consecutivos de Volume+).
-            contagemIncrementos = 0
+            registrarIncrementoDetectado("contentObserver(STREAM_MUSIC)", AudioManager.STREAM_MUSIC, volumeAtual)
         }
-        // Se volumeAtual == volumeAnterior (mudança de outro stream/
-        // configuração não relacionada), não altera a contagem.
+        // Uma mudança que NÃO é incremento (desceu, ou ficou igual) não
+        // encerra mais a segurada em andamento por si só — ver
+        // [verificadorDeSeguradaCompleta]: só a AUSÊNCIA de novos
+        // incrementos por mais de [gapMaximoEntreIncrementosMs] indica que
+        // o usuário soltou o botão.
 
         volumeAnterior = volumeAtual
     }
 
     /**
-     * Ponto ÚNICO de contagem de incrementos — chamado tanto por
+     * Ponto ÚNICO de registro de incrementos — chamado tanto por
      * [processarMudancaDeVolume] (ContentObserver, STREAM_MUSIC) quanto
      * por [processarBroadcastDeVolume] (BroadcastReceiver, demais
      * streams — ver [STREAMS_MONITORADOS_VIA_BROADCAST]), cada um
      * cobrindo um stream DIFERENTE, então nunca há dupla contagem do
-     * mesmo toque físico real. [origem] é só para diagnóstico em log.
+     * mesmo toque físico real. [origem] é só para diagnóstico em log;
+     * [streamType]/[valorAtual] alimentam [garantirMargemDeVolume].
+     *
+     * Marca o início de uma nova segurada (se o intervalo desde o último
+     * incremento já ultrapassou [gapMaximoEntreIncrementosMs]) e agenda
+     * UMA ÚNICA verificação — [verificadorDeSeguradaCompleta] — para
+     * exatamente [duracaoMinimaSeguradoMs] à frente desse início. Nunca
+     * reagenda a cada incremento individual: um botão físico continua
+     * gerando dezenas deles enquanto pressionado, e reagendar a cada um
+     * adiaria o disparo indefinidamente em vez de confirmá-lo aos 5s.
      */
-    private fun registrarIncrementoDetectado(origem: String) {
+    private fun registrarIncrementoDetectado(origem: String, streamType: Int, valorAtual: Int) {
         val agora = System.currentTimeMillis()
 
-        if (contagemIncrementos == 0 ||
-            (agora - timestampPrimeiroIncremento) > janelaDeteccaoMs
-        ) {
-            // Início de uma nova possível sequência de gatilho.
-            contagemIncrementos = 1
-            timestampPrimeiroIncremento = agora
-        } else {
-            contagemIncrementos++
+        val novaSegurada = inicioSeguradaMs == 0L ||
+            (agora - ultimoIncrementoMs) > gapMaximoEntreIncrementosMs
+        if (novaSegurada) {
+            inicioSeguradaMs = agora
+            Log.d(TAG, "Início de nova segurada de Volume+ detectado via $origem.")
+            handler.postDelayed(verificadorDeSeguradaCompleta, duracaoMinimaSeguradoMs)
+        }
+        ultimoIncrementoMs = agora
+
+        garantirMargemDeVolume(streamType, valorAtual)
+    }
+
+    /**
+     * Garante margem suficiente no [streamType] para o key-repeat nativo
+     * do Android continuar gerando novos incrementos de volume durante
+     * toda a segurada de 3s — ver "REGRA DE DETECÇÃO" no topo da classe.
+     * Sem isto, streams com poucos níveis (ex: STREAM_RING, tipicamente
+     * ~7 em muitos aparelhos) saturariam no valor MÁXIMO bem antes dos
+     * 5s, momento a partir do qual o Android para de notificar mudanças
+     * mesmo com o botão físico ainda pressionado — o que
+     * [verificadorDeSeguradaCompleta] interpretaria, por engano, como "o
+     * usuário soltou o botão".
+     *
+     * Quando o nível já está a 1 passo (ou menos) do máximo, reduz de
+     * volta para a metade do máximo (arredondado para baixo, nunca
+     * abaixo de 1) — o volume real do aparelho não fica audivelmente
+     * alterado por muito tempo: o usuário está com o dedo no botão
+     * físico durante toda a segurada, e o key-repeat volta a subir o
+     * nível imediatamente em seguida.
+     *
+     * Registra o valor esperado em [correcaoPendenteStreamMusic]/
+     * [correcaoPendentePorStream] ANTES de aplicar a correção — sem
+     * isso, o próprio [ContentObserver]/[BroadcastReceiver] leria essa
+     * mudança como o usuário soltando o botão, encerrando a segurada por
+     * engano (ver [processarMudancaDeVolume]/[processarBroadcastDeVolume]).
+     *
+     * Protegido por try/catch: uma falha aqui nunca compromete a
+     * detecção em si — o pior caso é a segurada saturar mais cedo em
+     * algum aparelho/fabricante específico, exatamente como se esta
+     * correção não existisse.
+     */
+    private fun garantirMargemDeVolume(streamType: Int, valorAtual: Int) {
+        try {
+            val valorMaximo = audioManager.getStreamMaxVolume(streamType)
+            if (valorAtual < valorMaximo - 1) return
+
+            val valorComFolga = (valorMaximo / 2).coerceAtLeast(1)
+            if (streamType == AudioManager.STREAM_MUSIC) {
+                correcaoPendenteStreamMusic = valorComFolga
+            } else {
+                correcaoPendentePorStream[streamType] = valorComFolga
+            }
+
+            audioManager.setStreamVolume(streamType, valorComFolga, 0)
+            if (streamType != AudioManager.STREAM_MUSIC) {
+                ultimoValorPorStream[streamType] = valorComFolga
+            }
+            Log.d(TAG, "Margem de volume restaurada no stream $streamType " +
+                "($valorAtual -> $valorComFolga) para sustentar a detecção da segurada.")
+        } catch (e: Exception) {
+            Log.w(TAG, "Falha ao restaurar margem de volume no stream $streamType.", e)
+        }
+    }
+
+    /**
+     * Executado [duracaoMinimaSeguradoMs] (5s) depois do INÍCIO de cada
+     * nova segurada (ver [registrarIncrementoDetectado]) — ver
+     * documentação completa ali sobre por que este `Runnable` é agendado
+     * UMA ÚNICA VEZ por segurada, nunca reagendado a cada incremento.
+     *
+     * Confirma se a segurada realmente durou os 3s inteiros checando se
+     * [ultimoIncrementoMs] ainda está DENTRO de [gapMaximoEntreIncrementosMs]
+     * deste instante — ou seja, se incrementos (key-repeat nativo)
+     * continuaram chegando até aqui, sinal de que o botão físico
+     * permaneceu pressionado o tempo todo (mesmo que o stream já tenha
+     * saturado no valor máximo antes disso em algum aparelho específico
+     * onde [garantirMargemDeVolume] não foi suficiente).
+     */
+    private val verificadorDeSeguradaCompleta = Runnable {
+        val agora = System.currentTimeMillis()
+        if (inicioSeguradaMs == 0L) return@Runnable
+        inicioSeguradaMs = 0L
+
+        val seguradaAindaEmAndamento =
+            (agora - ultimoIncrementoMs) <= (gapMaximoEntreIncrementosMs + 500L)
+        if (!seguradaAindaEmAndamento) {
+            Log.d(TAG, "Segurada de Volume+ encerrada antes de completar " +
+                "${duracaoMinimaSeguradoMs}ms — SOS não disparado.")
+            return@Runnable
         }
 
-        Log.d(TAG, "Incremento #$contagemIncrementos detectado via $origem.")
+        if (agora - ultimoDisparoMs < cooldownDisparoMs) {
+            Log.d(TAG, "Segurada de 5s confirmada, mas dentro do cooldown de " +
+                "${cooldownDisparoMs}ms — SOS não disparado de novo.")
+            return@Runnable
+        }
 
-        if (contagemIncrementos >= incrementosNecessarios) {
-            contagemIncrementos = 0
-            if (agora - ultimoDisparoMs >= cooldownDisparoMs) {
-                ultimoDisparoMs = agora
-                Log.i(TAG, "Gatilho de SOS físico confirmado — disparando.")
-                VolumeSosEventBridge.notificarSosDisparado()
+        ultimoDisparoMs = agora
+        Log.i(TAG, "Gatilho de SOS físico confirmado (Volume+ segurado por 3s) — disparando.")
+        VolumeSosEventBridge.notificarSosDisparado()
 
-                // CORREÇÃO (bug real observado em teste — "câmera reabre"
-                // ao deslizar a tela vermelha para cima): com o app
-                // aberto (foreground) OU na tela de login, o engine
-                // Flutter da MainActivity já está vivo e o EventChannel
-                // acima já entrega o gatilho a ele, que empurra a
-                // CameraCapturaScreen por cima da tela atual. Chamar
-                // [forcarAberturaLockscreenCameraActivity] TAMBÉM nesse
-                // caso empilhava uma SEGUNDA Activity/engine de câmera
-                // por cima da primeira — ao deslizar para cima, só a de
-                // cima fechava/bloqueava, revelando a outra por baixo (
-                // parecendo, para o usuário, que a câmera "reabria" em
-                // vez do Android bloquear de verdade). Só continuamos
-                // abrindo a Activity nativa separada quando o aparelho
-                // está DE FATO com a tela bloqueada (Keyguard ativo) —
-                // único cenário em que a MainActivity normal não pode
-                // aparecer por cima do bloqueio, exigindo a Activity
-                // dedicada com `setShowWhenLocked(true)` — ou quando não
-                // há nenhum engine Dart vivo para receber o EventChannel
-                // (app totalmente fechado).
-                if (aparelhoBloqueadoOuSemEngineDartVivo()) {
-                    forcarAberturaLockscreenCameraActivity()
-                }
-            }
+        // CORREÇÃO (bug real observado em teste — "câmera reabre" ao
+        // deslizar a tela vermelha para cima): com o app aberto
+        // (foreground) OU na tela de login, o engine Flutter da
+        // MainActivity já está vivo e o EventChannel acima já entrega o
+        // gatilho a ele, que empurra a CameraCapturaScreen por cima da
+        // tela atual. Chamar [forcarAberturaLockscreenCameraActivity]
+        // TAMBÉM nesse caso empilhava uma SEGUNDA Activity/engine de
+        // câmera por cima da primeira — ao deslizar para cima, só a de
+        // cima fechava/bloqueava, revelando a outra por baixo (parecendo,
+        // para o usuário, que a câmera "reabria" em vez do Android
+        // bloquear de verdade). Só continuamos abrindo a Activity nativa
+        // separada quando o aparelho está DE FATO com a tela bloqueada
+        // (Keyguard ativo) — único cenário em que a MainActivity normal
+        // não pode aparecer por cima do bloqueio, exigindo a Activity
+        // dedicada com `setShowWhenLocked(true)` — ou quando não há
+        // nenhum engine Dart vivo para receber o EventChannel (app
+        // totalmente fechado).
+        if (aparelhoBloqueadoOuSemEngineDartVivo()) {
+            forcarAberturaLockscreenCameraActivity()
         }
     }
 
@@ -432,6 +589,7 @@ class VolumeSosService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "onDestroy — encerrando monitoramento do botão físico de SOS.")
+        handler.removeCallbacks(verificadorDeSeguradaCompleta)
         try {
             contentResolver.unregisterContentObserver(contentObserver)
         } catch (_: Exception) {

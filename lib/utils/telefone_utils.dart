@@ -63,4 +63,41 @@ class TelefoneUtils {
       return null;
     }
   }
+
+  /// Remove de [contatos] (cada item com uma chave `'telefone'`, no
+  /// formato de `DatabaseHelper.getContatosEmergencia()`) qualquer
+  /// entrada cujo número normalizado (E.164) seja IGUAL ao do próprio
+  /// usuário ([telefoneProprio], em qualquer formato — é normalizado
+  /// aqui mesmo).
+  ///
+  /// CORREÇÃO DE BUG REAL (pedido do usuário, 2026-09-11): o próprio
+  /// número do usuário podia acabar cadastrado como um dos seus contatos
+  /// de emergência (ex: importado por engano da própria Agenda do
+  /// aparelho, onde é comum haver uma entrada "Eu"/o próprio número) —
+  /// nesse caso, TODOS os canais de disparo de alerta (SMS nativo e,
+  /// pelo canal de nuvem, o Push/alarme sonoro no app receptor) enviavam
+  /// o alarme de pânico de volta para o PRÓPRIO aparelho da vítima, que
+  /// tocava o som de alerta bem na hora em que ela mais precisa passar
+  /// despercebida. Usado nos DOIS pontos únicos de disparo:
+  /// [EmergencyAlertService._enviarSms] (canal SMS) e
+  /// `ContatosEmergenciaService._sincronizarComFirebase` (lista que
+  /// alimenta o canal Push via Cloud Function).
+  ///
+  /// Propositalmente NÃO filtra a lista usada pelas telas de
+  /// gerenciamento (Configurações/Família, via
+  /// `DatabaseHelper.getContatosEmergencia()` direto) — o contato
+  /// continua visível ali para o usuário revisar/excluir manualmente;
+  /// só os canais de disparo são protegidos.
+  static List<Map<String, dynamic>> excluirProprioNumero(
+    List<Map<String, dynamic>> contatos,
+    String? telefoneProprio,
+  ) {
+    final proprio = normalizarE164(telefoneProprio);
+    if (proprio == null) return contatos;
+
+    return contatos.where((contato) {
+      final numeroContato = normalizarE164(contato['telefone'] as String?);
+      return numeroContato != proprio;
+    }).toList();
+  }
 }
