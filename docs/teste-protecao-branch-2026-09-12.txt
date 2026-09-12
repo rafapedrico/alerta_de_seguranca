@@ -1,4 +1,0 @@
-Teste temporário de proteção de branch — gerado em 2026-09-12 para confirmar
-se o push direto ao branch feat/chat-suporte-ia é bloqueado pela regra de
-proteção clássica configurada no GitHub. Este arquivo é removido/revertido
-imediatamente após o teste, independentemente do resultado.
