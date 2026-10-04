@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "Nessun contatto di monitoraggio ancora aggiunto.\nTocca \"+\" per aggiungere il primo.",
   "monitoramentoSolicitarLocalizacao": "Richiedi Posizione",
   "monitoramentoVerNoMapa": "Vedi sulla mappa",
+  "monitoramentoLocalizacaoSempreTitulo": "Posizione \"Consenti sempre\" disattivata",
+  "localizacaoSempreMotivoMonitoramento": "Con \"Consenti sempre\", le persone che hai autorizzato nella scheda Monitoraggio vedono la tua posizione attuale anche con l'app chiusa o lo schermo bloccato.",
   "monitoramentoPedindoLocalizacaoAtual": "Richiesta della posizione attuale…",
   "monitoramentoUsarUltimaPosicao": "Usa ultima posizione",
   "monitoramentoMostrandoUltimaPosicao": "Impossibile ottenere la posizione attuale. Mostro l'ultima, del {horario}.",

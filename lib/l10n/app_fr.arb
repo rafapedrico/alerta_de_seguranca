@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "Aucun contact de surveillance ajouté pour l'instant.\nAppuyez sur « + » pour ajouter le premier.",
   "monitoramentoSolicitarLocalizacao": "Demander la position",
   "monitoramentoVerNoMapa": "Voir sur la carte",
+  "monitoramentoLocalizacaoSempreTitulo": "Localisation « Toujours autoriser » désactivée",
+  "localizacaoSempreMotivoMonitoramento": "Avec « Toujours autoriser », les personnes que vous avez autorisées dans l'onglet Surveillance voient votre position actuelle même avec l'app fermée ou l'écran verrouillé.",
   "monitoramentoPedindoLocalizacaoAtual": "Demande de la position actuelle…",
   "monitoramentoUsarUltimaPosicao": "Utiliser la dernière position",
   "monitoramentoMostrandoUltimaPosicao": "Impossible d'obtenir la position actuelle. Affichage de la dernière, du {horario}.",

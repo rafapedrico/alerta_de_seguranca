@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "Aún no hay contactos de monitoreo agregados.\nToca \"+\" para agregar el primero.",
   "monitoramentoSolicitarLocalizacao": "Solicitar Ubicación",
   "monitoramentoVerNoMapa": "Ver en el mapa",
+  "monitoramentoLocalizacaoSempreTitulo": "Ubicación \"Permitir todo el tiempo\" desactivada",
+  "localizacaoSempreMotivoMonitoramento": "Con \"Permitir todo el tiempo\", las personas que autorizaste en la pestaña Monitoreo pueden ver tu ubicación actual incluso con la app cerrada o la pantalla bloqueada.",
   "monitoramentoPedindoLocalizacaoAtual": "Solicitando la ubicación actual…",
   "monitoramentoUsarUltimaPosicao": "Usar última posición",
   "monitoramentoMostrandoUltimaPosicao": "No se pudo obtener la posición actual. Mostrando la última, de {horario}.",

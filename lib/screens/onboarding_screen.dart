@@ -177,7 +177,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           PermissaoStatusCard(
                             icone: Icons.my_location_rounded,
                             titulo: l10n.onboardingLocalizacaoTitulo,
-                            descricao: l10n.onboardingLocalizacaoConteudo,
+                            descricao: '${l10n.onboardingLocalizacaoConteudo} ${l10n.localizacaoSempreMotivoMonitoramento}',
                             essencial: true,
                             status: _localizacao,
                             aoConceder: _tocarLocalizacao,

@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "Контакты для мониторинга пока не добавлены.\nНажмите «+», чтобы добавить первый.",
   "monitoramentoSolicitarLocalizacao": "Запросить местоположение",
   "monitoramentoVerNoMapa": "Показать на карте",
+  "monitoramentoLocalizacaoSempreTitulo": "Доступ к геопозиции «Разрешить всегда» выключен",
+  "localizacaoSempreMotivoMonitoramento": "С «Разрешить всегда» люди, которым вы разрешили доступ во вкладке «Мониторинг», видят ваше текущее местоположение даже при закрытом приложении или заблокированном экране.",
   "monitoramentoPedindoLocalizacaoAtual": "Запрос текущего местоположения…",
   "monitoramentoUsarUltimaPosicao": "Последняя позиция",
   "monitoramentoMostrandoUltimaPosicao": "Не удалось получить текущую позицию. Показана последняя, от {horario}.",

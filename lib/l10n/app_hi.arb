@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "अभी तक कोई निगरानी संपर्क नहीं जोड़ा गया है।\nपहला जोड़ने के लिए \"+\" पर टैप करें।",
   "monitoramentoSolicitarLocalizacao": "स्थान का अनुरोध करें",
   "monitoramentoVerNoMapa": "मानचित्र पर देखें",
+  "monitoramentoLocalizacaoSempreTitulo": "स्थान \"हर समय अनुमति दें\" बंद है",
+  "localizacaoSempreMotivoMonitoramento": "\"हर समय अनुमति दें\" से, निगरानी टैब में आपके द्वारा अनुमत लोग ऐप बंद होने या स्क्रीन लॉक होने पर भी आपका वर्तमान स्थान देख सकते हैं।",
   "monitoramentoPedindoLocalizacaoAtual": "वर्तमान स्थान का अनुरोध किया जा रहा है…",
   "monitoramentoUsarUltimaPosicao": "अंतिम स्थान का उपयोग करें",
   "monitoramentoMostrandoUltimaPosicao": "वर्तमान स्थान नहीं मिल सका। {horario} का अंतिम स्थान दिखाया जा रहा है।",

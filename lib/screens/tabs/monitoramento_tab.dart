@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,7 +44,8 @@ class MonitoramentoTab extends StatefulWidget {
   State<MonitoramentoTab> createState() => MonitoramentoTabState();
 }
 
-class MonitoramentoTabState extends State<MonitoramentoTab> {
+class MonitoramentoTabState extends State<MonitoramentoTab>
+    with WidgetsBindingObserver {
   final MonitoramentoService _servico = MonitoramentoService();
 
   bool _carregando = true;
@@ -91,9 +93,33 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
   /// resto do app.
   bool get _planoBloqueado => _statusPlano?.ativo == false;
 
+  /// "Permitir o tempo todo" ausente: sem ela, este aparelho não responde
+  /// ao "Ver no mapa" de quem tem permissão com o app fechado (push
+  /// `pedido_localizacao`, ver `PedidoLocalizacaoService`). Conferida de
+  /// novo ao voltar das Configurações. `false` até a primeira leitura.
+  bool _semLocalizacaoSempre = false;
+
+  Future<void> _conferirLocalizacaoSempre() async {
+    bool concedida;
+    try {
+      concedida = (await Permission.locationAlways.status).isGranted;
+    } catch (_) {
+      concedida = true; // Na dúvida, não exibe o aviso.
+    }
+    if (!mounted) return;
+    setState(() => _semLocalizacaoSempre = !concedida);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _conferirLocalizacaoSempre();
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _conferirLocalizacaoSempre();
     _carregarContatos();
     MonitoramentoService.versaoMonitoramento.addListener(_aoAlterarLocal);
     _pedidosSub = _servico
@@ -107,6 +133,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     MonitoramentoService.versaoMonitoramento.removeListener(_aoAlterarLocal);
     _pedidosSub?.cancel();
     _statusPlanoSub?.cancel();
@@ -615,6 +642,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                       children: [
+                        if (_semLocalizacaoSempre) _construirAvisoLocalizacaoSempre(l10n),
                         if (_contatos.isEmpty)
                           _construirEstadoVazio(l10n)
                         else ...[
@@ -631,6 +659,51 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
           ),
         );
       },
+    );
+  }
+
+  Widget _construirAvisoLocalizacaoSempre(AppLocalizations l10n) {
+    return Card(
+      color: Colors.amber.shade50,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.amber.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_off_outlined, color: Colors.amber.shade900),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.monitoramentoLocalizacaoSempreTitulo,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.localizacaoSempreMotivoMonitoramento,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade800, height: 1.35),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: openAppSettings,
+                icon: const Icon(Icons.settings_outlined, size: 18),
+                label: Text(l10n.onboardingBotaoAbrirConfiguracoes),
+                style: TextButton.styleFrom(foregroundColor: Colors.amber.shade900),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

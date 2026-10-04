@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "Noch keine Überwachungskontakte hinzugefügt.\nTippen Sie auf „+“, um den ersten hinzuzufügen.",
   "monitoramentoSolicitarLocalizacao": "Standort anfordern",
   "monitoramentoVerNoMapa": "Auf der Karte anzeigen",
+  "monitoramentoLocalizacaoSempreTitulo": "Standort „Immer zulassen“ ist aus",
+  "localizacaoSempreMotivoMonitoramento": "Mit „Immer zulassen“ sehen die Personen, die Sie im Tab Überwachung autorisiert haben, Ihren aktuellen Standort auch bei geschlossener App oder gesperrtem Bildschirm.",
   "monitoramentoPedindoLocalizacaoAtual": "Aktueller Standort wird angefragt…",
   "monitoramentoUsarUltimaPosicao": "Letzte Position verwenden",
   "monitoramentoMostrandoUltimaPosicao": "Aktuelle Position nicht verfügbar. Letzte Position vom {horario} wird angezeigt.",

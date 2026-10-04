@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "尚未添加任何监控联系人。\n点击\"+\"添加第一个联系人。",
   "monitoramentoSolicitarLocalizacao": "请求位置",
   "monitoramentoVerNoMapa": "在地图上查看",
+  "monitoramentoLocalizacaoSempreTitulo": "“始终允许”位置权限未开启",
+  "localizacaoSempreMotivoMonitoramento": "开启“始终允许”后，您在“监控”标签中授权的人即使在应用关闭或屏幕锁定时也能看到您的当前位置。",
   "monitoramentoPedindoLocalizacaoAtual": "正在请求当前位置…",
   "monitoramentoUsarUltimaPosicao": "使用最后位置",
   "monitoramentoMostrandoUltimaPosicao": "无法获取当前位置。显示最后位置（{horario}）。",

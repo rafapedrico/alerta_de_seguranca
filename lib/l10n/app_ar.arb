@@ -260,6 +260,8 @@
   "monitoramentoNenhumContato": "لم تتم إضافة أي جهات اتصال للمراقبة بعد.\nاضغط على \"+\" لإضافة الأولى.",
   "monitoramentoSolicitarLocalizacao": "طلب الموقع",
   "monitoramentoVerNoMapa": "عرض على الخريطة",
+  "monitoramentoLocalizacaoSempreTitulo": "الموقع \"السماح طوال الوقت\" غير مفعّل",
+  "localizacaoSempreMotivoMonitoramento": "مع \"السماح طوال الوقت\"، يمكن للأشخاص الذين سمحت لهم في تبويب المراقبة رؤية موقعك الحالي حتى عند إغلاق التطبيق أو قفل الشاشة.",
   "monitoramentoPedindoLocalizacaoAtual": "جارٍ طلب الموقع الحالي…",
   "monitoramentoUsarUltimaPosicao": "استخدام آخر موقع",
   "monitoramentoMostrandoUltimaPosicao": "تعذّر الحصول على الموقع الحالي. يتم عرض آخر موقع من {horario}.",
