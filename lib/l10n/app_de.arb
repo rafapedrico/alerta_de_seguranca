@@ -260,6 +260,9 @@
   "monitoramentoNenhumContato": "Noch keine Überwachungskontakte hinzugefügt.\nTippen Sie auf „+“, um den ersten hinzuzufügen.",
   "monitoramentoSolicitarLocalizacao": "Standort anfordern",
   "monitoramentoVerNoMapa": "Auf der Karte anzeigen",
+  "monitoramentoPedindoLocalizacaoAtual": "Aktueller Standort wird angefragt…",
+  "monitoramentoUsarUltimaPosicao": "Letzte Position verwenden",
+  "monitoramentoMostrandoUltimaPosicao": "Aktuelle Position nicht verfügbar. Letzte Position vom {horario} wird angezeigt.",
   "monitoramentoAtualizadoHaMinutos": "Vor {minutos} Min. aktualisiert",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {

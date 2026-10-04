@@ -345,6 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await FirebaseAuthService().revogarSessoesEmOutrosDispositivosEAtualizarToken();
 
     unawaited(FcmService().inicializar());
+    unawaited(FirebaseSyncService().registrarPlataforma());
     unawaited(ContatosEmergenciaService.sincronizarAgora());
     unawaited(FirebaseSyncService().sincronizarPerfilSocial(
       nome: FirebaseAuthService().usuarioAtual?.displayName,

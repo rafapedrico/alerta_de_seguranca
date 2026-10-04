@@ -662,6 +662,73 @@ class MonitoramentoService {
     }
   }
 
+  /// Pede ao aparelho de [uidAlvo] a posição ATUAL — callable
+  /// `pedirLocalizacaoAtual` (a MESMA do app iOS, ver
+  /// `functions/localizacaoContinuaService.js`), que manda um push
+  /// silencioso `pedido_localizacao` ao alvo. `true` só quando o push saiu.
+  ///
+  /// Nunca lança: `permission-denied`, `failed-precondition`
+  /// (`plano_free`/`alvo_sem_token`), `resource-exhausted` (1 pedido/min
+  /// por par), rede ou timeout viram `false` — quem chama abre o mapa com
+  /// a última posição conhecida.
+  Future<bool> pedirLocalizacaoAtual(String uidAlvo) async {
+    if (!_firebaseDisponivel) return false;
+    try {
+      final resultado = await FirebaseFunctions.instance
+          .httpsCallable('pedirLocalizacaoAtual')
+          .call<Map<String, dynamic>>({'uidAlvo': uidAlvo})
+          .timeout(const Duration(seconds: 10));
+      return resultado.data['enviado'] == true;
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint(
+          '⚠️ [MonitoramentoService] Pedido de localização atual recusado: ${e.code} ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ [MonitoramentoService] Falha ao pedir localização atual: $e');
+      return false;
+    }
+  }
+
+  /// Espera até [limite] por uma posição de [uidAlvo] gravada DEPOIS do
+  /// pedido: `atualizadoEm` posterior a [atualizadoAntes] (o valor lido
+  /// logo antes de chamar [pedirLocalizacaoAtual]; `null` = ainda não havia
+  /// posição). Compara só horários do servidor — o relógio deste aparelho
+  /// não entra na conta. `null` se nada chegar a tempo ou a leitura falhar.
+  Future<Map<String, dynamic>?> aguardarLocalizacaoNova(
+    String uidAlvo, {
+    required Timestamp? atualizadoAntes,
+    Duration limite = const Duration(seconds: 20),
+  }) async {
+    if (!_firebaseDisponivel) return null;
+    final resultado = Completer<Map<String, dynamic>?>();
+    final assinatura = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(uidAlvo)
+        .collection('monitoramento')
+        .doc('atual')
+        .snapshots()
+        .listen((snap) {
+      final dados = snap.data();
+      final atualizadoEm = dados?['atualizadoEm'];
+      if (atualizadoEm is! Timestamp) return;
+      if (atualizadoAntes != null && atualizadoEm.compareTo(atualizadoAntes) <= 0) return;
+      if (!resultado.isCompleted) resultado.complete(dados);
+    }, onError: (Object e) {
+      debugPrint(
+          '⚠️ [MonitoramentoService] Falha ao aguardar localização nova de $uidAlvo: $e');
+      if (!resultado.isCompleted) resultado.complete(null);
+    });
+    final temporizador = Timer(limite, () {
+      if (!resultado.isCompleted) resultado.complete(null);
+    });
+    try {
+      return await resultado.future;
+    } finally {
+      temporizador.cancel();
+      await assinatura.cancel();
+    }
+  }
+
   /// Mesma normalização de `CadastroScreen._normalizarTelefoneE164` e de
   /// `normalizarTelefoneE164` em `functions/smsGateway.js`: números sem
   /// "+" recebem o prefixo do Brasil ("+55").

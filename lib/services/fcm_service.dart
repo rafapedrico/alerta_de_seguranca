@@ -11,6 +11,7 @@ import 'alertas_recebidos_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
 import 'notificacao_service.dart';
+import 'pedido_localizacao_service.dart';
 import 'relatorio_falha_entrega_service.dart';
 
 /// Handler de SEGUNDO PLANO/TERMINADO do FCM — chamado pelo Android num
@@ -237,7 +238,8 @@ class FcmService {
 
   /// Lógica compartilhada entre primeiro e segundo plano: despacha o
   /// tratamento conforme o campo `tipo` da mensagem data-only recebida —
-  /// alerta de emergência de terceiro ([_tratarAlertaEmergencia]) ou push
+  /// alerta de emergência de terceiro ([_tratarAlertaEmergencia]), pedido
+  /// silencioso de localização atual ([PedidoLocalizacaoService]) ou push
   /// da aba Monitoramento ([_tratarPushMonitoramento]). Qualquer outro
   /// `tipo` (ou ausente) é ignorado silenciosamente.
   ///
@@ -264,6 +266,14 @@ class FcmService {
       } catch (e) {
         debugPrint('⚠️ [FcmService] Falha ao processar relatório de falha de entrega: $e');
       }
+      return;
+    }
+
+    if (tipo == PedidoLocalizacaoService.tipoPush) {
+      // Push SILENCIOSO de "Ver no mapa" (ver `pedirLocalizacaoAtual` no
+      // servidor): só lê o GPS e grava — nenhuma notificação/UI, em
+      // primeiro plano, segundo plano ou com o app fechado.
+      await PedidoLocalizacaoService.responderPedido(data);
       return;
     }
 

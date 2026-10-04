@@ -260,6 +260,9 @@
   "monitoramentoNenhumContato": "尚未添加任何监控联系人。\n点击\"+\"添加第一个联系人。",
   "monitoramentoSolicitarLocalizacao": "请求位置",
   "monitoramentoVerNoMapa": "在地图上查看",
+  "monitoramentoPedindoLocalizacaoAtual": "正在请求当前位置…",
+  "monitoramentoUsarUltimaPosicao": "使用最后位置",
+  "monitoramentoMostrandoUltimaPosicao": "无法获取当前位置。显示最后位置（{horario}）。",
   "monitoramentoAtualizadoHaMinutos": "{minutos}分钟前更新",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {

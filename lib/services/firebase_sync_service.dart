@@ -255,6 +255,20 @@ class FirebaseSyncService {
     }
   }
 
+  /// Grava `usuarios/{uid}.plataforma = "android"` (o app iOS grava
+  /// `"ios"`) a cada login — merge, sem tocar nos demais campos.
+  /// Best-effort: falha só é logada.
+  Future<void> registrarPlataforma() async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario
+          .set({'plataforma': 'android'}, SetOptions(merge: true))
+          .timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar a plataforma do usuário: $e');
+    }
+  }
+
   /// Grava/atualiza o token FCM atual do aparelho em
   /// `usuarios/{uid}.fcmToken` — é por ele que a Cloud Function resolve,
   /// na hora de um alerta, para onde enviar o Push App-para-App gratuito

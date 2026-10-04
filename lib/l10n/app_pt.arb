@@ -260,6 +260,16 @@
   "monitoramentoNenhumContato": "Nenhum contato de monitoramento cadastrado ainda.\nToque no \"+\" para adicionar o primeiro.",
   "monitoramentoSolicitarLocalizacao": "Solicitar Localização",
   "monitoramentoVerNoMapa": "Ver no mapa",
+  "monitoramentoPedindoLocalizacaoAtual": "Pedindo a localização atual…",
+  "monitoramentoUsarUltimaPosicao": "Usar última posição",
+  "monitoramentoMostrandoUltimaPosicao": "Não foi possível obter a posição atual. Mostrando a última, de {horario}.",
+  "@monitoramentoMostrandoUltimaPosicao": {
+    "placeholders": {
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
   "monitoramentoAtualizadoHaMinutos": "Atualizado há {minutos} min",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {

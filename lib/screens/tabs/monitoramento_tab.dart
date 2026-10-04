@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -489,9 +490,97 @@ class MonitoramentoTabState extends State<MonitoramentoTab> {
     // exibindo o modal de upsell em vez de simplesmente não abrir nada.
     if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
 
-    final dados = await _servico.buscarUltimaLocalizacao(uidAlvo);
-    final latitude = (dados?['latitude'] as num?)?.toDouble();
-    final longitude = (dados?['longitude'] as num?)?.toDouble();
+    final ultima = await _servico.buscarUltimaLocalizacao(uidAlvo);
+    if (!mounted) return;
+    final atualizadoAntes = ultima?['atualizadoEm'];
+
+    // Pede a posição ATUAL ao aparelho do alvo (push silencioso, mesma
+    // callable do iOS) e espera até ~20 s por ela. Qualquer falha (recusa,
+    // limite de 1/min, rede, alvo sem resposta) cai na última posição.
+    final nova = await _pedirEAguardarPosicaoAtual(
+      uidAlvo,
+      atualizadoAntes is Timestamp ? atualizadoAntes : null,
+    );
+    if (!mounted) return;
+    if (nova != null) {
+      setState(() {}); // Atualiza o "Atualizado há X min" do card.
+      await _abrirMapaNaPosicao(nova);
+      return;
+    }
+    if (ultima == null) return;
+    _avisarUltimaPosicao(ultima);
+    await _abrirMapaNaPosicao(ultima);
+  }
+
+  /// Diálogo de espera (não trava a tela: "Usar última posição" encerra na
+  /// hora). Devolve a posição nova, ou `null` para cair na última.
+  Future<Map<String, dynamic>?> _pedirEAguardarPosicaoAtual(
+    String uidAlvo,
+    Timestamp? atualizadoAntes,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final resultado = Completer<Map<String, dynamic>?>();
+    unawaited(() async {
+      final enviado = await _servico.pedirLocalizacaoAtual(uidAlvo);
+      final nova = enviado
+          ? await _servico.aguardarLocalizacaoNova(uidAlvo, atualizadoAntes: atualizadoAntes)
+          : null;
+      if (!resultado.isCompleted) resultado.complete(nova);
+    }());
+
+    var dialogoAberto = true;
+    final navegador = Navigator.of(context, rootNavigator: true);
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (contextoDialogo) => AlertDialog(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: _corDestaque),
+            ),
+            const SizedBox(width: 16),
+            Expanded(child: Text(l10n.monitoramentoPedindoLocalizacaoAtual)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (!resultado.isCompleted) resultado.complete(null);
+            },
+            child: Text(l10n.monitoramentoUsarUltimaPosicao),
+          ),
+        ],
+      ),
+    ).whenComplete(() => dialogoAberto = false));
+
+    final nova = await resultado.future;
+    if (dialogoAberto) navegador.pop();
+    return nova;
+  }
+
+  /// SnackBar com o horário da última posição — fica visível ao voltar do
+  /// app de mapas.
+  void _avisarUltimaPosicao(Map<String, dynamic> dados) {
+    final l10n = AppLocalizations.of(context)!;
+    final atualizadoEm = dados['atualizadoEm'];
+    if (atualizadoEm is! Timestamp) return;
+    final locale = Localizations.localeOf(context).toString();
+    final horario = DateFormat.Md(locale).add_Hm().format(atualizadoEm.toDate().toLocal());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.monitoramentoMostrandoUltimaPosicao(horario)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 8),
+      ),
+    );
+  }
+
+  Future<void> _abrirMapaNaPosicao(Map<String, dynamic> dados) async {
+    final latitude = (dados['latitude'] as num?)?.toDouble();
+    final longitude = (dados['longitude'] as num?)?.toDouble();
     if (latitude == null || longitude == null) return;
 
     final uri = Uri.parse('https://maps.google.com/?q=$latitude,$longitude');

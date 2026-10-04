@@ -260,6 +260,9 @@
   "monitoramentoNenhumContato": "モニタリング用の連絡先はまだ登録されていません。\n「+」をタップして最初の連絡先を追加してください。",
   "monitoramentoSolicitarLocalizacao": "位置情報をリクエスト",
   "monitoramentoVerNoMapa": "地図で見る",
+  "monitoramentoPedindoLocalizacaoAtual": "現在地をリクエスト中…",
+  "monitoramentoUsarUltimaPosicao": "最後の位置を使用",
+  "monitoramentoMostrandoUltimaPosicao": "現在地を取得できませんでした。最後の位置（{horario}）を表示します。",
   "monitoramentoAtualizadoHaMinutos": "{minutos}分前に更新",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {

@@ -260,6 +260,9 @@
   "monitoramentoNenhumContato": "अभी तक कोई निगरानी संपर्क नहीं जोड़ा गया है।\nपहला जोड़ने के लिए \"+\" पर टैप करें।",
   "monitoramentoSolicitarLocalizacao": "स्थान का अनुरोध करें",
   "monitoramentoVerNoMapa": "मानचित्र पर देखें",
+  "monitoramentoPedindoLocalizacaoAtual": "वर्तमान स्थान का अनुरोध किया जा रहा है…",
+  "monitoramentoUsarUltimaPosicao": "अंतिम स्थान का उपयोग करें",
+  "monitoramentoMostrandoUltimaPosicao": "वर्तमान स्थान नहीं मिल सका। {horario} का अंतिम स्थान दिखाया जा रहा है।",
   "monitoramentoAtualizadoHaMinutos": "{minutos} मिनट पहले अपडेट किया गया",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {

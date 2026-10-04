@@ -260,6 +260,9 @@
   "monitoramentoNenhumContato": "لم تتم إضافة أي جهات اتصال للمراقبة بعد.\nاضغط على \"+\" لإضافة الأولى.",
   "monitoramentoSolicitarLocalizacao": "طلب الموقع",
   "monitoramentoVerNoMapa": "عرض على الخريطة",
+  "monitoramentoPedindoLocalizacaoAtual": "جارٍ طلب الموقع الحالي…",
+  "monitoramentoUsarUltimaPosicao": "استخدام آخر موقع",
+  "monitoramentoMostrandoUltimaPosicao": "تعذّر الحصول على الموقع الحالي. يتم عرض آخر موقع من {horario}.",
   "monitoramentoAtualizadoHaMinutos": "تم التحديث قبل {minutos} دقيقة",
   "@monitoramentoAtualizadoHaMinutos": {
     "placeholders": {
