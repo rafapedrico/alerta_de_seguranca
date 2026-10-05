@@ -7,7 +7,9 @@
       "trailingSlash": false,
       "ignore": [
         "firebase.json",
-        "**/.*",
+        "**/.!(well-known)",
+        "**/.!(well-known)/**",
+        "**/.well-known/.*",
         "**/node_modules/**"
       ],
       "headers": [
@@ -28,6 +30,15 @@
               "value": "public, max-age=86400"
             }
           ]
+        },
+        {
+          "source": "/.well-known/apple-app-site-association",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         }
       ],
       "rewrites": [
@@ -38,6 +49,10 @@
         {
           "source": "/i/**",
           "destination": "/i.html"
+        },
+        {
+          "source": "/.well-known/apple-app-site-association",
+          "destination": "/.well-known/apple-app-site-association"
         },
         {
           "source": "**",
