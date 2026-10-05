@@ -277,6 +277,18 @@ class FcmService {
       return;
     }
 
+    if (tipo == 'localizacao_parada' || tipo == 'localizacao_limitada') {
+      // Avisos do detector do servidor (`detectarLocalizacaoParada`) para
+      // quem monitora: contato sem atualização há horas, ou que retirou a
+      // localização em segundo plano. Só notificação, como no iOS.
+      try {
+        await NotificacaoService.exibirNotificacaoLocalizacaoContato(tipo: tipo!, dados: data);
+      } catch (e) {
+        debugPrint('⚠️ [FcmService] Falha ao exibir aviso de localização ($tipo): $e');
+      }
+      return;
+    }
+
     if (tipo != null && _tiposPushMonitoramento.contains(tipo)) {
       await _tratarPushMonitoramento(data, tipo, emPrimeiroPlano: emPrimeiroPlano);
       return;

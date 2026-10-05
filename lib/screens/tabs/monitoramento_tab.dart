@@ -10,9 +10,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/monitoramento_service.dart';
 import '../../services/plano_ciclo_service.dart';
+import '../../services/rastreamento_continuo_service.dart';
 import '../../services/wallpaper_service.dart';
 import '../../widgets/monitoramento_decisao_dialog.dart';
 import '../../widgets/plano_bloqueado_dialog.dart';
+import '../consentimento_rastreamento_screen.dart';
 
 const Color _corDestaque = Color(0xFF4C7040);
 
@@ -142,7 +144,11 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _conferirLocalizacaoSempre();
+    if (state == AppLifecycleState.resumed) {
+      _conferirLocalizacaoSempre();
+      // Pode ter voltado das Configurações com "Permitir o tempo todo".
+      unawaited(RastreamentoContinuoService().reaplicar());
+    }
   }
 
   @override
@@ -792,6 +798,9 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                       children: [
+                        // Plano bloqueado: o contínuo não roda (ver o
+                        // nativo), então o quadro nem aparece.
+                        if (!_planoBloqueado) _CartaoCompartilhamentoContinuo(l10n: l10n),
                         if (_semLocalizacaoSempre) _construirAvisoLocalizacaoSempre(l10n),
                         if (_contatos.isEmpty)
                           _construirEstadoVazio(l10n)
@@ -1281,22 +1290,34 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
                 cor: Colors.orange.shade900,
                 icone: Icons.warning_amber_rounded,
               ),
+            // Do aparelho do contato: dias bloqueados do Plano Free.
+            _LinhaPlanoAlvo(uidAlvo: uid, l10n: l10n),
+            // Contato sem modo contínuo (Android sem o contínuo ligado, ou
+            // iOS pausado): a posição só muda quando alguém pede.
+            if (dados != null && dados['rastreamentoContinuo'] != true)
+              _linhaDetalheAprovado(
+                l10n.rcAlvoLimitado,
+                cor: Colors.blueGrey.shade700,
+                icone: Icons.info_outline,
+              ),
             if (aviso != null)
               _linhaDetalheAprovado(aviso, cor: Colors.red.shade700, icone: Icons.info_outline),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 4,
-              children: [
-                TextButton.icon(
-                  onPressed: semLocalizacaoAinda
-                      ? () => _avisarLocalizacaoAindaNaoDisponivel(l10n)
-                      : (dados == null ? null : () => _abrirMapa(uid)),
-                  icon: const Icon(Icons.map_outlined, size: 18),
-                  label: Text(l10n.monitoramentoVerNoMapa),
-                  style: TextButton.styleFrom(foregroundColor: _corDestaque),
-                ),
-                _botaoAtualizarLocalizacao(uid, l10n),
-              ],
+            // "Ver no mapa" e "Atualizar localização" cada um na sua linha,
+            // com o horário e os avisos em largura total acima.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: semLocalizacaoAinda
+                    ? () => _avisarLocalizacaoAindaNaoDisponivel(l10n)
+                    : (dados == null ? null : () => _abrirMapa(uid)),
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: Text(l10n.monitoramentoVerNoMapa),
+                style: TextButton.styleFrom(foregroundColor: _corDestaque),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _botaoAtualizarLocalizacao(uid, l10n),
             ),
           ],
         );
@@ -1628,6 +1649,152 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.redAccent,
       ),
+    );
+  }
+}
+
+/// "Sua localização está sendo compartilhada continuamente com: …" — com o
+/// switch de pausar/retomar e o status (ativo, ou por que está desligado).
+/// Ligar sem consentimento abre a tela explicativa
+/// ([ConsentimentoRastreamentoScreen]). Só aparece quando há alguém
+/// aprovado para ver a minha localização.
+class _CartaoCompartilhamentoContinuo extends StatelessWidget {
+  const _CartaoCompartilhamentoContinuo({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final servico = RastreamentoContinuoService();
+    return AnimatedBuilder(
+      animation: Listenable.merge(
+          [servico.monitorandoMe, servico.consentido, servico.pausado, servico.estado, servico.plano]),
+      builder: (context, _) {
+        final contatos = servico.monitorandoMe.value;
+        if (contatos.isEmpty || servico.plano.value?.ativo == false) return const SizedBox.shrink();
+        final nomes = contatos.map((c) => c.nome).join(', ');
+        final consentido = servico.consentido.value;
+        final pausado = servico.pausado.value;
+        final estado = servico.estado.value;
+        final ligado = consentido && !pausado;
+
+        String? situacao;
+        var mostrarConfiguracoes = false;
+        Color corSituacao = Colors.green.shade800;
+        if (ligado && estado != null) {
+          if (estado.rastreamentoAtivo) {
+            situacao = l10n.rcAtivoAgora;
+          } else if (!estado.sempre) {
+            situacao = l10n.rcLimitadoSemSempre;
+            corSituacao = Colors.orange.shade900;
+            mostrarConfiguracoes = true;
+          } else {
+            final motivo = textoMotivoRastreamento(l10n, servico.motivoInativo);
+            situacao = motivo == null
+                ? l10n.rcStatusInativo
+                : l10n.rcStatusComMotivo(l10n.rcStatusInativo, motivo);
+            corSituacao = Colors.orange.shade900;
+          }
+        } else if (consentido && pausado) {
+          situacao = l10n.rcPausado;
+          corSituacao = Colors.grey.shade700;
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: _corDestaque.withOpacity(0.5)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.share_location_rounded, color: _corDestaque),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.rcTitulo,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ),
+                    Switch(
+                      value: ligado,
+                      activeColor: Colors.green.shade600,
+                      onChanged: (ligar) {
+                        if (ligar && !consentido) {
+                          Navigator.of(context).push(MaterialPageRoute<bool>(
+                            builder: (_) => const ConsentimentoRastreamentoScreen(),
+                          ));
+                        } else {
+                          servico.definirPausa(!ligar);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  consentido ? l10n.rcCompartilhandoCom(nomes) : l10n.rcConvite(nomes),
+                  style: const TextStyle(fontSize: 13.5, height: 1.35),
+                ),
+                if (situacao != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    situacao,
+                    style: TextStyle(fontSize: 12.5, color: corSituacao, fontWeight: FontWeight.w600),
+                  ),
+                ],
+                if (mostrarConfiguracoes)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: openAppSettings,
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      label: Text(l10n.rcAbrirAjustes),
+                      style: TextButton.styleFrom(foregroundColor: Colors.orange.shade900),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Do lado de quem monitora: "Localização indisponível no Plano Free até
+/// DD/MM", lido do `monitoramento/estado` que o aparelho do contato grava.
+class _LinhaPlanoAlvo extends StatelessWidget {
+  const _LinhaPlanoAlvo({required this.uidAlvo, required this.l10n});
+
+  final String uidAlvo;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: MonitoramentoService().estadoAlvoStream(uidAlvo),
+      builder: (context, snapshot) {
+        final estado = snapshot.data;
+        final bloqueadoAte = estado?['bloqueadoAte'];
+        if (estado?['motivoInativo'] != 'plano_free' || bloqueadoAte is! Timestamp) {
+          return const SizedBox.shrink();
+        }
+        final locale = Localizations.localeOf(context).toString();
+        final fim = DateFormat.Md(locale).format(bloqueadoAte.toDate().toLocal());
+        return Padding(
+          padding: const EdgeInsets.only(left: 22, top: 2),
+          child: Text(
+            l10n.rcAlvoIndisponivelPlano(fim),
+            style: TextStyle(fontSize: 11, color: Colors.red.shade700, fontWeight: FontWeight.w600),
+          ),
+        );
+      },
     );
   }
 }

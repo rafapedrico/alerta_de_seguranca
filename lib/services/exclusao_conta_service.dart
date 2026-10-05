@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'bloqueio_app_service.dart';
 import 'database_helper.dart';
 import 'firebase_auth_service.dart';
+import 'rastreamento_continuo_service.dart';
 
 /// Resultado da tentativa de exclusão de conta — ver
 /// [ExclusaoContaService.excluirContaCompleta].
@@ -46,15 +50,25 @@ class ExclusaoContaService {
       return ResultadoExclusaoConta.naoAutenticado;
     }
 
+    // A conta some do servidor ANTES do logout local abaixo: o SDK pode
+    // deslogar sozinho no meio do caminho (não é sessão encerrada em outro
+    // aparelho).
+    BloqueioAppService().marcarSaidaVoluntaria();
+    // Rastreamento contínuo: para ainda com sessão, gravando o motivo.
+    await RastreamentoContinuoService().pararAntesDeSair('conta_excluida');
     try {
       await FirebaseFunctions.instance
           .httpsCallable('excluirContaCompleta')
           .call<Map<String, dynamic>>();
     } on FirebaseFunctionsException catch (e) {
       debugPrint('⚠️ [ExclusaoContaService] Falha ao excluir conta (nuvem): ${e.code} ${e.message}');
+      BloqueioAppService().desmarcarSaidaVoluntaria();
+      unawaited(RastreamentoContinuoService().retomarAposSaidaCancelada());
       return ResultadoExclusaoConta.erroRede;
     } catch (e) {
       debugPrint('⚠️ [ExclusaoContaService] Falha ao excluir conta (nuvem): $e');
+      BloqueioAppService().desmarcarSaidaVoluntaria();
+      unawaited(RastreamentoContinuoService().retomarAposSaidaCancelada());
       return ResultadoExclusaoConta.erroRede;
     }
 

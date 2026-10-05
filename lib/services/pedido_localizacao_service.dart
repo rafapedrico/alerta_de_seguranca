@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'firebase_auth_service.dart';
+import 'rastreamento_continuo_service.dart';
 
 /// Resposta ao push SILENCIOSO `pedido_localizacao` (callable
 /// `pedirLocalizacaoAtual`, ver `functions/localizacaoContinuaService.js`
@@ -12,11 +13,12 @@ import 'firebase_auth_service.dart';
 /// Lê o GPS UMA vez e grava em `usuarios/{meuUid}/monitoramento/atual`
 /// (merge) os MESMOS campos que o app iOS grava e lê — `latitude`,
 /// `longitude`, `precisao`, `atualizadoEm`, `origem`,
-/// `rastreamentoContinuo`. `rastreamentoContinuo: false` mantém o Android
-/// fora da varredura `detectarLocalizacaoParada` do servidor (só para o
-/// rastreamento contínuo do iOS). NUNCA grava `monitoramento/estado`
-/// (também só do iOS) e NUNCA exibe notificação: roda inteiro dentro do
-/// handler do FCM, com o app aberto, em segundo plano ou fechado.
+/// `rastreamentoContinuo`, mais `plataforma: "android"`. Com o
+/// rastreamento contínuo DESLIGADO grava `rastreamentoContinuo: false` (o
+/// aparelho fica fora da varredura `detectarLocalizacaoParada` do
+/// servidor); ligado, `true` — o mesmo valor que o serviço contínuo grava
+/// (ver `RastreamentoContinuo.kt`). NUNCA exibe notificação: roda inteiro
+/// dentro do handler do FCM, com o app aberto, em segundo plano ou fechado.
 ///
 /// Sem posição nova (GPS desligado, sem permissão "Permitir o tempo
 /// todo" com o app fechado, timeout) não grava nada — o app de quem pediu
@@ -46,6 +48,7 @@ class PedidoLocalizacaoService {
       final posicao = await _lerGpsUmaVez();
       if (posicao == null) return;
 
+      final continuo = await RastreamentoContinuoService.ativoNoAparelho();
       await FirebaseAuthService().garantirTokenPronto();
       await FirebaseFirestore.instance
           .collection('usuarios')
@@ -58,7 +61,8 @@ class PedidoLocalizacaoService {
         'precisao': posicao.accuracy,
         'atualizadoEm': FieldValue.serverTimestamp(),
         'origem': 'pedido',
-        'rastreamentoContinuo': false,
+        'plataforma': 'android',
+        'rastreamentoContinuo': continuo,
       }, SetOptions(merge: true)).timeout(const Duration(seconds: 10));
       debugPrint('📍 [PedidoLocalizacao] Posição atual enviada '
           '(origem do push: ${data['origem']}).');

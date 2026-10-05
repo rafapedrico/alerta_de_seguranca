@@ -4,7 +4,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -22,7 +22,9 @@ private const val CANAL_SOLICITACAO_MONITORAMENTO =
 private const val CANAL_PERMISSOES_NATIVAS =
     "com.example.security_check_app/permissoes_nativas"
 
-open class MainActivity: FlutterActivity() {
+// FlutterFragmentActivity (e não FlutterActivity): exigido pelo local_auth
+// (bloqueio do app por digital/rosto, ver CamadaBloqueioApp no Dart).
+open class MainActivity: FlutterFragmentActivity() {
 
     private var canalSolicitacaoMonitoramento: MethodChannel? = null
 
@@ -37,6 +39,7 @@ open class MainActivity: FlutterActivity() {
         flutterEngine.plugins.add(DeviceAdminPlugin())
         flutterEngine.plugins.add(SosDispatchPlugin())
         flutterEngine.plugins.add(AlertaRecebidoAlarmPlugin())
+        flutterEngine.plugins.add(RastreamentoPlugin())
 
         // ATENÇÃO — NÃO registre aqui um MethodChannel manual no canal
         // "com.example.security_check_app/rotina_alarme": esse canal já

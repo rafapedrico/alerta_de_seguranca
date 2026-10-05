@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart' show openAppSettings
 import 'package:security_check_app/l10n/app_localizations.dart';
 
 import '../services/onboarding_service.dart';
+import '../services/rastreamento_continuo_service.dart';
 import '../widgets/permissao_status_card.dart';
 
 /// Tela "Status de Permissões", acessível a qualquer momento em
@@ -67,6 +68,7 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
       _service.statusCamera(),
       _service.statusTelaCheia(),
     ]);
+    await RastreamentoContinuoService().atualizarEstado();
     if (!mounted) return;
     setState(() {
       _bateria = resultados[0];
@@ -191,9 +193,111 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
                             ? openAppSettings
                             : null,
                   ),
+                  const _CartaoRastreamentoContinuo(),
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// Card "Rastreamento contínuo" (aba Monitoramento): "Ativado" ou
+/// "Desativado — motivo", e cada requisito do Android para funcionar com o
+/// app fechado, com atalho para as Configurações. Escuta o serviço: muda
+/// sozinho quando uma permissão de compartilhamento muda.
+class _CartaoRastreamentoContinuo extends StatelessWidget {
+  const _CartaoRastreamentoContinuo();
+
+  @override
+  Widget build(BuildContext context) {
+    final servico = RastreamentoContinuoService();
+    return AnimatedBuilder(
+      animation: Listenable.merge(
+          [servico.estado, servico.monitorandoMe, servico.consentido, servico.pausado]),
+      builder: (context, _) {
+        final estado = servico.estado.value;
+        if (estado == null) return const SizedBox.shrink();
+        return _conteudo(context, servico, estado);
+      },
+    );
+  }
+
+  Widget _conteudo(
+      BuildContext context, RastreamentoContinuoService servico, EstadoRastreamento estado) {
+    final l10n = AppLocalizations.of(context)!;
+    final ativo = estado.rastreamentoAtivo && servico.motivoInativo == null;
+    String status = ativo ? l10n.rcStatusAtivado : l10n.rcStatusDesativado;
+    final cor = ativo ? Colors.green.shade600 : Colors.grey.shade700;
+    final motivo = ativo ? null : textoMotivoRastreamento(l10n, servico.motivoInativo);
+    if (motivo != null) status = l10n.rcStatusComMotivo(status, motivo);
+    final itens = <(String, bool)>[
+      (l10n.rcItemSempre, estado.sempre),
+      (l10n.rcItemPrecisao, estado.precisaoExata),
+      (l10n.rcItemSegundoPlano, estado.atualizacaoSegundoPlano && estado.otimizacaoBateriaIgnorada),
+      (l10n.rcItemPoucaEnergia, !estado.modoPoucaEnergia),
+    ];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.blue.shade400.withOpacity(0.12),
+                child: Icon(Icons.share_location_rounded, color: Colors.blue.shade400),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.rcStatusTitulo,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(status,
+                        style: TextStyle(color: cor, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            l10n.rcStatusDescricao,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          for (final (rotulo, ok) in itens)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Icon(
+                    ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                    size: 17,
+                    color: ok ? Colors.green.shade600 : Colors.red.shade400,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(rotulo, style: const TextStyle(fontSize: 13))),
+                ],
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: openAppSettings, child: Text(l10n.rcAbrirAjustes)),
+          ),
+        ],
+      ),
     );
   }
 }

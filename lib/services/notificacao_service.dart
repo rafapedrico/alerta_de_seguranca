@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
@@ -1140,6 +1141,65 @@ class NotificacaoService {
       corpo,
       details,
       payload: payload,
+    );
+  }
+
+  /// Avisos `localizacao_parada`/`localizacao_limitada` do servidor
+  /// (`detectarLocalizacaoParada`) para quem monitora. O servidor manda o
+  /// título/texto só no bloco do iOS (APNs); aqui eles são montados com os
+  /// dados do push (`nomeAlvo`, `atualizadoEm`, `latitude`/`longitude`),
+  /// no idioma do aparelho — ou usados como vierem, se o push trouxer
+  /// `titulo`/`corpo`.
+  static Future<void> exibirNotificacaoLocalizacaoContato({
+    required String tipo,
+    required Map<String, dynamic> dados,
+  }) async {
+    await inicializar();
+    final l10n = await L10nHeadlessService.obter();
+    final nomeDado = (dados['nomeAlvo'] as String?)?.trim();
+    final nome = nomeDado == null || nomeDado.isEmpty ? l10n.notifMonitContatoGenerico : nomeDado;
+
+    var titulo = (dados['titulo'] as String?)?.trim() ?? '';
+    var corpo = (dados['corpo'] as String?)?.trim() ?? '';
+    if (titulo.isEmpty || corpo.isEmpty) {
+      if (tipo == 'localizacao_parada') {
+        titulo = l10n.notifLocParadaTitulo;
+        final ms = int.tryParse('${dados['atualizadoEm'] ?? ''}');
+        final horario = ms == null
+            ? '—'
+            : DateFormat.Md(l10n.localeName)
+                .add_Hm()
+                .format(DateTime.fromMillisecondsSinceEpoch(ms).toLocal());
+        corpo = l10n.notifLocParadaCorpo(nome, horario);
+        final lat = dados['latitude'];
+        final lng = dados['longitude'];
+        if (lat != null && lng != null) {
+          corpo = '$corpo ${l10n.notifLocUltimaPosicao('https://maps.google.com/?q=$lat,$lng')}';
+        }
+      } else {
+        titulo = l10n.notifLocLimitadaTitulo;
+        corpo = l10n.notifLocLimitadaCorpo(nome);
+      }
+    }
+
+    final uidAlvo = dados['uidAlvo'] as String? ?? '';
+    await _plugin.show(
+      // Faixa própria (99000+), uma notificação por tipo e contato — o
+      // aviso novo substitui o anterior do mesmo contato.
+      99000 + ('$tipo$uidAlvo'.hashCode.abs() % 900),
+      titulo,
+      corpo,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          canalMonitoramentoId,
+          canalMonitoramentoNome,
+          channelDescription: canalMonitoramentoDescricao,
+          importance: Importance.high,
+          priority: Priority.high,
+          autoCancel: true,
+          styleInformation: BigTextStyleInformation(corpo),
+        ),
+      ),
     );
   }
 

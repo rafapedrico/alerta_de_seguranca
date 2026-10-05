@@ -12,6 +12,7 @@ import '../services/alertas_recebidos_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/notificacao_service.dart';
 import '../widgets/texto_com_links.dart';
+import '../services/bloqueio_app_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -66,7 +67,9 @@ class AlertaRecebidoScreen extends StatefulWidget {
   State<AlertaRecebidoScreen> createState() => _AlertaRecebidoScreenState();
 }
 
-class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen> {
+// Emergência: funciona sem desbloquear o app (ver BloqueioAppService).
+class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen>
+    with LiberaBloqueioEnquantoAberta<AlertaRecebidoScreen> {
   Uint8List? _fotoBytes;
   bool _carregandoFoto = false;
   bool _erroFoto = false;

@@ -117,6 +117,13 @@ dependencies {
     // (interceptação nativa do broadcast do FCM, ver essa classe).
     implementation platform("com.google.firebase:firebase-bom:${getRootProjectExtOrDefaultProperty("FirebaseSDKVersion")}")
     implementation "com.google.firebase:firebase-messaging"
+    // Rastreamento contínuo (RastreamentoContinuoService): sessão do
+    // Firebase Auth lida no nativo (token para a API REST do Firestore,
+    // mesmo caminho do app iOS) e o Fused Location Provider.
+    implementation "com.google.firebase:firebase-auth"
+    implementation "com.google.android.gms:play-services-location:21.3.0"
+    // FlutterFragmentActivity + tema AppCompat exigidos pelo local_auth.
+    implementation "androidx.appcompat:appcompat:1.7.0"
     // Usada por VolumeSosBootReceiver/VolumeSosBootWorker para reiniciar o
     // VolumeSosService (FGS "specialUse") em background, fora do contexto
     // síncrono do broadcast BOOT_COMPLETED — ver comentário em

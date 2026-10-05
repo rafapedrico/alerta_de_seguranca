@@ -16,6 +16,7 @@ import '../services/location_service.dart';
 import '../services/rotina_alarme_service.dart';
 import '../widgets/confirmacao_alerta_emergencia.dart';
 import '../widgets/pin_dialog.dart';
+import '../services/bloqueio_app_service.dart';
 
 /// Chave (SharedPreferences) sinalizando que o fluxo do Cronômetro
 /// Regressivo (aba Segurança) foi TOTALMENTE resolvido (PIN correto OU
@@ -60,8 +61,9 @@ class CronometroDisparadoScreen extends StatefulWidget {
       _CronometroDisparadoScreenState();
 }
 
-class _CronometroDisparadoScreenState
-    extends State<CronometroDisparadoScreen> {
+// Emergência: funciona sem desbloquear o app (ver BloqueioAppService).
+class _CronometroDisparadoScreenState extends State<CronometroDisparadoScreen>
+    with LiberaBloqueioEnquantoAberta<CronometroDisparadoScreen> {
   final AudioPlayer _player = AudioPlayer();
 
   static bool _instanciaGraficaAberta = false;

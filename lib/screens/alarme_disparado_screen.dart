@@ -14,6 +14,7 @@ import '../services/l10n_headless_service.dart';
 import '../services/location_service.dart';
 import '../services/notificacao_service.dart';
 import '../widgets/pin_dialog.dart';
+import '../services/bloqueio_app_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class AlarmeDisparadoScreen extends StatefulWidget {
@@ -26,7 +27,9 @@ class AlarmeDisparadoScreen extends StatefulWidget {
   State<AlarmeDisparadoScreen> createState() => _AlarmeDisparadoScreenState();
 }
 
-class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen> {
+// Emergência: funciona sem desbloquear o app (ver BloqueioAppService).
+class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen>
+    with LiberaBloqueioEnquantoAberta<AlarmeDisparadoScreen> {
   final AudioPlayer _player = AudioPlayer();
 
   static bool _instanciaGraficaAberta = false;

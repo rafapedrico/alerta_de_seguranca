@@ -96,6 +96,11 @@ dependencies:
   # Contatos e permissões (Contatos de Emergência - aba Família)
   flutter_contacts: ^1.1.9+2
   permission_handler: ^11.3.1
+
+  # Bloqueio local do app (digital/rosto, código do aparelho) — substitui o
+  # logout a cada abertura (ver BloqueioAppService). Exige MainActivity
+  # como FlutterFragmentActivity e tema AppCompat (ver styles.xml).
+  local_auth: ^3.0.2
   url_launcher: ^6.2.5
 
   # Alarmes em segundo plano e notificações locais

@@ -1163,5 +1163,126 @@
   "suporteChatAguardandoHumano": "Aguardando atendimento humano...",
   "suporteChatEmAtendimentoHumano": "Você está sendo atendido por um atendente humano.",
   "suporteChatResolvido": "Este atendimento foi encerrado.",
-  "suporteChatErroEnviar": "Não foi possível enviar sua mensagem. Tente novamente."
+  "suporteChatErroEnviar": "Não foi possível enviar sua mensagem. Tente novamente.",
+  "bloqueioTitulo": "Guardião-X bloqueado",
+  "bloqueioSubtitulo": "Confirme que é você para continuar.",
+  "bloqueioMotivoBiometria": "Desbloqueie o Guardião-X",
+  "bloqueioFalha": "Não foi possível confirmar. Tente de novo ou use o PIN.",
+  "bloqueioBotaoDesbloquear": "Desbloquear",
+  "bloqueioBotaoUsarPin": "Usar PIN do Guardião-X",
+  "bloqueioBotaoSair": "Sair da conta",
+  "bloqueioDesbloqueado": "App desbloqueado",
+  "rcTitulo": "Compartilhamento contínuo",
+  "rcCompartilhandoCom": "Sua localização está sendo compartilhada continuamente com: {nomes}",
+  "@rcCompartilhandoCom": {
+    "placeholders": {
+      "nomes": {
+        "type": "String"
+      }
+    }
+  },
+  "rcConvite": "Quem pode ver sua localização: {nomes}. Ative o compartilhamento contínuo para que vejam sua posição atual mesmo com o Guardião-X fechado.",
+  "@rcConvite": {
+    "placeholders": {
+      "nomes": {
+        "type": "String"
+      }
+    }
+  },
+  "rcPausado": "Pausado: sua posição não é enviada continuamente. Quem você aprovou ainda pode pedir sua posição ao abrir o mapa.",
+  "rcAtivoAgora": "Ativo: sua posição é atualizada mesmo com o app fechado.",
+  "rcEtapa1Titulo": "Compartilhar sua localização",
+  "rcEtapa1Texto": "Os contatos que você aprovou na aba Monitoramento poderão ver onde você está. Primeiro, permita o acesso à sua localização enquanto usa o app.",
+  "rcEtapa1Botao": "Permitir localização",
+  "rcEtapa2Titulo": "Manter atualizado com o app fechado",
+  "rcConcordo": "Concordo em compartilhar minha localização continuamente com: {nomes}",
+  "@rcConcordo": {
+    "placeholders": {
+      "nomes": {
+        "type": "String"
+      }
+    }
+  },
+  "rcConcluido": "Compartilhamento contínuo ativado.",
+  "rcStatusTitulo": "Rastreamento contínuo",
+  "rcStatusDescricao": "Mantém sua posição atualizada para os contatos que você aprovou, mesmo com o app fechado.",
+  "rcStatusInativo": "Desativado",
+  "rcItemPrecisao": "Localização exata",
+  "rcAlvoIndisponivelPlano": "Localização indisponível no Plano Free até {fim}",
+  "@rcAlvoIndisponivelPlano": {
+    "placeholders": {
+      "fim": {
+        "type": "String"
+      }
+    }
+  },
+  "rcAlvoLimitado": "Este contato está sem atualização contínua — a posição pode estar antiga.",
+  "rcStatusComMotivo": "{status} — {motivo}",
+  "@rcStatusComMotivo": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "motivo": {
+        "type": "String"
+      }
+    }
+  },
+  "rcMotivoSemMonitores": "nenhum contato autorizado a ver sua localização",
+  "rcMotivoSemConsentimento": "compartilhamento contínuo ainda não ativado",
+  "rcMotivoPausado": "pausado por você",
+  "rcMotivoPlanoFree": "Plano Free bloqueado nestes dias",
+  "rcMotivoSessaoDiferente": "sessão de outra conta neste aparelho",
+  "rcLimitadoSemSempre": "Limitado: permita a localização \"Permitir o tempo todo\" para funcionar com o app fechado.",
+  "rcAbrirAjustes": "Abrir configurações",
+  "rcEtapa2Texto": "O Guardião-X coleta dados de localização para mostrar sua posição atual aos contatos que você aprovou na aba Monitoramento, mesmo quando o app está fechado ou não está em uso. Para isso, escolha \"Permitir o tempo todo\" na próxima tela. Enquanto estiver ligado, uma notificação fixa avisa que sua localização está sendo compartilhada. A localização não é usada para publicidade nem para nenhuma outra finalidade, e você pode pausar a qualquer momento na aba Monitoramento.",
+  "rcEtapa2Botao": "Permitir o tempo todo",
+  "rcSemSempre": "Sem \"Permitir o tempo todo\", sua posição só é atualizada com o app aberto. Para mudar: Configurações > Apps > Guardião-X > Permissões > Localização > Permitir o tempo todo.",
+  "rcStatusAtivado": "Ativado",
+  "rcStatusDesativado": "Desativado",
+  "rcItemSempre": "Localização \"Permitir o tempo todo\"",
+  "rcItemSegundoPlano": "Sem restrição de bateria para o Guardião-X",
+  "rcItemPoucaEnergia": "Economia de bateria desligada",
+  "rcMotivoSemSempre": "localização \"Permitir o tempo todo\" não permitida",
+  "rcMotivoSessaoEncerrada": "sessão encerrada (conta aberta em outro aparelho)",
+  "rcMotivoSemSessao": "você saiu da conta",
+  "rcMotivoContaExcluida": "conta excluída",
+  "rcNotificacaoCanal": "Compartilhamento contínuo de localização",
+  "rcNotificacaoTexto": "{quantidade, plural, =1{Guardião-X está compartilhando sua localização com 1 contato} other{Guardião-X está compartilhando sua localização com {quantidade} contatos}}",
+  "@rcNotificacaoTexto": {
+    "placeholders": {
+      "quantidade": {
+        "type": "int"
+      }
+    }
+  },
+  "notifLocParadaTitulo": "📍 Localização sem atualização",
+  "notifLocParadaCorpo": "Não conseguimos atualizar a localização de {nome} desde {horario}.",
+  "@notifLocParadaCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      },
+      "horario": {
+        "type": "String"
+      }
+    }
+  },
+  "notifLocUltimaPosicao": "Última posição: {link}",
+  "@notifLocUltimaPosicao": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "notifLocLimitadaTitulo": "📍 Localização limitada",
+  "notifLocLimitadaCorpo": "{nome} desativou a localização em segundo plano: a posição só será atualizada com o app aberto.",
+  "@notifLocLimitadaCorpo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -2,6 +2,9 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import 'bloqueio_app_service.dart';
+import 'rastreamento_continuo_service.dart';
+
 /// Serviço central de autenticação do "Guardião X" — Firebase Auth real
 /// (e-mail/senha), com barreira estrita de e-mail verificado: nenhuma
 /// sessão dá acesso ao app sem que `emailVerified == true` (ver
@@ -142,6 +145,12 @@ class FirebaseAuthService {
   // a antiga prova de posse por SMS.
 
   Future<void> logout() async {
+    // Sem sessão não há o que proteger com o bloqueio local, e a saída foi
+    // pedida (não é "sessão encerrada em outro aparelho").
+    BloqueioAppService().aoEncerrarSessao();
+    // Rastreamento contínuo: para ainda COM sessão, para o estado
+    // "desligado" chegar a quem monitora.
+    await RastreamentoContinuoService().pararAntesDeSair('logout');
     try {
       await _auth.signOut();
     } catch (e) {

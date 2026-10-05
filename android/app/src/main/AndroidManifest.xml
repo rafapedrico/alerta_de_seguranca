@@ -27,6 +27,9 @@
          tipo "dataSync" (ver SosDispatchService) — janela crítica de
          envio do SMS/upload do SOS que sobrevive à morte da Activity. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Rastreamento contínuo da aba Monitoramento (RastreamentoContinuoService,
+         foregroundServiceType="location") — exigida a partir do Android 14. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
 
@@ -199,6 +202,26 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
                 <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Rastreamento contínuo da aba Monitoramento (ver
+             RastreamentoContinuo.kt): foreground service de localização,
+             ligado só com consentimento explícito do usuário e a permissão
+             "Permitir o tempo todo"; religado após reiniciar o aparelho
+             pelo RastreamentoBootReceiver, se estava ligado. -->
+        <service
+            android:name=".RastreamentoContinuoService"
+            android:exported="false"
+            android:foregroundServiceType="location"/>
+        <receiver
+            android:name=".RastreamentoBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
 

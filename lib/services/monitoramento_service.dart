@@ -766,6 +766,24 @@ class MonitoramentoService {
     }
   }
 
+  /// `usuarios/{uidAlvo}/monitoramento/estado` (gravado pelo aparelho do
+  /// contato com o rastreamento contínuo — iOS ou Android): se está ativo,
+  /// por quê, e o fim do bloqueio do Plano Free. `null` sem documento ou sem
+  /// acesso.
+  Stream<Map<String, dynamic>?> estadoAlvoStream(String uidAlvo) {
+    if (!_firebaseDisponivel || uidAlvo == _meuUid) return Stream.value(null);
+    return FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(uidAlvo)
+        .collection('monitoramento')
+        .doc('estado')
+        .snapshots()
+        .map((snap) => snap.data())
+        .handleError((Object e) {
+      debugPrint('⚠️ [MonitoramentoService] Estado do rastreamento de $uidAlvo indisponível: $e');
+    });
+  }
+
   /// Mesma normalização de `CadastroScreen._normalizarTelefoneE164` e de
   /// `normalizarTelefoneE164` em `functions/smsGateway.js`: números sem
   /// "+" recebem o prefixo do Brasil ("+55").

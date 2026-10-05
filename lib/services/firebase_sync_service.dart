@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import 'firebase_auth_service.dart';
 import 'plano_ciclo_service.dart';
+import 'rastreamento_continuo_service.dart';
 
 /// Teto de tempo para QUALQUER chamada de rede ao Firestore neste
 /// serviço. CORREÇÃO (bug real observado em teste): sem isto, uma
@@ -213,6 +214,21 @@ class FirebaseSyncService {
       return snap.data()?['telefone'] as String?;
     } catch (e) {
       debugPrint('⚠️ [FirebaseSyncService] Falha ao ler telefone atual: $e');
+      return null;
+    }
+  }
+
+  /// `true`/`false` se o perfil tem (ou não) telefone gravado; `null` se a
+  /// leitura falhou (sem rede, sem sessão) — quem chama não deve tratar
+  /// "não sei" como "não tem" (ver `_SplashGate` em main.dart).
+  Future<bool?> possuiTelefoneNoPerfil() async {
+    if (!_firebaseDisponivel) return null;
+    try {
+      final snap = await _documentoUsuario.get().timeout(_timeoutFirestore);
+      final telefone = snap.data()?['telefone'] as String?;
+      return telefone != null && telefone.trim().isNotEmpty;
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao conferir o telefone do perfil: $e');
       return null;
     }
   }
@@ -431,12 +447,20 @@ class FirebaseSyncService {
     // (fcmToken). Best-effort e independente da escrita acima —
     // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
     // pânico.
+    // Mesmo formato do serviço contínuo nativo e do app iOS (merge, para
+    // não apagar `precisao`/`origem` de outras gravações).
     try {
+      final continuo = await RastreamentoContinuoService.ativoNoAparelho();
       await _documentoUsuario.collection('monitoramento').doc('atual').set({
         'latitude': latitude,
         'longitude': longitude,
         'atualizadoEm': agora,
-      }).timeout(_timeoutFirestore);
+        // Esta leitura não traz a precisão: não deixa a de outra gravação.
+        'precisao': FieldValue.delete(),
+        'origem': 'app',
+        'plataforma': 'android',
+        'rastreamentoContinuo': continuo,
+      }, SetOptions(merge: true)).timeout(_timeoutFirestore);
     } catch (e) {
       debugPrint(
           '⚠️ [FirebaseSyncService] Falha ao espelhar localização para a aba Monitoramento: $e');
