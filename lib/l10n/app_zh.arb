@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "最后位置：{link}",
   "notifLocLimitadaTitulo": "📍 位置受限",
   "notifLocLimitadaCorpo": "{nome} 关闭了后台定位：位置只会在应用打开时更新。",
-  "rcIndisponivelPlano": "因免费版暂停至 {fim}。"
+  "rcIndisponivelPlano": "因免费版暂停至 {fim}。",
+  "indicacaoCampoTitulo": "有推荐码吗？",
+  "indicacaoCampoDica": "推荐码（可选）",
+  "indicacaoBotaoAplicar": "应用",
+  "indicacaoMsgOk": "推荐码已登记。",
+  "indicacaoMsgCodigoInvalido": "未找到该推荐码，请检查后重试。",
+  "indicacaoMsgAutoindicacao": "不能使用你自己的推荐码。",
+  "indicacaoMsgJaVinculado": "你的账号已登记过推荐码。",
+  "indicacaoMsgJaPremium": "推荐码仅在订阅 Premium 之前有效。",
+  "indicacaoMsgErro": "暂时无法登记推荐码，请稍后再试。",
+  "indicacaoMsgFormato": "推荐码由 6 位字母和数字组成。"
 }

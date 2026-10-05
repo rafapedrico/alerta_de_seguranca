@@ -204,10 +204,10 @@ class InicioDashboard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: (ativo ? Colors.green : _corDestaquePremium).withOpacity(0.14),
+              color: (ativo ? Colors.green : _corDestaquePremium).withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: (ativo ? Colors.green : _corDestaquePremium).withOpacity(0.4),
+                color: (ativo ? Colors.green : _corDestaquePremium).withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -575,7 +575,7 @@ class _CartaoPlano extends StatelessWidget {
           boxShadow: destaque
               ? [
                   BoxShadow(
-                    color: const Color(0xFF2A43C2).withOpacity(0.55),
+                    color: const Color(0xFF2A43C2).withValues(alpha: 0.55),
                     blurRadius: 20,
                     spreadRadius: 1,
                     offset: const Offset(0, 6),
@@ -624,7 +624,7 @@ class _CartaoPlano extends StatelessWidget {
               Text(
                 preco!,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -633,7 +633,7 @@ class _CartaoPlano extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               descricao,
-              style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12),
             ),
           ],
         ),
@@ -691,9 +691,9 @@ class _ModalDetalhePlano extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: corPrincipal.withOpacity(0.12),
+                color: corPrincipal.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: corPrincipal.withOpacity(0.4)),
+                border: Border.all(color: corPrincipal.withValues(alpha: 0.4)),
               ),
               child: Text(
                 destaque,

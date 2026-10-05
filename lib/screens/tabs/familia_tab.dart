@@ -39,9 +39,6 @@ class FamiliaTabState extends State<FamiliaTab> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _contatosEmergencia = [];
   Map<int, bool> _pausadoHojeMap = {};
 
-  // 🟢 TRAVA ADICIONADA AQUI (Impede o clique duplo/concorrência)
-  bool _processandoDespausa = false;
-
   static const List<int> _valoresDias = [1, 2, 3, 4, 5, 6, 7];
 
   /// Iniciais de 1 caractere dos dias da semana (chip circular do
@@ -829,7 +826,7 @@ Widget _construirListaAlarmes() {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.6),
+          color: Colors.white.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade200),
         ),
@@ -940,7 +937,7 @@ Widget _construirListaAlarmes() {
           },
           child: Card(
             elevation: 0,
-            color: estaPausadoHoje ? Colors.amber.shade50.withOpacity(0.9) : Colors.white.withOpacity(0.92),
+            color: estaPausadoHoje ? Colors.amber.shade50.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.92),
             margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -1014,7 +1011,7 @@ Widget _construirListaAlarmes() {
                       ),
                     ),
                     Switch(
-                      activeColor: const Color(0xFF4C7040),
+                      activeThumbColor: const Color(0xFF4C7040),
                       // Se estiver pausado hoje, o switch fica cinza/desligado (false)
                       value: estaPausadoHoje ? false : alarme.ativo,
                       onChanged: (ativo) => _alternarAtivo(alarme, ativo),
@@ -1033,7 +1030,7 @@ Widget _construirListaAlarmes() {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),

@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/indicacao_service.dart';
 import '../utils/mensagens_erro_auth.dart';
 import '../utils/telefone_utils.dart';
+import '../widgets/campo_codigo_indicacao.dart';
 import 'verificar_email_screen.dart';
 
 /// Tela de Cadastro (primeiro acesso) do "SOS Security Personal".
@@ -37,13 +39,59 @@ class _CadastroScreenState extends State<CadastroScreen> {
   final _celularController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
+  final _codigoIndicacaoController = TextEditingController();
+
+  /// Campo opcional "Tem um código de indicação?" aberto.
+  bool _mostrarCodigoIndicacao = false;
+
+  /// Código que veio do Install Referrer (link do site), se houver.
+  String? _codigoDoReferrer;
 
   bool _senhaVisivel = false;
   bool _confirmarSenhaVisivel = false;
   bool _criandoConta = false;
 
   @override
+  void initState() {
+    super.initState();
+    _preencherCodigoDoReferrer();
+  }
+
+  Future<void> _preencherCodigoDoReferrer() async {
+    final codigo = await IndicacaoService().codigoDoReferrerGuardado();
+    if (!mounted || codigo == null) return;
+    setState(() {
+      _codigoDoReferrer = codigo;
+      _mostrarCodigoIndicacao = true;
+      if (_codigoIndicacaoController.text.isEmpty) _codigoIndicacaoController.text = codigo;
+    });
+  }
+
+  /// Vincula a conta recém-criada ao código de indicação, se informado.
+  /// Nunca trava o cadastro: tem teto de tempo e a recusa só vira aviso.
+  /// O código do Install Referrer, mantido como veio, sai com a origem
+  /// `play_referrer` (o mesmo envio único de [IndicacaoService]).
+  Future<String?> _registrarCodigoIndicacao(AppLocalizations l10n) async {
+    final codigo = _codigoIndicacaoController.text.trim();
+    if (codigo.isEmpty) return null;
+    final servico = IndicacaoService();
+    final doReferrer = _codigoDoReferrer != null &&
+        IndicacaoService.normalizarCodigo(codigo) == _codigoDoReferrer;
+    MotivoIndicacao? motivo;
+    try {
+      motivo = await (doReferrer
+              ? servico.enviarReferrerSePendente()
+              : servico.registrar(codigo, origem: IndicacaoService.origemDigitado))
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      motivo = MotivoIndicacao.erro;
+    }
+    return motivo == null ? null : mensagemMotivoIndicacao(l10n, motivo);
+  }
+
+  @override
   void dispose() {
+    _codigoIndicacaoController.dispose();
     _nomeController.dispose();
     _emailController.dispose();
     _celularController.dispose();
@@ -65,6 +113,13 @@ class _CadastroScreenState extends State<CadastroScreen> {
     if (_criandoConta) return;
 
     setState(() => _criandoConta = true);
+    // Trocou ou apagou o código do link: o envio automático (assim que a
+    // conta for criada) não pode passar na frente do código digitado.
+    final referrer = _codigoDoReferrer;
+    if (referrer != null &&
+        IndicacaoService.normalizarCodigo(_codigoIndicacaoController.text) != referrer) {
+      await IndicacaoService().descartarReferrer();
+    }
     try {
       final credencial = await FirebaseAuthService().criarConta(
         email: _emailController.text.trim(),
@@ -110,6 +165,12 @@ class _CadastroScreenState extends State<CadastroScreen> {
       // enganaria o usuário a tentar cadastrar de novo um e-mail que já
       // existe). Falha aqui é só um aviso, não um bloqueio — o usuário
       // sempre pode reenviar manualmente na tela seguinte.
+      // Código de indicação (opcional) — com a conta já autenticada.
+      String? avisoIndicacao;
+      if (uid != null && mounted) {
+        avisoIndicacao = await _registrarCodigoIndicacao(AppLocalizations.of(context)!);
+      }
+
       String? avisoEnvioEmail;
       try {
         await FirebaseAuthService().enviarEmailVerificacao();
@@ -123,6 +184,12 @@ class _CadastroScreenState extends State<CadastroScreen> {
       }
 
       if (!mounted) return;
+      if (avisoIndicacao != null) {
+        // O ScaffoldMessenger é o do app: o aviso continua na tela seguinte.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(avisoIndicacao), behavior: SnackBarBehavior.floating),
+        );
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => VerificarEmailScreen(
@@ -199,7 +266,9 @@ class _CadastroScreenState extends State<CadastroScreen> {
                   _buildCampoSenha(),
                   const SizedBox(height: 16),
                   _buildCampoConfirmarSenha(),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 12),
+                  _buildCampoCodigoIndicacao(),
+                  const SizedBox(height: 20),
                   _buildBotaoCriarConta(),
                   const SizedBox(height: 20),
                   _buildLinkVoltarParaLogin(),
@@ -244,6 +313,38 @@ class _CadastroScreenState extends State<CadastroScreen> {
           style: const TextStyle(fontSize: 13, color: Colors.white70),
         ),
       ],
+    );
+  }
+
+  /// "Tem um código de indicação?" — opcional, fechado até o toque (ou já
+  /// aberto e preenchido com o código do link de indicação).
+  Widget _buildCampoCodigoIndicacao() {
+    final l10n = AppLocalizations.of(context)!;
+    if (!_mostrarCodigoIndicacao) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => setState(() => _mostrarCodigoIndicacao = true),
+          icon: const Icon(Icons.card_giftcard_outlined, size: 18),
+          label: Text(l10n.indicacaoCampoTitulo),
+          style: TextButton.styleFrom(foregroundColor: _corAcentoClaro),
+        ),
+      );
+    }
+    return TextFormField(
+      controller: _codigoIndicacaoController,
+      textCapitalization: TextCapitalization.characters,
+      textInputAction: TextInputAction.done,
+      maxLength: 9,
+      style: const TextStyle(color: Colors.white),
+      decoration: _decoracaoInput(
+        label: l10n.indicacaoCampoTitulo,
+        icone: Icons.card_giftcard_outlined,
+      ).copyWith(counterText: '', hintText: l10n.indicacaoCampoDica),
+      validator: (valor) {
+        if (valor == null || valor.trim().isEmpty) return null;
+        return IndicacaoService.formatoValido(valor) ? null : l10n.indicacaoMsgFormato;
+      },
     );
   }
 

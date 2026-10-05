@@ -1045,7 +1045,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
 
     return Card(
       elevation: 0,
-      color: Colors.white.withOpacity(0.92),
+      color: Colors.white.withValues(alpha: 0.92),
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
@@ -1162,7 +1162,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
         ),
         Switch(
           value: bloqueadoPeloPlano ? false : !bloqueado,
-          activeColor: Colors.green.shade600,
+          activeThumbColor: Colors.green.shade600,
           activeTrackColor: Colors.green.shade100,
           inactiveThumbColor: Colors.red.shade600,
           inactiveTrackColor: Colors.red.shade100,
@@ -1549,7 +1549,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
       // compartilhando), vermelho quando desativado (bloqueado) — antes
       // o estado desligado caía no cinza padrão do Material por falta de
       // `inactiveThumbColor`/`inactiveTrackColor` explícitos.
-      activeColor: Colors.green.shade600,
+      activeThumbColor: Colors.green.shade600,
       activeTrackColor: Colors.green.shade100,
       inactiveThumbColor: Colors.red.shade600,
       inactiveTrackColor: Colors.red.shade100,
@@ -1709,7 +1709,7 @@ class _CartaoCompartilhamentoContinuo extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: _corDestaque.withOpacity(0.5)),
+            side: BorderSide(color: _corDestaque.withValues(alpha: 0.5)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -1728,7 +1728,7 @@ class _CartaoCompartilhamentoContinuo extends StatelessWidget {
                     ),
                     Switch(
                       value: ligado,
-                      activeColor: Colors.green.shade600,
+                      activeThumbColor: Colors.green.shade600,
                       // Dias bloqueados do Plano Free: nada a ligar/pausar.
                       onChanged: bloqueadoPeloPlano
                           ? null

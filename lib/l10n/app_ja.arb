@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "最後の位置：{link}",
   "notifLocLimitadaTitulo": "📍 位置情報が制限されています",
   "notifLocLimitadaCorpo": "{nome}さんがバックグラウンドの位置情報をオフにしました。位置はアプリを開いているときだけ更新されます。",
-  "rcIndisponivelPlano": "Free プランにより {fim} まで一時停止中です。"
+  "rcIndisponivelPlano": "Free プランにより {fim} まで一時停止中です。",
+  "indicacaoCampoTitulo": "紹介コードをお持ちですか？",
+  "indicacaoCampoDica": "コード（任意）",
+  "indicacaoBotaoAplicar": "適用",
+  "indicacaoMsgOk": "紹介コードを登録しました。",
+  "indicacaoMsgCodigoInvalido": "コードが見つかりません。確認してもう一度お試しください。",
+  "indicacaoMsgAutoindicacao": "ご自身のコードは使用できません。",
+  "indicacaoMsgJaVinculado": "このアカウントには既に紹介コードが登録されています。",
+  "indicacaoMsgJaPremium": "紹介コードはPremiumに登録する前にのみ有効です。",
+  "indicacaoMsgErro": "現在コードを登録できません。後でもう一度お試しください。",
+  "indicacaoMsgFormato": "コードは英数字6文字です。"
 }

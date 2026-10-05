@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Dernière position : {link}",
   "notifLocLimitadaTitulo": "📍 Position limitée",
   "notifLocLimitadaCorpo": "{nome} a désactivé la position en arrière-plan : elle ne sera mise à jour qu'avec l'app ouverte.",
-  "rcIndisponivelPlano": "En pause par le Forfait Free jusqu'au {fim}."
+  "rcIndisponivelPlano": "En pause par le Forfait Free jusqu'au {fim}.",
+  "indicacaoCampoTitulo": "Vous avez un code de parrainage ?",
+  "indicacaoCampoDica": "Code (facultatif)",
+  "indicacaoBotaoAplicar": "Appliquer",
+  "indicacaoMsgOk": "Code de parrainage enregistré.",
+  "indicacaoMsgCodigoInvalido": "Code introuvable. Vérifiez-le et réessayez.",
+  "indicacaoMsgAutoindicacao": "Vous ne pouvez pas utiliser votre propre code.",
+  "indicacaoMsgJaVinculado": "Votre compte a déjà un code de parrainage.",
+  "indicacaoMsgJaPremium": "Les codes de parrainage ne sont valables qu'avant l'abonnement Premium.",
+  "indicacaoMsgErro": "Impossible d'enregistrer le code pour le moment. Réessayez plus tard.",
+  "indicacaoMsgFormato": "Le code comporte 6 lettres et chiffres."
 }

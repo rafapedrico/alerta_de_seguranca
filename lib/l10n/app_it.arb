@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Ultima posizione: {link}",
   "notifLocLimitadaTitulo": "📍 Posizione limitata",
   "notifLocLimitadaCorpo": "{nome} ha disattivato la posizione in background: verrà aggiornata solo con l'app aperta.",
-  "rcIndisponivelPlano": "In pausa per il Piano Free fino al {fim}."
+  "rcIndisponivelPlano": "In pausa per il Piano Free fino al {fim}.",
+  "indicacaoCampoTitulo": "Hai un codice di invito?",
+  "indicacaoCampoDica": "Codice (facoltativo)",
+  "indicacaoBotaoAplicar": "Applica",
+  "indicacaoMsgOk": "Codice di invito registrato.",
+  "indicacaoMsgCodigoInvalido": "Codice non trovato. Controllalo e riprova.",
+  "indicacaoMsgAutoindicacao": "Non puoi usare il tuo codice.",
+  "indicacaoMsgJaVinculado": "Il tuo account ha già un codice di invito.",
+  "indicacaoMsgJaPremium": "I codici di invito valgono solo prima dell'abbonamento Premium.",
+  "indicacaoMsgErro": "Impossibile registrare il codice ora. Riprova più tardi.",
+  "indicacaoMsgFormato": "Il codice ha 6 lettere e numeri."
 }

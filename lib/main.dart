@@ -31,6 +31,7 @@ import 'services/fcm_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/firebase_sync_service.dart';
 import 'services/font_scale_service.dart';
+import 'services/indicacao_service.dart';
 import 'services/locale_service.dart';
 import 'services/notificacao_service.dart';
 import 'services/onboarding_service.dart';
@@ -526,6 +527,9 @@ Future<void> _executarIniciarFirebaseEAuth() async {
   // aparelho → login) e o rastreamento contínuo da aba Monitoramento.
   BloqueioAppService().observarSessao();
   RastreamentoContinuoService().iniciar();
+  // Programa de Indicação: lê o Install Referrer (uma vez por instalação)
+  // e envia o código assim que houver sessão — nunca trava o login.
+  IndicacaoService().iniciar();
 }
 
 /// ETAPA 3 (pedido explícito do usuário): TODOS os serviços nativos
@@ -840,27 +844,6 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
             widget.abertoViaAlarmeRotina || ativoNoDisco;
       }
     });
-  }
-
-  Future<void> _cancelarAlarmeGlobal() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('stop_current_alarm', true);
-      await prefs.remove('alarme_disparando_no_momento');
-      _alarmeAtivoNotifier.value = false;
-
-      final alarmes = await DatabaseHelper().listarAlarmes();
-      if (alarmes.isNotEmpty) {
-        final idAlarme = alarmes.first['id'] as int?;
-        if (idAlarme != null) {
-          await RotinaAlarmeService.pausarAlarme(idAlarme);
-          debugPrint(
-              '⏹️ [GlobalButton] Alarme #$idAlarme silenciado com sucesso.');
-        }
-      }
-    } catch (e) {
-      debugPrint('⚠️ Erro ao cancelar alarme pelo botão global: $e');
-    }
   }
 
   @override

@@ -228,7 +228,7 @@ class _AlertaRecebidoScreenState extends State<AlertaRecebidoScreen>
     final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _fecharTela();
       },
       child: Scaffold(

@@ -251,7 +251,7 @@ class _CartaoRastreamentoContinuo extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: Colors.blue.shade400.withOpacity(0.12),
+                backgroundColor: Colors.blue.shade400.withValues(alpha: 0.12),
                 child: Icon(Icons.share_location_rounded, color: Colors.blue.shade400),
               ),
               const SizedBox(width: 12),

@@ -350,7 +350,7 @@ class NotificacaoService {
         Firebase.apps.isNotEmpty && FirebaseAuthService().uidAtual != null;
     final context = appNavigatorKey.currentContext;
 
-    if (autenticado && context != null) {
+    if (autenticado && context != null && context.mounted) {
       if (_idsComDialogoAbertoViaNativo.contains(idPermissao)) return;
       _idsComDialogoAbertoViaNativo.add(idPermissao);
       try {
@@ -1423,7 +1423,7 @@ class NotificacaoService {
 
         if (ehSolicitacao && autenticado) {
           final context = appNavigatorKey.currentContext;
-          if (context != null) {
+          if (context != null && context.mounted) {
             exibirDialogoDecisaoMonitoramento(
               context: context,
               idPermissao: idPermissao,

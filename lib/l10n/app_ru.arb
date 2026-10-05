@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Последняя позиция: {link}",
   "notifLocLimitadaTitulo": "📍 Местоположение ограничено",
   "notifLocLimitadaCorpo": "{nome} отключил(а) фоновое местоположение: позиция будет обновляться только при открытом приложении.",
-  "rcIndisponivelPlano": "Приостановлено планом Free до {fim}."
+  "rcIndisponivelPlano": "Приостановлено планом Free до {fim}.",
+  "indicacaoCampoTitulo": "Есть код приглашения?",
+  "indicacaoCampoDica": "Код (необязательно)",
+  "indicacaoBotaoAplicar": "Применить",
+  "indicacaoMsgOk": "Код приглашения сохранён.",
+  "indicacaoMsgCodigoInvalido": "Код не найден. Проверьте его и попробуйте снова.",
+  "indicacaoMsgAutoindicacao": "Нельзя использовать собственный код.",
+  "indicacaoMsgJaVinculado": "К вашему аккаунту уже привязан код приглашения.",
+  "indicacaoMsgJaPremium": "Коды приглашения действуют только до оформления Premium.",
+  "indicacaoMsgErro": "Не удалось сохранить код. Попробуйте позже.",
+  "indicacaoMsgFormato": "Код состоит из 6 букв и цифр."
 }

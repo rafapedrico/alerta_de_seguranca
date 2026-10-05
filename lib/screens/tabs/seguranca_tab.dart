@@ -956,10 +956,10 @@ class _SegurancaTabState extends State<SegurancaTab> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: cor.withOpacity(0.4)),
+          border: Border.all(color: cor.withValues(alpha: 0.4)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -1105,7 +1105,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
                 textAlign: TextAlign.center,
                 softWrap: true,
                 overflow: TextOverflow.clip,
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
               ),
             ),
           ],

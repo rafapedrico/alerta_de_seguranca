@@ -565,7 +565,7 @@ class _PinDialogContentState extends State<PinDialogContent> {
           String numero = index == 10 ? '0' : (index + 1).toString();
           return ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.08),
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
               foregroundColor: Colors.white,
               shape: const CircleBorder(),
               elevation: 0,

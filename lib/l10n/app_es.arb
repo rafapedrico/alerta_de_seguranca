@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Última posición: {link}",
   "notifLocLimitadaTitulo": "📍 Ubicación limitada",
   "notifLocLimitadaCorpo": "{nome} desactivó la ubicación en segundo plano: la posición solo se actualizará con la app abierta.",
-  "rcIndisponivelPlano": "En pausa por el Plan Free hasta el {fim}."
+  "rcIndisponivelPlano": "En pausa por el Plan Free hasta el {fim}.",
+  "indicacaoCampoTitulo": "¿Tienes un código de referido?",
+  "indicacaoCampoDica": "Código (opcional)",
+  "indicacaoBotaoAplicar": "Aplicar",
+  "indicacaoMsgOk": "Código de referido registrado.",
+  "indicacaoMsgCodigoInvalido": "Código no encontrado. Revísalo e inténtalo de nuevo.",
+  "indicacaoMsgAutoindicacao": "No puedes usar tu propio código.",
+  "indicacaoMsgJaVinculado": "Tu cuenta ya tiene un código de referido.",
+  "indicacaoMsgJaPremium": "Los códigos de referido solo valen antes de suscribirse a Premium.",
+  "indicacaoMsgErro": "No se pudo registrar el código ahora. Inténtalo más tarde.",
+  "indicacaoMsgFormato": "El código tiene 6 letras y números."
 }

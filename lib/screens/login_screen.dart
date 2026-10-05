@@ -363,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
         appNavigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) =>
-                CompletarPerfilScreen(aoConcluir: decidirProximaTelaAposAutenticacao),
+                const CompletarPerfilScreen(aoConcluir: decidirProximaTelaAposAutenticacao),
           ),
         );
         return;
@@ -611,7 +611,7 @@ class _LoginScreenState extends State<LoginScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: _corPrincipal,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: _corPrincipal.withOpacity(0.5),
+          disabledBackgroundColor: _corPrincipal.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 2,
         ),
@@ -819,7 +819,7 @@ Future<void> decidirProximaTelaAposAutenticacao() async {
   } else {
     appNavigatorKey.currentState?.pushReplacement(
       MaterialPageRoute(
-        builder: (context) => OnboardingScreen(aoConcluir: navegarParaFluxoPrincipal),
+        builder: (context) => const OnboardingScreen(aoConcluir: navegarParaFluxoPrincipal),
       ),
     );
   }

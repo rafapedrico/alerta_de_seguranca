@@ -294,11 +294,13 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: RawKeyboardListener(
+          child: KeyboardListener(
             focusNode: _focusNode,
             autofocus: true,
-            onKey: (event) {
-              if (event is RawKeyDownEvent) {
+            onKeyEvent: (event) {
+              // KeyRepeatEvent também: o RawKeyDownEvent antigo vinha
+              // repetido enquanto a tecla de volume ficava pressionada.
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
                 if (event.logicalKey == LogicalKeyboardKey.audioVolumeDown ||
                     event.logicalKey == LogicalKeyboardKey.audioVolumeUp) {
                   _tirarFoto();
@@ -358,7 +360,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.65),
+              color: Colors.black.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -491,7 +493,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),

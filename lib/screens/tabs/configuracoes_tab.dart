@@ -19,6 +19,7 @@ import '../excluir_conta_screen.dart';
 import '../login_screen.dart';
 import '../permissoes_status_screen.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import '../../widgets/campo_codigo_indicacao.dart';
 
 
 
@@ -85,7 +86,6 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
   // Global): número do som selecionado (1-10) e duração do toque em
   // segundos, carregados/persistidos via [AlarmeSonoroService].
   int _somSelecionado = AlarmeSonoroService.somPadrao;
-  int _duracaoSomSegundos = AlarmeSonoroService.duracaoPadraoSegundos;
   bool _carregandoAlarmeSonoro = true;
   int? _somTestandoAgora;
 
@@ -224,6 +224,7 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     } catch (e) {
       debugPrint('⚠️ [ConfiguracoesTab] Falha ao gravar telefone no SQLite local: $e');
     }
+    if (!mounted) return;
     setState(() => _telefoneAtual = numeroSalvo);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -283,11 +284,9 @@ class _ConfiguracoesTabState extends State<ConfiguracoesTab> with WidgetsBinding
     setState(() => _carregandoAlarmeSonoro = true);
     try {
       final som = await _alarmeSonoroService.carregarSomSelecionado();
-      final duracao = await _alarmeSonoroService.carregarDuracaoSegundos();
       if (mounted) {
         setState(() {
           _somSelecionado = som;
-          _duracaoSomSegundos = duracao;
           _carregandoAlarmeSonoro = false;
         });
       }
@@ -310,14 +309,6 @@ Future<void> _selecionarSom(int? numero) async {
     debugPrint('🎵 Som do alarme atualizado com sucesso para: som_$numero.mp3');
   }
  
-
-  Future<void> _selecionarDuracaoSom(int segundos) async {
-    setState(() => _duracaoSomSegundos = segundos);
-    await _alarmeSonoroService.salvarDuracaoSegundos(segundos);
-    await _db.salvarDuracaoSomAlarme(segundos);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('alarm_duration', segundos);
-  }
 
 
   /// Testa/ouve o som escolhido (toque único, sem loop), usado pelo
@@ -834,7 +825,7 @@ Future<void> _selecionarSom(int? numero) async {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .primary
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                                 blurRadius: 8,
                               ),
                             ]
@@ -853,8 +844,8 @@ Future<void> _selecionarSom(int? numero) async {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.black.withOpacity(0.0),
-                                Colors.black.withOpacity(0.55),
+                                Colors.black.withValues(alpha: 0.0),
+                                Colors.black.withValues(alpha: 0.55),
                               ],
                             ),
                           ),
@@ -1375,7 +1366,11 @@ Future<void> _selecionarSom(int? numero) async {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _somSelecionado,
+                    // `initialValue` só vale na criação do campo: a key
+                    // recria o campo quando o valor muda (carregado do
+                    // disco ou escolhido), como o antigo `value`.
+                    key: ValueKey<int?>(_somSelecionado),
+                    initialValue: _somSelecionado,
                     // Permite que o texto do item selecionado use toda a
                     // largura disponível do campo, evitando corte
                     // horizontal quando a fonte do sistema aumenta.
@@ -1469,7 +1464,9 @@ Future<void> _selecionarSom(int? numero) async {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: DropdownButtonFormField<String>(
-              value: _idiomaSelecionado,
+              // Ver o Dropdown de som: key + initialValue = antigo `value`.
+              key: ValueKey<String?>(_idiomaSelecionado),
+              initialValue: _idiomaSelecionado,
               // Permite que o texto do item selecionado (emoji + nome em
               // português + nome nativo) use toda a largura disponível do
               // campo, evitando corte horizontal com fontes grandes.
@@ -1556,6 +1553,8 @@ Future<void> _selecionarSom(int? numero) async {
               onPressed: _editarTelefone,
             ),
           ),
+        // Programa de Indicação: só enquanto não é Premium nem tem vínculo.
+        const CampoCodigoIndicacao(),
 
         const Divider(),
         ListTile(

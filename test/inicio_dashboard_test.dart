@@ -8,15 +8,15 @@ void main() {
   testWidgets('InicioDashboard renderiza sem excecao', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        locale: const Locale('pt'),
-        localizationsDelegates: const [
+        locale: Locale('pt'),
+        localizationsDelegates: [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(
+        home: Scaffold(
           body: InicioDashboard(),
         ),
       ),

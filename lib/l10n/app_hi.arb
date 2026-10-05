@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "अंतिम स्थान: {link}",
   "notifLocLimitadaTitulo": "📍 स्थान सीमित",
   "notifLocLimitadaCorpo": "{nome} ने बैकग्राउंड स्थान बंद कर दिया: स्थिति केवल ऐप खुला होने पर अपडेट होगी।",
-  "rcIndisponivelPlano": "Free प्लान के कारण {fim} तक रुका हुआ।"
+  "rcIndisponivelPlano": "Free प्लान के कारण {fim} तक रुका हुआ।",
+  "indicacaoCampoTitulo": "क्या आपके पास रेफ़रल कोड है?",
+  "indicacaoCampoDica": "कोड (वैकल्पिक)",
+  "indicacaoBotaoAplicar": "लागू करें",
+  "indicacaoMsgOk": "रेफ़रल कोड दर्ज किया गया।",
+  "indicacaoMsgCodigoInvalido": "कोड नहीं मिला। जाँचें और फिर से कोशिश करें।",
+  "indicacaoMsgAutoindicacao": "आप अपना ही कोड इस्तेमाल नहीं कर सकते।",
+  "indicacaoMsgJaVinculado": "आपके खाते में पहले से एक रेफ़रल कोड है।",
+  "indicacaoMsgJaPremium": "रेफ़रल कोड केवल Premium सदस्यता से पहले मान्य हैं।",
+  "indicacaoMsgErro": "अभी कोड दर्ज नहीं हो सका। बाद में फिर कोशिश करें।",
+  "indicacaoMsgFormato": "कोड में 6 अक्षर और अंक होते हैं।"
 }

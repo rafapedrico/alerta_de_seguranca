@@ -1292,5 +1292,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "indicacaoCampoTitulo": "Tem um código de indicação?",
+  "indicacaoCampoDica": "Código (opcional)",
+  "indicacaoBotaoAplicar": "Aplicar",
+  "indicacaoMsgOk": "Código de indicação registrado.",
+  "indicacaoMsgCodigoInvalido": "Código não encontrado. Confira e tente de novo.",
+  "indicacaoMsgAutoindicacao": "Você não pode usar o seu próprio código.",
+  "indicacaoMsgJaVinculado": "Sua conta já tem um código de indicação.",
+  "indicacaoMsgJaPremium": "Códigos de indicação só valem antes da assinatura Premium.",
+  "indicacaoMsgErro": "Não foi possível registrar o código agora. Tente de novo mais tarde.",
+  "indicacaoMsgFormato": "O código tem 6 letras e números."
 }

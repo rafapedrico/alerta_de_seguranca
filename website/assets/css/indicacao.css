@@ -1,0 +1,310 @@
+/* ==========================================================================
+   Programa de Indicação — /i/{CODIGO}, /indique e /regulamento-indicacao.
+   Complementa style.css (mesmas variáveis de cor e escala).
+   ========================================================================== */
+
+.ind-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 0 90px;
+}
+
+.ind-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 30px;
+}
+
+.ind-card h2 {
+  font-size: clamp(24px, 3vw, 33px);
+  margin: 0 0 15px;
+}
+
+.ind-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.ind-codigo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+
+.ind-codigo strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(36px, 7vw, 60px);
+  letter-spacing: 0.18em;
+  color: var(--primary-light);
+  background: var(--bg-elevated);
+  border: 2px dashed var(--primary-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 27px;
+  word-break: break-all;
+}
+
+.ind-centro {
+  text-align: center;
+}
+
+.ind-badges {
+  justify-content: center;
+}
+
+.ind-aviso {
+  border-radius: var(--radius-sm);
+  padding: 15px 21px;
+  margin: 18px 0;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.ind-aviso.erro {
+  background: rgba(239, 83, 80, 0.12);
+  border: 1px solid rgba(239, 83, 80, 0.5);
+  color: #ffb4b2;
+}
+
+.ind-aviso.ok {
+  background: rgba(156, 204, 101, 0.12);
+  border: 1px solid rgba(156, 204, 101, 0.5);
+  color: var(--primary-light);
+}
+
+.ind-aviso.rascunho {
+  background: rgba(255, 193, 7, 0.14);
+  border: 2px solid #ffc107;
+  color: #ffe08a;
+  font-weight: 700;
+  text-align: center;
+  font-size: 21px;
+}
+
+/* ---------- Formulários ---------- */
+.ind-form {
+  display: grid;
+  gap: 21px;
+}
+
+.ind-form label {
+  display: grid;
+  gap: 9px;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.ind-form input[type="text"],
+.ind-form input[type="email"],
+.ind-form input[type="password"],
+.ind-form select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 19px;
+  padding: 15px 18px;
+}
+
+.ind-form input:focus,
+.ind-form select:focus {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 1px;
+}
+
+.ind-form .ind-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.ind-form .ind-check input {
+  margin-top: 6px;
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+}
+
+.ind-dica {
+  font-size: 15.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.ind-acoes {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ind-link-botao {
+  background: none;
+  border: none;
+  color: var(--primary-light);
+  font-size: 17px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.ind-separador {
+  text-align: center;
+  color: var(--text-muted);
+  margin: 6px 0;
+}
+
+/* ---------- Painel ---------- */
+.ind-link-afiliado {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ind-link-afiliado input {
+  flex: 1 1 280px;
+  min-width: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 18px;
+  padding: 14px 16px;
+}
+
+.ind-compartilhar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.ind-compartilhar .btn {
+  padding: 12px 21px;
+  font-size: 17px;
+}
+
+.ind-totais {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 15px;
+}
+
+.ind-total {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+}
+
+.ind-total small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ind-total strong {
+  display: block;
+  font-size: 27px;
+  margin-top: 6px;
+}
+
+.ind-total span {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.ind-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 15px;
+}
+
+.ind-lista li {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 21px;
+}
+
+.ind-lista .ind-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 18px;
+}
+
+.ind-status {
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 12px;
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+}
+
+.ind-status.a_pagar,
+.ind-status.paga {
+  background: rgba(156, 204, 101, 0.16);
+  color: var(--primary-light);
+}
+
+.ind-status.em_carencia,
+.ind-status.em_revisao {
+  background: rgba(255, 193, 7, 0.14);
+  color: #ffe08a;
+}
+
+.ind-status.cancelada {
+  background: rgba(239, 83, 80, 0.14);
+  color: #ffb4b2;
+}
+
+.ind-progresso {
+  height: 9px;
+  border-radius: 999px;
+  background: var(--bg-card-hover);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.ind-progresso div {
+  height: 100%;
+  background: var(--primary-light);
+  border-radius: 999px;
+}
+
+.ind-oculto {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .ind-wrap {
+    padding: 36px 0 60px;
+  }
+
+  .ind-card {
+    padding: 24px 18px;
+  }
+}
+
+.ind-card a:not(.btn),
+.ind-form a,
+.legal-body a {
+  color: var(--primary-light);
+}

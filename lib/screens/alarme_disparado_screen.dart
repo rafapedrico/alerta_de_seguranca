@@ -614,7 +614,7 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen>
             unawaited(RotinaAlarmeService.pararServicoForeground());
           }
 
-          if (!context.mounted) return;
+          if (!mounted) return;
 
           // --- SEPARAÇÃO DE CAMINHOS BASEADA NA INTERFACE ATIVA ---
           final ModalRoute<dynamic>? rotaAtual = ModalRoute.of(context);
@@ -962,8 +962,8 @@ class _AlarmeDisparadoScreenState extends State<AlarmeDisparadoScreen>
                     ? Icons.check_circle_rounded
                     : (_faseFinal ? Icons.warning_amber_rounded : Icons.security_rounded),
                 color: _alertaDisparado
-                    ? Colors.greenAccent.withOpacity(0.35)
-                    : (_faseFinal ? Colors.redAccent.withOpacity(0.25) : Colors.white10),
+                    ? Colors.greenAccent.withValues(alpha: 0.35)
+                    : (_faseFinal ? Colors.redAccent.withValues(alpha: 0.25) : Colors.white10),
                 size: 140,
               ),
             ),

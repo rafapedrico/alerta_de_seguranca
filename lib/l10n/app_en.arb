@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Last position: {link}",
   "notifLocLimitadaTitulo": "📍 Location limited",
   "notifLocLimitadaCorpo": "{nome} turned off background location: the position will only update while the app is open.",
-  "rcIndisponivelPlano": "Paused by the Free Plan until {fim}."
+  "rcIndisponivelPlano": "Paused by the Free Plan until {fim}.",
+  "indicacaoCampoTitulo": "Have a referral code?",
+  "indicacaoCampoDica": "Code (optional)",
+  "indicacaoBotaoAplicar": "Apply",
+  "indicacaoMsgOk": "Referral code saved.",
+  "indicacaoMsgCodigoInvalido": "Code not found. Check it and try again.",
+  "indicacaoMsgAutoindicacao": "You can't use your own code.",
+  "indicacaoMsgJaVinculado": "Your account already has a referral code.",
+  "indicacaoMsgJaPremium": "Referral codes only apply before subscribing to Premium.",
+  "indicacaoMsgErro": "Couldn't save the code right now. Try again later.",
+  "indicacaoMsgFormato": "The code has 6 letters and numbers."
 }

@@ -646,7 +646,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
             selected: selecionado,
             onSelected: (_) => setState(() => _filtroSelecionado = filtro),
             selectedColor: const Color(0xFF4C7040),
-            backgroundColor: Colors.white.withOpacity(0.85),
+            backgroundColor: Colors.white.withValues(alpha: 0.85),
             checkmarkColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
@@ -698,7 +698,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: cor.withOpacity(0.15),
+                  color: cor.withValues(alpha: 0.15),
                   border: Border.all(color: cor, width: 1.5),
                 ),
                 child: Icon(icone, color: cor, size: 18),
@@ -708,7 +708,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: Colors.grey.withOpacity(0.35),
+                    color: Colors.grey.withValues(alpha: 0.35),
                   ),
                 ),
             ],
@@ -720,12 +720,12 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
               padding: const EdgeInsets.only(bottom: 16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: item.ehAlertaRecebido && !item.visualizado
                         ? cor
-                        : Colors.white.withOpacity(0.4),
+                        : Colors.white.withValues(alpha: 0.4),
                     width: item.ehAlertaRecebido && !item.visualizado ? 2 : 1,
                   ),
                 ),
@@ -808,7 +808,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                                   item.descricao,
                                   TextStyle(
                                     fontSize: 13,
-                                    color: Colors.black.withOpacity(0.75),
+                                    color: Colors.black.withValues(alpha: 0.75),
                                   ),
                                   _abrirLink,
                                 ),

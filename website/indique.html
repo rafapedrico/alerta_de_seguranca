@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Indique e ganhe — Guardião X</title>
+  <meta name="description" content="Indique o Guardião X e receba R$ 50 por Pix para cada pessoa que completar 12 mensalidades do Plano Premium." />
+  <meta name="theme-color" content="#0b141c" />
+  <link rel="icon" type="image/png" href="/assets/images/icon.png" />
+  <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="stylesheet" href="/assets/css/indicacao.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a href="/" class="brand"><img src="/assets/images/icon.png" alt="Logo Guardião X" /><span style="white-space: nowrap;">Guardião X</span></a>
+      <nav class="nav-links">
+        <a href="/#recursos">Recursos</a>
+        <a href="/#planos">Planos</a>
+        <a href="/indique">Indique e ganhe</a>
+        <a href="/suporte">Suporte</a>
+        <a href="https://play.google.com/store/apps/details?id=com.rmfglobal.guardiaox" class="btn btn-primary nav-mobile-cta" target="_blank" rel="noopener">Baixar o app</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="https://play.google.com/store/apps/details?id=com.rmfglobal.guardiaox" class="btn btn-primary" target="_blank" rel="noopener">Baixar o app</a>
+      </div>
+      <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="page-hero">
+    <div class="container">
+      <h1>Indique o Guardião X e ganhe R$ 50</h1>
+      <p>Para cada pessoa indicada por você que completar 12 mensalidades do Plano Premium, você recebe R$ 50 por Pix.</p>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="ind-wrap">
+
+      <!-- Como funciona -->
+      <section class="ind-card">
+        <h2>Como funciona</h2>
+        <ol style="color:var(--text-secondary); line-height:1.7; font-size:19px; padding-left:24px;">
+          <li>Entre com sua conta Google ou e-mail e preencha seus dados para receber por Pix.</li>
+          <li>Receba seu link e código de indicação e divulgue para quem você quiser.</li>
+          <li>Quem instalar o app pelo seu link (ou digitar seu código no cadastro) fica vinculado a você.</li>
+          <li>Quando essa pessoa completar 12 mensalidades pagas do Premium (não precisam ser seguidas), você recebe <strong>R$ 50 por Pix</strong> em até 7 dias.</li>
+        </ol>
+        <p>Um só nível, sem pegadinha: você ganha pelas pessoas que indicou diretamente. Leia o <a href="/regulamento-indicacao">regulamento completo</a>.</p>
+      </section>
+
+      <!-- Carregando -->
+      <section id="tela-carregando" class="ind-card ind-centro">
+        <p>Carregando…</p>
+      </section>
+
+      <!-- Login -->
+      <section id="tela-login" class="ind-card ind-oculto">
+        <h2>Entre para participar</h2>
+        <p>Use a mesma conta do app, se já tiver uma, ou crie uma agora.</p>
+        <div class="ind-form">
+          <button type="button" id="login-google" class="btn btn-primary btn-block">Entrar com Google</button>
+          <p class="ind-separador">ou com e-mail</p>
+          <form id="form-login" class="ind-form" novalidate>
+            <label>E-mail
+              <input type="email" id="login-email" autocomplete="email" required />
+            </label>
+            <label>Senha
+              <input type="password" id="login-senha" autocomplete="current-password" required minlength="6" />
+            </label>
+            <div class="ind-acoes">
+              <button type="submit" id="login-entrar" class="btn btn-primary">Entrar</button>
+              <button type="button" id="login-criar" class="btn btn-outline">Criar conta</button>
+              <button type="button" id="login-esqueci" class="ind-link-botao">Esqueci minha senha</button>
+            </div>
+          </form>
+          <p id="login-mensagem" class="ind-aviso ind-oculto"></p>
+        </div>
+      </section>
+
+      <!-- Cadastro do afiliado -->
+      <section id="tela-cadastro" class="ind-card ind-oculto">
+        <h2 id="cadastro-titulo">Seus dados para receber</h2>
+        <p id="cadastro-texto">Precisamos do seu nome, CPF e chave Pix só para identificar você e pagar as comissões.</p>
+        <form id="form-cadastro" class="ind-form" novalidate>
+          <label>Nome completo
+            <input type="text" id="cad-nome" autocomplete="name" maxlength="100" required />
+          </label>
+          <label>CPF
+            <input type="text" id="cad-cpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00" required />
+          </label>
+          <label>Tipo da chave Pix
+            <select id="cad-tipo" required>
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+              <option value="email">E-mail</option>
+              <option value="telefone">Telefone celular</option>
+              <option value="aleatoria">Chave aleatória</option>
+            </select>
+          </label>
+          <label>Chave Pix
+            <input type="text" id="cad-chave" autocomplete="off" maxlength="80" required />
+            <span id="cad-chave-dica" class="ind-dica"></span>
+          </label>
+          <label class="ind-check">
+            <input type="checkbox" id="cad-aceite" required />
+            <span>Li e aceito o <a href="/regulamento-indicacao" target="_blank" rel="noopener">regulamento do Programa de Indicação</a>.</span>
+          </label>
+          <p id="cadastro-mensagem" class="ind-aviso ind-oculto"></p>
+          <div class="ind-acoes">
+            <button type="submit" id="cad-salvar" class="btn btn-primary">Salvar e gerar meu link</button>
+            <button type="button" id="cad-cancelar" class="btn btn-outline ind-oculto">Cancelar</button>
+            <button type="button" class="ind-link-botao" data-sair>Sair</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Painel do afiliado -->
+      <section id="tela-painel" class="ind-oculto">
+        <div class="ind-card">
+          <h2>Seu link de indicação</h2>
+          <p id="painel-inativo" class="ind-aviso erro ind-oculto">Seu cadastro de afiliado está inativo. Fale com o suporte.</p>
+          <div class="ind-codigo">
+            <strong id="painel-codigo"></strong>
+          </div>
+          <div class="ind-link-afiliado">
+            <input type="text" id="painel-link" readonly aria-label="Seu link de indicação" />
+            <button type="button" id="painel-copiar" class="btn btn-primary">Copiar link</button>
+          </div>
+          <div class="ind-compartilhar">
+            <a id="compartilhar-whatsapp" class="btn btn-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+            <a id="compartilhar-facebook" class="btn btn-outline" target="_blank" rel="noopener">Facebook</a>
+            <a id="compartilhar-x" class="btn btn-outline" target="_blank" rel="noopener">X (Twitter)</a>
+            <a id="compartilhar-telegram" class="btn btn-outline" target="_blank" rel="noopener">Telegram</a>
+            <button type="button" id="compartilhar-nativo" class="btn btn-outline ind-oculto">Mais opções…</button>
+          </div>
+        </div>
+
+        <div class="ind-card">
+          <h2>Resumo</h2>
+          <div id="painel-totais" class="ind-totais"></div>
+        </div>
+
+        <div class="ind-card">
+          <h2>Suas indicações</h2>
+          <p id="painel-vazio" class="ind-oculto">Ninguém se vinculou ao seu código ainda. Compartilhe seu link!</p>
+          <ul id="painel-lista" class="ind-lista"></ul>
+        </div>
+
+        <div class="ind-acoes">
+          <button type="button" id="painel-editar" class="btn btn-outline">Atualizar dados de pagamento</button>
+          <button type="button" class="ind-link-botao" data-sair>Sair</button>
+        </div>
+      </section>
+
+      <p id="erro-geral" class="ind-aviso erro ind-oculto"></p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-legal">
+        <span><strong>RMF Global LTDA</strong> — CNPJ 68.358.210/0001-90 · <a href="/regulamento-indicacao">Regulamento</a> · <a href="/termos">Termos de Uso</a> · <a href="/privacidade">Privacidade</a></span>
+        <span>© <span data-year></span> Guardião X. Todos os direitos reservados.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/assets/js/main.js"></script>
+  <script type="module" src="/assets/js/indique.js"></script>
+</body>
+</html>

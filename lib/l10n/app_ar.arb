@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "آخر موقع: {link}",
   "notifLocLimitadaTitulo": "📍 الموقع محدود",
   "notifLocLimitadaCorpo": "أوقف {nome} الموقع في الخلفية: سيتم تحديث الموقع فقط والتطبيق مفتوح.",
-  "rcIndisponivelPlano": "متوقفة بسبب الخطة المجانية حتى {fim}."
+  "rcIndisponivelPlano": "متوقفة بسبب الخطة المجانية حتى {fim}.",
+  "indicacaoCampoTitulo": "هل لديك رمز إحالة؟",
+  "indicacaoCampoDica": "الرمز (اختياري)",
+  "indicacaoBotaoAplicar": "تطبيق",
+  "indicacaoMsgOk": "تم تسجيل رمز الإحالة.",
+  "indicacaoMsgCodigoInvalido": "لم يتم العثور على الرمز. تحقق منه وحاول مرة أخرى.",
+  "indicacaoMsgAutoindicacao": "لا يمكنك استخدام رمزك الخاص.",
+  "indicacaoMsgJaVinculado": "حسابك لديه رمز إحالة بالفعل.",
+  "indicacaoMsgJaPremium": "رموز الإحالة صالحة فقط قبل الاشتراك في Premium.",
+  "indicacaoMsgErro": "تعذّر تسجيل الرمز الآن. حاول مرة أخرى لاحقًا.",
+  "indicacaoMsgFormato": "يتكون الرمز من 6 أحرف وأرقام."
 }

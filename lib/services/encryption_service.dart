@@ -10,7 +10,7 @@ class EncryptionService {
   // Master passphrase — in production, derive from a secure source
   // (e.g. Firebase Remote Config, key server, or device-specific secret).
   // 32-byte key ensures AES-256.
-  static final String _masterPassphrase = 'security_check_app_master_key_2026!@#';
+  static const String _masterPassphrase = 'security_check_app_master_key_2026!@#';
 
   late final encrypt.Key _key;
   late final encrypt.IV _iv;

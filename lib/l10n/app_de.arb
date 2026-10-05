@@ -926,5 +926,15 @@
   "notifLocUltimaPosicao": "Letzte Position: {link}",
   "notifLocLimitadaTitulo": "📍 Standort eingeschränkt",
   "notifLocLimitadaCorpo": "{nome} hat den Standort im Hintergrund deaktiviert: Die Position wird nur bei geöffneter App aktualisiert.",
-  "rcIndisponivelPlano": "Durch den Free-Plan pausiert bis zum {fim}."
+  "rcIndisponivelPlano": "Durch den Free-Plan pausiert bis zum {fim}.",
+  "indicacaoCampoTitulo": "Hast du einen Empfehlungscode?",
+  "indicacaoCampoDica": "Code (optional)",
+  "indicacaoBotaoAplicar": "Anwenden",
+  "indicacaoMsgOk": "Empfehlungscode gespeichert.",
+  "indicacaoMsgCodigoInvalido": "Code nicht gefunden. Prüfe ihn und versuche es erneut.",
+  "indicacaoMsgAutoindicacao": "Du kannst deinen eigenen Code nicht verwenden.",
+  "indicacaoMsgJaVinculado": "Dein Konto hat bereits einen Empfehlungscode.",
+  "indicacaoMsgJaPremium": "Empfehlungscodes gelten nur vor dem Premium-Abo.",
+  "indicacaoMsgErro": "Der Code konnte gerade nicht gespeichert werden. Versuche es später erneut.",
+  "indicacaoMsgFormato": "Der Code hat 6 Buchstaben und Ziffern."
 }
