@@ -662,30 +662,67 @@ class MonitoramentoService {
     }
   }
 
+  /// Resultados de [pedirLocalizacaoAtual].
+  static const String pedidoLocalizacaoEnviado = 'enviado';
+  static const String pedidoLocalizacaoNaoCompartilha = 'nao_compartilha';
+  static const String pedidoLocalizacaoFalhou = 'falhou';
+  static const String pedidoLocalizacaoLimite = 'limite';
+
+  /// Intervalo mínimo entre pedidos ao mesmo alvo — `INTERVALO_MINIMO_PEDIDO_MS`
+  /// da callable (o servidor só responde `resource-exhausted`, sem dizer
+  /// quanto falta).
+  static const Duration intervaloMinimoPedidoLocalizacao = Duration(minutes: 1);
+
+  /// Quando cada alvo aceitou o último pedido deste aparelho (nesta sessão
+  /// do app) — base de [esperaParaNovoPedido].
+  static final Map<String, DateTime> _ultimoPedidoAceito = {};
+
+  /// Quanto falta para a callable aceitar outro pedido a [uidAlvo]. Sem
+  /// registro local (pedido feito em outra sessão/aparelho), assume o
+  /// intervalo inteiro.
+  Duration esperaParaNovoPedido(String uidAlvo) {
+    final ultimo = _ultimoPedidoAceito[uidAlvo];
+    if (ultimo == null) return intervaloMinimoPedidoLocalizacao;
+    final falta = intervaloMinimoPedidoLocalizacao - DateTime.now().difference(ultimo);
+    if (falta <= Duration.zero || falta > intervaloMinimoPedidoLocalizacao) {
+      return intervaloMinimoPedidoLocalizacao;
+    }
+    return falta;
+  }
+
   /// Pede ao aparelho de [uidAlvo] a posição ATUAL — callable
   /// `pedirLocalizacaoAtual` (a MESMA do app iOS, ver
   /// `functions/localizacaoContinuaService.js`), que manda um push
-  /// silencioso `pedido_localizacao` ao alvo. `true` só quando o push saiu.
+  /// silencioso `pedido_localizacao` ao alvo.
   ///
-  /// Nunca lança: `permission-denied`, `failed-precondition`
-  /// (`plano_free`/`alvo_sem_token`), `resource-exhausted` (1 pedido/min
-  /// por par), rede ou timeout viram `false` — quem chama abre o mapa com
-  /// a última posição conhecida.
-  Future<bool> pedirLocalizacaoAtual(String uidAlvo) async {
-    if (!_firebaseDisponivel) return false;
+  /// Nunca lança. [pedidoLocalizacaoEnviado] só quando o push saiu;
+  /// `permission-denied` (o alvo não compartilha com quem pede) vira
+  /// [pedidoLocalizacaoNaoCompartilha]; `resource-exhausted` (1 pedido/min
+  /// por par) vira [pedidoLocalizacaoLimite]; `failed-precondition`
+  /// (`plano_free`/`alvo_sem_token`), rede ou timeout viram
+  /// [pedidoLocalizacaoFalhou] — quem chama fica com a última posição
+  /// conhecida.
+  Future<String> pedirLocalizacaoAtual(String uidAlvo) async {
+    if (!_firebaseDisponivel) return pedidoLocalizacaoFalhou;
     try {
       final resultado = await FirebaseFunctions.instance
           .httpsCallable('pedirLocalizacaoAtual')
           .call<Map<String, dynamic>>({'uidAlvo': uidAlvo})
           .timeout(const Duration(seconds: 10));
-      return resultado.data['enviado'] == true;
+      if (resultado.data['enviado'] != true) return pedidoLocalizacaoFalhou;
+      _ultimoPedidoAceito[uidAlvo] = DateTime.now();
+      return pedidoLocalizacaoEnviado;
     } on FirebaseFunctionsException catch (e) {
       debugPrint(
           '⚠️ [MonitoramentoService] Pedido de localização atual recusado: ${e.code} ${e.message}');
-      return false;
+      return switch (e.code) {
+        'permission-denied' => pedidoLocalizacaoNaoCompartilha,
+        'resource-exhausted' => pedidoLocalizacaoLimite,
+        _ => pedidoLocalizacaoFalhou,
+      };
     } catch (e) {
       debugPrint('⚠️ [MonitoramentoService] Falha ao pedir localização atual: $e');
-      return false;
+      return pedidoLocalizacaoFalhou;
     }
   }
 
@@ -725,7 +762,7 @@ class MonitoramentoService {
       return await resultado.future;
     } finally {
       temporizador.cancel();
-      await assinatura.cancel();
+      unawaited(assinatura.cancel());
     }
   }
 

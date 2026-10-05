@@ -263,7 +263,28 @@
   "monitoramentoLocalizacaoSempreTitulo": "Localização \"Permitir o tempo todo\" desativada",
   "localizacaoSempreMotivoMonitoramento": "Com \"Permitir o tempo todo\", quem você autorizou na aba Monitoramento consegue ver sua localização atual mesmo com o app fechado ou a tela bloqueada.",
   "monitoramentoPedindoLocalizacaoAtual": "Pedindo a localização atual…",
-  "monitoramentoUsarUltimaPosicao": "Usar última posição",
+  "monitoramentoPararCompartilharTitulo": "Parar de compartilhar sua localização com {nome}?",
+  "@monitoramentoPararCompartilharTitulo": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "monitoramentoPararCompartilhar": "Parar",
+  "monitoramentoContatoNaoCompartilhando": "Este contato não está compartilhando a localização com você",
+  "monitoramentoAtualizarLocalizacao": "Atualizar localização",
+  "monitoramentoAtualizadoAgora": "Atualizado agora",
+  "monitoramentoSemRespostaAparelho": "Sem resposta do aparelho — mostrando a última posição",
+  "monitoramentoAguardeSegundos": "Aguarde {segundos}s",
+  "@monitoramentoAguardeSegundos": {
+    "placeholders": {
+      "segundos": {
+        "type": "int"
+      }
+    }
+  },
+  "monitoramentoPosicaoDesatualizada": "Posição com mais de 15 min — pode estar desatualizada",
   "monitoramentoMostrandoUltimaPosicao": "Não foi possível obter a posição atual. Mostrando a última, de {horario}.",
   "@monitoramentoMostrandoUltimaPosicao": {
     "placeholders": {

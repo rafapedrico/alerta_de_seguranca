@@ -16,6 +16,10 @@ import '../../widgets/plano_bloqueado_dialog.dart';
 
 const Color _corDestaque = Color(0xFF4C7040);
 
+/// A partir desta idade, a posição de um contato é sinalizada no card como
+/// possivelmente desatualizada (mesmo limite do app iOS).
+const Duration _idadePosicaoDesatualizada = Duration(minutes: 15);
+
 /// Aba Monitoramento: permite ao usuário controlar, contato a contato, o
 /// compartilhamento bilateral de localização GPS em tempo real com
 /// familiares que também usam o Guardião X — com consentimento explícito
@@ -72,6 +76,32 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
   // [_alternarPermissaoCompartilhar]).
   final Map<int, bool> _overrideBloqueio = {};
   final Map<int, bool> _overrideCompartilhamento = {};
+
+  /// Contatos (`contato['id']`) cujo switch "Permitir enviar minha
+  /// localização" está com uma chamada em andamento — e por mais
+  /// [_carenciaSwitchCompartilhar] depois dela. Toques nesse switch nesse
+  /// intervalo são ignorados (mesma proteção contra toque duplo do iOS).
+  final Set<int> _switchCompartilharOcupado = {};
+  static const Duration _carenciaSwitchCompartilhar = Duration(milliseconds: 1500);
+
+  // ==========================================================
+  // BOTÃO "ATUALIZAR LOCALIZAÇÃO" (↻) DO CARD — tudo por uid do contato
+  // ==========================================================
+  /// Leitura da última posição de cada contato, guardada para que um
+  /// rebuild (indicador do botão, contagem "Aguarde Ns") não refaça a
+  /// leitura no Firestore. Limpa a cada recarga da lista; trocada pela
+  /// posição nova quando ela chega.
+  final Map<String, Future<Map<String, dynamic>?>> _ultimaPosicaoFuturo = {};
+
+  /// Pedido em andamento: o botão vira um indicador e ignora toques.
+  final Set<String> _atualizandoPosicao = {};
+
+  /// Resultado do último pedido que não trouxe posição nova, exibido no card.
+  final Map<String, String> _avisoAtualizacao = {};
+
+  /// `resource-exhausted` (1 pedido/min): botão desabilitado até este horário.
+  final Map<String, DateTime> _aguardeAte = {};
+  Timer? _relogioAguarde;
 
   // ==========================================================
   // TRAVA DO CICLO DO PLANO FREE (pedido explícito do usuário, 2026-09-04)
@@ -137,17 +167,22 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
     MonitoramentoService.versaoMonitoramento.removeListener(_aoAlterarLocal);
     _pedidosSub?.cancel();
     _statusPlanoSub?.cancel();
+    _relogioAguarde?.cancel();
     super.dispose();
   }
 
   void _aoAlterarLocal() => _carregarContatos();
 
+  /// Só a PRIMEIRA carga mostra o spinner no lugar da lista. As recargas
+  /// (cada escrita de um switch dispara uma via [versaoMonitoramento])
+  /// trocam a lista no lugar: com o spinner, os switches eram desmontados
+  /// e remontados no meio do toque, e um toque duplo virava duas chamadas.
   Future<void> _carregarContatos() async {
     if (!mounted) return;
-    setState(() => _carregando = true);
     final contatos = await _servico.listarContatos();
     if (!mounted) return;
     setState(() {
+      _ultimaPosicaoFuturo.clear();
       _contatos = contatos;
       _carregando = false;
     });
@@ -522,15 +557,29 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
     final atualizadoAntes = ultima?['atualizadoEm'];
 
     // Pede a posição ATUAL ao aparelho do alvo (push silencioso, mesma
-    // callable do iOS) e espera até ~20 s por ela. Qualquer falha (recusa,
-    // limite de 1/min, rede, alvo sem resposta) cai na última posição.
-    final nova = await _pedirEAguardarPosicaoAtual(
+    // callable do iOS) e espera por ela. Cancelar, o teto de 30 s ou
+    // qualquer falha (limite de 1/min, rede, alvo sem resposta) cai na
+    // última posição, com o horário dela.
+    final espera = await _pedirEAguardarPosicaoAtual(
       uidAlvo,
       atualizadoAntes is Timestamp ? atualizadoAntes : null,
     );
     if (!mounted) return;
+    if (espera.naoCompartilha) {
+      // `permission-denied`: o alvo não compartilha com este usuário — não
+      // há posição a mostrar, nem a última.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.monitoramentoContatoNaoCompartilhando),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final nova = espera.nova;
     if (nova != null) {
-      setState(() {}); // Atualiza o "Atualizado há X min" do card.
+      // Atualiza o "Atualizado há X min" do card.
+      setState(() => _ultimaPosicaoFuturo[uidAlvo] = Future.value(nova));
       await _abrirMapaNaPosicao(nova);
       return;
     }
@@ -539,20 +588,37 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
     await _abrirMapaNaPosicao(ultima);
   }
 
-  /// Diálogo de espera (não trava a tela: "Usar última posição" encerra na
-  /// hora). Devolve a posição nova, ou `null` para cair na última.
-  Future<Map<String, dynamic>?> _pedirEAguardarPosicaoAtual(
+  /// Teto da espera do "Ver no mapa", contado no app: vale mesmo que a
+  /// callable ou o Firestore nunca respondam.
+  static const Duration _limiteEsperaPosicaoAtual = Duration(seconds: 30);
+
+  /// Diálogo de espera com "Cancelar" (encerra na hora e cai na última
+  /// posição). Fecha sozinho em [_limiteEsperaPosicaoAtual] no máximo.
+  /// `nova == null` = usar a última posição.
+  Future<({Map<String, dynamic>? nova, bool naoCompartilha})> _pedirEAguardarPosicaoAtual(
     String uidAlvo,
     Timestamp? atualizadoAntes,
   ) async {
     final l10n = AppLocalizations.of(context)!;
-    final resultado = Completer<Map<String, dynamic>?>();
+    final resultado = Completer<({Map<String, dynamic>? nova, bool naoCompartilha})>();
+    void concluir(Map<String, dynamic>? nova, {bool naoCompartilha = false}) {
+      if (!resultado.isCompleted) {
+        resultado.complete((nova: nova, naoCompartilha: naoCompartilha));
+      }
+    }
+
+    final teto = Timer(_limiteEsperaPosicaoAtual, () => concluir(null));
     unawaited(() async {
-      final enviado = await _servico.pedirLocalizacaoAtual(uidAlvo);
-      final nova = enviado
-          ? await _servico.aguardarLocalizacaoNova(uidAlvo, atualizadoAntes: atualizadoAntes)
-          : null;
-      if (!resultado.isCompleted) resultado.complete(nova);
+      try {
+        final pedido = await _pedirPosicaoAtual(uidAlvo, atualizadoAntes);
+        concluir(
+          pedido.nova,
+          naoCompartilha: pedido.resultado == MonitoramentoService.pedidoLocalizacaoNaoCompartilha,
+        );
+      } catch (e) {
+        debugPrint('⚠️ [MonitoramentoTab] Falha ao pedir a posição atual: $e');
+        concluir(null);
+      }
     }());
 
     var dialogoAberto = true;
@@ -574,18 +640,102 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              if (!resultado.isCompleted) resultado.complete(null);
-            },
-            child: Text(l10n.monitoramentoUsarUltimaPosicao),
+            onPressed: () => concluir(null),
+            child: Text(l10n.cancelar),
           ),
         ],
       ),
     ).whenComplete(() => dialogoAberto = false));
 
-    final nova = await resultado.future;
-    if (dialogoAberto) navegador.pop();
-    return nova;
+    final espera = await resultado.future;
+    teto.cancel();
+    if (dialogoAberto && navegador.mounted) navegador.pop();
+    return espera;
+  }
+
+  /// Pede a posição atual (callable, push silencioso) e, se o pedido saiu,
+  /// espera a posição gravada depois de [atualizadoAntes]. `resultado` é o
+  /// da callable (ver [MonitoramentoService.pedirLocalizacaoAtual]); `nova`
+  /// só vem com o pedido enviado e a posição gravada a tempo. Quem chama
+  /// aplica o teto de [_limiteEsperaPosicaoAtual].
+  Future<({String resultado, Map<String, dynamic>? nova})> _pedirPosicaoAtual(
+    String uidAlvo,
+    Timestamp? atualizadoAntes,
+  ) async {
+    final resultado = await _servico.pedirLocalizacaoAtual(uidAlvo);
+    if (resultado != MonitoramentoService.pedidoLocalizacaoEnviado) {
+      return (resultado: resultado, nova: null);
+    }
+    final nova = await _servico.aguardarLocalizacaoNova(
+      uidAlvo,
+      atualizadoAntes: atualizadoAntes,
+      limite: _limiteEsperaPosicaoAtual,
+    );
+    return (resultado: resultado, nova: nova);
+  }
+
+  /// Botão ↻ do card: pede a posição atual sem diálogo nem trava — o botão
+  /// vira um indicador dentro do card até a resposta ou o teto de 30 s.
+  Future<void> _atualizarLocalizacao(String uidAlvo) async {
+    // Toque duplo / pedido em andamento / ainda no "Aguarde Ns": ignora.
+    if (_atualizandoPosicao.contains(uidAlvo) || _aguardeAte.containsKey(uidAlvo)) return;
+    setState(() {
+      _atualizandoPosicao.add(uidAlvo);
+      _avisoAtualizacao.remove(uidAlvo);
+    });
+    try {
+      if (!await garantirRecursoLiberadoOuExibirUpsell(context)) return;
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+
+      ({String resultado, Map<String, dynamic>? nova}) pedido;
+      try {
+        pedido = await () async {
+          final ultima = await _servico.buscarUltimaLocalizacao(uidAlvo);
+          final atualizadoAntes = ultima?['atualizadoEm'];
+          return _pedirPosicaoAtual(
+            uidAlvo,
+            atualizadoAntes is Timestamp ? atualizadoAntes : null,
+          );
+        }()
+            .timeout(_limiteEsperaPosicaoAtual);
+      } catch (e) {
+        // Teto de 30 s (a callable ou o Firestore não responderam) ou falha.
+        debugPrint('⚠️ [MonitoramentoTab] Atualizar localização sem resposta: $e');
+        pedido = (resultado: MonitoramentoService.pedidoLocalizacaoFalhou, nova: null);
+      }
+      if (!mounted) return;
+
+      final nova = pedido.nova;
+      setState(() {
+        if (nova != null) {
+          _ultimaPosicaoFuturo[uidAlvo] = Future.value(nova);
+        } else if (pedido.resultado == MonitoramentoService.pedidoLocalizacaoNaoCompartilha) {
+          _avisoAtualizacao[uidAlvo] = l10n.monitoramentoContatoNaoCompartilhando;
+        } else if (pedido.resultado == MonitoramentoService.pedidoLocalizacaoLimite) {
+          _aguardeAte[uidAlvo] = DateTime.now().add(_servico.esperaParaNovoPedido(uidAlvo));
+          _iniciarRelogioAguarde();
+        } else {
+          _avisoAtualizacao[uidAlvo] = l10n.monitoramentoSemRespostaAparelho;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _atualizandoPosicao.remove(uidAlvo));
+    }
+  }
+
+  /// Relógio da contagem "Aguarde Ns": roda só enquanto algum botão está
+  /// esperando o limite de 1 pedido/min.
+  void _iniciarRelogioAguarde() {
+    _relogioAguarde ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final agora = DateTime.now();
+      setState(() => _aguardeAte.removeWhere((_, ate) => !ate.isAfter(agora)));
+      if (_aguardeAte.isEmpty) {
+        _relogioAguarde?.cancel();
+        _relogioAguarde = null;
+      }
+    });
   }
 
   /// SnackBar com o horário da última posição — fica visível ao voltar do
@@ -1082,7 +1232,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
 
   Widget _construirLinhaAprovado(String uid, AppLocalizations l10n) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: _servico.buscarUltimaLocalizacao(uid),
+      future: _ultimaPosicaoFuturo.putIfAbsent(uid, () => _servico.buscarUltimaLocalizacao(uid)),
       builder: (context, snapshot) {
         final aindaCarregando = snapshot.connectionState == ConnectionState.waiting;
         final dados = snapshot.data;
@@ -1097,47 +1247,119 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
 
         final atualizadoEm = dados?['atualizadoEm'];
         String? subtitulo;
+        var desatualizada = false;
         if (atualizadoEm is Timestamp) {
-          final minutos = DateTime.now().difference(atualizadoEm.toDate()).inMinutes;
-          subtitulo = l10n.monitoramentoAtualizadoHaMinutos(minutos < 0 ? 0 : minutos);
+          final idade = DateTime.now().difference(atualizadoEm.toDate());
+          final minutos = idade.isNegative ? 0 : idade.inMinutes;
+          subtitulo = minutos == 0
+              ? l10n.monitoramentoAtualizadoAgora
+              : l10n.monitoramentoAtualizadoHaMinutos(minutos);
+          desatualizada = idade > _idadePosicaoDesatualizada;
         }
+        final aviso = _avisoAtualizacao[uid];
 
-        return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (semLocalizacaoAinda)
-                    _linhaStatusAguardandoLocalizacao(l10n)
-                  else
-                    _linhaStatus(
-                      icone: Icons.check_circle,
-                      cor: Colors.green.shade700,
-                      texto: l10n.monitoramentoStatusAprovado,
-                    ),
-                  if (subtitulo != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 22, top: 2),
-                      child: Text(
-                        subtitulo,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                    ),
-                ],
+            if (semLocalizacaoAinda)
+              _linhaStatusAguardandoLocalizacao(l10n)
+            else
+              _linhaStatus(
+                icone: Icons.check_circle,
+                cor: Colors.green.shade700,
+                texto: l10n.monitoramentoStatusAprovado,
               ),
-            ),
-            TextButton.icon(
-              onPressed: semLocalizacaoAinda
-                  ? () => _avisarLocalizacaoAindaNaoDisponivel(l10n)
-                  : (dados == null ? null : () => _abrirMapa(uid)),
-              icon: const Icon(Icons.map_outlined, size: 18),
-              label: Text(l10n.monitoramentoVerNoMapa),
-              style: TextButton.styleFrom(foregroundColor: _corDestaque),
+            if (subtitulo != null)
+              _linhaDetalheAprovado(
+                subtitulo,
+                cor: desatualizada ? Colors.orange.shade900 : Colors.grey.shade600,
+                negrito: desatualizada,
+              ),
+            if (desatualizada)
+              _linhaDetalheAprovado(
+                l10n.monitoramentoPosicaoDesatualizada,
+                cor: Colors.orange.shade900,
+                icone: Icons.warning_amber_rounded,
+              ),
+            if (aviso != null)
+              _linhaDetalheAprovado(aviso, cor: Colors.red.shade700, icone: Icons.info_outline),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: semLocalizacaoAinda
+                      ? () => _avisarLocalizacaoAindaNaoDisponivel(l10n)
+                      : (dados == null ? null : () => _abrirMapa(uid)),
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: Text(l10n.monitoramentoVerNoMapa),
+                  style: TextButton.styleFrom(foregroundColor: _corDestaque),
+                ),
+                _botaoAtualizarLocalizacao(uid, l10n),
+              ],
             ),
           ],
         );
       },
+    );
+  }
+
+  /// ↻ "Atualizar localização": indicador pequeno durante o pedido e
+  /// "Aguarde Ns" (desabilitado) após `resource-exhausted`.
+  Widget _botaoAtualizarLocalizacao(String uid, AppLocalizations l10n) {
+    if (_atualizandoPosicao.contains(uid)) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2, color: _corDestaque),
+        ),
+      );
+    }
+    final aguardeAte = _aguardeAte[uid];
+    final segundos = aguardeAte == null
+        ? 0
+        : (aguardeAte.difference(DateTime.now()).inMilliseconds / 1000).ceil();
+    return TextButton.icon(
+      onPressed: segundos > 0 ? null : () => _atualizarLocalizacao(uid),
+      icon: const Icon(Icons.refresh, size: 18),
+      label: Text(
+        segundos > 0
+            ? l10n.monitoramentoAguardeSegundos(segundos)
+            : l10n.monitoramentoAtualizarLocalizacao,
+      ),
+      style: TextButton.styleFrom(foregroundColor: _corDestaque),
+    );
+  }
+
+  Widget _linhaDetalheAprovado(
+    String texto, {
+    required Color cor,
+    IconData? icone,
+    bool negrito = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 22, top: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icone != null) ...[
+            Icon(icone, size: 13, color: cor),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(
+              texto,
+              style: TextStyle(
+                fontSize: 11,
+                color: cor,
+                fontWeight: negrito ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1315,8 +1537,53 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
       value: bloqueadoPeloPlano ? false : compartilhando,
       onChanged: bloqueadoPeloPlano
           ? (_) => _exibirUpsellPlanoBloqueado()
-          : (valor) => _alternarPermissaoCompartilhar(contato, valor),
+          : (valor) => _alternarPermissaoCompartilharProtegido(contato, valor),
     );
+  }
+
+  /// Ignora o toque se o mesmo switch ainda estiver ocupado; ao DESLIGAR,
+  /// pede confirmação antes. Libera o switch [_carenciaSwitchCompartilhar]
+  /// depois que a chamada termina.
+  Future<void> _alternarPermissaoCompartilharProtegido(
+    Map<String, dynamic> contato,
+    bool permitir,
+  ) async {
+    final id = contato['id'] as int;
+    if (!_switchCompartilharOcupado.add(id)) return;
+    if (!permitir && !await _confirmarPararCompartilhar(contato)) {
+      _switchCompartilharOcupado.remove(id);
+      return;
+    }
+    try {
+      await _alternarPermissaoCompartilhar(contato, permitir);
+    } finally {
+      await Future.delayed(_carenciaSwitchCompartilhar);
+      _switchCompartilharOcupado.remove(id);
+    }
+  }
+
+  Future<bool> _confirmarPararCompartilhar(Map<String, dynamic> contato) async {
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context)!;
+    final nome = contato['nome'] as String? ?? '';
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(l10n.monitoramentoPararCompartilharTitulo(nome)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancelar),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.monitoramentoPararCompartilhar),
+          ),
+        ],
+      ),
+    );
+    return confirmou ?? false;
   }
 
   Future<void> _alternarPermissaoCompartilhar(
