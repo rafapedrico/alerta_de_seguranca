@@ -925,5 +925,6 @@
   "notifLocParadaCorpo": "{horario} से {nome} का स्थान अपडेट नहीं हो सका।",
   "notifLocUltimaPosicao": "अंतिम स्थान: {link}",
   "notifLocLimitadaTitulo": "📍 स्थान सीमित",
-  "notifLocLimitadaCorpo": "{nome} ने बैकग्राउंड स्थान बंद कर दिया: स्थिति केवल ऐप खुला होने पर अपडेट होगी।"
+  "notifLocLimitadaCorpo": "{nome} ने बैकग्राउंड स्थान बंद कर दिया: स्थिति केवल ऐप खुला होने पर अपडेट होगी।",
+  "rcIndisponivelPlano": "Free प्लान के कारण {fim} तक रुका हुआ।"
 }

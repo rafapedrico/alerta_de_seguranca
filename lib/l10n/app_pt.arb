@@ -1284,5 +1284,13 @@
         "type": "String"
       }
     }
+  },
+  "rcIndisponivelPlano": "Pausado pelo Plano Free até {fim}.",
+  "@rcIndisponivelPlano": {
+    "placeholders": {
+      "fim": {
+        "type": "String"
+      }
+    }
   }
 }

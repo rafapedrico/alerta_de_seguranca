@@ -925,5 +925,6 @@
   "notifLocParadaCorpo": "{horario}以降、{nome}さんの位置情報を更新できていません。",
   "notifLocUltimaPosicao": "最後の位置：{link}",
   "notifLocLimitadaTitulo": "📍 位置情報が制限されています",
-  "notifLocLimitadaCorpo": "{nome}さんがバックグラウンドの位置情報をオフにしました。位置はアプリを開いているときだけ更新されます。"
+  "notifLocLimitadaCorpo": "{nome}さんがバックグラウンドの位置情報をオフにしました。位置はアプリを開いているときだけ更新されます。",
+  "rcIndisponivelPlano": "Free プランにより {fim} まで一時停止中です。"
 }

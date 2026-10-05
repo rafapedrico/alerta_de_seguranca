@@ -798,9 +798,7 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                       children: [
-                        // Plano bloqueado: o contínuo não roda (ver o
-                        // nativo), então o quadro nem aparece.
-                        if (!_planoBloqueado) _CartaoCompartilhamentoContinuo(l10n: l10n),
+                        _CartaoCompartilhamentoContinuo(l10n: l10n),
                         if (_semLocalizacaoSempre) _construirAvisoLocalizacaoSempre(l10n),
                         if (_contatos.isEmpty)
                           _construirEstadoVazio(l10n)
@@ -1657,7 +1655,9 @@ class MonitoramentoTabState extends State<MonitoramentoTab>
 /// switch de pausar/retomar e o status (ativo, ou por que está desligado).
 /// Ligar sem consentimento abre a tela explicativa
 /// ([ConsentimentoRastreamentoScreen]). Só aparece quando há alguém
-/// aprovado para ver a minha localização.
+/// aprovado para ver a minha localização. Nos dias bloqueados do Plano Free
+/// continua visível, com o switch desabilitado e "Pausado pelo Plano Free
+/// até DD/MM" (como no iOS) — o nativo não rastreia nesses dias.
 class _CartaoCompartilhamentoContinuo extends StatelessWidget {
   const _CartaoCompartilhamentoContinuo({required this.l10n});
 
@@ -1671,17 +1671,22 @@ class _CartaoCompartilhamentoContinuo extends StatelessWidget {
           [servico.monitorandoMe, servico.consentido, servico.pausado, servico.estado, servico.plano]),
       builder: (context, _) {
         final contatos = servico.monitorandoMe.value;
-        if (contatos.isEmpty || servico.plano.value?.ativo == false) return const SizedBox.shrink();
+        if (contatos.isEmpty) return const SizedBox.shrink();
         final nomes = contatos.map((c) => c.nome).join(', ');
         final consentido = servico.consentido.value;
         final pausado = servico.pausado.value;
         final estado = servico.estado.value;
         final ligado = consentido && !pausado;
+        final bloqueadoPeloPlano = servico.plano.value?.ativo == false;
 
         String? situacao;
         var mostrarConfiguracoes = false;
         Color corSituacao = Colors.green.shade800;
-        if (ligado && estado != null) {
+        if (bloqueadoPeloPlano) {
+          final fim = servico.fimBloqueioPlano;
+          situacao = l10n.rcIndisponivelPlano(fim == null ? '—' : _formatarDiaMes(fim));
+          corSituacao = Colors.red.shade700;
+        } else if (ligado && estado != null) {
           if (estado.rastreamentoAtivo) {
             situacao = l10n.rcAtivoAgora;
           } else if (!estado.sempre) {
@@ -1724,15 +1729,18 @@ class _CartaoCompartilhamentoContinuo extends StatelessWidget {
                     Switch(
                       value: ligado,
                       activeColor: Colors.green.shade600,
-                      onChanged: (ligar) {
-                        if (ligar && !consentido) {
-                          Navigator.of(context).push(MaterialPageRoute<bool>(
-                            builder: (_) => const ConsentimentoRastreamentoScreen(),
-                          ));
-                        } else {
-                          servico.definirPausa(!ligar);
-                        }
-                      },
+                      // Dias bloqueados do Plano Free: nada a ligar/pausar.
+                      onChanged: bloqueadoPeloPlano
+                          ? null
+                          : (ligar) {
+                              if (ligar && !consentido) {
+                                Navigator.of(context).push(MaterialPageRoute<bool>(
+                                  builder: (_) => const ConsentimentoRastreamentoScreen(),
+                                ));
+                              } else {
+                                servico.definirPausa(!ligar);
+                              }
+                            },
                     ),
                   ],
                 ),
@@ -1798,3 +1806,7 @@ class _LinhaPlanoAlvo extends StatelessWidget {
     );
   }
 }
+
+/// "DD/MM" — mesmo formato do `formatarDiaMes` do app iOS.
+String _formatarDiaMes(DateTime data) =>
+    '${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}';

@@ -925,5 +925,6 @@
   "notifLocParadaCorpo": "لم نتمكن من تحديث موقع {nome} منذ {horario}.",
   "notifLocUltimaPosicao": "آخر موقع: {link}",
   "notifLocLimitadaTitulo": "📍 الموقع محدود",
-  "notifLocLimitadaCorpo": "أوقف {nome} الموقع في الخلفية: سيتم تحديث الموقع فقط والتطبيق مفتوح."
+  "notifLocLimitadaCorpo": "أوقف {nome} الموقع في الخلفية: سيتم تحديث الموقع فقط والتطبيق مفتوح.",
+  "rcIndisponivelPlano": "متوقفة بسبب الخطة المجانية حتى {fim}."
 }

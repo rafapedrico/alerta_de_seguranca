@@ -925,5 +925,6 @@
   "notifLocParadaCorpo": "No hemos podido actualizar la ubicación de {nome} desde {horario}.",
   "notifLocUltimaPosicao": "Última posición: {link}",
   "notifLocLimitadaTitulo": "📍 Ubicación limitada",
-  "notifLocLimitadaCorpo": "{nome} desactivó la ubicación en segundo plano: la posición solo se actualizará con la app abierta."
+  "notifLocLimitadaCorpo": "{nome} desactivó la ubicación en segundo plano: la posición solo se actualizará con la app abierta.",
+  "rcIndisponivelPlano": "En pausa por el Plan Free hasta el {fim}."
 }
