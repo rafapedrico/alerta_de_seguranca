@@ -24,6 +24,24 @@ import 'rastreamento_continuo_service.dart';
 /// chamada.
 const Duration _timeoutFirestore = Duration(seconds: 8);
 
+/// Resultado da gravação de um alerta em `usuarios/{uid}/alertas`.
+///
+/// [alertaId] é o id do documento (definido ANTES do envio — vira o
+/// `alerta_id` do histórico). [confirmado] = o Firestore confirmou a
+/// gravação no servidor. [naFila] = sem confirmação a tempo, mas a
+/// gravação ficou na fila offline do Firestore e sai sozinha quando houver
+/// sinal. Nenhum dos dois = bloqueado (plano) ou falhou (sem sessão).
+@immutable
+class ResultadoEnvioNuvem {
+  const ResultadoEnvioNuvem({this.alertaId, this.confirmado = false, this.naFila = false});
+
+  static const ResultadoEnvioNuvem semEnvio = ResultadoEnvioNuvem();
+
+  final String? alertaId;
+  final bool confirmado;
+  final bool naFila;
+}
+
 /// Resultado de [FirebaseSyncService.salvarTelefonePerfil].
 enum ResultadoSalvarTelefone {
   sucesso,
@@ -109,8 +127,12 @@ class FirebaseSyncService {
   /// diferenciar, só pelo log, um Push que saiu por Premium genuíno, por
   /// estar dentro dos 10 dias ativos, ou pelo fallback permissivo de falha
   /// (`status == null`), já que as 3 causas produzem o mesmo resultado.
-  Future<bool> _podeUsarRecursoAvancado() async {
-    final status = await PlanoCicloService().obterStatusAtualizado();
+  Future<bool> _podeUsarRecursoAvancado({bool rapido = false}) async {
+    // Alertas: nunca esperar a rede pelo plano — usa o status em cache e só
+    // bloqueia se ele disser claramente "bloqueado".
+    final status = rapido
+        ? await PlanoCicloService().statusEmCache()
+        : await PlanoCicloService().obterStatusAtualizado();
     final bool ativo = status?.ativo ?? true;
     debugPrint(ativo
         ? '🔓 [FirebaseSyncService] Envio liberado — isPremium=${status?.isPremium}, '
@@ -282,6 +304,20 @@ class FirebaseSyncService {
           .timeout(_timeoutFirestore);
     } catch (e) {
       debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar a plataforma do usuário: $e');
+    }
+  }
+
+  /// Som escolhido em Configurações (`somAlerta: "som_N"`, merge) — o
+  /// servidor/iOS usam para tocar o alerta recebido com o som do
+  /// destinatário.
+  Future<void> salvarSomAlerta(int numeroSom) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario
+          .set({'somAlerta': 'som_$numeroSom'}, SetOptions(merge: true))
+          .timeout(_timeoutFirestore);
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar somAlerta: $e');
     }
   }
 
@@ -500,82 +536,83 @@ class FirebaseSyncService {
     }
   }
 
-  /// Dispara o P1 da sequência unificada de SOS (botão físico de Volume+
-  /// ou botão de SOS manual da aba Segurança — ver [SosDisparoService])
-  /// para a nuvem: diferente de [dispararAlertaTentativaDesarmeIncorreto]
-  /// (que não carrega coordenadas, a Cloud Function usa a última
-  /// localização já sincronizada), [latitude]/[longitude] são a posição
-  /// capturada NA HORA do disparo, garantindo que a mensagem de
-  /// localização seja a mais precisa possível mesmo que a sincronização
-  /// periódica esteja desatualizada. Requer sessão autenticada — retorna
-  /// `false` sem lançar exceção se não houver `uid` disponível (ver
-  /// [SosDisparoService], que usa o SMS nativo como fallback nesse caso).
-  ///
-  /// [origem] é só para log/telemetria (ex: distingue "sos_fisico_volume"
-  /// de "sos_manual" mesmo os dois usando o mesmo `tipo` de alerta) — não
-  /// afeta a lógica de disparo no backend.
-  Future<bool> dispararAlertaSosFisico({
-    double? latitude,
-    double? longitude,
-    required String origem,
-  }) async {
-    if (!_firebaseDisponivel) return false;
-    if (!await _podeUsarRecursoAvancado()) {
-      debugPrint('🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos ($origem) — '
-          'Push de SOS bloqueado.');
-      return false;
+  /// Grava um alerta em `usuarios/{uid}/alertas/{alertaId}` (dispara a
+  /// Cloud Function `aoReceberAlertaTentativaDesarme`). O id é escolhido
+  /// ANTES ([alertaId] ou um novo) — o mesmo id nunca gera dois documentos:
+  /// uma segunda gravação vira "update", que as regras recusam.
+  Future<ResultadoEnvioNuvem> _gravarAlerta(Map<String, dynamic> dados, {String? alertaId}) async {
+    if (!_firebaseDisponivel) return ResultadoEnvioNuvem.semEnvio;
+    if (!await _podeUsarRecursoAvancado(rapido: true)) {
+      debugPrint('🔒 [FirebaseSyncService] Plano Free bloqueado — alerta "${dados['tipo']}" não enviado.');
+      return ResultadoEnvioNuvem.semEnvio;
     }
+    final colecao = _documentoUsuario.collection('alertas');
+    final doc = alertaId != null && alertaId.isNotEmpty ? colecao.doc(alertaId) : colecao.doc();
     try {
-      await _documentoUsuario.collection('alertas').add({
-        'tipo': 'sos_fisico',
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-        'origem': origem,
+      await doc.set({
+        ...dados,
         'criadoEm': FieldValue.serverTimestamp(),
         'processado': false,
       }).timeout(_timeoutFirestore);
-      debugPrint(
-          '☁️ [FirebaseSyncService] Alerta de SOS ($origem) enviado à nuvem.');
-      return true;
+      debugPrint('☁️ [FirebaseSyncService] Alerta "${dados['tipo']}" (${doc.id}) confirmado na nuvem.');
+      return ResultadoEnvioNuvem(alertaId: doc.id, confirmado: true);
+    } on TimeoutException {
+      // Sem confirmação a tempo: a gravação continua na fila offline do
+      // Firestore e sai sozinha quando houver sinal.
+      debugPrint('☁️ [FirebaseSyncService] Alerta "${dados['tipo']}" (${doc.id}) na fila — sem conexão agora.');
+      return ResultadoEnvioNuvem(alertaId: doc.id, naFila: true);
     } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao enviar alerta de SOS à nuvem: $e');
-      return false;
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar o alerta "${dados['tipo']}": $e');
+      return ResultadoEnvioNuvem(alertaId: doc.id);
     }
   }
 
-  /// Dispara o P2 da sequência unificada de SOS — a foto já foi enviada
-  /// ao Firebase Storage por [SosDisparoService] antes desta chamada,
-  /// [fotoUrl] é o link (com token de acesso) que a Cloud Function
-  /// repassa aos contatos de emergência via Push. Requer sessão
-  /// autenticada, mesma regra de [dispararAlertaSosFisico].
-  Future<bool> dispararAlertaSosFoto({
+  /// SOS (botão do app ou botão físico) com a posição exata capturada NA
+  /// HORA, a mesma usada no SMS.
+  Future<ResultadoEnvioNuvem> dispararAlertaSosFisico({
+    required String alertaId,
+    double? latitude,
+    double? longitude,
+    double? precisao,
+    required String origem,
+    String? contextoPersonalizado,
+  }) =>
+      _gravarAlerta({
+        'tipo': 'sos_fisico',
+        'alertaId': alertaId,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (precisao != null) 'precisao': precisao,
+        'origem': origem,
+        'contextoPersonalizado': (contextoPersonalizado ?? '').trim(),
+      }, alertaId: alertaId);
+
+  /// Foto do SOS já no Storage: o documento leva o [alertaIdSos] (a entrada
+  /// do histórico onde a foto é anexada) e a posição do SOS.
+  Future<ResultadoEnvioNuvem> dispararAlertaSosFoto({
     required String fotoUrl,
     required String origem,
-  }) async {
-    if (!_firebaseDisponivel) return false;
-    if (!await _podeUsarRecursoAvancado()) {
-      debugPrint('🔒 [FirebaseSyncService] Plano Free fora da janela de 10 dias ativos ($origem) — '
-          'Push de foto do SOS bloqueado.');
-      return false;
-    }
-    try {
-      await _documentoUsuario.collection('alertas').add({
+    required String alertaIdSos,
+    double? latitude,
+    double? longitude,
+  }) =>
+      _gravarAlerta({
         'tipo': 'sos_fisico_foto',
         'fotoUrl': fotoUrl,
         'origem': origem,
-        'criadoEm': FieldValue.serverTimestamp(),
-        'processado': false,
-      }).timeout(_timeoutFirestore);
-      debugPrint(
-          '☁️ [FirebaseSyncService] Alerta de foto do SOS ($origem) enviado à nuvem.');
-      return true;
-    } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao enviar alerta de foto do SOS à nuvem: $e');
-      return false;
-    }
-  }
+        'alertaId': alertaIdSos,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      }, alertaId: '${alertaIdSos}_foto');
+
+  /// Posição exata chegou depois do alerta: atualiza a posição do usuário
+  /// (o alerta em si não pode ser alterado pelo cliente — ver
+  /// `firestore.rules`).
+  Future<void> atualizarPosicaoPrecisaDoAlerta({
+    required double latitude,
+    required double longitude,
+  }) =>
+      atualizarLocalizacaoAtual(latitude: latitude, longitude: longitude);
 
   /// Disparo IMEDIATO e prioritário para a nuvem ao detectar uma falha de
   /// desarme antecipado (PIN incorreto e/ou tempo esgotado, conforme
@@ -614,65 +651,24 @@ class FirebaseSyncService {
   /// de emergência que não têm risco de disparo duplo — SOS físico, PIN
   /// de coação, SOS manual), continua criando um novo documento com
   /// autoId a cada chamada.
-  Future<bool> dispararAlertaTentativaDesarmeIncorreto({
+  Future<ResultadoEnvioNuvem> dispararAlertaTentativaDesarmeIncorreto({
     String? motivo,
     String? eventoId,
-  }) async {
-    // Diagnóstico direto do bug real corrigido em 2026-08-14 (ver
-    // `main.dart::_iniciarFirebaseEAuth`): sem sessão ativa
-    // (`_usuarioId == null`), este método sempre retorna `false` logo
-    // abaixo, SEM escrever nada no Firestore — nem o Push chega ao app
-    // receptor. Log explícito para nunca mais precisar adivinhar isso de
-    // novo via teste físico.
+    String tipo = 'tentativa_desarme_incorreto',
+    String? contextoPersonalizado,
+    double? latitude,
+    double? longitude,
+    double? precisao,
+  }) {
     debugPrint('☁️ [TENTATIVA DE DESARME INCORRETA] Firebase.apps=${Firebase.apps.length} '
-        'uid=${_usuarioId ?? "NULO (sem sessão!)"} _firebaseDisponivel=$_firebaseDisponivel');
-    if (!_firebaseDisponivel) {
-      debugPrint('🚫 [TENTATIVA DE DESARME INCORRETA] Abortando: Firebase '
-          'indisponível ou sem sessão ativa — Push/Firestore NÃO enviado.');
-      return false;
-    }
-    if (!await _podeUsarRecursoAvancado()) {
-      debugPrint('🔒 [TENTATIVA DE DESARME INCORRETA] Plano Free fora da janela de 10 '
-          'dias ativos — Push/Firestore bloqueado.');
-      return false;
-    }
-    try {
-      if (eventoId != null && eventoId.isNotEmpty) {
-        final documentoEvento = _documentoUsuario.collection('alertas').doc(eventoId);
-        final foiCriadoAgora = await FirebaseFirestore.instance
-            .runTransaction<bool>((tx) async {
-          final snapshotAtual = await tx.get(documentoEvento);
-          if (snapshotAtual.exists) return false;
-          tx.set(documentoEvento, {
-            'tipo': 'tentativa_desarme_incorreto',
-            if (motivo != null) 'motivo': motivo,
-            'criadoEm': FieldValue.serverTimestamp(),
-            'processado': false,
-          });
-          return true;
-        }).timeout(_timeoutFirestore);
-
-        if (!foiCriadoAgora) {
-          debugPrint(
-              '☁️ [FirebaseSyncService] Alerta #$eventoId já registrado por '
-              'outro caminho — evitando disparo duplicado na nuvem.');
-          return false;
-        }
-      } else {
-        await _documentoUsuario.collection('alertas').add({
-          'tipo': 'tentativa_desarme_incorreto',
-          if (motivo != null) 'motivo': motivo,
-          'criadoEm': FieldValue.serverTimestamp(),
-          'processado': false,
-        }).timeout(_timeoutFirestore);
-      }
-      debugPrint(
-          '☁️ [FirebaseSyncService] Alerta de tentativa de desarme incorreta enviado à nuvem.');
-      return true;
-    } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao enviar alerta prioritário à nuvem: $e');
-      return false;
-    }
+        'uid=${_usuarioId ?? "NULO (sem sessão!)"} tipo=$tipo');
+    return _gravarAlerta({
+      'tipo': tipo,
+      if (motivo != null) 'motivo': motivo,
+      'contextoPersonalizado': (contextoPersonalizado ?? '').trim(),
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (precisao != null) 'precisao': precisao,
+    }, alertaId: eventoId);
   }
 }

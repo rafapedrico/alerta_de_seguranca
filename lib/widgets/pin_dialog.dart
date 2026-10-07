@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 
+import '../services/pin_seguro.dart';
+
 /// Diálogo leve (AlertDialog) para confirmação de PIN, exibido POR CIMA
 /// da tela atual (sem substituir toda a árvore/rota como a antiga
 /// TelaBloqueioPin fazia). Isso elimina os conflitos de ciclo de vida
@@ -63,6 +65,32 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 /// [Timer] interno da contagem (`dispose()`) sem nunca acionar
 /// [aoExpirarTempoLimite], deixando o alarme tocando indefinidamente sem
 /// jamais disparar o alerta.
+/// PIN obrigatório antes de iniciar o cronômetro, pausar/apagar um
+/// despertador etc. (nunca um PIN padrão): sem PIN cadastrado, avisa e
+/// oferece abrir Configurações. `true` se há PIN cadastrado.
+Future<bool> exigirPinCadastrado(
+  BuildContext context, {
+  required String? pinGravado,
+  required Future<void> Function(BuildContext) abrirConfiguracoes,
+}) async {
+  if (PinSeguro.temPin(pinGravado)) return true;
+  final l10n = AppLocalizations.of(context)!;
+  final abrir = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.pin_outlined),
+      title: Text(l10n.pinCadastroNecessarioTitulo),
+      content: Text(l10n.pinCadastroNecessarioConteudo),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.cancelar)),
+        FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.abrirConfiguracoes)),
+      ],
+    ),
+  );
+  if (abrir == true && context.mounted) await abrirConfiguracoes(context);
+  return false;
+}
+
 Future<void> exibirDialogoPin({
   required BuildContext context,
   required String? pinEsperado,
@@ -289,9 +317,9 @@ class _PinDialogContentState extends State<PinDialogContent> {
   }
 
   Future<void> _verificarPin() async {
-    final pinCorreto = widget.pinEsperado != null &&
-        widget.pinEsperado!.isNotEmpty &&
-        _pinDigitado == widget.pinEsperado;
+    // [widget.pinEsperado] é o valor GRAVADO (hash com sal — ou texto
+    // puro de uma instalação ainda não migrada), nunca o PIN em si.
+    final pinCorreto = PinSeguro.confere(_pinDigitado, widget.pinEsperado);
 
     if (pinCorreto) {
       _errosConsecutivos = 0;

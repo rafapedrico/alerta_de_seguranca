@@ -47,12 +47,18 @@ Future<bool> garantirRecursoLiberadoOuExibirUpsell(BuildContext context) async {
   return false;
 }
 
+/// Mostra o aviso de plano bloqueado sem nova checagem (o chamador já
+/// decidiu pelo status em cache — ver `CapturaDissuasaoService.iniciarSos`).
+Future<void> exibirAvisoPlanoBloqueado(BuildContext context) =>
+    _exibirModalPlanoBloqueado(context);
+
 Future<void> _exibirModalPlanoBloqueado(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
   // Reaproveita a MESMA leitura fresca acima (não uma nova consulta) só
   // para extrair a data de renovação a exibir — best-effort: sem ela,
   // mostra o modal com um placeholder neutro em vez de travar o fluxo.
-  final status = await PlanoCicloService().obterStatusAtualizado();
+  final status = await PlanoCicloService().statusEmCache() ??
+      await PlanoCicloService().obterStatusAtualizado();
   final String dataFormatada = status != null
       ? _formatarData(status.dataRenovacao)
       : '—';

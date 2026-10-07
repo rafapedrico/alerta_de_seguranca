@@ -20,16 +20,18 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/alarme_service.dart';
-import 'services/api_service.dart';
+import 'services/alarme_nativo_service.dart';
+import 'services/alerta_desarme_service.dart';
 import 'services/background_location_heartbeat_service.dart';
 import 'services/bloqueio_app_service.dart';
 import 'services/captura_dissuasao_service.dart';
 import 'services/database_helper.dart';
-import 'services/emergency_alert_service.dart';
 import 'services/encryption_service.dart';
 import 'services/fcm_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/firebase_sync_service.dart';
+import 'services/historico_alertas_service.dart';
+import 'services/l10n_headless_service.dart';
 import 'services/font_scale_service.dart';
 import 'services/indicacao_service.dart';
 import 'services/locale_service.dart';
@@ -41,12 +43,10 @@ import 'services/rastreamento_continuo_service.dart';
 import 'services/relatorio_falha_entrega_service.dart';
 import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
-import 'services/sos_disparo_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/wallpaper_service.dart';
 import 'widgets/camada_bloqueio_app.dart';
 import 'widgets/pin_dialog.dart';
-import 'widgets/plano_bloqueado_dialog.dart';
 
 const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
@@ -581,6 +581,18 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   // terminado), fire-and-forget pelo mesmo motivo: nunca atrasar o boot.
   unawaited(RotinaAlarmeService.desativarAlarmesSePlanoBloqueado());
 
+  // Textos (no idioma do app) e identidade usados pelos serviços nativos
+  // com o app fechado; rearma cronômetro e despertadores (inclusive a
+  // tolerância de uma ocorrência em andamento); traz do Firestore os
+  // alertas que faltam no histórico local (reinstalação, alerta disparado
+  // pelo servidor com o app fechado).
+  unawaited(AlarmeNativoService.sincronizarTextosEIdentidade());
+  LocaleService.localeNotifier.addListener(() {
+    unawaited(AlarmeNativoService.sincronizarTextosEIdentidade());
+  });
+  unawaited(RotinaAlarmeService.rearmarTodos());
+  unawaited(HistoricoAlertasService().importarDoFirestore());
+
   // Fluxo real de compra do Plano Premium (Google Play Billing, ver
   // PremiumPurchaseService) — assina o purchaseStream do plugin
   // `in_app_purchase` UMA única vez por sessão do engine. Precisa
@@ -613,119 +625,17 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   VolumeSosService().aoDispararSos.listen((_) {
     _dispararFluxoCompletoDeSos(origem: 'sos_fisico');
   });
-
-  const EventChannel('com.example.security_check_app/rotina_alarme_events')
-      .receiveBroadcastStream()
-      .listen((_) {
-    _exibirPinDeRotinaAoAbrirPorAlarme();
-  }, onError: (e) {
-    debugPrint('⚠️ [main] Erro no EventChannel de alarme de rotina: $e');
-  });
-
-  _testarConectividadeInicialComBackend();
+  // A tela do alarme (cronômetro/despertador) é aberta pelo serviço nativo
+  // na RotinaCheckinAlarmActivity — este engine não a abre de novo.
 }
 
-/// Dispara P1 (localização imediata, deduplicada entre engines — ver
-/// [SosDisparoService]) e P2 (abre a câmera) EM PARALELO — P1 continua
-/// enviando o SMS/nuvem de localização assim que possível, mas NUNCA
-/// bloqueia a abertura da câmera, que é a etapa perceptível pelo
-/// usuário (câmera física ~3s: obturador livre quase instantaneamente).
-/// Antes, P2 só começava depois de P1 concluir (SMS + geolocalização),
-/// somando vários segundos de espera com a tela preta antes do
-/// obturador aparecer. Compartilhado pelos DOIS pontos de entrada do
-/// botão físico (cold-start via lockscreen acima e o EventChannel de
-/// [_dispararFluxoCompletoDeSos] abaixo).
-///
-/// REGRA OFICIAL DO PLANO FREE (reespecificação do usuário, 2026-09-04):
-/// dentro dos 10 dias ativos do mês (ou Premium), TODOS os recursos são
-/// liberados sem nenhum teto numérico adicional; fora deles, NENHUMA
-/// mensagem é enviada — o usuário precisa esperar os 20 dias restantes ou
-/// assinar o Premium. O aviso correspondente (ver
-/// [garantirRecursoLiberadoOuExibirUpsell] em `plano_bloqueado_dialog.dart`)
-/// agora aparece TAMBÉM no gatilho FÍSICO — antes só existia no botão
-/// manual da aba Segurança (headless/tela bloqueada era sempre
-/// silencioso, ver `CapturaDissuasaoService`). RESSALVA DE SEGURANÇA
-/// registrada ao usuário nesta mudança: como o gatilho físico pode
-/// disparar com o aparelho bloqueado/escondido (o próprio motivo do
-/// [_TelaPretaAguardandoSos] existir), exibir um diálogo aqui expõe,
-/// pela primeira vez, que este é um app de pânico disfarçado para
-/// qualquer um olhando a tela naquele instante — aceito deliberadamente
-/// a pedido do usuário, mas documentado aqui para nunca ser reintroduzido
-/// "sem querer" achando que é óbvio. `appNavigatorKey` aqui é sempre o do
-/// PRÓPRIO engine desta chamada (isolado do engine principal quando
-/// disparado a frio via `LockscreenCameraActivity` — `main()`/`runApp`
-/// rodam de novo nesse cold start, ver cabeçalho do arquivo), nunca
-/// aponta para a tela errada.
-///
-/// Retorna `true` só quando a câmera foi de fato aberta (ver
-/// [CapturaDissuasaoService.abrirCapturaSePermitido]) — usado pelo
-/// cold-start via lockscreen para decidir se [_TelaPretaAguardandoSos]
-/// precisa de um fallback de saída (ver documentação completa em [main]).
-Future<bool> _dispararSequenciaUnificadaDeSos({required String origem}) async {
-  final BuildContext? contexto = appNavigatorKey.currentContext;
-
-  // Única trava do Plano Free (janela de 10 dias ativos/Premium) —
-  // checada ANTES de disparar P1, mesmo padrão do precheck já usado pelo
-  // botão manual (ver `SegurancaTab._confirmarEDispararSosManual`). Se
-  // bloqueado, nem P1 nem P2 disparam.
-  if (contexto != null && contexto.mounted) {
-    if (!await garantirRecursoLiberadoOuExibirUpsell(contexto)) return false;
-  }
-
-  // Fire-and-forget: P1 (SMS + nuvem) roda em paralelo, nunca atrasa P2.
-  unawaited(SosDisparoService().executarP1LocalizacaoImediata(origem: origem));
-
-  // CapturaDissuasaoService encapsula o retry-loop de NavigatorState e uma
-  // SEGUNDA checagem (idempotente) da mesma janela de 10 dias ativos —
-  // reusado aqui (em vez de `navigateToCameraCaptura` direto) para
-  // preservar essa regra também no caminho sem `BuildContext` disponível
-  // (raríssimo).
-  return CapturaDissuasaoService().abrirCapturaSePermitido(origemUnificada: origem);
-}
-
-/// Redireciona a navegação para a AlarmeDisparadoScreen
-void navigateToAlarmeDisparado() {
-  try {
-    final state = appNavigatorKey.currentState;
-    if (state != null) {
-      state.push(
-        MaterialPageRoute(
-          settings: const RouteSettings(name: '/alarme_disparado'),
-          builder: (context) => const AlarmeDisparadoScreen(),
-        ),
-      );
-    }
-  } catch (e) {
-    debugPrint('⚠️ Falha ao navegar para AlarmeDisparadoScreen: $e');
-  }
-}
-
-/// Redireciona a navegação para a CronometroDisparadoScreen — mesmo
-/// padrão de [navigateToAlarmeDisparado].
-void navigateToCronometroDisparado() {
-  try {
-    final state = appNavigatorKey.currentState;
-    if (state != null) {
-      state.push(
-        MaterialPageRoute(
-          settings: const RouteSettings(name: '/cronometro_disparado'),
-          builder: (context) => const CronometroDisparadoScreen(),
-        ),
-      );
-    }
-  } catch (e) {
-    debugPrint('⚠️ Falha ao navegar para CronometroDisparadoScreen: $e');
-  }
-}
-
-Future<void> _exibirPinDeRotinaAoAbrirPorAlarme() async {
-  try {
-    debugPrint(
-        '📱 [main] Redirecionando cold-start de rotina para AlarmeDisparadoScreen.');
-    navigateToAlarmeDisparado();
-  } catch (e) {
-    debugPrint('⚠️ Falha ao redirecionar tela no cold-start de rotina: $e');
-  }
+/// SOS do botão físico (cold start via tela bloqueada e app já rodando):
+/// o MESMO fluxo do botão do app — localização na hora, sem confirmação,
+/// avisos verdadeiros, câmera e tela vermelha (ver
+/// [CapturaDissuasaoService.iniciarSos]). O plano usa só o status em
+/// cache (nunca atrasa o SOS). `true` quando a sequência começou.
+Future<bool> _dispararSequenciaUnificadaDeSos({required String origem}) {
+  return CapturaDissuasaoService().iniciarSos(origem: origem);
 }
 
 void _dispararFluxoCompletoDeSos({required String origem}) {
@@ -734,15 +644,6 @@ void _dispararFluxoCompletoDeSos({required String origem}) {
     debugPrint('⚠️ [main] Falha ao processar SOS ($origem): $e');
     return false;
   });
-}
-
-Future<void> _testarConectividadeInicialComBackend() async {
-  try {
-    const double bateriaSimulada = 100;
-    await ApiService().enviarStatus(bateriaSimulada, '1.0.0');
-  } catch (e) {
-    debugPrint('⚠️ Falha ao testar conectividade inicial com o backend: $e');
-  }
 }
 
 class SecurityCheckApp extends StatefulWidget {
@@ -777,73 +678,6 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
     // saído da tela (ou até trocado de aba).
     _assinaturaComprasPremium =
         PremiumPurchaseService().eventos.listen(_aoReceberEventoDeCompraPremium);
-    // Adiado (pedido explícito do usuário, 2026-08-06): este monitor só
-    // importa para detectar um alarme de rotina disparando enquanto o
-    // app JÁ está em uso (empurra a AlarmeDisparadoScreen por cima da
-    // tela atual) — não é necessário durante o cold start/splash/login.
-    // Rodar `SharedPreferences.reload()` (I/O de disco) a cada 1s desde
-    // o primeiro frame competia com o boot do engine bem na janela mais
-    // sensível. Atraso curto e fixo (em vez de acoplar à splash) porque
-    // este widget não tem visibilidade de quando ela termina.
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) _monitorarMudancasNoDisco();
-    });
-  }
-
-  bool _travaProcessandoAbertura = false;
-
-  void _monitorarMudancasNoDisco() {
-    Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.reload();
-
-      final bool ativoNoDisco =
-          prefs.getBool('alarme_disparando_no_momento') ?? false;
-
-      if (!ativoNoDisco) {
-        _travaProcessandoAbertura = false;
-      }
-
-      if (ativoNoDisco) {
-        final state = appNavigatorKey.currentState;
-        if (state != null) {
-          bool jaEstaNaTela = false;
-
-          state.popUntil((route) {
-            final String? nomeRota = route.settings.name;
-            if (nomeRota == '/alarme_disparado' ||
-                route.toString().contains('AlarmeDisparadoScreen')) {
-              jaEstaNaTela = true;
-            }
-            return true;
-          });
-
-          if (!jaEstaNaTela && !_travaProcessandoAbertura) {
-            _travaProcessandoAbertura = true;
-
-            state.push(
-              MaterialPageRoute(
-                settings: const RouteSettings(name: '/alarme_disparado'),
-                builder: (context) =>
-                    const AlarmeDisparadoScreen(veioDoForeground: true),
-              ),
-            );
-            debugPrint(
-                '🚀 [SUCESSO] Tela do botão azul forçada com segurança total anti-duplicação!');
-          }
-        }
-      }
-
-      if (_alarmeAtivoNotifier.value !=
-          (widget.abertoViaAlarmeRotina || ativoNoDisco)) {
-        _alarmeAtivoNotifier.value =
-            widget.abertoViaAlarmeRotina || ativoNoDisco;
-      }
-    });
   }
 
   @override
@@ -1049,15 +883,14 @@ class _TelaInicialComPossivelDialogoPinState
     // qualquer outro processamento — ver mesma lógica em
     // SegurancaTab._dispararSosDeCoacao.
     try {
-      await FirebaseSyncService().dispararAlertaTentativaDesarmeIncorreto();
+      final l10n = await L10nHeadlessService.obter();
+      await AlertaDesarmeService.disparar(
+        tipo: TipoAlertaHistorico.tentativaDesarmeIncorreto,
+        titulo: l10n.historicoTipoTentativaDesarme,
+        motivo: l10n.smsTentativaDesarmeMotivoPadrao,
+      );
     } catch (e) {
-      debugPrint('⚠️ Falha ao disparar alerta prioritário na nuvem: $e');
-    }
-    try {
-      await EmergencyAlertService().dispararAlertaTentativaDesarmeIncorreto();
-    } catch (e) {
-      debugPrint(
-          '⚠️ Falha ao disparar alerta de tentativa de desarme incorreta: $e');
+      debugPrint('⚠️ Falha ao disparar alerta de tentativa de desarme incorreta: $e');
     }
   }
 

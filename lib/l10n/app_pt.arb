@@ -844,7 +844,7 @@
     }
   },
   "smsTentativaDesarmeMotivoPadrao": "O PIN foi digitado incorretamente 2 vezes seguidas ao tentar desarmar antecipadamente o sistema de segurança.",
-  "smsTentativaDesarmeCorpo": "Alerta de Segurança, desarme incorreto. {localizacao}",
+  "smsTentativaDesarmeCorpo": "⚠️ ALERTA DE SEGURANÇA!\n{motivo}\nLocalização: {localizacao}",
   "@smsTentativaDesarmeCorpo": {
     "placeholders": {
       "motivo": {
@@ -921,7 +921,7 @@
   "somNome8": "Alarme Industrial",
   "somNome9": "Sirene Policial",
   "somNome10": "Toque Silencioso",
-  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o check-in de rotina não foi confirmado dentro do prazo final de 60 segundos, mesmo após o tempo de tolerância já ter expirado.",
+  "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o despertador não foi desativado com o PIN até o fim do tempo de tolerância.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: o PIN foi digitado incorretamente 3 vezes seguidas ao tentar confirmar o check-in do alarme de rotina.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {
     "placeholders": {
@@ -1077,14 +1077,14 @@
   "statusPermissoesIntroducao": "Acompanhe em tempo real quais permissões o Guardião X já tem no seu aparelho. Você pode solicitar novamente qualquer permissão pendente ou abrir as configurações nativas do sistema a qualquer momento.",
   "excluirContaTitulo": "Excluir Conta e Dados",
   "excluirContaSubtitulo": "Exclusão definitiva da sua conta e dos seus dados",
-  "excluirContaAvisoPrincipal": "Esta ação exclui permanentemente sua conta e seus contatos de emergência. Não é possível desfazer esta ação.",
+  "excluirContaAvisoPrincipal": "Esta ação exclui permanentemente sua conta e seus contatos de emergência. O histórico de alertas (com localizações e fotos) fica guardado por 30 dias, para fins de prova, e depois é apagado definitivamente. Não é possível desfazer esta ação.",
   "excluirContaAvisoRescisaoContrato": "Ao confirmar esta exclusão, você declara ciência de que este ato extingue integralmente o Contrato de Consentimento e Termos de Uso firmado com a RMF Global LTDA, encerrando de forma imediata e definitiva a prestação do serviço e todas as obrigações mútuas entre você e a RMF Global.",
   "excluirContaAvisoAssinatura": "Se você tiver uma assinatura do Plano Premium ativa, cancele-a separadamente na Google Play Store ou na Apple App Store — a exclusão da conta não cancela a cobrança automaticamente.",
   "excluirContaBotaoGerenciarAssinatura": "Gerenciar / Cancelar Assinatura na Loja",
   "excluirContaListaTitulo": "O que será excluído:",
   "excluirContaItemConta": "Seu cadastro e seus dados de login (e-mail, telefone, senha/PIN)",
   "excluirContaItemContatos": "Seus contatos de emergência cadastrados",
-  "excluirContaItemHistorico": "Seu histórico de alertas, localizações e fotografias enviadas. Estes dados serão armazenados por motivos de segurança por até 30 dias para fins de prova em caso de incidentes, sendo permanentemente apagados após esse período.",
+  "excluirContaItemHistorico": "Seu histórico de alertas enviados (data e hora, tipo, texto, localizações e fotografias) e os eventos do cronômetro e do despertador. Estes dados ficam guardados por 30 dias, para fins de prova, e depois são apagados definitivamente.",
   "excluirContaItemMonitoramento": "Seus vínculos de monitoramento entre familiares",
   "excluirContaBotaoExcluir": "Excluir minha conta e todos os meus dados",
   "excluirContaDialogTitulo": "Tem certeza?",
@@ -1302,5 +1302,115 @@
   "indicacaoMsgJaVinculado": "Sua conta já tem um código de indicação.",
   "indicacaoMsgJaPremium": "Códigos de indicação só valem antes da assinatura Premium.",
   "indicacaoMsgErro": "Não foi possível registrar o código agora. Tente de novo mais tarde.",
-  "indicacaoMsgFormato": "O código tem 6 letras e números."
+  "indicacaoMsgFormato": "O código tem 6 letras e números.",
+  "abrirConfiguracoes": "Abrir Configurações",
+  "botaoConcederPermissao": "Conceder permissão",
+  "canalAlarmeTelaCheia": "Alarmes de segurança",
+  "canalLocalizacaoSeguranca": "Localização de segurança",
+  "confirmacaoFechamentoForcadoCronometro": "O app foi fechado enquanto o alerta do cronômetro tocava. O alerta de emergência foi enviado aos seus contatos.",
+  "cronometroNotificacaoCorpo": "Desligue o alerta de emergência — toque para digitar seu PIN",
+  "cronometroNotificacaoTituloAlerta": "Cronômetro de segurança",
+  "cronometroServicoAtivo": "Cronômetro de segurança ativo",
+  "despertadorAcaoDesativar": "Desativar despertador",
+  "despertadorDesativadoPausado": "Despertador desativado (pausado)",
+  "despertadorNotif3ErrosCorpo": "Um alerta de emergência foi enviado aos seus contatos cadastrados.",
+  "despertadorNotificacaoCorpo": "Toque para confirmar que está tudo bem",
+  "despertadorNotificacaoTitulo": "Despertador de segurança",
+  "despertadorServicoAtivo": "Despertador de segurança: localização ativa",
+  "dissuasaoSemConfirmacao": "ATENÇÃO, SEU ALERTA SERÁ ENVIADO AOS FAMILIARES ASSIM QUE HOUVER CONEXÃO.",
+  "dissuasaoSemContatos": "ATENÇÃO, NENHUM CONTATO DE EMERGÊNCIA ESTÁ CADASTRADO. NENHUMA MENSAGEM FOI ENVIADA AOS FAMILIARES.",
+  "dissuasaoSemFoto": "ATENÇÃO, UMA MENSAGEM FOI ENVIADA AOS FAMILIARES COM SUA LOCALIZAÇÃO. ESTA OPERAÇÃO NÃO PODE SER DESFEITA.",
+  "familiaBotaoApagar": "Apagar",
+  "familiaCadastreContatoAviso": "Cadastre um contato de emergência em Configurações",
+  "familiaHorarioPassado": "Escolha pelo menos um dia da semana ou, para um despertador único, um horário que ainda não passou hoje.",
+  "familiaPermissaoAlarmesBotao": "Permitir alarmes",
+  "familiaPermissaoTelaCheiaBotao": "Permitir tela cheia",
+  "familiaPermissoesConteudo": "Para o despertador tocar na hora certa e aparecer sobre a tela bloqueada, permita “Alarmes e lembretes” e “Notificações em tela cheia” para o Guardião-X.",
+  "familiaPermissoesTitulo": "Permissões do despertador",
+  "familiaPinMotivo3Erros": "Tentativa de apagar/pausar o despertador com senha incorreta",
+  "historicoTipoCronometroAtivado": "Cronômetro ativado",
+  "historicoTipoCronometroDesarmado": "Cronômetro desarmado com o PIN correto",
+  "historicoTipoCronometroExpirado": "Cronômetro: tempo esgotado",
+  "historicoTipoDespertadorExpirado": "Despertador: tolerância esgotada",
+  "historicoTipoSosFisico": "SOS pelo botão físico",
+  "historicoTipoSosManual": "SOS pelo botão do app",
+  "historicoTipoTentativaDesarme": "Senha incorreta 3 vezes",
+  "notif3PinsCronometroCorpo": "Houve 3 tentativas de desligar o cronômetro com senha incorreta. O alerta de emergência foi enviado aos seus contatos.",
+  "notifCronometroExpiradoCorpo": "O tempo do cronômetro acabou sem a senha. O alerta de emergência foi enviado aos seus contatos.",
+  "notifPinCorretoCronometroCorpo": "Senha correta. O alerta de emergência não foi enviado.",
+  "pinCadastroNecessarioConteudo": "Para usar este recurso, cadastre primeiro o seu PIN de 4 dígitos em Configurações.",
+  "pinCadastroNecessarioTitulo": "Cadastre um PIN",
+  "segurancaCronometroEmAndamento": "O cronômetro anterior ainda está na tolerância ou com o alerta sendo enviado. Aguarde terminar para iniciar outro.",
+  "segurancaPermissaoAlarmeExatoConteudo": "Para o cronômetro tocar na hora certa, mesmo com a tela apagada ou o app fechado, permita “Alarmes e lembretes” para o Guardião-X. O cronômetro não foi iniciado.",
+  "segurancaPermissaoAlarmeExatoTitulo": "Permissão de alarme necessária",
+  "servicoAlarmeAtivo": "Alarme de segurança tocando",
+  "sosAbrindoCamera": "Abrindo a câmera",
+  "sosCameraIndisponivel": "Câmera indisponível — alerta já enviado aos seus contatos",
+  "sosEnviandoLocalizacao": "Alerta acionado. Enviando sua localização…",
+  "sosLocalizacaoEnviada": "Localização enviada com sucesso",
+  "sosSemConexao": "Sem conexão. Seu alerta será enviado automaticamente assim que houver sinal",
+  "sosSemContatos": "Nenhum contato de emergência cadastrado. Nenhuma mensagem foi enviada. Cadastre um contato em Configurações.",
+  "historicoStatusEnviando": "Enviando",
+  "historicoStatusEnviado": "Enviado",
+  "historicoStatusPendente": "Pendente — será enviado quando houver sinal",
+  "historicoStatusFalhou": "Falhou",
+  "historicoDetalheTitulo": "Detalhes do alerta",
+  "historicoDetalheDataHora": "Data e hora",
+  "historicoDetalheStatus": "Status",
+  "historicoDetalheVerNoMapa": "Ver no mapa",
+  "historicoDetalheTextoPersonalizado": "Texto personalizado",
+  "historicoDetalheSemFoto": "Sem foto",
+  "historicoDetalheFoto": "Foto",
+  "historicoDetalheLocalizacao": "Localização",
+  "historicoDetalheSemLocalizacao": "Localização indisponível",
+  "termosPrivacidadeTitulo8": "8. Retenção dos dados após a exclusão da conta",
+  "termosPrivacidadeCorpo8": "Ao excluir a conta, o cadastro, o PIN e os contatos de emergência são apagados imediatamente. O histórico de alertas enviados (data e hora, tipo, texto, localizações e fotografias) fica guardado por 30 dias, exclusivamente para fins de prova em caso de incidentes ou de requisição de autoridade competente, e depois é apagado definitivamente.",
+  "historicoDespertadorDesativadoDescricao": "{etiqueta}: o despertador foi desativado com o PIN correto.",
+  "@historicoDespertadorDesativadoDescricao": {
+    "placeholders": {
+      "etiqueta": {
+        "type": "String"
+      }
+    }
+  },
+  "smsSosCorpo": "🚨 SOS DE EMERGÊNCIA!\nLocalização: {localizacao}",
+  "@smsSosCorpo": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "smsSosFisicoCorpo": "🚨 SOS DE EMERGÊNCIA (botão físico)!\nLocalização: {localizacao}",
+  "@smsSosFisicoCorpo": {
+    "placeholders": {
+      "localizacao": {
+        "type": "String"
+      }
+    }
+  },
+  "smsTextoDoUsuario": "Mensagem: {texto}",
+  "@smsTextoDoUsuario": {
+    "placeholders": {
+      "texto": {
+        "type": "String"
+      }
+    }
+  },
+  "historicoDetalhePrecisao": "Precisão: ±{metros} m",
+  "@historicoDetalhePrecisao": {
+    "placeholders": {
+      "metros": {
+        "type": "int"
+      }
+    }
+  },
+  "historicoBloqueadoAte": "Área bloqueada após 3 PINs incorretos. Tente novamente às {hora}.",
+  "@historicoBloqueadoAte": {
+    "placeholders": {
+      "hora": {
+        "type": "String"
+      }
+    }
+  }
 }

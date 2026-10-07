@@ -22,7 +22,11 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 /// de fato aconteceu (um alerta real foi enviado aos contatos de
 /// emergência).
 class ConfirmacaoAlertaEmergencia extends StatelessWidget {
-  const ConfirmacaoAlertaEmergencia({super.key, required this.aoFechar});
+  const ConfirmacaoAlertaEmergencia({super.key, required this.aoFechar, this.mensagem});
+
+  /// Texto da confirmação (o que aconteceu — ex.: as 3 tentativas com
+  /// senha incorreta). `null` = texto padrão de alerta enviado.
+  final String? mensagem;
 
   /// Chamado ao tocar no botão "Fechar" ou ao arrastar o card para cima
   /// com velocidade suficiente. Cada chamador decide o que "fechar"
@@ -49,8 +53,8 @@ class ConfirmacaoAlertaEmergencia extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  AppLocalizations.of(context)!
-                      .alarmeRotinaAlertaEnviadoDescricao,
+                  mensagem ??
+                      AppLocalizations.of(context)!.alarmeRotinaAlertaEnviadoDescricao,
                   style: const TextStyle(
                     color: Colors.redAccent,
                     fontSize: 16,

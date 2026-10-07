@@ -1,24 +1,25 @@
 package com.example.security_check_app
 
+import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Ponte Dart <-> Android para o modo "Despertador de Emergência" (ver
- * [AlertaRecebidoAlarmService] para a implementação/documentação
- * completa) — chamado por `NotificacaoService`/`AlertaRecebidoScreen` no
- * lado Dart sempre que ESTE aparelho recebe (ou o usuário abre) o alerta
- * crítico de outro usuário.
+ * Ponte Dart <-> Android do alerta RECEBIDO de outro usuário.
  *
- * Registrado em [MainActivity.configureFlutterEngine], igual aos demais
- * plugins locais deste app (ver [SmsSender]) — mesma limitação conhecida
- * de NÃO estar disponível no engine headless separado do
- * `firebase_messaging` (ver documentação completa em
- * [AlertaRecebidoAlarmService]): chamadas vindas de lá lançam
- * `MissingPluginException`, tratada com segurança do lado Dart (nunca
- * derruba a notificação principal, que usa um plugin de verdade do
- * pub.dev e continua funcionando normalmente nesse cenário).
+ * O som do alerta recebido é o da PRÓPRIA notificação (canal
+ * `alerta_recebido_som_N`, com o som escolhido pelo destinatário em
+ * Configurações, uso de notificação, repetido até o toque — ver
+ * `NotificacaoService.exibirNotificacaoAlertaRecebido`): no volume atual do
+ * aparelho, sem forçar o máximo e sem o uso de alarme. Este plugin só
+ * informa ao Dart o modo de som do aparelho, para não tocar nada no
+ * silencioso, no vibrar ou no Não Perturbe.
+ *
+ * Registrado em [MainActivity.configureFlutterEngine]; no engine headless
+ * do `firebase_messaging` (app fechado) não existe — o Dart trata a falha e
+ * o próprio Android silencia o canal de notificação nesses modos.
  */
 class AlertaRecebidoAlarmPlugin : FlutterPlugin {
     private var channel: MethodChannel? = null
@@ -28,22 +29,10 @@ class AlertaRecebidoAlarmPlugin : FlutterPlugin {
         channel = MethodChannel(binding.binaryMessenger, CHANNEL).apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "iniciarAlarme" -> {
-                        try {
-                            AlertaRecebidoAlarmService.iniciar(context)
-                            result.success(true)
-                        } catch (e: Exception) {
-                            result.error("ALERTA_ALARME_ERROR", "Falha ao iniciar o Despertador de Emergência: ${e.message}", null)
-                        }
-                    }
-                    "pararAlarme" -> {
-                        try {
-                            pararAlarme(context)
-                            result.success(true)
-                        } catch (e: Exception) {
-                            result.error("ALERTA_ALARME_ERROR", "Falha ao parar o Despertador de Emergência: ${e.message}", null)
-                        }
-                    }
+                    "podeTocarSom" -> result.success(podeTocarSom(context))
+                    // Compatibilidade: o loop nativo em volume máximo foi
+                    // removido — o som é o da notificação.
+                    "iniciarAlarme", "pararAlarme" -> result.success(true)
                     else -> result.notImplemented()
                 }
             }
@@ -58,12 +47,17 @@ class AlertaRecebidoAlarmPlugin : FlutterPlugin {
     companion object {
         const val CHANNEL = "com.example.security_check_app/alerta_recebido_alarme"
 
-        /** Reaproveitado por [MainActivity] (ao abrir vindo do toque na
-         * notificação PRINCIPAL — ver `tratarIntentDeAlertaRecebido`),
-         * silenciando o alarme mesmo antes do lado Dart ter chance de
-         * chamar `pararAlarme` pelo MethodChannel. */
-        fun pararAlarme(context: Context) {
-            AlertaRecebidoAlarmService.parar(context)
+        /** `false` no silencioso, no vibrar ou com o Não Perturbe ligado. */
+        fun podeTocarSom(context: Context): Boolean {
+            return try {
+                val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return false
+                val notificacoes = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                notificacoes.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL ||
+                    notificacoes.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+            } catch (_: Exception) {
+                true
+            }
         }
     }
 }

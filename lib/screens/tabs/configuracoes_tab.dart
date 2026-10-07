@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -305,6 +306,9 @@ Future<void> _selecionarSom(int? numero) async {
     await prefs.setString('tom_alarme_selecionado', 'som_$numero.mp3');
     await prefs.setInt('som_selecionado', numero);
     await prefs.reload();
+    // Som do alerta recebido por ESTE usuário (destinatário), também na
+    // nuvem para o servidor/iOS.
+    unawaited(FirebaseSyncService().salvarSomAlerta(numero));
 
     debugPrint('🎵 Som do alarme atualizado com sucesso para: som_$numero.mp3');
   }
@@ -657,7 +661,8 @@ Future<void> _selecionarSom(int? numero) async {
   }
 
   void _showPinRealDialog() {
-    final pinController = TextEditingController(text: _pinReal ?? '');
+    // O PIN gravado é um hash (ver PinSeguro): o campo sempre começa vazio.
+    final pinController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
     showDialog(

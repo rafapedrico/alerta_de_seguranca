@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alerta_sos_fisico_titulo">SOS triggered</string>
+    <string name="alerta_sos_fisico_corpo">Opening the emergency camera…</string>
+    <string name="cronometro_notificacao_titulo">Guardião-X</string>
+    <string name="cronometro_notificacao_corpo">Turn off the emergency alert — tap to enter your PIN</string>
+    <string name="despertador_notificacao_titulo">Safety alarm</string>
+    <string name="despertador_notificacao_corpo">Tap to confirm everything is fine</string>
+    <string name="despertador_acao_desativar">Turn off alarm</string>
+    <string name="servico_alarme_ativo">Safety alarm ringing</string>
+    <string name="canal_alarme_tela_cheia">Safety alarms</string>
+    <string name="canal_localizacao_seguranca">Safety location</string>
+    <string name="cronometro_servico_ativo">Safety timer active</string>
+    <string name="despertador_servico_ativo">Safety alarm: location active</string>
+</resources>

@@ -5,65 +5,63 @@ import 'package:camera/camera.dart' show XFile;
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'alerta_desarme_service.dart';
+import 'database_helper.dart';
 import 'emergency_alert_service.dart';
 import 'firebase_auth_service.dart';
 import 'firebase_sync_service.dart';
+import 'historico_alertas_service.dart';
+import 'l10n_headless_service.dart';
+import 'location_service.dart';
 import 'retry_upload_service.dart';
 import 'sos_dispatch_native_service.dart';
 
-/// Serviço ÚNICO e UNIFICADO de disparo do SOS — reúne, num só lugar, a
-/// sequência estritamente sequencial exigida para o botão físico
-/// (Volume+ segurado por 3s, tanto com o app frio/bloqueado quanto já
-/// rodando) E o botão de SOS manual da aba Segurança:
+/// Estado de um SOS em andamento — compartilhado pela sequência visual
+/// (`SosEmAndamentoScreen` → `CameraCapturaScreen` → tela vermelha) para
+/// que cada aviso diga só a verdade: o que foi de fato confirmado.
+class SessaoSos {
+  SessaoSos({required this.alertaId, required this.origem});
+
+  /// Id do alerta (documento do Firestore e entrada do histórico).
+  final String alertaId;
+
+  /// `sos_manual` (botão do app) ou `sos_fisico` (Volume+).
+  final String origem;
+
+  double? latitude;
+  double? longitude;
+  double? precisao;
+
+  /// Nenhum contato de emergência cadastrado: nada foi enviado.
+  bool semContatos = false;
+
+  /// Push ou SMS da localização confirmado (pode chegar depois do aviso
+  /// de "sem conexão").
+  bool localizacaoConfirmada = false;
+
+  /// Foto enviada de verdade (Storage + contatos).
+  bool fotoEnviada = false;
+
+  /// Completa com `true` na primeira confirmação (push OU SMS) e com
+  /// `false` quando os dois canais terminaram sem confirmação.
+  final Completer<bool> confirmacao = Completer<bool>();
+}
+
+/// Sequência do SOS (botão do app e botão físico Volume+):
 ///
-///   P1 (PRIORIDADE MÁXIMA) — captura localização + timestamp e despacha
-///       IMEDIATAMENTE, em PARALELO, por DOIS canais oficiais e
-///       independentes:
-///         1. SMS nativo direto do aparelho (`SmsManager`, sem custo,
-///            nunca depende de conta/nuvem) — ver
-///            [EmergencyAlertService.dispararSosComDuplaLocalizacao].
-///         2. App-para-App (Push FCM), via `dispararAlertaHibrido` no
-///            backend.
-///       O canal 2 só dispara quando há sessão do Firebase Auth
-///       disponível — a política de segurança "Opção A" (login
-///       obrigatório a cada cold start, ver `FirebaseAuthService`)
-///       desloga a sessão antes mesmo do botão físico poder ser
-///       processado quando o app está completamente frio. Nesse caso
-///       específico, o canal 1 (SMS) é o ÚNICO que dispara — decisão
-///       explícita do produto: a entrega de P1 NUNCA pode depender de
-///       autenticação na nuvem.
-///   P2 — abre a câmera (UI, ver `CapturaDissuasaoService`) e, assim que
-///       a foto for tirada, [dispararFotoCapturada] despacha os MESMOS
-///       dois canais em paralelo: SMS com o link da foto + localização
-///       ([EmergencyAlertService.enviarSmsComLinkDaFoto]) e Push com o
-///       link da foto já enviada ao Firebase Storage. Sem sessão (ou se
-///       o upload ao Storage falhar por qualquer motivo), o canal 2 fica
-///       indisponível e o SMS de fallback
-///       ([EmergencyAlertService.enviarSmsResgateFoto], sem link real)
-///       é usado no lugar.
-///   P3/P4 — tela vermelha travada + bloqueio nativo de tela ao deslizar
-///       para cima — implementados em `CameraCapturaScreen`, fora deste
-///       serviço (são puramente locais, sem dependência de rede/nuvem).
+/// 1. [iniciar] — envia NA HORA, sem confirmação, a localização EXATA
+///    (cache de até 30 s e precisão até 50 m, senão leitura nova de alta
+///    precisão com limite de 5 s) por SMS e push, com a MESMA posição; a
+///    entrada do histórico nasce `enviando` e vira `enviado` com a
+///    confirmação real (rádio do SMS ou Firestore) ou `pendente`.
+/// 2. [enviarFoto] — foto para o Firebase (limite de 15 s) e, com o link
+///    verdadeiro, para os contatos; sem upload, vai para a fila de reenvio
+///    (sem SMS de foto) e os contatos recebem o link quando ela subir.
 ///
-/// DEDUPLICAÇÃO ENTRE OS DOIS ENGINES NATIVOS DO BOTÃO FÍSICO: um único
-/// aperto físico de Volume+ pode disparar SIMULTANEAMENTE dois
-/// `FlutterEngine`/`main()` diferentes no lado nativo Android (ver
-/// `VolumeSosService.kt` — o Foreground Service sempre chama
-/// `VolumeSosEventBridge.notificarSosDisparado()` E
-/// `forcarAberturaLockscreenCameraActivity()` juntos, e esta última
-/// SEMPRE cria uma `LockscreenCameraActivity`/engine nova,
-/// independentemente de o engine principal já estar rodando). Como são
-/// dois isolates/engines Dart totalmente separados, uma flag em memória
-/// não os vê um ao outro — por isso [_reivindicarDisparoUnico] usa
-/// `SharedPreferences` (arquivo em disco compartilhado por todo o
-/// processo do app) como trava: só o primeiro engine a "reivindicar" a
-/// janela de alguns segundos realmente despacha o alerta; o outro
-/// detecta a reivindicação já feita e não despacha de novo — eliminando
-/// o bug real observado de SMS/Push duplicados conforme o caminho de
-/// disparo.
+/// Um único SOS por vez ([emAndamento]) e um único disparo entre os dois
+/// engines do botão físico (trava em disco, ver [_reivindicarDisparoUnico]).
 class SosDisparoService {
   SosDisparoService._internal();
   static final SosDisparoService _instance = SosDisparoService._internal();
@@ -71,277 +69,262 @@ class SosDisparoService {
 
   static const String _chaveUltimoDisparoEpochMs = 'sos_unificado_ultimo_disparo_epoch_ms';
 
-  /// Janela de deduplicação: generosa o suficiente para cobrir a corrida
-  /// entre os dois engines nativos do gatilho físico (tipicamente
-  /// resolvida em bem menos de 1s), sem risco de bloquear um SEGUNDO
-  /// disparo genuíno (ex: usuário aciona de novo, deliberadamente,
-  /// poucos segundos depois) — mais curta que o cooldown de 10s já
-  /// aplicado no lado nativo do botão de volume.
+  /// Janela de deduplicação entre os dois engines do botão físico.
   static const int _janelaDedupMs = 4000;
 
-  final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
+  /// Limite do upload da foto antes de ir para a fila de reenvio.
+  static const Duration limiteUploadFoto = Duration(seconds: 15);
 
-  /// Executa a sequência unificada completa a partir de P1: captura e
-  /// despacha a localização (deduplicado entre engines) e, em seguida —
-  /// só depois de P1 estar de fato concluído/persistido — devolve o
-  /// controle para o chamador abrir a câmera (P2), respeitando a ordem
-  /// estrita P1 -> P2 exigida pelo produto.
-  ///
-  /// [origem] identifica o gatilho para fins de log/telemetria apenas —
-  /// não afeta a lógica de disparo. Use `'sos_fisico'` para os dois
-  /// pontos de entrada do botão físico (cold-start via lockscreen e
-  /// EventChannel do `VolumeSosService`) e `'sos_manual'` para o botão
-  /// da aba Segurança.
-  Future<void> executarP1LocalizacaoImediata({required String origem}) async {
-    // REESPECIFICAÇÃO DO USUÁRIO (2026-09-04): o antigo teto separado de 5
-    // alertas/mês (PlanoLimiteService, removido) contradizia a regra
-    // oficial do Plano Free — "dentro dos 10 dias ativos, todos os
-    // recursos são liberados, sem nenhum teto numérico adicional". O
-    // chamador (ver `main.dart::_dispararSequenciaUnificadaDeSos` /
-    // `SegurancaTab._confirmarEDispararSosManual`) já checa a janela de
-    // 10 dias ativos ANTES de chegar aqui; o canal SMS/Push em si também
-    // se protege de forma independente (ver
-    // `EmergencyAlertService._enviarSms`/`FirebaseSyncService`).
-    final bool reivindicado = await _reivindicarDisparoUnico();
-    if (!reivindicado) {
-      debugPrint(
-          '🔁 [SosDisparoService] Disparo duplicado detectado (outro engine já iniciou a sequência há poucos segundos) — P1 ($origem) não reenviado.');
-      return;
+  final EmergencyAlertService _sms = EmergencyAlertService();
+
+  SessaoSos? _sessaoAtual;
+
+  /// `true` enquanto um SOS estiver em andamento (proteção contra toque
+  /// duplo no botão).
+  bool get emAndamento => _sessaoAtual != null;
+
+  SessaoSos? get sessaoAtual => _sessaoAtual;
+
+  /// Libera um novo SOS (a tela vermelha foi exibida/fechada).
+  void encerrarSessao() => _sessaoAtual = null;
+
+  /// Inicia o SOS — devolve `null` se já houver um em andamento ou outro
+  /// engine acabou de disparar o mesmo aperto do botão físico.
+  Future<SessaoSos?> iniciar({required String origem, String? contexto}) async {
+    if (_sessaoAtual != null) {
+      debugPrint('🔁 [SOS] Já há um SOS em andamento — toque ignorado.');
+      return null;
     }
-
-    // CORREÇÃO DE REGRESSÃO (bug real, 2026-08-07): a versão anterior
-    // fazia `await FirebaseAuthService().aguardarUidPronto()` AQUI, ANTES
-    // de entrar no Foreground Service abaixo — ou seja, ANTES do SMS
-    // (canal 1, que nunca deveria depender de sessão) sequer começar a
-    // ser montado. Como [aguardarUidPronto] pode levar até 5s no pior
-    // caso, isso deixava o processo até 5s SEM a proteção do Foreground
-    // Service nativo — tempo mais que suficiente para o Android matar o
-    // processo (tela bloqueada, Doze) antes de QUALQUER coisa ser
-    // enviada, "quebrando" o botão físico por completo. Agora: entra no
-    // Foreground Service e dispara o SMS IMEDIATAMENTE, e só resolve o
-    // uid (com espera, se necessário) DENTRO de [_dispararLocalizacaoViaNuvem],
-    // em paralelo ao SMS via `Future.wait` — nunca bloqueando/atrasando
-    // o canal 1.
-    //
-    // JANELA CRÍTICA: do início do envio até aqui embaixo, um Foreground
-    // Service nativo (ver SosDispatchNativeService) mantém o PROCESSO do
-    // app vivo — sem isso, o SMS/upload em voo seria perdido caso o
-    // Android decidisse matar o processo no meio do envio (memória
-    // baixa, Doze agressivo, app forçado a fechar logo após o toque no
-    // botão de pânico). Nunca depende da Activity/engine continuar em
-    // primeiro plano.
-    await SosDispatchNativeService().executarComServicoAtivo(() async {
-      // Canal 1 (SEMPRE, independente de sessão, disparado NA HORA — sem
-      // nenhum `await` antes dele nesta função): SMS nativo, direto do
-      // aparelho — ver EmergencyAlertService.dispararSosComDuplaLocalizacao.
-      // Roda numa child Future totalmente independente da nuvem: uma
-      // falha/demora na chamada de rede abaixo NUNCA atrasa ou cancela o
-      // SMS, que não depende de internet nenhuma (rádio GSM puro).
-      final smsFuture = _emergencyAlertService.dispararSosComDuplaLocalizacao();
-
-      // Canal 2 (App-para-App): roda em PARALELO ao SMS
-      // acima — a eventual espera pela sessão (ver
-      // FirebaseAuthService.aguardarUidPronto) acontece só aqui dentro,
-      // nunca atrasando o canal 1.
-      final nuvemFuture = _dispararLocalizacaoViaNuvem(origem: origem);
-
-      await Future.wait([smsFuture, nuvemFuture]);
-    });
+    final sessao = SessaoSos(alertaId: AlertaDesarmeService.novoAlertaId(), origem: origem);
+    _sessaoAtual = sessao;
+    if (!await _reivindicarDisparoUnico()) {
+      debugPrint('🔁 [SOS] Outro engine já disparou este SOS — não reenviado.');
+      _sessaoAtual = null;
+      return null;
+    }
+    unawaited(SosDispatchNativeService().executarComServicoAtivo(
+      () => _enviarLocalizacao(sessao, contexto: contexto),
+    ));
+    return sessao;
   }
 
-  Future<void> _dispararLocalizacaoViaNuvem({required String origem}) async {
-    final String? uid = await FirebaseAuthService().aguardarUidPronto();
-    if (uid == null) {
-      debugPrint(
-          '📵 [SosDisparoService] Sem sessão autenticada — P1 só via SMS (canal oficial único).');
-      return;
+  Future<void> _enviarLocalizacao(SessaoSos sessao, {String? contexto}) async {
+    final l10n = await L10nHeadlessService.obter();
+    try {
+      var textoUsuario = (contexto ?? '').trim();
+      if (textoUsuario.isEmpty) {
+        try {
+          final config = await DatabaseHelper().getUserConfig();
+          textoUsuario = ((config?['contexto_timer_ativo'] as String?) ?? '').trim();
+        } catch (_) {}
+      }
+
+      // Sem contatos: avisar o usuário, nunca dizer que enviou.
+      sessao.semContatos = !await _sms.temContatos();
+
+      final posicaoAlerta = await LocationService().obterPosicaoParaAlerta();
+      final posicao = posicaoAlerta.posicao;
+      sessao
+        ..latitude = posicao?.latitude
+        ..longitude = posicao?.longitude
+        ..precisao = posicao?.accuracy;
+
+      final fisico = sessao.origem == TipoAlertaHistorico.sosFisico;
+      final tipo = fisico ? TipoAlertaHistorico.sosFisico : TipoAlertaHistorico.sosManual;
+      await HistoricoAlertasService().criarAlerta(
+        alertaId: sessao.alertaId,
+        tipo: tipo,
+        titulo: HistoricoAlertasService.tituloPorTipo(tipo, l10n),
+        descricao: HistoricoAlertasService.tituloPorTipo(tipo, l10n),
+        contexto: textoUsuario,
+        latitude: posicao?.latitude,
+        longitude: posicao?.longitude,
+        precisao: posicao?.accuracy,
+      );
+
+      final localizacao = _sms.textoLocalizacao(posicao, l10n);
+      var mensagem = fisico ? l10n.smsSosFisicoCorpo(localizacao) : l10n.smsSosCorpo(localizacao);
+      if (textoUsuario.isNotEmpty) mensagem = '$mensagem\n${l10n.smsTextoDoUsuario(textoUsuario)}';
+
+      // Mesma posição nos dois canais; a primeira confirmação libera a tela.
+      final smsFuture = _sms.enviarSms(mensagem).then((r) {
+        if (r.semContatos) sessao.semContatos = true;
+        if (r.confirmado) _confirmar(sessao);
+        return r;
+      });
+      final nuvemFuture = _enviarPush(sessao, textoUsuario).then((r) {
+        if (r.confirmado) _confirmar(sessao);
+        return r;
+      });
+      final sms = await smsFuture;
+      final nuvem = await nuvemFuture;
+      if (!sessao.confirmacao.isCompleted) sessao.confirmacao.complete(false);
+
+      final status = (sms.confirmado || nuvem.confirmado)
+          ? StatusAlertaHistorico.enviado
+          : (nuvem.naFila || sms.tentados > 0)
+              ? StatusAlertaHistorico.pendente
+              : StatusAlertaHistorico.falhou;
+      await HistoricoAlertasService().marcarStatus(sessao.alertaId, status);
+
+      if (!posicaoAlerta.precisa && posicaoAlerta.atualizacao != null) {
+        final precisa = await posicaoAlerta.atualizacao!;
+        if (precisa != null) {
+          sessao
+            ..latitude = precisa.latitude
+            ..longitude = precisa.longitude
+            ..precisao = precisa.accuracy;
+          await HistoricoAlertasService().atualizarLocalizacao(
+            sessao.alertaId,
+            latitude: precisa.latitude,
+            longitude: precisa.longitude,
+            precisao: precisa.accuracy,
+          );
+          await FirebaseSyncService().atualizarPosicaoPrecisaDoAlerta(
+            latitude: precisa.latitude,
+            longitude: precisa.longitude,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [SOS] Falha no envio da localização: $e');
+      if (!sessao.confirmacao.isCompleted) sessao.confirmacao.complete(false);
     }
-    debugPrint('☁️ [SosDisparoService] Sessão autenticada — P1 também via Push.');
-    final Position? posicao = await _obterPosicaoRapida();
-    await FirebaseSyncService().dispararAlertaSosFisico(
-      latitude: posicao?.latitude,
-      longitude: posicao?.longitude,
-      origem: origem,
+  }
+
+  void _confirmar(SessaoSos sessao) {
+    if (sessao.semContatos) return;
+    sessao.localizacaoConfirmada = true;
+    if (!sessao.confirmacao.isCompleted) sessao.confirmacao.complete(true);
+  }
+
+  Future<ResultadoEnvioNuvem> _enviarPush(SessaoSos sessao, String textoUsuario) async {
+    final uid = FirebaseAuthService().uidAtual ?? await FirebaseAuthService().aguardarUidPronto();
+    if (uid == null) {
+      debugPrint('📵 [SOS] Sem sessão — localização só por SMS.');
+      return ResultadoEnvioNuvem.semEnvio;
+    }
+    return FirebaseSyncService().dispararAlertaSosFisico(
+      alertaId: sessao.alertaId,
+      latitude: sessao.latitude,
+      longitude: sessao.longitude,
+      precisao: sessao.precisao,
+      origem: sessao.origem,
+      contextoPersonalizado: textoUsuario,
     );
   }
 
-  /// Executa o P2 da sequência: [foto] já foi capturada pela UI
-  /// ([CameraCapturaScreen]) — envia ao Firebase Storage (se houver
-  /// sessão autenticada) e, com o link em mãos, despacha os DOIS canais
-  /// oficiais em paralelo: SMS com o link real da foto + localização e
-  /// Push. Sem sessão OU se o upload falhar por qualquer motivo (sem
-  /// rede, Storage indisponível, etc.), o canal 2 fica indisponível e o
-  /// SMS usa a mensagem de fallback (sem link real) — a entrega de P2
-  /// nunca pode depender de um único canal funcionando.
-  Future<void> dispararFotoCapturada(XFile foto, {required String origem}) async {
-    String? fotoUrl;
-
-    // Mesma janela crítica do P1 (ver executarP1LocalizacaoImediata):
-    // Foreground Service nativo ativo durante todo o upload/SMS, para
-    // que uma morte do processo no meio do envio não perca o trabalho.
-    //
-    // CORREÇÃO DE REGRESSÃO (mesmo bug do P1, 2026-08-07): [aguardarUidPronto]
-    // (ver documentação completa em [executarP1LocalizacaoImediata]) DEVE
-    // ser chamado DENTRO deste bloco protegido pelo Foreground Service,
-    // nunca antes — chamá-lo antes deixava o processo até 5s sem essa
-    // proteção, arriscando ser morto pelo Android (tela bloqueada, Doze)
-    // antes até do SMS de fallback (que nem depende de sessão) ser
-    // enviado.
+  /// Foto do SOS: cópia na pasta privada (histórico), upload com limite de
+  /// 15 s e, com o link verdadeiro, push + SMS. Sem upload: fila de reenvio
+  /// (com a posição e o alertaId), sem SMS de foto. `true` = enviada.
+  Future<bool> enviarFoto(XFile foto, SessaoSos sessao) async {
+    await HistoricoAlertasService().anexarFoto(sessao.alertaId, fotoArquivo: foto.path);
+    var enviada = false;
     await SosDispatchNativeService().executarComServicoAtivo(() async {
-      final String? uid = await FirebaseAuthService().aguardarUidPronto();
+      final uid = FirebaseAuthService().uidAtual ?? await FirebaseAuthService().aguardarUidPronto();
+      String? fotoUrl;
       if (uid != null) {
         try {
-          fotoUrl = await _uploadFotoParaStorage(foto, uid);
-          debugPrint('☁️ [SosDisparoService] Foto do SOS ($origem) enviada ao Storage: $fotoUrl');
+          fotoUrl = await _uploadFotoParaStorage(XFile(foto.path), uid).timeout(limiteUploadFoto);
         } catch (e) {
-          // RESILIÊNCIA OFFLINE: a falha de rede (sem Wi-Fi/4G, Storage
-          // indisponível, etc.) NUNCA interrompe o fluxo — é capturada
-          // aqui, o SMS abaixo segue via GSM normalmente (independente
-          // de internet) e o payload do upload é salvo localmente para
-          // ser reenviado automaticamente assim que a conectividade for
-          // reestabelecida (ver RetryUploadService).
-          debugPrint('⚠️ [SosDisparoService] Falha ao enviar foto ao Storage — SMS usará o fallback sem link. '
-              'Payload salvo para retry automático: $e');
-          try {
-            await RetryUploadService().enfileirar(fotoOriginal: foto, origem: origem);
-          } catch (e2) {
-            debugPrint('⚠️ [SosDisparoService] Falha ao enfileirar retry do upload: $e2');
-          }
-        }
-      } else {
-        // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-08-15):
-        // antes, este ramo ("sem sessão AGORA") só mandava o SMS de
-        // resgate genérico (sem link real da foto) e não enfileirava
-        // NADA para retry — diferente do ramo acima (upload falhou COM
-        // sessão), que já enfileira. Resultado real observado: quando
-        // `aguardarUidPronto()` retornava `null` momentaneamente (ex:
-        // corrida de inicialização do Firebase entre duas engines no
-        // mesmo processo — ver `main.dart::_iniciarFirebaseEAuth` — ou
-        // qualquer instabilidade de sessão passageira), a foto real
-        // NUNCA mais era enviada, mesmo depois da sessão/conectividade
-        // se restabelecerem segundos depois — só o SMS genérico "SOS-..."
-        // sem link nenhum ficava registrado. Enfileirar aqui também
-        // garante que [RetryUploadService] (cold start seguinte + alarme
-        // periódico de 15 min) tente de novo automaticamente assim que
-        // houver sessão, completando o upload real + o link da foto na
-        // segunda mensagem, sem exigir nenhuma ação do usuário.
-        debugPrint('📵 [SosDisparoService] Sem sessão autenticada — P2 ($origem) só via SMS '
-            '(canal oficial único) agora; enfileirando para retry automático.');
-        try {
-          await RetryUploadService().enfileirar(fotoOriginal: foto, origem: origem);
-        } catch (e2) {
-          debugPrint('⚠️ [SosDisparoService] Falha ao enfileirar retry do upload (sem sessão): $e2');
+          debugPrint('⚠️ [SOS] Upload da foto não concluído em ${limiteUploadFoto.inSeconds}s: $e');
         }
       }
-
-      // Canal 1 (SEMPRE): SMS — com o link real da foto quando
-      // disponível, ou a mensagem de fallback (sem link) caso
-      // contrário. Child Future totalmente independente da nuvem
-      // abaixo — nunca espera/depende dela.
-      //
-      // CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06): ver
-      // documentação completa em [_linkCurtoParaSms] — o SMS usa um link
-      // CURTO (encurtado nas próximas linhas), nunca a URL completa do
-      // Storage, para caber numa única parte de SMS e nunca precisar de
-      // concatenação multi-parte (causa raiz confirmada da foto não
-      // chegar aos contatos). O canal de nuvem (Push) abaixo continua
-      // usando a URL completa normalmente — não tem limite de caracteres.
-      final String? linkFotoParaSms =
-          fotoUrl != null ? await _linkCurtoParaSms(fotoUrl!) : null;
-      final smsFuture = linkFotoParaSms != null
-          ? _emergencyAlertService.enviarSmsComLinkDaFoto(linkFotoParaSms)
-          : _dispararFotoViaSmsFallback();
-
-      // Canal 2 (App-para-App): só quando o upload deu certo.
-      final nuvemFuture = fotoUrl != null
-          ? FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl!, origem: origem)
-          : Future.value(false);
-
-      await Future.wait([smsFuture, nuvemFuture]);
+      if (fotoUrl == null) {
+        await RetryUploadService().enfileirar(
+          fotoOriginal: foto,
+          origem: sessao.origem,
+          latitude: sessao.latitude,
+          longitude: sessao.longitude,
+          alertaId: sessao.alertaId,
+        );
+        return;
+      }
+      await _despacharFoto(
+        fotoUrl: fotoUrl,
+        origem: sessao.origem,
+        alertaId: sessao.alertaId,
+        latitude: sessao.latitude,
+        longitude: sessao.longitude,
+      );
+      enviada = true;
     });
+    sessao.fotoEnviada = enviada;
+    return enviada;
   }
 
-  /// Reenvia uma foto de SOS que ficou pendente na fila de retry local
-  /// (ver [RetryUploadService]) — mesma lógica de upload+despacho de
-  /// [dispararFotoCapturada], mas a partir de um arquivo já copiado para
-  /// um caminho permanente em disco (o arquivo temporário original da
-  /// captura pode já ter sido reciclado pelo SO). Retorna `true` só
-  /// quando o upload E o despacho (SMS com link + nuvem) forem
-  /// concluídos com sucesso — [RetryUploadService] só remove o item da
-  /// fila local nesse caso; qualquer outra falha mantém o item na fila
-  /// para a próxima tentativa periódica.
+  Future<void> _despacharFoto({
+    required String fotoUrl,
+    required String origem,
+    required String alertaId,
+    double? latitude,
+    double? longitude,
+  }) async {
+    await HistoricoAlertasService().anexarFoto(alertaId, fotoUrl: fotoUrl);
+    final link = await _linkCurtoParaSms(fotoUrl);
+    await Future.wait([
+      _sms.enviarSmsComLinkDaFoto(link),
+      FirebaseSyncService().dispararAlertaSosFoto(
+        fotoUrl: fotoUrl,
+        origem: origem,
+        alertaIdSos: alertaId,
+        latitude: latitude,
+        longitude: longitude,
+      ),
+    ]);
+  }
+
+  /// Reenvio da fila (ver [RetryUploadService]): upload e, com o link
+  /// verdadeiro, push + SMS e a foto anexada à MESMA entrada do histórico.
   Future<bool> tentarReenviarFotoEnfileirada({
     required String fotoPathLocal,
     required String origem,
+    String? alertaId,
+    double? latitude,
+    double? longitude,
   }) async {
-    final String? uid = FirebaseAuthService().uidAtual;
+    final uid = FirebaseAuthService().uidAtual;
     if (uid == null) {
-      debugPrint('📵 [SosDisparoService] Retry de upload adiado — sem sessão autenticada no momento.');
+      debugPrint('📵 [SOS] Reenvio da foto adiado — sem sessão.');
       return false;
     }
-
     String fotoUrl;
     try {
       fotoUrl = await _uploadFotoParaStorage(XFile(fotoPathLocal), uid);
     } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Retry de upload falhou de novo (mantido na fila): $e');
+      debugPrint('⚠️ [SOS] Reenvio da foto falhou de novo (mantido na fila): $e');
       return false;
     }
-
     try {
-      final String linkFotoParaSms = await _linkCurtoParaSms(fotoUrl);
-      await Future.wait([
-        _emergencyAlertService.enviarSmsComLinkDaFoto(linkFotoParaSms),
-        FirebaseSyncService().dispararAlertaSosFoto(fotoUrl: fotoUrl, origem: origem),
-      ]);
-      debugPrint('✅ [SosDisparoService] Retry de upload ($origem) concluído com sucesso: $fotoUrl');
+      await _despacharFoto(
+        fotoUrl: fotoUrl,
+        origem: origem,
+        alertaId: alertaId ?? HistoricoAlertasService.novoIdLocal(),
+        latitude: latitude,
+        longitude: longitude,
+      );
       return true;
     } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Retry de upload — Storage ok mas despacho falhou (mantido na fila): $e');
+      debugPrint('⚠️ [SOS] Foto no Storage, mas o envio aos contatos falhou (mantido na fila): $e');
       return false;
     }
   }
 
-  /// Encurta a URL completa do Firebase Storage ([fotoUrlLongo], com
-  /// ~200+ caracteres, token incluso) para um link curto próprio
-  /// (`https://www.meuguardiaox.com.br/f/<código>`, ~40 caracteres) via
-  /// a Cloud Function callable `criarLinkCurtoFoto` (ver
-  /// `functions/fotoSosLinkService.js`) — usado EXCLUSIVAMENTE para o
-  /// texto que sai pelo SMS, nunca para o canal de Push/nuvem (que não
-  /// tem limite de caracteres e continua recebendo a URL completa).
-  ///
-  /// CORREÇÃO DE BUG REAL CONFIRMADO EM TESTE FÍSICO (2026-09-06, 2
-  /// rodadas em aparelho real — Moto G7 Play): o SMS da foto com a URL
-  /// completa do Storage precisava de 2-3 partes concatenadas; o rádio
-  /// confirmava `RESULT_OK` para TODAS as partes (ver `adb logcat -s
-  /// SmsSender`), mas a mensagem simplesmente não chegava aos contatos —
-  /// sintoma de colisão do número de referência de concatenação entre
-  /// dois SMS multi-parte enviados ao mesmo número em sequência rápida
-  /// (o SMS de localização, P1, sai segundos antes). Reduzir de 3 para 2
-  /// partes NÃO resolveu (2ª rodada de teste, ainda sem entrega) — só um
-  /// SMS de UMA ÚNICA parte (sem cabeçalho de concatenação nenhum)
-  /// elimina o problema pela raiz, e a URL crua do Storage nunca cabe
-  /// nesse limite.
-  ///
-  /// NUNCA bloqueia o envio do SMS: qualquer falha ao encurtar (function
-  /// fora do ar, sem rede no momento desta chamada específica, etc.) cai
-  /// de volta na URL completa original — o mesmo comportamento (com o
-  /// mesmo risco de concatenação) que já existia antes desta correção,
-  /// nunca a ausência total do SMS.
+  /// Link curto (`meuguardiaox.com.br/f/<código>`) para o SMS da foto
+  /// caber numa parte só (SMS multi-parte não chegava ao iPhone). Qualquer
+  /// falha usa a URL completa do Storage.
   Future<String> _linkCurtoParaSms(String fotoUrlLongo) async {
     try {
       final resultado = await FirebaseFunctions.instance
           .httpsCallable('criarLinkCurtoFoto')
-          .call<Map<String, dynamic>>({'fotoUrl': fotoUrlLongo});
+          .call<Map<String, dynamic>>({'fotoUrl': fotoUrlLongo})
+          .timeout(const Duration(seconds: 8));
       final String? shortId = resultado.data['shortId'] as String?;
       if (shortId != null && shortId.isNotEmpty) {
-        final String linkCurto = 'https://www.meuguardiaox.com.br/f/$shortId';
-        debugPrint('🔗 [SosDisparoService] Link da foto encurtado para o SMS: $linkCurto');
-        return linkCurto;
+        return 'https://www.meuguardiaox.com.br/f/$shortId';
       }
     } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Falha ao encurtar o link da foto — '
-          'SMS usará a URL completa do Storage (risco de multi-parte): $e');
+      debugPrint('⚠️ [SOS] Falha ao encurtar o link da foto (usa a URL completa): $e');
     }
     return fotoUrlLongo;
   }
@@ -356,60 +339,19 @@ class SosDisparoService {
     return ref.getDownloadURL();
   }
 
-  Future<void> _dispararFotoViaSmsFallback() async {
-    try {
-      await _emergencyAlertService.enviarSmsResgateFoto(
-        login: 'familia_resgate',
-        senha: 'SOS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      );
-    } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Falha no fallback de SMS da foto: $e');
-    }
-  }
-
-  /// Localização "rápida": tenta a última posição em cache (instantânea,
-  /// sem acionar o GPS); se não houver nenhuma em cache, faz uma única
-  /// tentativa de leitura em tempo real com timeout curto — nunca deixa
-  /// P1 esperando o GPS por muito tempo, priorizando velocidade sobre
-  /// precisão milimétrica (a mensagem já avisa que é a última localização
-  /// conhecida quando aplicável).
-  Future<Position?> _obterPosicaoRapida() async {
-    try {
-      final cache = await Geolocator.getLastKnownPosition();
-      if (cache != null) return cache;
-    } catch (_) {}
-
-    try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 8),
-      );
-    } catch (e) {
-      debugPrint('⚠️ [SosDisparoService] Falha ao obter localização para P1: $e');
-      return null;
-    }
-  }
-
-  /// Reivindica, via `SharedPreferences`, o direito exclusivo de disparar
-  /// P1 nesta janela de tempo — ver documentação da classe. Retorna
-  /// `true` se este engine é o primeiro a chegar (deve prosseguir com o
-  /// disparo) ou `false` se outro engine já reivindicou há menos de
-  /// [_janelaDedupMs].
+  /// Trava em disco (compartilhada pelos engines do mesmo processo) para
+  /// um único disparo por aperto do botão físico.
   Future<bool> _reivindicarDisparoUnico() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       final agora = DateTime.now().millisecondsSinceEpoch;
       final ultimo = prefs.getInt(_chaveUltimoDisparoEpochMs) ?? 0;
-      if (agora - ultimo < _janelaDedupMs) {
-        return false;
-      }
+      if (agora - ultimo < _janelaDedupMs) return false;
       await prefs.setInt(_chaveUltimoDisparoEpochMs, agora);
       return true;
     } catch (e) {
-      // Falha ao acessar SharedPreferences (raríssimo) — na dúvida,
-      // prefere disparar (nunca bloquear um SOS real por causa de uma
-      // trava de deduplicação que não pôde ser verificada).
-      debugPrint('⚠️ [SosDisparoService] Falha ao verificar deduplicação, disparando mesmo assim: $e');
+      debugPrint('⚠️ [SOS] Falha ao verificar a deduplicação, disparando mesmo assim: $e');
       return true;
     }
   }

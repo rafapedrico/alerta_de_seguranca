@@ -13,15 +13,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_navigator.dart'; // <--- O IMPORT CORRETO AQUI
 import '../firebase_options.dart';
-import '../screens/alarme_disparado_screen.dart';
 import '../screens/alerta_recebido_screen.dart';
 import '../screens/home_screen.dart';
 import '../widgets/monitoramento_decisao_dialog.dart';
-import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 import 'l10n_headless_service.dart';
 import 'monitoramento_service.dart';
-import 'rotina_alarme_service.dart';
 
 /// Wrapper central do plugin `flutter_local_notifications`, responsável
 /// por inicializar, exibir e cancelar as notificações locais de check-in
@@ -132,7 +129,18 @@ class NotificacaoService {
   /// notificação do sistema. Importância baixa e sem som/vibração
   /// (o alarme já foi silenciado por este mesmo fluxo): é só uma
   /// confirmação informativa, não um novo alarme.
-  static const String canalAlertaEnviadoId = 'alerta_enviado_confirmacao';
+  static const String canalAlertaEnviadoId = 'alerta_enviado_confirmacao_v2';
+
+  /// Avisos do cronômetro/despertador no próprio celular ("Senha
+  /// correta…", "Despertador desativado (pausado)") — importância alta.
+  static const String canalAvisosSegurancaId = 'gx_avisos_seguranca';
+
+  /// Alerta RECEBIDO: um canal por som (`alerta_recebido_som_N`, o som
+  /// escolhido pelo destinatário em Configurações, uso de notificação — no
+  /// volume atual, nunca forçado), mais um canal mudo para o silencioso,
+  /// o vibrar e o Não Perturbe.
+  static String canalAlertaRecebidoPorSom(int numeroSom) => 'alerta_recebido_som_$numeroSom';
+  static const String canalAlertaRecebidoMudoId = 'alerta_recebido_mudo';
   static String canalAlertaEnviadoNome = 'Confirmação de Alerta Enviado';
   static String canalAlertaEnviadoDescricao =
       'Confirma que um alerta de emergência com localização foi enviado para os contatos cadastrados.';
@@ -161,9 +169,6 @@ class NotificacaoService {
       debugPrint('⚠️ [NotificacaoService] Falha ao localizar nomes de canais: $e');
     }
   }
-
-  /// Id da ação rápida "Cheguei bem" exibida na notificação.
-  static const String acaoConfirmarId = 'confirmar_checkin_rotina';
 
   /// Ids das ações rápidas [Aceitar]/[Recusar] da notificação de
   /// solicitação de localização (ver [exibirNotificacaoMonitoramento] e
@@ -466,6 +471,27 @@ class NotificacaoService {
       // ficar 100% sob controle do player do app.
       playSound: false,
     );
+    final canaisAlertaRecebido = [
+      for (var n = 1; n <= 10; n++)
+        AndroidNotificationChannel(
+          canalAlertaRecebidoPorSom(n),
+          '$canalAlertaRecebidoNome ($n)',
+          description: canalAlertaRecebidoDescricao,
+          importance: Importance.max,
+          playSound: n != 10,
+          sound: n != 10 ? RawResourceAndroidNotificationSound('som_$n') : null,
+          audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
+          enableVibration: false,
+        ),
+      AndroidNotificationChannel(
+        canalAlertaRecebidoMudoId,
+        canalAlertaRecebidoNome,
+        description: canalAlertaRecebidoDescricao,
+        importance: Importance.max,
+        playSound: false,
+        enableVibration: false,
+      ),
+    ];
     final canalAlertaRecebido = AndroidNotificationChannel(
       canalAlertaRecebidoId,
       canalAlertaRecebidoNome,
@@ -524,8 +550,13 @@ class NotificacaoService {
       canalAlertaEnviadoId,
       canalAlertaEnviadoNome,
       description: canalAlertaEnviadoDescricao,
-      importance: Importance.low,
-      playSound: false,
+      importance: Importance.high,
+    );
+    final canalAvisosSeguranca = AndroidNotificationChannel(
+      canalAvisosSegurancaId,
+      canalAlertaEnviadoNome,
+      description: canalAlertaEnviadoDescricao,
+      importance: Importance.high,
     );
     final implementacaoAndroid = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -592,7 +623,16 @@ class NotificacaoService {
     // operacional (sobrevivem a reinícios do app), diferente da migração
     // acima.
     await implementacaoAndroid?.createNotificationChannel(canal);
-    await implementacaoAndroid?.createNotificationChannel(canalAlertaRecebido);
+    // Canal antigo (uso de alarme, furava o silencioso): substituído pelos
+    // canais por som.
+    try {
+      await implementacaoAndroid?.deleteNotificationChannel(canalAlertaRecebido.id);
+      await implementacaoAndroid?.deleteNotificationChannel('alerta_enviado_confirmacao');
+    } catch (_) {}
+    for (final c in canaisAlertaRecebido) {
+      await implementacaoAndroid?.createNotificationChannel(c);
+    }
+    await implementacaoAndroid?.createNotificationChannel(canalAvisosSeguranca);
     await implementacaoAndroid?.createNotificationChannel(canalMonitoramento);
     await implementacaoAndroid?.createNotificationChannel(canalSolicitacaoMonitoramento);
     await implementacaoAndroid?.createNotificationChannel(canalAlertaEnviado);
@@ -691,85 +731,6 @@ class NotificacaoService {
     }
   }
 
-  /// Exibe a notificação de check-in de rotina para o [idAlarme]
-  /// informado, com a ação rápida "✅ Cheguei bem". O [idAlarme] é
-  /// codificado no próprio id da notificação Android para que o handler
-  /// da ação consiga identificar exatamente qual alarme confirmar.
-  static Future<void> exibirNotificacaoCheckin({
-    required int idAlarme,
-    required String etiqueta,
-  }) async {
-    await inicializar();
-
-    final androidDetails = AndroidNotificationDetails(
-      canalId,
-      canalNome,
-      channelDescription: canalDescricao,
-      importance: Importance.max,
-      priority: Priority.high,
-      ongoing: true,
-      autoCancel: false,
-      fullScreenIntent: true,
-      vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
-      // Áudio 100% sob controle do player do próprio app (ver o mesmo
-      // ajuste, com a explicação completa, no canal 'checkin_rotina' em
-      // [inicializar]) — nunca o som padrão de notificação do sistema.
-      playSound: false,
-    );
-
-    final details = NotificationDetails(android: androidDetails);
-    final l10n = await L10nHeadlessService.obter();
-
-    await _plugin.show(
-      idAlarme,
-      l10n.familiaEtiquetaPadrao,
-      l10n.notifCheckinCorpo,
-      details,
-      payload: idAlarme.toString(),
-    );
-  }
-
-  /// Exibe uma notificação de alarme completo com som e vibração persistentes,
-  /// usando uma intenção de tela cheia para aparecer sobre a tela de bloqueio.
-  static Future<void> exibirNotificacaoAlarmeCompleto({
-    required int idAlarme,
-    required String etiqueta,
-  }) async {
-    await inicializar();
-    final l10n = await L10nHeadlessService.obter();
-
-    final androidDetails = AndroidNotificationDetails(
-      canalId,
-      canalNome,
-      channelDescription: canalDescricao,
-      importance: Importance.max,
-      priority: Priority.high,
-      ongoing: true,
-      fullScreenIntent: true,
-      autoCancel: false,
-      playSound: true,
-      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
-      actions: [
-        AndroidNotificationAction(
-          'pausar_alarme',
-          l10n.notifPausarAlarmeAcao,
-          showsUserInterface: false,
-          cancelNotification: true,
-        ),
-      ],
-    );
-
-    final details = NotificationDetails(android: androidDetails);
-
-    await _plugin.show(
-      idAlarme + 10000, // ID diferente para não conflitar com a notificação normal
-      etiqueta.isNotEmpty ? etiqueta : l10n.notifAlarmeSegurancaTitulo,
-      l10n.notifAlarmeSegurancaCorpo,
-      details,
-      payload: 'alarme_${idAlarme.toString()}',
-    );
-  }
-
   /// Exibe, com tela cheia mesmo sobre a lockscreen (mesmo mecanismo de
   /// [exibirNotificacaoAlarmeCompleto]: `fullScreenIntent` + `Importance.max`
   /// + vibração/som persistentes), o alerta de emergência de OUTRO
@@ -814,8 +775,11 @@ class NotificacaoService {
       }
     }
 
+    // Som do DESTINATÁRIO (o escolhido em Configurações), no volume atual;
+    // nada no silencioso, no vibrar ou no Não Perturbe.
+    final String canalEscolhido = await _canalDoAlertaRecebido();
     final androidDetails = AndroidNotificationDetails(
-      canalAlertaRecebidoId,
+      canalEscolhido,
       canalAlertaRecebidoNome,
       channelDescription: canalAlertaRecebidoDescricao,
       importance: Importance.max,
@@ -832,10 +796,8 @@ class NotificacaoService {
       ongoing: false,
       fullScreenIntent: true,
       autoCancel: false,
-      playSound: true,
-      // Ver comentário completo no canal (acima, em [inicializar]) —
-      // roteia o som desta notificação pelo STREAM_ALARM.
-      audioAttributesUsage: AudioAttributesUsage.alarm,
+      playSound: canalEscolhido != canalAlertaRecebidoMudoId,
+      audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
       // MODO "DESPERTADOR DE EMERGÊNCIA" (items 3/4, reespecificação do
       // usuário, 2026-08-15) — `Notification.FLAG_INSISTENT` (valor 4),
       // aplicado via `additionalFlags` (recurso nativo padrão do
@@ -895,11 +857,6 @@ class NotificacaoService {
       if (longitude != null) 'longitude': longitude,
       if (fotoUrl != null && fotoUrl.isNotEmpty) 'fotoUrl': fotoUrl,
     });
-
-    // Modo "Despertador de Emergência" (item 3 do pedido): inicia o
-    // alarme sonoro contínuo em volume máximo EM PARALELO à notificação
-    // de tela cheia abaixo — ver [iniciarAlarmeCritico].
-    unawaited(iniciarAlarmeCritico());
 
     await _plugin.show(
       _idNotificacaoAlertaRecebido(idEntrega),
@@ -1212,52 +1169,84 @@ class NotificacaoService {
   /// sistema, em vez do diálogo/tela cheia in-app usado nos demais
   /// disparos (3ª tentativa de PIN incorreta, tempo esgotado etc., que já
   /// mostram a própria tela verde de confirmação sem precisar disto).
-  static Future<void> exibirNotificacaoAlertaEnviado() async {
+  static Future<void> exibirNotificacaoAlertaEnviado({String? titulo, String? corpo}) async {
     await inicializar();
     final l10n = await L10nHeadlessService.obter();
+    final texto = corpo ?? l10n.notifDescarteAlertaEnviadoCorpo;
 
     final androidDetails = AndroidNotificationDetails(
       canalAlertaEnviadoId,
       canalAlertaEnviadoNome,
       channelDescription: canalAlertaEnviadoDescricao,
-      importance: Importance.low,
-      priority: Priority.low,
+      // Alerta enviado aos contatos: importância ALTA (nunca baixa).
+      importance: Importance.high,
+      priority: Priority.high,
       autoCancel: true,
-      playSound: false,
+      styleInformation: BigTextStyleInformation(texto),
     );
-
-    final details = NotificationDetails(android: androidDetails);
 
     await _plugin.show(
-      // Id fixo e estável: não há necessidade de múltiplas notificações
-      // deste tipo simultâneas — uma nova sempre substitui a anterior.
       70000,
-      l10n.notifDescarteAlertaEnviadoTitulo,
-      l10n.notifDescarteAlertaEnviadoCorpo,
-      details,
+      titulo ?? l10n.notifDescarteAlertaEnviadoTitulo,
+      texto,
+      NotificationDetails(android: androidDetails),
     );
   }
 
-  /// Cancela (remove) a notificação de check-in de rotina exibida para
-  /// o [idAlarme] informado. Chamado tanto quando o usuário confirma o
-  /// check-in quanto quando o disparo de emergência já ocorreu (a
-  /// notificação de pedido de confirmação não faz mais sentido).
-  static Future<void> cancelarNotificacaoCheckin(int idAlarme) async {
+  /// Aviso no próprio celular (cronômetro/despertador), importância alta.
+  static Future<void> exibirNotificacaoInformativa({
+    required int id,
+    required String titulo,
+    required String corpo,
+  }) async {
     await inicializar();
-    await _plugin.cancel(idAlarme);
+    await _plugin.show(
+      id,
+      titulo,
+      corpo,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          canalAvisosSegurancaId,
+          canalAlertaEnviadoNome,
+          channelDescription: canalAlertaEnviadoDescricao,
+          importance: Importance.high,
+          priority: Priority.high,
+          autoCancel: true,
+          styleInformation: BigTextStyleInformation(corpo),
+        ),
+      ),
+    );
   }
 
-  /// Handler chamado quando o usuário interage com a notificação
-  /// (toque no corpo ou na ação "Cheguei bem") com o app em primeiro
-  /// plano ou no processo principal já ativo.
+  /// Canal do alerta recebido conforme o som escolhido e o modo do aparelho.
+  static Future<String> _canalDoAlertaRecebido() async {
+    var podeTocar = true;
+    try {
+      podeTocar = await _canalAlertaRecebidoAlarme.invokeMethod<bool>('podeTocarSom') ?? true;
+    } catch (_) {
+      // Engine headless (app fechado): o Android silencia o canal de
+      // notificação sozinho no silencioso/vibrar/Não Perturbe.
+    }
+    if (!podeTocar) return canalAlertaRecebidoMudoId;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final numero = (prefs.getInt('som_selecionado') ?? 1).clamp(1, 10);
+      return canalAlertaRecebidoPorSom(numero);
+    } catch (_) {
+      return canalAlertaRecebidoPorSom(1);
+    }
+  }
+
+  /// Handler chamado quando o usuário interage com a notificação com o app
+  /// em primeiro plano ou no processo principal já ativo.
   static void _aoReceberRespostaEmPrimeiroPlano(
       NotificationResponse resposta) {
     _processarResposta(resposta);
   }
 
   /// Handler chamado pelo Android em um isolate headless separado
-  /// quando o usuário interage com a notificação (ex: toca "Cheguei
-  /// bem") com o app COMPLETAMENTE fechado. Precisa ser uma função
+  /// quando o usuário interage com a notificação com o app COMPLETAMENTE
+  /// fechado. Precisa ser uma função
   /// top-level ou estática anotada com `@pragma('vm:entry-point')`.
   @pragma('vm:entry-point')
   static void _aoReceberRespostaEmSegundoPlano(
@@ -1266,9 +1255,7 @@ class NotificacaoService {
   }
 
   /// Lógica compartilhada entre os dois handlers (primeiro e segundo
-  /// plano): se a ação tocada foi "Cheguei bem", confirma o check-in de
-  /// rotina correspondente via [RotinaAlarmeService], cancelando o
-  /// alarme de tolerância agendado e registrando o evento no histórico.
+  /// plano).
   static void _processarResposta(NotificationResponse resposta) {
     final payload = resposta.payload ?? '';
 
@@ -1281,54 +1268,9 @@ class NotificacaoService {
       return;
     }
 
-    final idAlarme = int.tryParse(payload.startsWith('alarme_')
-        ? payload.replaceFirst('alarme_', '')
-        : payload);
-
-    if (idAlarme == null) return;
-
-    if (resposta.actionId == acaoConfirmarId) {
-      // 1. Gravação síncrona de prioridade máxima no disco para cessar o loop do reprodutor em background
-      SharedPreferences.getInstance().then((prefs) async {
-        await prefs.setBool('stop_current_alarm', true);
-        await prefs.remove('alarme_disparando_no_momento');
-        debugPrint('⏹️ [NotificacaoService] Flags de cancelamento persistidas no disco.');
-      }).catchError((e) {
-        debugPrint('⚠️ Erro ao persistir cancelamento no SharedPreferences: $e');
-      });
-
-      // 2. Tenta fazer a limpeza silenciosa das rotinas locais
-      RotinaAlarmeService.pausarAlarme(idAlarme).then((_) async {
-        // 3. Atualiza e remove o destaque da notificação
-        final l10n = await L10nHeadlessService.obter();
-        _plugin.show(
-          idAlarme,
-          l10n.familiaEtiquetaPadrao,
-          l10n.notifCheckinCanceladoCorpo,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              canalId,
-              canalNome,
-              importance: Importance.low,
-              priority: Priority.low,
-              ongoing: false,
-              autoCancel: true,
-            ),
-          ),
-        );
-      }).catchError((e) {
-        debugPrint('⚠️ Falha ao registrar pausa no service: $e');
-      });
-      
-    } else if (resposta.actionId == 'pausar_alarme') {
-      RotinaAlarmeService.pausarAlarme(idAlarme).catchError((e) {
-        debugPrint('⚠️ Falha ao pausar alarme: $e');
-      });
-    } else if (resposta.actionId == null) {
-      appNavigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (context) => const AlarmeDisparadoScreen()),
-      );
-    }
+    // Ações sem PIN ("Cheguei bem"/"Pausar alarme") foram removidas: o
+    // despertador só é desativado pelo teclado de PIN da tela do alarme
+    // (aberta pela notificação nativa, ver RotinaAlarmWakeService).
   }
 
   /// Decodifica um payload JSON de notificação e roteia para a tela
@@ -1512,23 +1454,6 @@ class NotificacaoService {
     }
   }
 
-  /// Registra, de forma resiliente (nunca lança exceção), um evento no
-  /// histórico administrativo (categoria 'sistema'), usado pelos fluxos
-  /// de check-in de rotina confirmados/perdidos.
-  static Future<void> registrarEventoSistema({
-    required String titulo,
-    required String descricao,
-  }) async {
-    try {
-      await DatabaseHelper().inserirEventoHistorico(
-        titulo: titulo,
-        descricao: descricao,
-        categoria: 'sistema',
-      );
-    } catch (e) {
-      debugPrint('⚠️ Falha ao registrar evento de sistema no histórico: $e');
-    }
-  }
 }
 
 /// Callback headless do teto de segurança agendado por

@@ -1,94 +1,36 @@
 package com.example.security_check_app
 
 import android.content.Intent
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import io.flutter.embedding.engine.FlutterEngine
 
 /**
- * Activity nativa DEDICADA a exibir, com o som do alarme de rotina
- * tocando em LOOP e por cima do Keyguard/lockscreen, a tela de
- * confirmação "Cheguei bem" quando um alarme de check-in de ROTINA
- * dispara (ver [RotinaAlarmeService]/`_callbackCheckinRotina`) —
- * inclusive com o aparelho bloqueado ou o app completamente fechado.
+ * Activity nativa DEDICADA à tela do alarme — despertador (aba Família) e
+ * Cronômetro Regressivo (aba Segurança) — por cima da tela bloqueada,
+ * inclusive com o app fechado. Aberta pelo [RotinaAlarmWakeService]
+ * (full-screen intent / `startActivity`).
  *
- * MOTIVAÇÃO ARQUITETURAL: idêntica à de [LockscreenCameraActivity] —
- * uma notificação local (`flutter_local_notifications`) sozinha não é
- * suficiente para sobrepor o Keyguard nem para tocar um som em loop de
- * forma confiável enquanto aguarda a interação do usuário. Iniciar esta
- * Activity diretamente via [Intent] — agora também a partir de
- * [RotinaAlarmWakeService], um caminho 100% nativo que sobrevive ao
- * Doze/deep sleep — com as flags de Keyguard aplicadas no PRÓPRIO
- * [onCreate] (ver abaixo; NÃO são herdadas de [MainActivity], que não
- * define nenhuma), garante que a tela de confirmação (com o botão
- * "Pausar Alarme"/"Cheguei bem") realmente apareça por cima da tela
- * bloqueada, e que o alerta sonoro do check-in de rotina toque mesmo com
- * a tela apagada.
+ * O SOM não é tocado aqui nem no Dart: é responsabilidade exclusiva do
+ * [RotinaAlarmWakeService] (um único som, o escolhido em Configurações).
  *
- * ÁUDIO: especificação do usuário (2026-08-07, item 1) — toca APENAS o
- * som customizado escolhido em Configurações, SEM nenhuma reprodução
- * paralela. Essa é responsabilidade EXCLUSIVA do `AudioPlayer` Dart em
- * [AlarmeDisparadoScreen._tocarSomDoAlarme] (o único que lê de verdade a
- * preferência do usuário, com múltiplos fallbacks). Este `MediaPlayer`
- * nativo, que existia aqui antes, foi DESATIVADO de propósito
- * ([iniciarSomEmLoop] virou no-op): ele lia a chave nativa
- * `alarm_sound_path` via `PreferenceManager.getDefaultSharedPreferences`
- * — um arquivo de preferências DIFERENTE do `FlutterSharedPreferences`
- * usado pelo plugin `shared_preferences` do lado Dart — e por isso
- * NUNCA era realmente atualizado com a escolha do usuário, tocando
- * sempre "som_1.mp3" fixo em paralelo com o som Dart correto (o
- * "áudio duplicado/paralelo" relatado). [RotinaAlarmSomBridge]/os
- * métodos nativos "pararAlarme"/"silenciarSomSemFechar" continuam
- * existindo e são seguros de chamar (viram no-op sem player nenhum
- * registrado), preservando a mesma interface para o resto do código.
- *
- * ROTA INICIAL PARA O FLUTTER: o extra/rota [ROTA_INICIAL_ROTINA_ALARME]
- * é lido no lado Dart (`main.dart`) para navegar diretamente para a
- * tela de confirmação de check-in de rotina, exibindo o diálogo de PIN
- * com o botão "Cancelar"/"Pausar Alarme" (ver `pin_dialog.dart`,
- * parâmetro `mostrarBotaoCancelar`).
- *
- * Reaproveita o MESMO engine em cache (`FlutterEngineCache`) que a
- * [MainActivity] usa, através do `provideFlutterEngine` herdado do
- * próprio Flutter embedding — os plugins locais registrados em
- * [MainActivity.configureFlutterEngine] continuam disponíveis
- * normalmente aqui, já que esta Activity ESTENDE [MainActivity] em vez
- * de duplicar a lógica de registro de plugins.
+ * A ocorrência exibida (tipo/id/ciclo/prazo) vem nos extras do Intent e é
+ * lida pelo Dart pelo método `ocorrenciaDaTela` do [RotinaAlarmPlugin];
+ * `abrirTeclado` (botão "Desativar despertador" da notificação) abre a
+ * tela direto no teclado de PIN. Um novo Intent com a Activity já aberta
+ * (`onNewIntent`) é avisado ao Dart pelo [RotinaAlarmEventBridge].
  */
 class RotinaCheckinAlarmActivity : MainActivity() {
-
-    /** Player nativo responsável por tocar o som do alarme de rotina em
-     * loop enquanto esta Activity estiver visível. Registrado em
-     * [RotinaAlarmSomBridge] logo após ser criado, permitindo que o lado
-     * Dart o interrompa remotamente via MethodChannel
-     * ("pausarAlarme", ver [RotinaAlarmPlugin]). */
-    private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         RotinaAlarmPlugin.registrarActivity(this)
         super.onCreate(savedInstanceState)
 
-        // CORREÇÃO (bug real de Doze/lockscreen): MainActivity NÃO define
-        // nenhuma flag de Keyguard programaticamente — ela conta apenas
-        // com os atributos declarativos do AndroidManifest
-        // (`showWhenLocked`/`turnScreenOn`), que se mostraram
-        // insuficientes em testes reais com o aparelho bloqueado por
-        // vários minutos (Doze). Aplicamos aqui, explicitamente, o MESMO
-        // padrão já validado em [LockscreenCameraActivity] para o fluxo
-        // de SOS: `setShowWhenLocked`/`setTurnScreenOn` (API 27+) com
-        // fallback de flags de Window para versões antigas, garantindo
-        // que a tela do alarme SEMPRE apareça por cima do bloqueio e
-        // ACENDA o aparelho, mesmo vindo de uma Activity criada por um
-        // Service em segundo plano (ver [RotinaAlarmWakeService]).
-        //
-        // Propositalmente NÃO chamamos requestDismissKeyguard()/
-        // FLAG_DISMISS_KEYGUARD (mesma decisão de LockscreenCameraActivity):
-        // em aparelhos com bloqueio seguro (PIN/padrão/senha do sistema),
-        // isso acionaria a tela de autenticação NATIVA do Android por
-        // cima da nossa — confuso e desnecessário, já que o teclado de
-        // PIN do próprio app já cumpre esse papel.
+        // Flags de Keyguard aplicadas aqui (não herdadas da MainActivity):
+        // a tela do alarme aparece por cima do bloqueio e acende o aparelho.
+        // Sem requestDismissKeyguard: o teclado de PIN do próprio app já faz
+        // esse papel.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -101,69 +43,14 @@ class RotinaCheckinAlarmActivity : MainActivity() {
             )
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        // Impede que o teclado virtual do sistema suba automaticamente
-        // por cima da tela de confirmação de check-in ao abrir esta
-        // Activity diretamente por cima do Keyguard.
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
-
-        // NÃO chama mais iniciarSomEmLoop() — ver comentário da classe
-        // (item 1): o som é responsabilidade exclusiva do AudioPlayer
-        // Dart, nunca deste MediaPlayer nativo.
-    }
-
-    /**
-     * DESATIVADO de propósito (item 1 — ver comentário da classe): não
-     * cria mais nenhum `MediaPlayer`. Mantido como método vazio (em vez
-     * de removido) só para minimizar o diff nos pontos que ainda o
-     * chamam ([reiniciarSom]) — nenhum som nativo volta a tocar a partir
-     * daqui.
-     */
-    private fun iniciarSomEmLoop() {
-        mediaPlayer = null
-    }
-
-    /**
-     * DESATIVADO de propósito (item 1): não reinicia mais nenhum som
-     * nativo. Mantido como no-op seguro porque [RotinaAlarmPlugin]
-     * ("reiniciarSomSeAtivo") ainda pode chamá-lo — o reforço sonoro da
-     * janela final agora é feito 100% pelo AudioPlayer Dart (ver
-     * [AlarmeDisparadoScreen._entrarNaFaseFinal]).
-     */
-    fun reiniciarSom() {
-        try {
-            RotinaAlarmSomBridge.pararSom()
-        } catch (_: Exception) {
-        }
-        mediaPlayer = null
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        // Garante que os mesmos plugins locais (SmsSender,
-        // VolumeSosPlugin, LockscreenPlugin, RotinaAlarmPlugin) sejam
-        // registrados também neste engine, exatamente como na
-        // MainActivity.
         super.configureFlutterEngine(flutterEngine)
     }
 
-    /**
-     * Repassa ao Flutter, através da rota inicial padrão do
-     * `FlutterActivity` (`window.setInitialRoute`/`getInitialRoute`),
-     * o sinal de que este cold start específico deve ir DIRETO para a
-     * tela de confirmação do alarme disparado. Ver `main.dart`.
-     *
-     * GENERALIZAÇÃO (Cronômetro Regressivo, aba Segurança): esta Activity
-     * — antes exclusiva do Alarme de Rotina — passou a ser COMPARTILHADA
-     * pelos dois fluxos, reaproveitando toda a infraestrutura nativa já
-     * validada (Keyguard, Doze, fechamento forçado, reabertura ao
-     * desbloquear — ver [RotinaAlarmWakeService]/[RotinaAlarmPlugin]), em
-     * vez de duplicar uma segunda Activity/Service/Receiver do zero. O
-     * extra [EXTRA_TIPO_ALARME] (lido do próprio `intent`, com
-     * [TIPO_ALARME_ROTINA] como padrão — nenhuma mudança de comportamento
-     * para chamadores antigos que não o enviam) decide qual rota inicial
-     * o lado Dart recebe; o restante da Activity (flags de janela, ciclo
-     * de vida) permanece 100% genérico entre os dois tipos.
-     */
+    /** Rota inicial do Dart conforme o tipo da ocorrência (ver `main.dart`). */
     override fun getInitialRoute(): String {
         return if (tipoAlarmeDoIntent(intent) == TIPO_ALARME_CRONOMETRO) {
             ROTA_INICIAL_CRONOMETRO_ALARME
@@ -174,90 +61,65 @@ class RotinaCheckinAlarmActivity : MainActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Se a Activity já existir (singleTop) e um novo disparo de
-        // rotina chegar enquanto ela ainda está viva, apenas reforça as
-        // flags de lockscreen novamente e atualiza o idAlarme mais
-        // recente através do próprio Intent — a navegação/exibição do
-        // diálogo em si já é tratada pelo lado Dart via MethodChannel
-        // (ver [RotinaAlarmPlugin]).
         setIntent(intent)
-        idAlarmeDoIntent(intent)?.let { idAlarme ->
-            RotinaAlarmEventBridge.notificarNovoDisparo(idAlarme)
-        }
-  }
+        RotinaAlarmEventBridge.notificarNovoDisparo(ocorrenciaDoIntent(intent))
+    }
 
     override fun onDestroy() {
-        RotinaAlarmSomBridge.pararSom()
-        mediaPlayer = null
-        // 2. Remove o registro para não vazar memória
         RotinaAlarmPlugin.registrarActivity(null)
         super.onDestroy()
     }
 
     companion object {
-        /**
-         * Extra/rota especial reconhecida pelo lado Dart (`main.dart`)
-         * para identificar que o app foi iniciado a partir de um
-         * disparo de alarme de check-in de ROTINA com o aparelho
-         * bloqueado/app fechado, devendo navegar imediatamente para a
-         * tela de confirmação "Cheguei bem" (com opção de pausar o
-         * alarme sonoro).
-         */
         const val ROTA_INICIAL_ROTINA_ALARME = "/rotina_alarme_confirmacao"
-
-        /**
-         * Rota inicial equivalente para o Cronômetro Regressivo da aba
-         * Segurança — ver comentário de [getInitialRoute]/[EXTRA_TIPO_ALARME].
-         * Lida no lado Dart (`main.dart`) para navegar direto para
-         * `CronometroDisparadoScreen`.
-         */
         const val ROTA_INICIAL_CRONOMETRO_ALARME = "/cronometro_alarme_confirmacao"
 
-        /** Chave do extra inteiro (id do alarme de rotina, ou o id
-         * sentinel reservado do Cronômetro — ver `AlarmeService.kt`/
-         * `alarme_service.dart`) enviado junto com o [Intent] que abre
-         * esta Activity. */
         const val EXTRA_ID_ALARME = "id_alarme_rotina"
-
-        /**
-         * Chave do extra de string que identifica qual fluxo disparou
-         * esta Activity: [TIPO_ALARME_ROTINA] (padrão, retrocompatível
-         * com todo código antigo que não envia este extra) ou
-         * [TIPO_ALARME_CRONOMETRO].
-         */
         const val EXTRA_TIPO_ALARME = "tipo_alarme"
+        const val EXTRA_CICLO = "ciclo_epoch_ms"
+        const val EXTRA_PRAZO = "prazo_epoch_ms"
+        const val EXTRA_ABRIR_TECLADO = "abrir_teclado"
         const val TIPO_ALARME_ROTINA = "rotina"
         const val TIPO_ALARME_CRONOMETRO = "cronometro"
 
-        /** Extrai o id do alarme de rotina do [intent] recebido, ou
-         * `null` se ausente/inválido. */
         fun idAlarmeDoIntent(intent: Intent?): Int? {
             if (intent == null || !intent.hasExtra(EXTRA_ID_ALARME)) return null
             val valor = intent.getIntExtra(EXTRA_ID_ALARME, -1)
             return if (valor >= 0) valor else null
         }
 
-        /** Extrai o tipo de alarme do [intent] recebido — [TIPO_ALARME_ROTINA]
-         * quando ausente (retrocompatibilidade total). */
         fun tipoAlarmeDoIntent(intent: Intent?): String {
             return intent?.getStringExtra(EXTRA_TIPO_ALARME) ?: TIPO_ALARME_ROTINA
+        }
+
+        /** Ocorrência + `abrirTeclado` dos extras, para o Dart. */
+        fun ocorrenciaDoIntent(intent: Intent?): Map<String, Any?>? {
+            val id = idAlarmeDoIntent(intent) ?: return null
+            val tipo = tipoAlarmeDoIntent(intent)
+            val ciclo = intent?.getLongExtra(EXTRA_CICLO, 0L) ?: 0L
+            val prazo = intent?.getLongExtra(EXTRA_PRAZO, 0L) ?: 0L
+            return mapOf(
+                "tipo" to tipo,
+                "id" to id,
+                "ciclo" to ciclo,
+                "prazo" to prazo,
+                "chave" to Ocorrencia.chave(tipo, id, ciclo),
+                "abrirTeclado" to (intent?.getBooleanExtra(EXTRA_ABRIR_TECLADO, false) ?: false),
+            )
         }
     }
 }
 
 /**
- * Ponte estática simples usada para notificar o lado Dart (via
- * EventChannel do [RotinaAlarmPlugin]), quando esta Activity já está
- * viva e um NOVO disparo de alarme de rotina chega através de
- * `onNewIntent` (cenário em que o Flutter já está rodando e não passa
- * novamente pela rota inicial de cold start).
+ * Avisa o Dart (EventChannel do [RotinaAlarmPlugin]) quando a Activity, já
+ * aberta, recebe uma NOVA ocorrência ou o toque em "Desativar despertador".
  */
 object RotinaAlarmEventBridge {
     var eventSink: io.flutter.plugin.common.EventChannel.EventSink? = null
 
-    fun notificarNovoDisparo(idAlarme: Int) {
+    fun notificarNovoDisparo(ocorrencia: Map<String, Any?>?) {
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            eventSink?.success(idAlarme)
+            eventSink?.success(ocorrencia)
         }
     }
 }

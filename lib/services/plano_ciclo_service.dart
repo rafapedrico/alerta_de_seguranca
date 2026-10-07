@@ -1,11 +1,18 @@
 import 'dart:async';
 
+import 'dart:convert';
+
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../firebase_options.dart';
 import 'firebase_auth_service.dart';
+import 'rotina_alarme_service.dart';
 
 /// Snapshot computado do ciclo recorrente de 30 dias do Plano Free —
 /// espelho em Dart da MESMA regra calculada no servidor (ver
@@ -88,9 +95,16 @@ class PlanoCicloStatus {
   /// falta de dado, já que a Cloud Function inicializa o campo de verdade
   /// na primeira sincronização (ver [PlanoCicloService.iniciar]).
   factory PlanoCicloStatus.fromDoc(Map<String, dynamic>? dados) {
-    final bool isPremium = dados?['isPremium'] as bool? ?? false;
     final Timestamp? timestamp = dados?['cycleStartDate'] as Timestamp?;
-    final DateTime inicio = timestamp?.toDate() ?? DateTime.now();
+    return PlanoCicloStatus.calcular(
+      isPremium: dados?['isPremium'] as bool? ?? false,
+      inicio: timestamp?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  /// Mesma regra de [PlanoCicloStatus.fromDoc], a partir dos valores crus
+  /// (usado também pelo cache local).
+  factory PlanoCicloStatus.calcular({required bool isPremium, required DateTime inicio}) {
     final int diaAtual =
         DateTime.now().difference(inicio).inDays.clamp(0, 1 << 30) + 1;
     final bool dentroDaJanelaAtiva = !debugForcarPlanoFreeBloqueado &&
@@ -230,7 +244,9 @@ class PlanoCicloService {
     if (!_firebaseDisponivel) return null;
     try {
       final snap = await _doc.get().timeout(_timeout);
-      return PlanoCicloStatus.fromDoc(snap.data());
+      final status = PlanoCicloStatus.fromDoc(snap.data());
+      unawaited(_salvarCache(status));
+      return status;
     } catch (e) {
       debugPrint('⚠️ [PlanoCicloService] Falha ao ler o ciclo do plano: $e');
       return null;
@@ -254,5 +270,97 @@ class PlanoCicloService {
   Future<bool> podeUsarRecursosAvancados() async {
     final status = await obterStatusAtualizado();
     return status?.ativo ?? true;
+  }
+
+  // ==========================================================
+  // CACHE LOCAL (o SOS nunca espera a rede pelo plano)
+  // ==========================================================
+
+  static const String _chaveCache = 'plano_ciclo_cache_v1';
+
+  Future<void> _salvarCache(PlanoCicloStatus status) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _chaveCache,
+        jsonEncode({
+          'isPremium': status.isPremium,
+          'inicioMs': status.cycleStartDate.millisecondsSinceEpoch,
+        }),
+      );
+      // A agenda nativa dos despertadores também respeita o bloqueio.
+      unawaited(_canalNativo.invokeMethod('configurarIdentidade', {
+        'planoPremium': status.isPremium.toString(),
+        'planoInicioMs': status.cycleStartDate.millisecondsSinceEpoch.toString(),
+      }).catchError((_) => null));
+    } catch (_) {}
+  }
+
+  static const MethodChannel _canalNativo =
+      MethodChannel('com.example.security_check_app/rotina_alarme');
+
+  /// Último status conhecido (gravado a cada leitura do Firestore),
+  /// recalculado para HOJE — `null` se nunca foi lido neste aparelho.
+  Future<PlanoCicloStatus?> statusEmCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final texto = prefs.getString(_chaveCache);
+      if (texto == null) return null;
+      final dados = jsonDecode(texto) as Map<String, dynamic>;
+      return PlanoCicloStatus.calcular(
+        isPremium: dados['isPremium'] as bool? ?? false,
+        inicio: DateTime.fromMillisecondsSinceEpoch((dados['inicioMs'] as num).toInt()),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Decisão IMEDIATA para o SOS: usa o status em cache e só bloqueia se
+  /// ele disser claramente "bloqueado" (nunca espera a rede). Atualiza o
+  /// cache em segundo plano.
+  Future<bool> podeUsarRapido() async {
+    final cache = await statusEmCache();
+    unawaited(obterStatusAtualizado());
+    return cache?.ativo ?? true;
+  }
+
+  static const int _idAlarmeInicioBloqueio = 990021;
+
+  /// Agenda (exato) uma verificação no dia em que o bloqueio do Plano Free
+  /// começa, para desativar os despertadores nesse momento — não só quando
+  /// o app for aberto.
+  Future<void> agendarVerificacaoNoInicioDoBloqueio(PlanoCicloStatus status) async {
+    if (status.isPremium) return;
+    final inicioBloqueio = status.cycleStartDate.add(const Duration(days: 10));
+    if (!inicioBloqueio.isAfter(DateTime.now())) return;
+    try {
+      await AndroidAlarmManager.oneShotAt(
+        inicioBloqueio.add(const Duration(minutes: 1)),
+        _idAlarmeInicioBloqueio,
+        _callbackInicioDoBloqueio,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+        rescheduleOnReboot: true,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [PlanoCicloService] Falha ao agendar a verificação do início do bloqueio: $e');
+    }
+  }
+}
+
+/// Início do bloqueio do Plano Free (isolate headless): desativa os
+/// despertadores e marca CANCELADO na nuvem (o servidor não dispara).
+@pragma('vm:entry-point')
+void _callbackInicioDoBloqueio() async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+          .timeout(const Duration(seconds: 8));
+    }
+    await RotinaAlarmeService.desativarAlarmesSePlanoBloqueado();
+  } catch (e) {
+    debugPrint('⚠️ [HEADLESS] Falha na verificação do início do bloqueio: $e');
   }
 }

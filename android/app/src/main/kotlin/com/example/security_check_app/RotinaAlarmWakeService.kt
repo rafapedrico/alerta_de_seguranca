@@ -9,170 +9,339 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioAttributes
-import android.media.RingtoneManager
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import org.json.JSONArray
+import org.json.JSONObject
 
 private const val TAG = "RotinaAlarmWakeService"
 
 /**
- * Foreground Service que garante que o alarme de rotina "acorde" o
- * aparelho de verdade, mesmo em Doze/deep sleep — CORREÇÃO do bug
- * relatado em teste real: com o aparelho bloqueado por alguns minutos, o
- * Android suspendia o processo do app antes que o isolate headless do
- * `android_alarm_manager_plus` conseguisse sequer abrir a tela do
- * alarme, e o disparo do alerta de emergência na janela final também era
- * interrompido no meio (nenhuma confirmação de envio chegava a ser
- * logada).
+ * Foreground Service que "acorda" o aparelho no horário do Cronômetro
+ * Regressivo (aba Segurança) e dos despertadores (aba Família), mesmo em
+ * Doze, com o app fechado ou a tela bloqueada.
  *
- * ESTRATÉGIA (mesma já validada em [VolumeSosService] para o botão físico
- * de SOS): este Service é iniciado DIRETAMENTE por um
- * [android.app.PendingIntent] nativo do `AlarmManager`
- * (`setExactAndAllowWhileIdle`, ver [RotinaAlarmNativeReceiver]) — um
- * caminho 100% nativo, que NÃO depende de nenhum MethodChannel/engine
- * Flutter estar "quente" (diferente do isolate headless do
- * `android_alarm_manager_plus`, que não tem NENHUM plugin local
- * registrado nele, ver `MainApplication.kt`). Ele:
+ * Iniciado DIRETAMENTE pelo `AlarmManager` (ver [RotinaAlarmNativeReceiver],
+ * caminho 100% nativo, sem depender de engine Flutter). Para cada ocorrência
+ * (chave `tipo:id:ciclo`, ver [RotinaAlarmFluxoState]) ele:
  *
- * 1. Adquire um [PowerManager.PARTIAL_WAKE_LOCK], mantendo a CPU do
- *    processo ativa (sem Doze) por toda a duração do fluxo (do disparo
- *    inicial até o desarme/disparo do alerta) — é isso que garante que o
- *    cronômetro de tolerância/janela final e o disparo final de SMS/nuvem
- *    (ambos ainda coordenados pelo lado Dart, ver `rotina_alarme_service.dart`)
- *    consigam de fato terminar de executar, mesmo com a tela apagada.
- * 2. Inicia a [RotinaCheckinAlarmActivity] via [Intent], que exibe o
- *    teclado de PIN por cima da tela de bloqueio e toca o som em loop.
+ * 1. Marca a ocorrência como em andamento, com o prazo (horário +
+ *    tolerância), e segura um `PARTIAL_WAKE_LOCK` até o maior prazo em
+ *    aberto (+ margem) — a tolerância inteira, não um teto fixo.
+ * 2. Toca UM único som — o escolhido em Configurações (`res/raw/som_N`) — em
+ *    loop até a ocorrência ser resolvida ou o prazo acabar:
+ *    - despertador: uso de ALARME (toca mesmo no modo silencioso);
+ *    - cronômetro: respeita o modo do aparelho (silencioso: nada; vibrar:
+ *      só vibra; normal: toca no volume atual do toque, sem forçar o máximo).
+ *    O canal da notificação é mudo — nenhum segundo som paralelo.
+ * 3. Posta a notificação de tela cheia da ocorrência (sobre a tela
+ *    bloqueada). No despertador ela tem o botão "Desativar despertador", que
+ *    abre a tela direto no teclado de PIN.
  *
- * O WakeLock é liberado explicitamente assim que o lado Dart sinaliza
- * que o fluxo foi resolvido (PIN confirmado ou alerta de emergência já
- * disparado — ver método `pararServicoForeground` em
- * [RotinaAlarmPlugin]), e tem um teto de segurança de 10 minutos para
- * NUNCA ficar preso indefinidamente drenando bateria caso esse sinal de
- * conclusão falhe por qualquer motivo.
+ * A ocorrência só deixa de estar em andamento quando o lado Dart a resolve
+ * (PIN correto ou alerta enviado — `pararServicoForeground` com a chave) ou,
+ * como rede de segurança, alguns minutos depois do prazo. Resolver uma NUNCA
+ * fecha nem silencia outra que esteja tocando ao mesmo tempo.
  *
- * DESBLOQUEIO DO APARELHO: o alarme não para de tocar/exigir o PIN só
- * porque a tela foi desbloqueada — `android:stopWithTask="false"` no
- * manifest garante que este Service (que já roda em primeiro plano) não
- * seja parado automaticamente por remoção de tarefa, e o
- * [BroadcastReceiver] registrado dinamicamente abaixo reabre
- * [RotinaCheckinAlarmActivity] sempre que o aparelho for desbloqueado
- * ([Intent.ACTION_USER_PRESENT]) enquanto o fluxo ([RotinaAlarmFluxoState])
- * ainda não tiver sido resolvido.
- *
- * FECHAMENTO FORÇADO ("jogar para cima"/force close) — especificação do
- * usuário (2026-08-07, item 4), COMPORTAMENTO INVERTIDO em relação à
- * versão anterior: antes, [onTaskRemoved] reabria a tela e deixava o
- * alarme continuar tocando normalmente (tratava o swipe como um gesto
- * sem consequência). Agora, esse gesto — enquanto o fluxo ainda
- * está em andamento (sem PIN confirmado) — é tratado como uma falha de
- * confirmação: a tela É reaberta (só para ter um engine Flutter vivo
- * capaz de rodar o disparo real, ver [RotinaAlarmFluxoState.marcarFechamentoForcado]/
- * `RotinaAlarmeService.consumirFechamentoForcado`), mas
- * [AlarmeDisparadoScreen] detecta esse motivo específico e dispara o
- * alerta de emergência IMEDIATAMENTE em vez de retomar o toque normal.
+ * FECHAMENTO FORÇADO (app removido dos Recentes com uma ocorrência em
+ * andamento): [onTaskRemoved] marca a ocorrência e reabre a tela, que
+ * dispara o alerta — SEMPRE conferindo antes se ela já não foi resolvida
+ * (o PIN correto marca a ocorrência como resolvida no nativo).
  */
 class RotinaAlarmWakeService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
-    private var idAlarmeAtual: Int = -1
     private var receiverRegistrado = false
+    private val handler = Handler(Looper.getMainLooper())
+
+    private var player: MediaPlayer? = null
+    private var vibrando = false
+    private var modoSomAtual: String? = null
 
     private val receiverDesbloqueio = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val emAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
-            Log.d(
-                TAG,
-                "receiverDesbloqueio.onReceive: action=${intent?.action} emAndamento=$emAndamento " +
-                    "idAlarme=${RotinaAlarmFluxoState.idAlarmeAtual(applicationContext)}",
-            )
-            // Só reabre a tela se o fluxo REALMENTE ainda não tiver sido
-            // resolvido (PIN correto ou alerta já disparado) — evita
-            // reabrir uma tela de alarme já encerrado por qualquer
-            // desbloqueio/tela-ligada subsequente e não relacionado.
-            if (emAndamento) {
-                iniciarTelaDoAlarme(
-                    RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
-                    RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
-                )
-            }
+            val proxima = RotinaAlarmFluxoState.proximaParaExibir(applicationContext)
+            Log.d(TAG, "receiverDesbloqueio: action=${intent?.action} proxima=${proxima?.chave}")
+            if (proxima != null) iniciarTelaDoAlarme(proxima, abrirTeclado = false)
         }
     }
 
+    private val revisao = Runnable { revisarOcorrencias() }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val tipoAlarme = intent?.getStringExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME)
-            ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
-        Log.d(
-            TAG,
-            "onStartCommand: idAlarme=${intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1)} " +
-                "tipoAlarme=$tipoAlarme",
-        )
+        // Contrato do Android 8+: startForeground em até 5 s, sempre.
         iniciarEmForeground()
-        adquirirWakeLock()
-        registrarReceiverDeDesbloqueio()
 
-        idAlarmeAtual = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
-        RotinaAlarmFluxoState.marcarEmAndamento(applicationContext, idAlarmeAtual, tipoAlarme)
-        iniciarTelaDoAlarme(idAlarmeAtual, tipoAlarme)
+        when (intent?.action) {
+            ACAO_RESOLVER -> {
+                val chave = intent.getStringExtra(EXTRA_CHAVE)
+                if (chave != null) resolver(chave)
+            }
+            ACAO_REVISAR -> Unit
+            else -> {
+                val tipo = intent?.getStringExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME)
+                    ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+                val id = intent?.getIntExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, -1) ?: -1
+                val ciclo = intent?.getLongExtra(RotinaCheckinAlarmActivity.EXTRA_CICLO, 0L) ?: 0L
+                val prazo = intent?.getLongExtra(RotinaCheckinAlarmActivity.EXTRA_PRAZO, 0L) ?: 0L
+                Log.d(TAG, "onStartCommand: tipo=$tipo id=$id ciclo=$ciclo prazo=$prazo")
+                if (id >= 0 && ciclo > 0L) {
+                    val prazoEfetivo = if (prazo > ciclo) prazo else ciclo + PRAZO_PADRAO_MS
+                    val ocorrencia = Ocorrencia(tipo, id, ciclo, prazoEfetivo)
+                    if (RotinaAlarmFluxoState.estaResolvida(this, ocorrencia.chave)) {
+                        Log.d(TAG, "Ocorrência ${ocorrencia.chave} já resolvida — ignorada.")
+                    } else if (tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA &&
+                        GxFirestoreRest.planoBloqueadoEm(this, System.currentTimeMillis())
+                    ) {
+                        Log.d(TAG, "Despertador #$id não toca — Plano Free nos dias bloqueados.")
+                        RotinaAlarmFluxoState.marcarResolvido(this, ocorrencia.chave)
+                    } else {
+                        RotinaAlarmFluxoState.marcarEmAndamento(this, ocorrencia)
+                        if (tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA) {
+                            DespertadorAgenda.aoTocar(this, id, ciclo, prazoEfetivo)
+                        }
+                        iniciarTelaDoAlarme(ocorrencia, abrirTeclado = false)
+                    }
+                }
+            }
+        }
 
-        // START_NOT_STICKY: não faz sentido o Android recriar este Service
-        // sozinho sem o extra do idAlarme — o próprio alarme nativo (ou o
-        // lado Dart, se o usuário reabrir o app) já cuida de tudo a partir
-        // daqui.
+        revisarOcorrencias()
         return START_NOT_STICKY
     }
 
+    /** Ocorrência resolvida pelo Dart (PIN correto ou alerta enviado). */
+    private fun resolver(chave: String) {
+        val ocorrencia = RotinaAlarmFluxoState.buscar(this, chave)
+        RotinaAlarmFluxoState.marcarResolvido(this, chave)
+        cancelarNotificacaoOcorrencia(this, chave)
+        if (ocorrencia?.tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA) {
+            DespertadorAgenda.armarProxima(this, ocorrencia.id)
+        }
+    }
+
     /**
-     * FECHAMENTO FORÇADO (item 4, ver comentário da classe): se o
-     * Android remover a TAREFA (task) associada a este Service — ex:
-     * usuário arrastou o app para cima nos Recentes — enquanto o fluxo
-     * ainda estiver em andamento (PIN não confirmado), marca a flag
-     * [RotinaAlarmFluxoState.marcarFechamentoForcado] ANTES de reabrir a
-     * tela, para que [AlarmeDisparadoScreen] (assim que seu engine
-     * reiniciar) saiba que deve disparar o alerta de emergência de
-     * imediato, em vez de retomar o toque/teclado normal. O Service em
-     * si (`stopWithTask="false"`) já sobrevive à remoção da tarefa; isto
-     * cobre a Activity, que É destruída nesse evento.
+     * Ponto único de revisão: descarta ocorrências vencidas há muito tempo
+     * (rede de segurança — o servidor já cuidou do alerta), ajusta o som e
+     * o WakeLock ao que ainda está em aberto e encerra o serviço quando
+     * nada mais estiver em andamento.
      */
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        super.onTaskRemoved(rootIntent)
-        val emAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
-        Log.d(TAG, "onTaskRemoved: emAndamento=$emAndamento — ${if (emAndamento) "fechamento forçado: marcando flag e reabrindo só para disparar o alerta" else "nada a fazer (fluxo já resolvido)"}")
-        if (emAndamento) {
-            RotinaAlarmFluxoState.marcarFechamentoForcado(applicationContext)
-            Handler(Looper.getMainLooper()).postDelayed({
-                val aindaEmAndamento = RotinaAlarmFluxoState.estaEmAndamento(applicationContext)
-                Log.d(TAG, "onTaskRemoved (delayed 500ms): aindaEmAndamento=$aindaEmAndamento")
-                if (aindaEmAndamento) {
-                    iniciarTelaDoAlarme(
-                        RotinaAlarmFluxoState.idAlarmeAtual(applicationContext),
-                        RotinaAlarmFluxoState.tipoAlarmeAtual(applicationContext),
-                    )
+    private fun revisarOcorrencias() {
+        handler.removeCallbacks(revisao)
+        val agora = System.currentTimeMillis()
+        for (o in RotinaAlarmFluxoState.pendentes(this)) {
+            if (agora > o.prazo + MARGEM_ABANDONO_MS) {
+                Log.d(TAG, "Ocorrência ${o.chave} abandonada (prazo vencido há mais de ${MARGEM_ABANDONO_MS / 60000} min).")
+                RotinaAlarmFluxoState.marcarResolvido(this, o.chave)
+                cancelarNotificacaoOcorrencia(this, o.chave)
+                if (o.tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA) {
+                    DespertadorAgenda.armarProxima(this, o.id)
                 }
-            }, 500L)
+            }
+        }
+        val pendentes = RotinaAlarmFluxoState.pendentes(this)
+        if (pendentes.isEmpty()) {
+            Log.d(TAG, "Nenhuma ocorrência em andamento — encerrando o serviço.")
+            pararSom()
+            stopSelf()
+            return
+        }
+        registrarReceiverDeDesbloqueio()
+        adquirirWakeLock(pendentes.maxOf { it.prazo } + MARGEM_ABANDONO_MS - agora)
+        atualizarSom(pendentes.filter { it.prazo > agora })
+
+        // Próxima revisão: o prazo mais próximo ainda no futuro (o som para
+        // nele) ou o abandono da mais antiga.
+        val proximosEventos = pendentes.flatMap { listOf(it.prazo, it.prazo + MARGEM_ABANDONO_MS) }
+            .filter { it > agora }
+        val proximo = proximosEventos.minOrNull()
+        if (proximo != null) handler.postDelayed(revisao, (proximo - agora).coerceAtLeast(1000L))
+    }
+
+    // ------------------------------------------------------------------
+    // Som e vibração
+    // ------------------------------------------------------------------
+
+    private fun atualizarSom(ativas: List<Ocorrencia>) {
+        if (ativas.isEmpty()) {
+            pararSom()
+            return
+        }
+        val despertador = ativas.any { it.tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA }
+        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val modo = when {
+            despertador -> MODO_ALARME
+            audio.ringerMode == AudioManager.RINGER_MODE_NORMAL -> MODO_TOQUE
+            audio.ringerMode == AudioManager.RINGER_MODE_VIBRATE -> MODO_VIBRAR
+            else -> MODO_MUDO
+        }
+        if (modo == modoSomAtual) return
+        pararSom()
+        modoSomAtual = modo
+        val numeroSom = somEscolhido(this)
+        when (modo) {
+            MODO_ALARME -> if (numeroSom == SOM_SILENCIOSO) vibrarEmLoop() else tocarEmLoop(numeroSom, AudioAttributes.USAGE_ALARM)
+            MODO_TOQUE -> if (numeroSom == SOM_SILENCIOSO) Unit else tocarEmLoop(numeroSom, AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+            MODO_VIBRAR -> vibrarEmLoop()
+            else -> Unit
+        }
+        Log.d(TAG, "Som: modo=$modo som=$numeroSom")
+    }
+
+    private fun tocarEmLoop(numeroSom: Int, uso: Int) {
+        val recurso = resources.getIdentifier("som_$numeroSom", "raw", packageName)
+            .takeIf { it != 0 } ?: resources.getIdentifier("som_1", "raw", packageName)
+        try {
+            val arquivo = resources.openRawResourceFd(recurso)
+            player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(uso)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                setDataSource(arquivo.fileDescriptor, arquivo.startOffset, arquivo.length)
+                arquivo.close()
+                isLooping = true
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Falha ao tocar o som $numeroSom: ${e.message}")
+            player = null
+        }
+    }
+
+    private fun vibrador(): Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+
+    private fun vibrarEmLoop() {
+        try {
+            val padrao = longArrayOf(0L, 700L, 500L)
+            val v = vibrador() ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                v.vibrate(VibrationEffect.createWaveform(padrao, 0))
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(padrao, 0)
+            }
+            vibrando = true
+        } catch (e: Exception) {
+            Log.w(TAG, "Falha ao vibrar: ${e.message}")
+        }
+    }
+
+    private fun pararSom() {
+        try {
+            player?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+        } catch (_: Exception) {
+        } finally {
+            player = null
+        }
+        if (vibrando) {
+            try { vibrador()?.cancel() } catch (_: Exception) {}
+            vibrando = false
+        }
+        modoSomAtual = null
+    }
+
+    // ------------------------------------------------------------------
+    // Tela / notificação
+    // ------------------------------------------------------------------
+
+    /**
+     * Abre a tela do alarme por cima da tela bloqueada: notificação com
+     * full-screen intent (exceção oficial à restrição de abrir Activity em
+     * segundo plano do Android 10+) e, quando possível, `startActivity`.
+     */
+    private fun iniciarTelaDoAlarme(ocorrencia: Ocorrencia, abrirTeclado: Boolean) {
+        val intent = intentDaTela(this, ocorrencia, abrirTeclado)
+        postarNotificacaoOcorrencia(ocorrencia)
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.d(TAG, "startActivity recusado (esperado com o app em segundo plano): ${e.message}")
+        }
+    }
+
+    private fun postarNotificacaoOcorrencia(ocorrencia: Ocorrencia) {
+        try {
+            criarCanalSeNecessario(this)
+            val pendingAbrir = PendingIntent.getActivity(
+                this,
+                idNotificacao(ocorrencia.chave),
+                intentDaTela(this, ocorrencia, abrirTeclado = false),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            val cronometro = ocorrencia.tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_CRONOMETRO
+            val construtor = NotificationCompat.Builder(this, CANAL_TELA_CHEIA_ID)
+                .setSmallIcon(applicationInfo.icon)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setSilent(true)
+                .setContentIntent(pendingAbrir)
+                .setFullScreenIntent(pendingAbrir, true)
+            if (cronometro) {
+                val texto = TextosNativos.texto(this, "cronometroNotificacaoCorpo", R.string.cronometro_notificacao_corpo)
+                construtor
+                    .setContentTitle(TextosNativos.texto(this, "cronometroNotificacaoTitulo", R.string.cronometro_notificacao_titulo))
+                    .setContentText(texto)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(texto))
+            } else {
+                val etiqueta = DespertadorAgenda.etiqueta(this, ocorrencia.id)
+                val pendingTeclado = PendingIntent.getActivity(
+                    this,
+                    idNotificacao(ocorrencia.chave) + 1,
+                    intentDaTela(this, ocorrencia, abrirTeclado = true),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+                construtor
+                    .setContentTitle(
+                        etiqueta.ifBlank {
+                            TextosNativos.texto(this, "despertadorNotificacaoTitulo", R.string.despertador_notificacao_titulo)
+                        },
+                    )
+                    .setContentText(TextosNativos.texto(this, "despertadorNotificacaoCorpo", R.string.despertador_notificacao_corpo))
+                    .addAction(
+                        0,
+                        TextosNativos.texto(this, "despertadorAcaoDesativar", R.string.despertador_acao_desativar),
+                        pendingTeclado,
+                    )
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(idNotificacao(ocorrencia.chave), construtor.build())
+        } catch (e: Exception) {
+            Log.w(TAG, "Falha ao postar a notificação da ocorrência ${ocorrencia.chave}", e)
         }
     }
 
     private fun registrarReceiverDeDesbloqueio() {
         if (receiverRegistrado) return
         try {
-            val filtro = IntentFilter().apply {
-                addAction(Intent.ACTION_USER_PRESENT)
-            }
-            // RECEIVER_NOT_EXPORTED: ACTION_USER_PRESENT é enviado pelo
-            // próprio sistema (sempre entregue independente desta flag —
-            // ela só controla se OUTROS apps de terceiros poderiam forjar
-            // o broadcast para este receiver), exigido a partir do
-            // Android 13 (API 33) para registro dinâmico de receivers.
             ContextCompat.registerReceiver(
                 this,
                 receiverDesbloqueio,
-                filtro,
+                IntentFilter(Intent.ACTION_USER_PRESENT),
                 ContextCompat.RECEIVER_NOT_EXPORTED,
             )
             receiverRegistrado = true
@@ -191,194 +360,51 @@ class RotinaAlarmWakeService : Service() {
     }
 
     /**
-     * CORREÇÃO DE BUG REAL (2026-09-04 — pedido explícito do usuário: "com
-     * o aparelho desbloqueado e o app em segundo plano, só aparece uma
-     * notificação, sem tocar o alarme até tocar nela"): o `startActivity()`
-     * direto abaixo, chamado a partir de um Foreground Service, está
-     * sujeito à MESMA restrição de "Background Activity Launch" (BAL) do
-     * Android 10+/12+ já diagnosticada e corrigida em
-     * [VolumeSosService.forcarAberturaLockscreenCameraActivity] (ver aquele
-     * comentário para o log real de `ActivityTaskManager: Background
-     * activity launch blocked!` que motivou a correção lá) — com o app
-     * fora do primeiro plano (mesmo desbloqueado), o Android pode
-     * simplesmente recusar abrir [RotinaCheckinAlarmActivity], deixando só
-     * o WakeLock e a notificação MÍNIMA/silenciosa de
-     * [iniciarEmForeground] (que existe só para o Android permitir o
-     * Foreground Service em si, não para alertar o usuário).
-     *
-     * FIX: o MESMO mecanismo já validado no botão físico — uma notificação
-     * com `setFullScreenIntent(..., true)` é a exceção OFICIAL do Android
-     * a essa restrição (documentada desde o Android 10): quando postada,
-     * o próprio sistema abre a Activity do `PendingIntent`
-     * automaticamente, mesmo com o app em segundo plano ou a tela
-     * bloqueada, sem passar pelo BAL. Continua tentando o `startActivity()`
-     * direto também (mais rápido quando funciona — app já em primeiro
-     * plano, ou aparelhos/versões onde o BAL não bloqueia — e inofensivo
-     * quando falha, já que a notificação full-screen acima cobre o caso).
+     * FECHAMENTO FORÇADO: o app foi removido dos Recentes com ocorrências
+     * em andamento. Só as que AINDA não foram resolvidas (conferido aqui e
+     * de novo após 500 ms — o PIN correto pode ter acabado de resolvê-la)
+     * são marcadas, e a tela reabre para disparar o alerta.
      */
-    private fun iniciarTelaDoAlarme(
-        idAlarme: Int,
-        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
-    ) {
-        Log.d(TAG, "iniciarTelaDoAlarme: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
-
-        val intent = Intent(this, RotinaCheckinAlarmActivity::class.java).apply {
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        val abertas = DecisaoFechamentoForcado.aMarcar(
+            RotinaAlarmFluxoState.pendentes(this),
+            RotinaAlarmFluxoState.resolvidas(this),
+            System.currentTimeMillis(),
+        )
+        Log.d(TAG, "onTaskRemoved: ${abertas.size} ocorrência(s) em andamento")
+        if (abertas.isEmpty()) return
+        handler.postDelayed({
+            // Confere de novo: o PIN correto pode ter acabado de resolver.
+            val aMarcar = DecisaoFechamentoForcado.aMarcar(
+                abertas, RotinaAlarmFluxoState.resolvidas(this), System.currentTimeMillis(),
             )
-            putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, idAlarme)
-            putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, tipoAlarme)
-        }
-
-        postarNotificacaoFullScreen(intent, idAlarme)
-
-        try {
-            startActivity(intent)
-        } catch (e: Exception) {
-            // Falha silenciosa: a notificação full-screen-intent acima já
-            // cobre a abertura da tela; o WakeLock adquirido também ajuda
-            // o caminho Dart/headless a completar seu trabalho mesmo que
-            // esta chamada direta não funcione neste aparelho/versão.
-            Log.d(TAG, "iniciarTelaDoAlarme: falha ao iniciar Activity diretamente (esperado em " +
-                "Android 12+/BAL) — a notificação full-screen-intent cobre a abertura: ${e.message}")
-        }
+            for (o in aMarcar) RotinaAlarmFluxoState.marcarFechamentoForcado(this, o.chave)
+            aMarcar.firstOrNull()?.let { iniciarTelaDoAlarme(it, abrirTeclado = false) }
+        }, 500L)
     }
 
-    /** Ver documentação completa em [iniciarTelaDoAlarme]. */
-    private fun postarNotificacaoFullScreen(intentAbrir: Intent, idAlarme: Int) {
+    private fun adquirirWakeLock(duracaoMs: Long) {
         try {
-            criarCanalFullScreenSeNecessario()
-
-            val flagsImutavel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE
-            } else {
-                0
-            }
-            val pendingAbrir = PendingIntent.getActivity(
-                this,
-                idAlarme,
-                intentAbrir,
-                PendingIntent.FLAG_UPDATE_CURRENT or flagsImutavel,
-            )
-
-            val notificacao = NotificationCompat.Builder(this, CANAL_FULLSCREEN_ID)
-                .setContentTitle(getString(R.string.alerta_rotina_fisico_titulo))
-                .setContentText(getString(R.string.alerta_rotina_fisico_corpo))
-                .setSmallIcon(applicationInfo.icon)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setAutoCancel(true)
-                .setOngoing(false)
-                .setContentIntent(pendingAbrir)
-                .setFullScreenIntent(pendingAbrir, true)
-                .build()
-
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.notify(NOTIFICATION_ID_FULLSCREEN, notificacao)
-            Log.d(TAG, "postarNotificacaoFullScreen: notificação full-screen-intent postada (bypass de BAL).")
-        } catch (e: Exception) {
-            Log.w(TAG, "postarNotificacaoFullScreen: falha ao postar notificação full-screen.", e)
-        }
-    }
-
-    /** Canal dedicado à notificação full-screen-intent de
-     * [postarNotificacaoFullScreen] — `IMPORTANCE_HIGH` é exigido pelo
-     * Android para que `setFullScreenIntent` realmente acorde/abra a
-     * Activity automaticamente (canais de importância menor só mostram a
-     * notificação normal, sem abrir nada sozinha) — DIFERENTE do canal
-     * `rotina_alarme_wake_channel` de [iniciarEmForeground] (`IMPORTANCE_MIN`,
-     * só existe para o próprio Foreground Service ser permitido, nunca
-     * pensado para alertar o usuário).
-     *
-     * MITIGAÇÃO (2026-09-04 — pedido explícito do usuário, confirmado em
-     * teste físico): com a TELA JÁ ACESA e desbloqueada (app só em
-     * segundo plano), o Android — de PROPÓSITO, documentado oficialmente
-     * desde a versão 10 — NÃO abre sozinho um full-screen-intent; mostra
-     * só o banner da notificação e espera o toque. Isso é uma proteção
-     * deliberada da plataforma (nenhum app comum consegue "sequestrar" a
-     * tela enquanto o usuário está usando o aparelho para outra coisa) —
-     * NÃO existe bypass público para isto, nem mesmo para apps de
-     * despertador. O que dá pra fazer: o som da PRÓPRIA notificação (que
-     * toca imediatamente ao ser postada, mesmo sem abrir a tela) usa o
-     * canal de ALARME (`AudioAttributes.USAGE_ALARM`) em vez do toque
-     * padrão de notificação — ganha foco de áudio/ignora o Modo Não
-     * Perturbe e chama atenção IMEDIATA mesmo nesse cenário limitado,
-     * ainda que o loop completo do som customizado só comece de fato
-     * depois do toque na notificação (que aí sim abre a tela e o
-     * `AudioPlayer` Dart assume, ver [RotinaCheckinAlarmActivity]).
-     *
-     * ID do canal com sufixo `_v2`: parâmetros de som/vibração de um
-     * `NotificationChannel` já criado no aparelho são IMUTÁVEIS — o
-     * Android ignora silenciosamente qualquer nova tentativa de
-     * `createNotificationChannel` com o mesmo id mas configuração
-     * diferente. Mudar o id força a criação de um canal novo com o som
-     * de alarme de verdade em qualquer instalação já existente (em vez
-     * de depender do usuário desinstalar/reinstalar o app).
-     */
-    private fun criarCanalFullScreenSeNecessario() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CANAL_FULLSCREEN_ID) != null) return
-
-        val somDeAlarme = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val atributosDeAlarme = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-
-        val canal = NotificationChannel(
-            CANAL_FULLSCREEN_ID,
-            "Alarme de rotina (abertura)",
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = "Usado internamente para abrir a tela do alarme de rotina mesmo com o app em segundo plano ou a tela bloqueada."
-            setShowBadge(false)
-            setSound(somDeAlarme, atributosDeAlarme)
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0L, 500L, 250L, 500L, 250L, 500L)
-            setBypassDnd(true)
-        }
-        manager.createNotificationChannel(canal)
-    }
-
-    /**
-     * Adquire um WakeLock parcial (mantém só a CPU ativa; a tela é
-     * ligada separadamente pelas flags da própria Activity —
-     * `setShowWhenLocked`/`setTurnScreenOn`, ver
-     * [RotinaCheckinAlarmActivity]). Timeout de segurança de 10 minutos:
-     * cobre o pior caso realista (tolerância + 2 minutos da janela final)
-     * sem risco de vazamento de bateria caso o sinal explícito de
-     * liberação nunca chegue.
-     */
-    private fun adquirirWakeLock() {
-        try {
-            if (wakeLock?.isHeld == true) return
+            val duracao = duracaoMs.coerceIn(60_000L, 6 * 60 * 60_000L)
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = powerManager.newWakeLock(
+            val atual = wakeLock ?: powerManager.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
                 "SecurityCheckApp::RotinaAlarmWakeLock",
-            ).apply {
-                setReferenceCounted(false)
-                acquire(10 * 60 * 1000L)
-            }
-            Log.d(TAG, "adquirirWakeLock: WakeLock adquirido (timeout 10min)")
+            ).apply { setReferenceCounted(false) }
+            // Reaquirir renova o prazo do timeout para cobrir a tolerância
+            // inteira da ocorrência mais longa em aberto.
+            atual.acquire(duracao)
+            wakeLock = atual
         } catch (e: Exception) {
             Log.d(TAG, "adquirirWakeLock: falha: ${e.message}")
-            wakeLock = null
         }
     }
 
     private fun liberarWakeLock() {
         try {
-            if (wakeLock?.isHeld == true) {
-                wakeLock?.release()
-                Log.d(TAG, "liberarWakeLock: WakeLock liberado")
-            }
-        } catch (e: Exception) {
-            Log.d(TAG, "liberarWakeLock: falha: ${e.message}")
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (_: Exception) {
         } finally {
             wakeLock = null
         }
@@ -386,30 +412,25 @@ class RotinaAlarmWakeService : Service() {
 
     private fun iniciarEmForeground() {
         val canalId = "rotina_alarme_wake_channel"
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (manager.getNotificationChannel(canalId) == null) {
-                val canal = NotificationChannel(
-                    canalId,
-                    "Alarme de rotina (segurança)",
-                    NotificationManager.IMPORTANCE_MIN,
-                ).apply {
-                    description = "Mantém o alarme de rotina funcionando com a tela bloqueada."
-                    setShowBadge(false)
-                }
-                manager.createNotificationChannel(canal)
+                manager.createNotificationChannel(
+                    NotificationChannel(canalId, "Guardião-X", NotificationManager.IMPORTANCE_MIN).apply {
+                        setShowBadge(false)
+                        setSound(null, null)
+                    },
+                )
             }
         }
-
         val notificacao = NotificationCompat.Builder(this, canalId)
-            .setContentTitle("Alarme de rotina ativo")
-            .setContentText("Confirmando se está tudo bem...")
+            .setContentTitle("Guardião-X")
+            .setContentText(TextosNativos.texto(this, "servicoAlarmeAtivo", R.string.servico_alarme_ativo))
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setOngoing(true)
+            .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
@@ -423,17 +444,10 @@ class RotinaAlarmWakeService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "onDestroy")
+        handler.removeCallbacks(revisao)
+        pararSom()
         desregistrarReceiverDeDesbloqueio()
         liberarWakeLock()
-        // CORREÇÃO DE BUG REAL (2026-09-04 — confirmado em teste físico e
-        // no log: `FlashNotifController`/`MediaProvider` mostraram o toque
-        // de alarme padrão do aparelho — `Platinum.ogg` — continuando a
-        // tocar por ~37s DEPOIS do PIN correto já ter sido digitado): ver
-        // documentação completa em [cancelarNotificacaoFullScreen].
-        // Defensivo aqui também (além de [parar] abaixo, o ponto normal de
-        // saída) para cobrir qualquer caminho de encerramento do Service
-        // que não passe por lá.
-        cancelarNotificacaoFullScreen(applicationContext)
         super.onDestroy()
     }
 
@@ -442,205 +456,265 @@ class RotinaAlarmWakeService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 7712
 
-        /** Id/canal da notificação full-screen-intent de
-         * [postarNotificacaoFullScreen] — diferente de [NOTIFICATION_ID]
-         * (a notificação PERSISTENTE/silenciosa deste Foreground Service):
-         * esta é disparada uma única vez por alarme e some sozinha
-         * (`setAutoCancel(true)`) assim que a Activity abre. */
-        private const val NOTIFICATION_ID_FULLSCREEN = 7713
-        private const val CANAL_FULLSCREEN_ID = "rotina_alarme_fullscreen_channel_v2"
+        /** Canal mudo das notificações de tela cheia (o som é do serviço).
+         * Id novo: o `_v2` antigo tinha o som de alarme do sistema — o som
+         * duplicado. Canais são imutáveis depois de criados. */
+        const val CANAL_TELA_CHEIA_ID = "gx_alarme_tela_cheia_v3"
+        private const val CANAL_ANTIGO_ID = "rotina_alarme_fullscreen_channel_v2"
 
-        /**
-         * Libera o WakeLock e encerra este Service — chamado pelo lado
-         * Dart (via [RotinaAlarmPlugin], MethodChannel
-         * "pararServicoForeground") assim que o fluxo é resolvido: PIN
-         * confirmado com sucesso OU alerta de emergência já disparado.
-         * Seguro mesmo se o Service não estiver rodando.
-         */
-        fun parar(context: Context) {
+        const val ACAO_RESOLVER = "com.example.security_check_app.ACAO_RESOLVER_OCORRENCIA"
+        const val ACAO_REVISAR = "com.example.security_check_app.ACAO_REVISAR_OCORRENCIAS"
+        const val EXTRA_CHAVE = "chave_ocorrencia"
+
+        /** Tolerância do cronômetro (60 s) quando o prazo não vem no Intent. */
+        private const val PRAZO_PADRAO_MS = 60_000L
+
+        /** Depois do prazo, quanto esperar o Dart resolver antes de
+         * abandonar a ocorrência (o servidor dispara pelo prazo). */
+        private const val MARGEM_ABANDONO_MS = 5 * 60_000L
+
+        private const val MODO_ALARME = "alarme"
+        private const val MODO_TOQUE = "toque"
+        private const val MODO_VIBRAR = "vibrar"
+        private const val MODO_MUDO = "mudo"
+
+        /** Som 10 = "Toque Silencioso" (silêncio proposital). */
+        const val SOM_SILENCIOSO = 10
+
+        /** Som escolhido em Configurações (`som_selecionado`, gravado pelo
+         * shared_preferences do Dart). */
+        fun somEscolhido(ctx: Context): Int {
+            return try {
+                val prefs = ctx.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                val valor = prefs.all["flutter.som_selecionado"]
+                when (valor) {
+                    is Long -> valor.toInt()
+                    is Int -> valor
+                    is String -> valor.toIntOrNull() ?: 1
+                    else -> 1
+                }.coerceIn(1, 10)
+            } catch (_: Exception) {
+                1
+            }
+        }
+
+        fun criarCanalSeNecessario(ctx: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            try { manager.deleteNotificationChannel(CANAL_ANTIGO_ID) } catch (_: Exception) {}
+            if (manager.getNotificationChannel(CANAL_TELA_CHEIA_ID) != null) return
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CANAL_TELA_CHEIA_ID,
+                    TextosNativos.texto(ctx, "canalAlarmeTelaCheia", R.string.canal_alarme_tela_cheia),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                    lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                },
+            )
+        }
+
+        fun idNotificacao(chave: String): Int = 7800 + (chave.hashCode() and 0x7fffffff) % 900 * 2
+
+        fun cancelarNotificacaoOcorrencia(ctx: Context, chave: String) {
             try {
-                Log.d(TAG, "parar: marcando fluxo como resolvido e parando o Service")
-                RotinaAlarmFluxoState.marcarResolvido(context)
-                cancelarNotificacaoFullScreen(context)
-                context.stopService(Intent(context, RotinaAlarmWakeService::class.java))
+                val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.cancel(idNotificacao(chave))
+            } catch (_: Exception) {
+            }
+        }
+
+        fun intentDaTela(ctx: Context, ocorrencia: Ocorrencia, abrirTeclado: Boolean): Intent =
+            Intent(ctx, RotinaCheckinAlarmActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, ocorrencia.id)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, ocorrencia.tipo)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_CICLO, ocorrencia.ciclo)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_PRAZO, ocorrencia.prazo)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_ABRIR_TECLADO, abrirTeclado)
+            }
+
+        /** Inicia (ou acorda) o serviço para uma ocorrência. */
+        fun iniciar(ctx: Context, ocorrencia: Ocorrencia) {
+            val intent = Intent(ctx, RotinaAlarmWakeService::class.java).apply {
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_ID_ALARME, ocorrencia.id)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_TIPO_ALARME, ocorrencia.tipo)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_CICLO, ocorrencia.ciclo)
+                putExtra(RotinaCheckinAlarmActivity.EXTRA_PRAZO, ocorrencia.prazo)
+            }
+            try {
+                ContextCompat.startForegroundService(ctx, intent)
             } catch (e: Exception) {
-                Log.d(TAG, "parar: falha: ${e.message}")
+                Log.w(TAG, "Não foi possível iniciar o serviço do alarme: ${e.message}")
             }
         }
 
         /**
-         * CORREÇÃO DE BUG REAL (2026-09-04 — pedido explícito do usuário,
-         * confirmado em teste físico via logcat): a notificação
-         * full-screen-intent de [postarNotificacaoFullScreen] usa
-         * `category=alarm` + o som/canal de ALARME do sistema (mitigação
-         * do cenário "tela acesa, app em segundo plano" — ver comentário
-         * completo em [criarCanalFullScreenSeNecessario]). O log confirmou
-         * `MediaProvider`/`FlashNotifController` (recurso do Motorola)
-         * tratando isso como um alarme de verdade e tocando o toque padrão
-         * do aparelho (`Platinum.ogg`) POR CONTA PRÓPRIA — e continuando a
-         * tocar por dezenas de segundos MESMO DEPOIS do PIN correto já ter
-         * sido digitado e o som do `AudioPlayer` Dart já ter sido parado,
-         * porque `setAutoCancel(true)` só remove a notificação quando o
-         * USUÁRIO toca nela diretamente — nunca quando o app resolve o
-         * alarme sozinho por outro caminho (PIN digitado direto na tela já
-         * aberta, sem precisar tocar na notificação). Sintoma real
-         * reportado: "quando digito a senha corretamente o som do
-         * Guardião-X desliga e fica tocando somente o alarme nativo do
-         * celular" — que na really era esta MESMA notificação, sozinha,
-         * ainda ativa. `NotificationManager.cancel()` aqui é o que
-         * realmente encerra esse efeito, chamado em todo ponto em que o
-         * alarme é considerado resolvido/encerrado (ver [parar] acima e
-         * [onDestroy]).
+         * Ocorrência resolvida pelo Dart (PIN correto ou alerta enviado):
+         * marca como resolvida (o fechamento forçado nunca mais dispara para
+         * ela), cancela a notificação de tela cheia, e o serviço revisa o
+         * que ainda está tocando. [chave] nulo = todas as ocorrências.
          */
-        fun cancelarNotificacaoFullScreen(context: Context) {
-            try {
-                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                manager.cancel(NOTIFICATION_ID_FULLSCREEN)
-            } catch (e: Exception) {
-                Log.d(TAG, "cancelarNotificacaoFullScreen: falha: ${e.message}")
+        fun resolver(ctx: Context, chave: String?) {
+            val chaves = if (chave != null) listOf(chave) else RotinaAlarmFluxoState.pendentes(ctx).map { it.chave }
+            for (c in chaves) {
+                val ocorrencia = RotinaAlarmFluxoState.buscar(ctx, c)
+                RotinaAlarmFluxoState.marcarResolvido(ctx, c)
+                cancelarNotificacaoOcorrencia(ctx, c)
+                if (ocorrencia?.tipo == RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA) {
+                    DespertadorAgenda.armarProxima(ctx, ocorrencia.id)
+                }
+            }
+            if (RotinaAlarmFluxoState.pendentes(ctx).isEmpty()) {
+                try {
+                    ctx.stopService(Intent(ctx, RotinaAlarmWakeService::class.java))
+                } catch (_: Exception) {
+                }
+            } else {
+                try {
+                    ContextCompat.startForegroundService(
+                        ctx,
+                        Intent(ctx, RotinaAlarmWakeService::class.java).setAction(ACAO_REVISAR),
+                    )
+                } catch (_: Exception) {
+                }
             }
         }
     }
 }
 
 /**
- * Estado do fluxo do alarme de rotina, persistido num arquivo
- * [android.content.SharedPreferences] NATIVO próprio (independente do
- * `FlutterSharedPreferences` usado pelo plugin `shared_preferences` do
- * lado Dart, cujo formato de armazenamento interno pode mudar entre
- * versões do plugin) — usado exclusivamente por componentes 100%
- * nativos ([RotinaAlarmWakeService]) para decidir, de forma confiável e
- * independente do Flutter, se o alarme ainda está "em andamento"
- * (aguardando PIN) ou já foi resolvido, mesmo que nenhum engine Flutter
- * esteja vivo no momento (ex: logo após um desbloqueio de tela).
- *
- * Marcado como "em andamento" em [RotinaAlarmWakeService.onStartCommand]
- * (disparo inicial nativo) e em [RotinaAlarmPlugin] sempre que a tela do
- * alarme é (re)aberta via MethodChannel (`iniciarTelaAlarme`/
- * `acordarParaFaseFinal` — disparo/fase final vindos do lado Dart).
- * Marcado como "resolvido" em [RotinaAlarmWakeService.parar], o MESMO
- * ponto único já usado por `pararServicoForeground` (chamado tanto ao
- * confirmar o PIN quanto ao disparar o alerta de emergência real — ver
- * `RotinaAlarmeService` no lado Dart).
+ * Regras do FECHAMENTO FORÇADO (app removido dos Recentes durante o
+ * alarme), sem dependência do Android — testadas em
+ * `DecisaoFechamentoForcadoTest`. Uma ocorrência resolvida (PIN correto ou
+ * alerta já enviado) NUNCA dispara o alerta de fechamento forçado.
+ */
+object DecisaoFechamentoForcado {
+    /** Ocorrências a marcar: em andamento, prazo no futuro, não resolvidas. */
+    fun aMarcar(pendentes: List<Ocorrencia>, resolvidas: Collection<String>, agora: Long): List<Ocorrencia> =
+        pendentes.filter { it.prazo > agora && it.chave !in resolvidas }
+
+    /** Ao reabrir a tela: dispara só se marcada E ainda não resolvida. */
+    fun deveDisparar(marcadas: Set<String>, resolvidas: Collection<String>, chave: String): Boolean =
+        chave in marcadas && chave !in resolvidas
+}
+
+/** Uma ocorrência de alarme: cronômetro (id fixo) ou despertador (id do
+ * SQLite), identificada pelo horário programado ([ciclo], epoch ms). */
+data class Ocorrencia(val tipo: String, val id: Int, val ciclo: Long, val prazo: Long) {
+    val chave: String get() = chave(tipo, id, ciclo)
+
+    fun paraJson(): JSONObject = JSONObject()
+        .put("tipo", tipo).put("id", id).put("ciclo", ciclo).put("prazo", prazo)
+
+    fun paraMapa(): Map<String, Any> =
+        mapOf("tipo" to tipo, "id" to id, "ciclo" to ciclo, "prazo" to prazo, "chave" to chave)
+
+    companion object {
+        fun chave(tipo: String, id: Int, ciclo: Long) = "$tipo:$id:$ciclo"
+
+        fun deJson(j: JSONObject): Ocorrencia? = try {
+            Ocorrencia(j.getString("tipo"), j.getInt("id"), j.getLong("ciclo"), j.getLong("prazo"))
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
+/**
+ * Estado das ocorrências de alarme, POR OCORRÊNCIA (chave `tipo:id:ciclo`),
+ * num SharedPreferences nativo próprio — lido por componentes 100% nativos
+ * (serviço, receptor de boot) mesmo sem engine Flutter vivo. Vários
+ * despertadores (e o cronômetro) podem estar em andamento ao mesmo tempo;
+ * resolver um nunca afeta o outro.
  */
 object RotinaAlarmFluxoState {
-    private const val PREFS_NAME = "rotina_alarme_wake_state"
-    private const val CHAVE_EM_ANDAMENTO = "em_andamento"
-    private const val CHAVE_ID_ALARME = "id_alarme_atual"
+    private const val PREFS_NAME = "rotina_alarme_wake_state_v2"
+    private const val CHAVE_PENDENTES = "pendentes"
+    private const val CHAVE_RESOLVIDAS = "resolvidas"
     private const val CHAVE_FECHAMENTO_FORCADO = "fechamento_forcado"
+    private const val MAX_RESOLVIDAS = 100
 
-    /**
-     * Tipo do alarme atualmente em andamento — [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA]
-     * (padrão, retrocompatível) ou [RotinaCheckinAlarmActivity.TIPO_ALARME_CRONOMETRO].
-     * Generalização que permite este MESMO estado nativo (e o restante da
-     * infraestrutura de [RotinaAlarmWakeService]) ser compartilhado pelo
-     * Cronômetro Regressivo da aba Segurança, sem duplicar nenhuma classe.
-     */
-    private const val CHAVE_TIPO_ALARME = "tipo_alarme_atual"
+    private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun marcarEmAndamento(
-        context: Context,
-        idAlarme: Int,
-        tipoAlarme: String = RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA,
-    ) {
-        try {
-            Log.d(TAG, "RotinaAlarmFluxoState.marcarEmAndamento: idAlarme=$idAlarme tipoAlarme=$tipoAlarme")
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(CHAVE_EM_ANDAMENTO, true)
-                .putInt(CHAVE_ID_ALARME, idAlarme)
-                .putString(CHAVE_TIPO_ALARME, tipoAlarme)
-                .apply()
-        } catch (_: Exception) {
-        }
+    @Synchronized
+    fun marcarEmAndamento(ctx: Context, ocorrencia: Ocorrencia) {
+        val lista = pendentes(ctx).filter { it.chave != ocorrencia.chave } + ocorrencia
+        salvarPendentes(ctx, lista)
     }
 
-    /** Tipo do alarme atualmente em andamento (ver [CHAVE_TIPO_ALARME]) —
-     * [RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA] se ausente/erro. */
-    fun tipoAlarmeAtual(context: Context): String {
+    @Synchronized
+    fun pendentes(ctx: Context): List<Ocorrencia> {
+        val texto = prefs(ctx).getString(CHAVE_PENDENTES, null) ?: return emptyList()
         return try {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(CHAVE_TIPO_ALARME, RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA)
-                ?: RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+            val arr = JSONArray(texto)
+            (0 until arr.length()).mapNotNull { Ocorrencia.deJson(arr.getJSONObject(it)) }
+                .sortedBy { it.ciclo }
         } catch (_: Exception) {
-            RotinaCheckinAlarmActivity.TIPO_ALARME_ROTINA
+            emptyList()
         }
     }
 
-    fun marcarResolvido(context: Context) {
-        try {
-            Log.d(TAG, "RotinaAlarmFluxoState.marcarResolvido")
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(CHAVE_EM_ANDAMENTO, false)
-                .apply()
-        } catch (_: Exception) {
-        }
+    fun buscar(ctx: Context, chave: String): Ocorrencia? = pendentes(ctx).firstOrNull { it.chave == chave }
+
+    /** A próxima a mostrar na tela (a mais antiga ainda dentro do prazo). */
+    fun proximaParaExibir(ctx: Context): Ocorrencia? {
+        val agora = System.currentTimeMillis()
+        return pendentes(ctx).firstOrNull { it.prazo > agora } ?: pendentes(ctx).firstOrNull()
     }
 
-    fun estaEmAndamento(context: Context): Boolean {
+    @Synchronized
+    fun marcarResolvido(ctx: Context, chave: String) {
+        salvarPendentes(ctx, pendentes(ctx).filter { it.chave != chave })
+        val resolvidas = resolvidas(ctx).filter { it != chave }.takeLast(MAX_RESOLVIDAS - 1) + chave
+        prefs(ctx).edit()
+            .putString(CHAVE_RESOLVIDAS, JSONArray(resolvidas).toString())
+            .putStringSet(CHAVE_FECHAMENTO_FORCADO, fechamentosForcados(ctx) - chave)
+            .commit()
+    }
+
+    fun estaResolvida(ctx: Context, chave: String): Boolean = resolvidas(ctx).contains(chave)
+
+    fun estaEmAndamento(ctx: Context): Boolean = pendentes(ctx).isNotEmpty()
+
+    @Synchronized
+    fun marcarFechamentoForcado(ctx: Context, chave: String) {
+        prefs(ctx).edit().putStringSet(CHAVE_FECHAMENTO_FORCADO, fechamentosForcados(ctx) + chave).commit()
+    }
+
+    /** Lê e limpa a marca de fechamento forçado de [chave] — `false` se a
+     * ocorrência já foi resolvida (nunca alerta depois do PIN correto). */
+    @Synchronized
+    fun consumirFechamentoForcado(ctx: Context, chave: String): Boolean {
+        val marcadas = fechamentosForcados(ctx)
+        if (!marcadas.contains(chave)) return false
+        prefs(ctx).edit().putStringSet(CHAVE_FECHAMENTO_FORCADO, marcadas - chave).commit()
+        return DecisaoFechamentoForcado.deveDisparar(marcadas, resolvidas(ctx), chave)
+    }
+
+    private fun fechamentosForcados(ctx: Context): Set<String> =
+        prefs(ctx).getStringSet(CHAVE_FECHAMENTO_FORCADO, emptySet())?.toSet() ?: emptySet()
+
+    fun resolvidas(ctx: Context): List<String> {
+        val texto = prefs(ctx).getString(CHAVE_RESOLVIDAS, null) ?: return emptyList()
         return try {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(CHAVE_EM_ANDAMENTO, false)
+            val arr = JSONArray(texto)
+            (0 until arr.length()).map { arr.getString(it) }
         } catch (_: Exception) {
-            false
+            emptyList()
         }
     }
 
-    fun idAlarmeAtual(context: Context): Int {
-        return try {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getInt(CHAVE_ID_ALARME, -1)
-        } catch (_: Exception) {
-            -1
-        }
-    }
-
-    /**
-     * Marca que a próxima reabertura da tela do alarme aconteceu por
-     * FECHAMENTO FORÇADO (ver [RotinaAlarmWakeService.onTaskRemoved]) —
-     * consumida (lida E limpa) uma única vez pelo lado Dart via
-     * [consumirFechamentoForcado]/`RotinaAlarmPlugin`
-     * ("consumirFechamentoForcado").
-     */
-    fun marcarFechamentoForcado(context: Context) {
-        try {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(CHAVE_FECHAMENTO_FORCADO, true)
-                .apply()
-        } catch (_: Exception) {
-        }
-    }
-
-    /**
-     * Lê e IMEDIATAMENTE limpa a flag de fechamento forçado — chamada
-     * pelo lado Dart assim que o engine desta reabertura inicia (ver
-     * `AlarmeDisparadoScreen.initState`), garantindo que o sinal só seja
-     * processado uma única vez, mesmo que a tela seja recriada depois
-     * por outro motivo (ex: desbloqueio de tela) antes do fluxo terminar.
-     */
-    /**
-     * [tipoEsperado]: só consome (lê E limpa) a flag se o tipo do alarme
-     * ATUALMENTE em andamento (ver [tipoAlarmeAtual]) bater com o
-     * chamador — evita que uma instância de [RotinaCheckinAlarmActivity]
-     * do Alarme de Rotina consuma por engano um fechamento forçado que
-     * era, na verdade, do Cronômetro (ou vice-versa), no raro caso dos
-     * dois estarem ativos ao mesmo tempo. Retrocompatível: chamadores que
-     * não informam [tipoEsperado] (`null`) continuam consumindo a flag
-     * incondicionalmente, como antes.
-     */
-    fun consumirFechamentoForcado(context: Context, tipoEsperado: String? = null): Boolean {
-        return try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            if (tipoEsperado != null && tipoAlarmeAtual(context) != tipoEsperado) return false
-            val valor = prefs.getBoolean(CHAVE_FECHAMENTO_FORCADO, false)
-            if (valor) {
-                prefs.edit().putBoolean(CHAVE_FECHAMENTO_FORCADO, false).apply()
-            }
-            valor
-        } catch (_: Exception) {
-            false
-        }
+    private fun salvarPendentes(ctx: Context, lista: List<Ocorrencia>) {
+        val arr = JSONArray()
+        lista.forEach { arr.put(it.paraJson()) }
+        prefs(ctx).edit().putString(CHAVE_PENDENTES, arr.toString()).commit()
     }
 }

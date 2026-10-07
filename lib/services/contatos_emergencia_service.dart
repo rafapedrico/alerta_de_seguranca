@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'alarme_nativo_service.dart';
 import 'database_helper.dart';
 import 'firebase_sync_service.dart';
 import '../utils/telefone_utils.dart';
@@ -38,6 +39,9 @@ class ContatosEmergenciaService {
   static void notificarAlteracao() {
     versaoContatos.value++;
     _sincronizarComFirebase();
+    // Os serviços nativos (ciclo do despertador na nuvem com o app
+    // fechado) usam a mesma lista.
+    AlarmeNativoService.sincronizarTextosEIdentidade();
   }
 
   /// Sincroniza a lista atual com o Firestore sem alterar/notificar

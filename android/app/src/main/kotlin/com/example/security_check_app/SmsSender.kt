@@ -48,7 +48,23 @@ class SmsSender : FlutterPlugin {
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, CHANNEL).apply {
             setMethodCallHandler { call, result ->
-                if (call.method == "enviarSms") {
+                if (call.method == "enviarSmsComConfirmacao") {
+                    // Resultado REAL do rádio (sentIntent) devolvido ao Dart:
+                    // espera a confirmação de todas as partes ou o tempo
+                    // limite, o que vier primeiro.
+                    try {
+                        @Suppress("UNCHECKED_CAST")
+                        val telefones = call.argument<List<String>>("telefones") ?: emptyList()
+                        val mensagem = call.argument<String>("mensagem") ?: ""
+                        val limiteMs = (call.argument<Number>("limiteMs"))?.toLong() ?: 15_000L
+                        enviarComConfirmacao(binding.applicationContext, telefones, mensagem, limiteMs) { resumo ->
+                            result.success(resumo)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Falha inesperada ao processar enviarSmsComConfirmacao", e)
+                        result.success(mapOf("tentados" to 0, "confirmados" to 0, "falhas" to 0, "erro" to (e.message ?: "")))
+                    }
+                } else if (call.method == "enviarSms") {
                     try {
                         @Suppress("UNCHECKED_CAST")
                         val telefones = call.argument<List<String>>("telefones") ?: emptyList()
@@ -145,6 +161,9 @@ class SmsSender : FlutterPlugin {
                         "[SMS] Status do envio para $telefone (parte $parte/$totalPartes): " +
                             descreverResultadoEnvio(resultCode),
                     )
+                    intent.getStringExtra(EXTRA_LOTE)?.let { lote ->
+                        registrarResultadoDoLote(lote, telefone, resultCode == Activity.RESULT_OK, descreverResultadoEnvio(resultCode))
+                    }
                 }
             }
             val filtro = IntentFilter(ACAO_SMS_STATUS)
@@ -160,6 +179,78 @@ class SmsSender : FlutterPlugin {
         private const val EXTRA_TELEFONE = "telefone"
         private const val EXTRA_PARTE = "parte"
         private const val EXTRA_TOTAL_PARTES = "total_partes"
+        private const val EXTRA_LOTE = "lote"
+
+        /** Um envio com confirmação aguardada pelo Dart (ver
+         * [enviarComConfirmacao]). */
+        private class Lote(
+            val partesPorTelefone: Map<String, Int>,
+            val tentados: Int,
+            val aoTerminar: (Map<String, Any>) -> Unit,
+        ) {
+            val okPorTelefone = HashMap<String, Int>()
+            val falhasPorTelefone = HashMap<String, Int>()
+            var ultimoErro: String? = null
+        }
+
+        private val lotes = HashMap<String, Lote>()
+        private val principal = android.os.Handler(android.os.Looper.getMainLooper())
+
+        @Synchronized
+        private fun registrarResultadoDoLote(idLote: String, telefone: String, ok: Boolean, descricao: String) {
+            val lote = lotes[idLote] ?: return
+            if (ok) {
+                lote.okPorTelefone[telefone] = (lote.okPorTelefone[telefone] ?: 0) + 1
+            } else {
+                lote.falhasPorTelefone[telefone] = (lote.falhasPorTelefone[telefone] ?: 0) + 1
+                lote.ultimoErro = descricao
+            }
+            val todasReportadas = lote.partesPorTelefone.all { (tel, total) ->
+                (lote.okPorTelefone[tel] ?: 0) + (lote.falhasPorTelefone[tel] ?: 0) >= total
+            }
+            if (todasReportadas) concluirLote(idLote, porTempo = false)
+        }
+
+        @Synchronized
+        private fun concluirLote(idLote: String, porTempo: Boolean) {
+            val lote = lotes.remove(idLote) ?: return
+            // Confirmado = TODAS as partes de ao menos um contato aceitas pelo rádio.
+            val confirmados = lote.partesPorTelefone.count { (tel, total) -> (lote.okPorTelefone[tel] ?: 0) >= total }
+            val falhas = lote.partesPorTelefone.count { (tel, _) -> (lote.falhasPorTelefone[tel] ?: 0) > 0 }
+            val resumo = mapOf<String, Any>(
+                "tentados" to lote.tentados,
+                "confirmados" to confirmados,
+                "falhas" to falhas,
+                "tempoEsgotado" to porTempo,
+                "erro" to (lote.ultimoErro ?: ""),
+            )
+            principal.post { lote.aoTerminar(resumo) }
+        }
+
+        /**
+         * Envia e devolve, em [aoTerminar], o resultado REAL do rádio
+         * (`sentIntent` de cada parte): quantos contatos tiveram todas as
+         * partes aceitas, quantos falharam, ou se o [limiteMs] acabou antes.
+         */
+        fun enviarComConfirmacao(
+            context: Context,
+            telefones: List<String>,
+            mensagem: String,
+            limiteMs: Long,
+            aoTerminar: (Map<String, Any>) -> Unit,
+        ) {
+            val idLote = java.util.UUID.randomUUID().toString()
+            val partesPorTelefone = HashMap<String, Int>()
+            synchronized(this) {
+                lotes[idLote] = Lote(partesPorTelefone, telefones.size, aoTerminar)
+            }
+            enviar(context, telefones, mensagem, idLote, partesPorTelefone)
+            if (partesPorTelefone.isEmpty()) {
+                concluirLote(idLote, porTempo = false)
+                return
+            }
+            principal.postDelayed({ concluirLote(idLote, porTempo = true) }, limiteMs)
+        }
 
         /**
          * Envia a [mensagem] para cada telefone da lista [telefones], dividindo
@@ -189,7 +280,13 @@ class SmsSender : FlutterPlugin {
          * cada tentativa (aceito pelo rádio ou não) chega em seguida, de
          * forma assíncrona, nos logs de [garantirReceiverDeStatusRegistrado].
          */
-        fun enviar(context: Context, telefones: List<String>, mensagem: String): Int {
+        fun enviar(
+            context: Context,
+            telefones: List<String>,
+            mensagem: String,
+            idLote: String? = null,
+            partesPorTelefone: MutableMap<String, Int>? = null,
+        ): Int {
             garantirReceiverDeStatusRegistrado(context)
             val smsManager = resolverSmsManagerAtivo(context)
             var enviados = 0
@@ -241,12 +338,13 @@ class SmsSender : FlutterPlugin {
                             putExtra(EXTRA_TELEFONE, telefone)
                             putExtra(EXTRA_PARTE, indiceParte + 1)
                             putExtra(EXTRA_TOTAL_PARTES, partes.size)
+                            if (idLote != null) putExtra(EXTRA_LOTE, idLote)
                         }
-                        // requestCode único (telefone + parte) — cada
+                        // requestCode único (lote + telefone + parte) — cada
                         // PendingIntent precisa carregar seus PRÓPRIOS
                         // extras sem ser sobrescrito por outra tentativa
                         // concorrente (ex: 2+ contatos cadastrados).
-                        val requestCode = telefone.hashCode() * 31 + indiceParte
+                        val requestCode = ((idLote ?: "").hashCode() * 31 + telefone.hashCode()) * 31 + indiceParte
                         sentIntents.add(
                             PendingIntent.getBroadcast(
                                 context, requestCode, intent,
@@ -255,9 +353,12 @@ class SmsSender : FlutterPlugin {
                         )
                     }
 
+                    // Registrado ANTES do envio: o resultado pode chegar já.
+                    partesPorTelefone?.put(telefone, partes.size)
                     smsManager.sendMultipartTextMessage(telefone, null, partes, sentIntents, null)
                     enviados++
                 } catch (e: Exception) {
+                    partesPorTelefone?.remove(telefone)
                     Log.e(TAG, "[SMS] Falha ao enviar SMS para $telefone — demais contatos da lista seguem tentados normalmente.", e)
                 }
             }

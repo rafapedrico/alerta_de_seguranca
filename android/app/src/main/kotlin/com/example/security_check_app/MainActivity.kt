@@ -50,8 +50,8 @@ open class MainActivity: FlutterFragmentActivity() {
         // silenciosamente o handler do plugin — foi exatamente esse bug
         // (código legado, já removido) que fazia com que
         // "pararAlarme"/"pausarAlarme"/"reiniciarSomSeAtivo" nunca
-        // chegassem à implementação real (RotinaAlarmSomBridge.pararSom(),
-        // fecharActivityAtiva(), etc.) sempre que o app rodava dentro
+        // chegassem à implementação real (fecharActivityAtiva(), etc.)
+        // sempre que o app rodava dentro
         // desta Activity ou de RotinaCheckinAlarmActivity (que a estende).
 
         // "obterPayloadPendente": chamado UMA VEZ pelo Dart logo no
@@ -105,7 +105,6 @@ open class MainActivity: FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        tratarIntentDeAlertaRecebido(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -114,18 +113,6 @@ open class MainActivity: FlutterFragmentActivity() {
         val payload = extrairPayloadSolicitacao(intent, limpar = true)
         if (payload != null) {
             canalSolicitacaoMonitoramento?.invokeMethod("solicitacaoRecebida", payload)
-        }
-        tratarIntentDeAlertaRecebido(intent)
-    }
-
-    /** Modo "Despertador de Emergência" (item 4 do pedido): se este
-     * Intent veio do toque no corpo da notificação de controle do alarme
-     * sonoro (ver [AlertaRecebidoAlarmService.EXTRA_PARAR_AO_ABRIR]),
-     * silencia o alarme IMEDIATAMENTE — nativo, sem depender do lado
-     * Dart (o engine pode ainda estar subindo, num cold start). */
-    private fun tratarIntentDeAlertaRecebido(intent: Intent?) {
-        if (intent?.getBooleanExtra(AlertaRecebidoAlarmService.EXTRA_PARAR_AO_ABRIR, false) == true) {
-            AlertaRecebidoAlarmPlugin.pararAlarme(applicationContext)
         }
     }
 

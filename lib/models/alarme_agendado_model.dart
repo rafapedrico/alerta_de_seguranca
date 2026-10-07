@@ -160,6 +160,15 @@ class AlarmeAgendadoModel {
   final String etiqueta;
   final String contextoPersonalizado;
 
+  /// Horário programado DESTA ocorrência (epoch ms) — identifica o ciclo:
+  /// confirmar/alertar só mexe no documento se ele ainda for deste ciclo
+  /// (nunca no da próxima ocorrência).
+  final int cicloEpochMs;
+
+  /// Despertador pausado: 00h00 do dia seguinte à pausa (o servidor não
+  /// dispara antes disso).
+  final DateTime? pausadoAte;
+
   const AlarmeAgendadoModel({
     required this.idAlarme,
     required this.dataHoraDisparo,
@@ -170,7 +179,12 @@ class AlarmeAgendadoModel {
     this.contatosEmergencia = const [],
     this.etiqueta = '',
     this.contextoPersonalizado = '',
-  });
+    int? cicloEpochMs,
+    this.pausadoAte,
+  }) : cicloEpochMs = cicloEpochMs ?? 0;
+
+  /// Ciclo efetivo: [cicloEpochMs] ou, se não informado, o horário.
+  int get ciclo => cicloEpochMs > 0 ? cicloEpochMs : dataHoraDisparo.millisecondsSinceEpoch;
 
   Map<String, dynamic> toFirestore() => {
         'idAlarme': idAlarme,
@@ -183,6 +197,8 @@ class AlarmeAgendadoModel {
         'contatosEmergencia': contatosEmergencia,
         'etiqueta': etiqueta,
         'contextoPersonalizado': contextoPersonalizado,
+        'cicloEpochMs': ciclo,
+        'pausadoAte': pausadoAte != null ? Timestamp.fromDate(pausadoAte!) : null,
       };
 
   factory AlarmeAgendadoModel.fromFirestore(
@@ -208,6 +224,8 @@ class AlarmeAgendadoModel {
               const [],
       etiqueta: (dados['etiqueta'] as String?) ?? '',
       contextoPersonalizado: (dados['contextoPersonalizado'] as String?) ?? '',
+      cicloEpochMs: (dados['cicloEpochMs'] as num?)?.toInt(),
+      pausadoAte: (dados['pausadoAte'] as Timestamp?)?.toDate(),
     );
   }
 }

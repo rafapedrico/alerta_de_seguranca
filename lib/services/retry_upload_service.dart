@@ -11,12 +11,11 @@ import 'database_helper.dart';
 import 'sos_disparo_service.dart';
 
 /// Fila de RESILIÊNCIA OFFLINE para o upload da foto do SOS ao Firebase
-/// Storage/Firestore (P2 da sequência unificada, ver [SosDisparoService]):
-/// quando a chamada de rede falha no momento do disparo (sem
-/// Wi-Fi/4G/sinal, Storage indisponível, timeout, etc.), o SMS com a
-/// mensagem de fallback já foi enviado via GSM normalmente (nunca depende
-/// de internet) — mas o link real da foto/alerta na nuvem ficaria perdido
-/// para sempre sem esta fila.
+/// Storage/Firestore (ver [SosDisparoService.enviarFoto]): quando o upload
+/// não termina em 15 s no momento do disparo (sem Wi-Fi/4G/sinal, Storage
+/// indisponível), nenhum SMS de foto é enviado — a foto fica nesta fila
+/// (com a posição e o `alertaId` do SOS) e, quando sobe, os contatos
+/// recebem o link verdadeiro e a foto entra na mesma entrada do histórico.
 ///
 /// ESTRATÉGIA: o payload (cópia PERMANENTE da foto + metadados) é salvo
 /// no SQLite local (tabela `fila_retry_upload_sos`, ver [DatabaseHelper])
@@ -40,7 +39,7 @@ class RetryUploadService {
   static final RetryUploadService _instance = RetryUploadService._internal();
   factory RetryUploadService() => _instance;
 
-  static const int _maxTentativas = 10;
+  static const int _maxTentativas = 300;
   static const int _idAlarmePeriodico = 990011;
 
   final DatabaseHelper _db = DatabaseHelper();
@@ -78,6 +77,7 @@ class RetryUploadService {
     required String origem,
     double? latitude,
     double? longitude,
+    String? alertaId,
   }) async {
     try {
       final diretorioPermanente = await getApplicationDocumentsDirectory();
@@ -90,6 +90,7 @@ class RetryUploadService {
         origem: origem,
         latitude: latitude,
         longitude: longitude,
+        alertaId: alertaId,
       );
       debugPrint('💾 [RetryUploadService] Upload de foto SOS ($origem) enfileirado para retry: $destino');
     } catch (e) {
@@ -131,6 +132,9 @@ class RetryUploadService {
         final bool sucesso = await SosDisparoService().tentarReenviarFotoEnfileirada(
           fotoPathLocal: fotoPath,
           origem: origem,
+          alertaId: item['alerta_id'] as String?,
+          latitude: (item['latitude'] as num?)?.toDouble(),
+          longitude: (item['longitude'] as num?)?.toDouble(),
         );
 
         if (sucesso) {

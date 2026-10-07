@@ -14,6 +14,25 @@ import 'tabs/configuracoes_tab.dart';
 import 'tabs/inicio_dashboard.dart';
 
 
+/// Aba visível da HomeScreen (`-1` = Início). A área protegida do
+/// Histórico se tranca ao sair da aba (ver `HistoricoTab`).
+final ValueNotifier<int> abaVisivelNotifier = ValueNotifier<int>(-1);
+
+/// Abre Configurações por cima da tela atual — atalho dos avisos "cadastre
+/// um PIN"/"cadastre um contato de emergência".
+Future<void> abrirConfiguracoesDoApp(BuildContext context) {
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)!.appTituloConfiguracoes),
+        ),
+        body: const ConfiguracoesTab(),
+      ),
+    ),
+  );
+}
+
 class HomeScreen extends StatefulWidget {
   /// Índice da aba exibida ao abrir esta tela — usado para abrir
   /// diretamente na aba Monitoramento (índice 2) ao tocar numa
@@ -62,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // rodar duas vezes na mesma sessão do engine (ex.: navegar para
     // fora e voltar para a Home).
     unawaited(iniciarServicosPosLoginOuDashboard());
+    abaVisivelNotifier.value = _mostrandoInicio ? -1 : _indiceAbaAtual;
 
     // Indicador de "não visualizado" no ícone da aba Histórico (item 4
     // do pedido de UX do guardião) — recarrega a contagem toda vez que a
@@ -102,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _indiceAbaAtual = indice;
       _mostrandoInicio = false;
     });
+    abaVisivelNotifier.value = indice;
   }
 
   /// Volta a HomeScreen para o modo "Início" (Dashboard) — acionado pelo
@@ -109,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Configurações.
   void _voltarParaInicio() {
     setState(() => _mostrandoInicio = true);
+    abaVisivelNotifier.value = -1;
   }
 
   void _abrirConfiguracoes(BuildContext context) {
@@ -162,10 +184,17 @@ class _HomeScreenState extends State<HomeScreen> {
             : Text(titulos[_indiceAbaAtual], style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (!_mostrandoInicio && _indiceAbaAtual == 1)
-            IconButton(
-              icon: const Icon(Icons.add_alarm),
-              tooltip: l10n.tooltipAdicionarAlarme,
-              onPressed: () => _familiaTabKey.currentState?.abrirModalAdicionarAlarme(),
+            // Sem contato de emergência o botão fica desabilitado (a aba
+            // mostra o aviso com o atalho para Configurações).
+            ValueListenableBuilder<bool>(
+              valueListenable: FamiliaTab.temContatosNotifier,
+              builder: (context, temContatos, _) => IconButton(
+                icon: const Icon(Icons.add_alarm),
+                tooltip: temContatos ? l10n.tooltipAdicionarAlarme : l10n.familiaCadastreContatoAviso,
+                onPressed: temContatos
+                    ? () => _familiaTabKey.currentState?.abrirModalAdicionarAlarme()
+                    : null,
+              ),
             ),
           if (!_mostrandoInicio && _indiceAbaAtual == 2)
             IconButton(

@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+import 'dart:io';
+
 import '../../services/alertas_recebidos_service.dart';
 import '../../services/database_helper.dart';
+import '../../services/historico_alertas_service.dart';
+import '../alerta_historico_detalhe_screen.dart';
+import '../home_screen.dart' show abaVisivelNotifier;
 import '../../services/wallpaper_service.dart';
 import '../../widgets/pin_dialog.dart';
 import '../../widgets/texto_com_links.dart';
@@ -131,7 +137,18 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   // (busca exclusivamente 'critico').
   final DatabaseHelper _dbAuditoria = DatabaseHelper();
   bool _carregandoAuditoria = true;
+
+  /// Liberação da área protegida: SÓ em memória, vale até sair da aba ou
+  /// até 2 minutos com o app em segundo plano.
   bool _liberadoAuditoria = false;
+  DateTime? _foiParaSegundoPlanoEm;
+  static const Duration _tempoMaximoEmSegundoPlano = Duration(minutes: 2);
+  static const int _indiceAbaHistorico = 3;
+
+  /// Fim do bloqueio por 3 PINs errados (5 min, dobrando a cada bloqueio).
+  DateTime? _bloqueadoAte;
+  Timer? _timerBloqueio;
+
   String? _pinReal;
   List<Map<String, dynamic>> _eventosSensiveis = [];
 
@@ -146,6 +163,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     // ao `WidgetsBindingObserver` abaixo, que só cobre o app
     // minimizado/reaberto.
     DatabaseHelper.historicoAtualizadoNotifier.addListener(_aoHistoricoAtualizado);
+    abaVisivelNotifier.addListener(_aoMudarAba);
     _carregarHistorico();
     _atualizarStatusAuditoria();
   }
@@ -154,7 +172,26 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     DatabaseHelper.historicoAtualizadoNotifier.removeListener(_aoHistoricoAtualizado);
+    abaVisivelNotifier.removeListener(_aoMudarAba);
+    _timerBloqueio?.cancel();
     super.dispose();
+  }
+
+  /// Saiu da aba Histórico: a área protegida tranca de novo.
+  void _aoMudarAba() {
+    if (abaVisivelNotifier.value != _indiceAbaHistorico) _trancarAreaProtegida();
+  }
+
+  void _trancarAreaProtegida() {
+    if (!_liberadoAuditoria) return;
+    if (!mounted) {
+      _liberadoAuditoria = false;
+      return;
+    }
+    setState(() {
+      _liberadoAuditoria = false;
+      _eventosSensiveis = [];
+    });
   }
 
   void _aoHistoricoAtualizado() {
@@ -183,7 +220,15 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   /// primeiro plano.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _foiParaSegundoPlanoEm ??= DateTime.now();
+    }
     if (state == AppLifecycleState.resumed && mounted) {
+      final desde = _foiParaSegundoPlanoEm;
+      _foiParaSegundoPlanoEm = null;
+      if (desde != null && DateTime.now().difference(desde) > _tempoMaximoEmSegundoPlano) {
+        _trancarAreaProtegida();
+      }
       _carregarHistorico();
       _atualizarStatusAuditoria();
     }
@@ -191,36 +236,73 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
 
   Future<void> _atualizarStatusAuditoria() async {
     final config = await _dbAuditoria.getUserConfig();
-    final liberado = await _dbAuditoria.auditoriaDesbloqueadaNaSessao();
+    final bloqueio = await _dbAuditoria.historicoBloqueadoAte();
     if (!mounted) return;
 
     setState(() {
-      _liberadoAuditoria = liberado;
       _pinReal = config?['pin_real'] as String?;
+      _bloqueadoAte = bloqueio != null ? DateTime.fromMillisecondsSinceEpoch(bloqueio) : null;
       _carregandoAuditoria = false;
     });
+    _agendarFimDoBloqueio();
 
-    if (liberado) {
+    if (_liberadoAuditoria) {
       final eventos = await _dbAuditoria.getEventosSensiveis();
       if (!mounted) return;
       setState(() => _eventosSensiveis = eventos);
     }
   }
 
-  /// Abre o teclado numérico ([exibirDialogoPin]) pedindo o mesmo PIN de
-  /// 4 dígitos cadastrado em Configurações. Só ao confirmar o PIN correto
-  /// é que os "Alertas Enviados" são liberados para esta sessão do app —
-  /// ver [DatabaseHelper.desbloquearAuditoria].
-  Future<void> _desbloquearComPin() async {
+  void _agendarFimDoBloqueio() {
+    _timerBloqueio?.cancel();
+    final ate = _bloqueadoAte;
+    if (ate == null) return;
+    final restante = ate.difference(DateTime.now());
+    _timerBloqueio = Timer(restante.isNegative ? Duration.zero : restante, () {
+      if (mounted) setState(() => _bloqueadoAte = null);
+    });
+  }
+
+  /// PIN da área protegida (o de Configurações). Cada erro conta; no 3º
+  /// seguido a área bloqueia por 5 minutos, dobrando a cada novo bloqueio.
+  /// `true` = PIN correto.
+  Future<bool> _pedirPinDaAreaProtegida() async {
+    final bloqueio = await _dbAuditoria.historicoBloqueadoAte();
+    if (bloqueio != null) {
+      if (mounted) setState(() => _bloqueadoAte = DateTime.fromMillisecondsSinceEpoch(bloqueio));
+      _agendarFimDoBloqueio();
+      return false;
+    }
+    if (!mounted) return false;
+    var correto = false;
+    final navegador = Navigator.of(context);
     await exibirDialogoPin(
       context: context,
       pinEsperado: _pinReal,
-      aoConfirmarPinCorreto: () async {
-        await _dbAuditoria.desbloquearAuditoria();
+      mostrarBotaoCancelar: true,
+      // Cada erro é contado no banco (sobrevive a fechar o teclado).
+      limiteErrosConsecutivos: 1,
+      aoAtingirLimiteDeErros: () async {
+        final ate = await _dbAuditoria.registrarErroPinHistorico();
+        if (ate == null) return;
+        if (navegador.canPop()) navegador.pop();
         if (!mounted) return;
-        await _atualizarStatusAuditoria();
+        setState(() => _bloqueadoAte = DateTime.fromMillisecondsSinceEpoch(ate));
+        _agendarFimDoBloqueio();
+      },
+      aoConfirmarPinCorreto: () async {
+        correto = true;
+        await _dbAuditoria.zerarErrosPinHistorico();
       },
     );
+    return correto;
+  }
+
+  Future<void> _desbloquearComPin() async {
+    if (!await _pedirPinDaAreaProtegida()) return;
+    if (!mounted) return;
+    setState(() => _liberadoAuditoria = true);
+    await _atualizarStatusAuditoria();
   }
 
   void _confirmarBloquearNovamenteAuditoria() {
@@ -265,7 +347,7 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   }
 
   Future<void> _bloquearNovamenteAuditoria() async {
-    await _dbAuditoria.bloquearAuditoriaNovamente();
+    _trancarAreaProtegida();
     if (!mounted) return;
     await _atualizarStatusAuditoria();
     if (!mounted) return;
@@ -278,12 +360,17 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     );
   }
 
-  Future<void> _excluirEventoSensivel(int id) async {
+  /// Apagar uma entrada protegida pede o PIN de novo.
+  Future<bool> _excluirEventoSensivel(Map<String, dynamic> evento) async {
+    if (!await _pedirPinDaAreaProtegida()) return false;
+    final id = evento['id'] as int;
     await _dbAuditoria.deletarEventoHistorico(id);
-    if (!mounted) return;
+    await HistoricoAlertasService().apagarFotoLocal(evento['foto_local'] as String?);
+    if (!mounted) return true;
     setState(() {
       _eventosSensiveis.removeWhere((e) => e['id'] == id);
     });
+    return true;
   }
 
   Future<void> _carregarHistorico() async {
@@ -438,6 +525,11 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
         await _dbHelper.limparHistoricoPorCategoria('sistema');
         break;
       case _categoriaEnviados:
+        // "Limpar" a área protegida pede o PIN de novo.
+        if (!await _pedirPinDaAreaProtegida()) return;
+        for (final e in _eventosSensiveis) {
+          await HistoricoAlertasService().apagarFotoLocal(e['foto_local'] as String?);
+        }
         await _dbAuditoria.limparHistoricoPorCategoria('critico');
         if (mounted) setState(() => _eventosSensiveis = []);
         return;
@@ -580,6 +672,9 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
     if (_filtroSelecionado == _categoriaEnviados) {
       if (_carregandoAuditoria) {
         return const Center(child: CircularProgressIndicator());
+      }
+      if (_bloqueadoAte != null && _bloqueadoAte!.isAfter(DateTime.now())) {
+        return _construirTelaBloqueioTemporario();
       }
       return _liberadoAuditoria
           ? _construirListaLiberadaAuditoria()
@@ -863,6 +958,28 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
   // UI DE "ALERTAS ENVIADOS" (ex-AuditoriaSensivelScreen)
   // ==========================================================
 
+  Widget _construirTelaBloqueioTemporario() {
+    final l10n = AppLocalizations.of(context)!;
+    final hora = DateFormat.Hm(Localizations.localeOf(context).toString()).format(_bloqueadoAte!);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_clock, size: 72, color: Colors.red.shade400),
+            const SizedBox(height: 20),
+            Text(
+              l10n.historicoBloqueadoAte(hora),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _construirTelaBloqueadaPin() {
     return Center(
       child: Padding(
@@ -982,10 +1099,16 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
               final titulo = evento['titulo'] as String? ?? '';
               final descricao = evento['descricao'] as String? ?? '';
               final timestamp = evento['timestamp'] as String? ?? '';
+              final status = evento['status'] as String?;
+              final fotoLocal = evento['foto_local'] as String?;
+              final temFotoLocal = fotoLocal != null && fotoLocal.isNotEmpty && File(fotoLocal).existsSync();
+              final temFoto = temFotoLocal || ((evento['foto_url'] as String?)?.isNotEmpty ?? false);
 
               return Dismissible(
                 key: ValueKey('critico_$id'),
                 direction: DismissDirection.endToStart,
+                // A entrada só sai da lista depois do PIN (ver _excluirEventoSensivel).
+                confirmDismiss: (_) => _excluirEventoSensivel(evento),
                 background: Container(
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -996,7 +1119,6 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                   ),
                   child: const Icon(Icons.delete_outline, color: Colors.white),
                 ),
-                onDismissed: (_) => _excluirEventoSensivel(id),
                 child: Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
@@ -1004,23 +1126,51 @@ class _HistoricoTabState extends State<HistoricoTab> with WidgetsBindingObserver
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.red.shade50,
-                      child: Icon(Icons.shield_outlined, color: Colors.red.shade400),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => AlertaHistoricoDetalheScreen(evento: evento)),
                     ),
+                    leading: temFotoLocal
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(File(fotoLocal), width: 44, height: 44, fit: BoxFit.cover),
+                          )
+                        : CircleAvatar(
+                            backgroundColor: Colors.red.shade50,
+                            child: Icon(temFoto ? Icons.photo_camera : Icons.shield_outlined,
+                                color: Colors.red.shade400),
+                          ),
                     title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
                     // Coordenadas GPS e o link da foto (quando presentes no
                     // texto — ver EmergencyAlertService) viram links de
                     // fato clicáveis: GPS abre o Google Maps, foto abre a
                     // imagem em alta resolução no navegador.
-                    subtitle: Text.rich(
-                      TextSpan(
-                        children: construirSpansComLinks(
-                          descricao,
-                          TextStyle(fontSize: 14, color: Colors.grey.shade800),
-                          _abrirLink,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            children: construirSpansComLinks(
+                              descricao,
+                              TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                              _abrirLink,
+                            ),
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
+                        if (status != null && status.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              AlertaHistoricoDetalheScreen.textoStatus(status, AppLocalizations.of(context)!),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AlertaHistoricoDetalheScreen.corStatus(status),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     trailing: Text(
                       _formatarDataHora(timestamp),

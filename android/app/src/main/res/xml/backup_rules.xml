@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup automático (Android 11 e anteriores): o banco local fica de fora —
+     o histórico de alertas é restaurado do Firestore na abertura do app
+     (ver HistoricoAlertasService.importarDoFirestore). -->
+<full-backup-content>
+    <exclude domain="database" path="."/>
+    <exclude domain="root" path="app_flutter/historico_fotos/"/>
+</full-backup-content>

@@ -42,7 +42,13 @@ class AlarmeRotina {
   final String contextoPersonalizado;
   final int minutosTolerancia;
   final int? ultimoDisparoEpoch;
-  final bool pausado;
+
+  /// Dia da pausa (`yyyy-MM-dd`) — a pausa vale só até 00h00 do dia
+  /// seguinte. Gravado como está ao editar (editar NUNCA despausa).
+  final String? pausadoEm;
+
+  /// Pausado AGORA (pausa de hoje, até 00h00).
+  bool get pausado => pausadoEm != null && pausadoEm == dataIso(DateTime.now());
 
   AlarmeRotina({
     this.id,
@@ -54,8 +60,13 @@ class AlarmeRotina {
     this.contextoPersonalizado = '',
     this.minutosTolerancia = 10,
     this.ultimoDisparoEpoch,
-    this.pausado = false,
+    this.pausadoEm,
   });
+
+  /// `yyyy-MM-dd` de [data] (formato da coluna `alarme_pausado`).
+  static String dataIso(DateTime data) =>
+      '${data.year.toString().padLeft(4, '0')}-${data.month.toString().padLeft(2, '0')}-'
+      '${data.day.toString().padLeft(2, '0')}';
 
   /// Converte o conjunto de dias da semana em uma string CSV ordenada (ex: {5, 1, 3} -> "1,3,5").
   static String diasParaCsv(Set<int> dias) {
@@ -83,7 +94,7 @@ class AlarmeRotina {
         'contexto_personalizado': contextoPersonalizado,
         'minutos_tolerancia': minutosTolerancia,
         'ultimo_disparo_epoch': ultimoDisparoEpoch,
-        'alarme_pausado': pausado ? '1' : '0',
+        'alarme_pausado': pausadoEm ?? '0',
       };
 
   factory AlarmeRotina.fromMap(Map<String, dynamic> map) {
@@ -93,11 +104,11 @@ class AlarmeRotina {
       return defaultValue;
     }
 
-    final rawPausa = map['alarme_pausado'];
-    bool estaPausado = false;
-    if (rawPausa != null && rawPausa != 0 && rawPausa != '0' && rawPausa != false) {
-      estaPausado = true;
-    }
+    // Só uma data é pausa (até 00h00). Valores antigos ('1' = pausa sem
+    // fim, da ação sem PIN da notificação, removida) não pausam mais.
+    final rawPausa = map['alarme_pausado']?.toString();
+    final pausadoEm =
+        rawPausa != null && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(rawPausa) ? rawPausa : null;
 
     return AlarmeRotina(
       id: parseInt(map['id'], 0) == 0 ? null : parseInt(map['id'], 0),
@@ -111,7 +122,7 @@ class AlarmeRotina {
       ultimoDisparoEpoch: map['ultimo_disparo_epoch'] != null
           ? parseInt(map['ultimo_disparo_epoch'], 0)
           : null,
-      pausado: estaPausado,
+      pausadoEm: pausadoEm,
     );
   }
 
@@ -125,7 +136,8 @@ class AlarmeRotina {
     String? contextoPersonalizado,
     int? minutosTolerancia,
     int? ultimoDisparoEpoch,
-    bool? pausado,
+    String? pausadoEm,
+    bool limparPausa = false,
   }) {
     return AlarmeRotina(
       id: id ?? this.id,
@@ -137,7 +149,7 @@ class AlarmeRotina {
       contextoPersonalizado: contextoPersonalizado ?? this.contextoPersonalizado,
       minutosTolerancia: minutosTolerancia ?? this.minutosTolerancia,
       ultimoDisparoEpoch: ultimoDisparoEpoch ?? this.ultimoDisparoEpoch,
-      pausado: pausado ?? this.pausado,
+      pausadoEm: limparPausa ? null : (pausadoEm ?? this.pausadoEm),
     );
   }
 

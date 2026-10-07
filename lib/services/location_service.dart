@@ -212,6 +212,72 @@ class LocationService {
     );
   }
 
+  /// Posição recente SEM acionar o GPS (memória ou cache do sistema) —
+  /// para registrar eventos no histórico sem atraso. `null` se não houver.
+  Future<Position?> posicaoRecente() async {
+    if (_ultimaPosicao != null) return _ultimaPosicao;
+    try {
+      return await Geolocator.getLastKnownPosition();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Posição EXATA para um alerta: a do cache só se tiver até [idadeMaxima]
+  /// e precisão até [precisaoMaxima]; senão, uma leitura nova de alta
+  /// precisão com limite de [limite]. Se a leitura nova não vier a tempo,
+  /// devolve a melhor disponível com `precisa: false` — o chamador envia
+  /// essa e atualiza o alerta quando [atualizacao] trouxer a precisa.
+  Future<PosicaoAlerta> obterPosicaoParaAlerta({
+    Duration idadeMaxima = const Duration(seconds: 30),
+    double precisaoMaxima = 50,
+    Duration limite = const Duration(seconds: 5),
+  }) async {
+    Position? cache;
+    try {
+      cache = await Geolocator.getLastKnownPosition();
+    } catch (_) {}
+    final candidatos = [cache, _ultimaPosicao].whereType<Position>().toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    for (final p in candidatos) {
+      final idade = DateTime.now().difference(p.timestamp);
+      if (idade <= idadeMaxima && p.accuracy <= precisaoMaxima) {
+        return PosicaoAlerta(p, precisa: true);
+      }
+    }
+
+    final leitura = _lerPosicaoNova();
+    try {
+      final nova = await leitura.timeout(limite);
+      if (nova != null) {
+        _ultimaPosicao = nova;
+        return PosicaoAlerta(nova, precisa: nova.accuracy <= precisaoMaxima);
+      }
+    } on TimeoutException {
+      // segue com a melhor disponível; a leitura continua em [atualizacao]
+    } catch (_) {}
+    final melhor = candidatos.isNotEmpty ? candidatos.first : null;
+    return PosicaoAlerta(melhor, precisa: false, atualizacao: leitura);
+  }
+
+  Future<Position?> _lerPosicaoNova() async {
+    try {
+      final servicoAtivo = await Geolocator.isLocationServiceEnabled();
+      if (!servicoAtivo) return null;
+      final permissao = await Geolocator.checkPermission();
+      if (permissao == LocationPermission.denied ||
+          permissao == LocationPermission.deniedForever) {
+        return null;
+      }
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        timeLimit: const Duration(seconds: 45),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Limpa a última localização guardada em memória. Opcionalmente pode
   /// ser chamado após o envio do alerta de emergência, para não reutilizar
   /// coordenadas antigas em um próximo ciclo de check-in.
@@ -249,3 +315,15 @@ class LocationService {
         '(https://maps.google.com/?q=${posicao.latitude},${posicao.longitude})';
   }
 }
+
+/// Posição usada num alerta: [posicao] pode ser a melhor disponível
+/// (`precisa == false`); nesse caso [atualizacao] completa com a leitura
+/// nova de alta precisão quando ela chegar (ou `null`).
+class PosicaoAlerta {
+  const PosicaoAlerta(this.posicao, {required this.precisa, this.atualizacao});
+
+  final Position? posicao;
+  final bool precisa;
+  final Future<Position?>? atualizacao;
+}
+

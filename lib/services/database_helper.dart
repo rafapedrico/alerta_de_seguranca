@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
+import 'pin_seguro.dart';
+
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -35,7 +37,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 19,
+      version: 20,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -66,7 +68,10 @@ class DatabaseHelper {
         som_alarme_selecionado INTEGER NOT NULL DEFAULT 1,
         duracao_som_alarme INTEGER NOT NULL DEFAULT 30,
         idioma_selecionado TEXT NOT NULL DEFAULT 'pt',
-        telefone TEXT
+        telefone TEXT,
+        historico_erros_pin INTEGER NOT NULL DEFAULT 0,
+        historico_bloqueios_pin INTEGER NOT NULL DEFAULT 0,
+        historico_bloqueado_ate INTEGER
       )
     ''');
 
@@ -106,9 +111,19 @@ class DatabaseHelper {
         titulo TEXT NOT NULL,
         descricao TEXT NOT NULL,
         categoria TEXT NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+        alerta_id TEXT,
+        tipo TEXT,
+        status TEXT,
+        latitude REAL,
+        longitude REAL,
+        precisao REAL,
+        foto_url TEXT,
+        foto_local TEXT,
+        contexto TEXT
       )
     ''');
+    await db.execute(_sqlIndiceAlertaId);
 
     // Table: alarmes_rotina - gerenciador de múltiplos alarmes de rotina
     // (estilo despertador do iPhone), usado pela aba Família. Cada
@@ -196,10 +211,17 @@ class DatabaseHelper {
         latitude REAL,
         longitude REAL,
         criado_em TEXT NOT NULL,
-        tentativas INTEGER NOT NULL DEFAULT 0
+        tentativas INTEGER NOT NULL DEFAULT 0,
+        alerta_id TEXT
       )
     ''');
   }
+
+  /// Uma entrada por alerta: o mesmo `alerta_id` nunca vira duas linhas
+  /// (envio local + importação do Firestore, foto chegando depois).
+  static const String _sqlIndiceAlertaId =
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_historico_alerta_id '
+      'ON historico(alerta_id) WHERE alerta_id IS NOT NULL';
 
 
 
@@ -517,6 +539,61 @@ class DatabaseHelper {
         // Coluna já existe — ignora.
       }
     }
+    // Migration from v19 to v20 (revisão de 2026-10 da aba Segurança e do
+    // Histórico): cada alerta enviado vira UMA entrada com localização,
+    // status e foto; trava do Histórico com tempo de bloqueio; PIN passa a
+    // ser guardado como hash com sal (ver [PinSeguro]).
+    if (oldVersion < 20) {
+      Future<void> adicionarColuna(String sql) async {
+        try {
+          await db.execute(sql);
+        } catch (_) {
+          // Coluna já existe — ignora.
+        }
+      }
+
+      for (final coluna in const [
+        'alerta_id TEXT',
+        'tipo TEXT',
+        'status TEXT',
+        'latitude REAL',
+        'longitude REAL',
+        'precisao REAL',
+        'foto_url TEXT',
+        'foto_local TEXT',
+        'contexto TEXT',
+      ]) {
+        await adicionarColuna('ALTER TABLE historico ADD COLUMN $coluna');
+      }
+      await db.execute(_sqlIndiceAlertaId);
+      await adicionarColuna(
+          'ALTER TABLE fila_retry_upload_sos ADD COLUMN alerta_id TEXT');
+      await adicionarColuna(
+          'ALTER TABLE user_config ADD COLUMN historico_erros_pin INTEGER NOT NULL DEFAULT 0');
+      await adicionarColuna(
+          'ALTER TABLE user_config ADD COLUMN historico_bloqueios_pin INTEGER NOT NULL DEFAULT 0');
+      await adicionarColuna(
+          'ALTER TABLE user_config ADD COLUMN historico_bloqueado_ate INTEGER');
+
+      // PIN atual (e o pendente, se houver troca em andamento) de texto
+      // puro para hash com sal.
+      final configs = await db.query('user_config');
+      for (final config in configs) {
+        final atualizacao = <String, Object?>{};
+        final pin = config['pin_real'] as String?;
+        if (PinSeguro.temPin(pin) && !PinSeguro.ehHash(pin)) {
+          atualizacao['pin_real'] = PinSeguro.gerarHash(pin!.trim());
+        }
+        final pendente = config['senha_pendente'] as String?;
+        if (PinSeguro.temPin(pendente) && !PinSeguro.ehHash(pendente)) {
+          atualizacao['senha_pendente'] = PinSeguro.gerarHash(pendente!.trim());
+        }
+        if (atualizacao.isNotEmpty) {
+          await db.update('user_config', atualizacao,
+              where: 'id = ?', whereArgs: [config['id']]);
+        }
+      }
+    }
   }
 
 
@@ -590,11 +667,14 @@ class DatabaseHelper {
     final String? pinAtual = config?['pin_real'] as String?;
     final bool possuiPinAtivo = pinAtual != null && pinAtual.trim().isNotEmpty;
 
+    // Nunca em texto puro: só o hash com sal (ver [PinSeguro]).
+    final String novoPinHash = PinSeguro.gerarHash(novoPin);
+
     if (!possuiPinAtivo) {
       // Regra 1: primeiro cadastro — efetivação instantânea, sem carência.
       await updateUserConfig({
         'id': userConfigId,
-        'pin_real': novoPin,
+        'pin_real': novoPinHash,
         // Garante que não fique nenhuma alteração pendente residual.
         'senha_pendente': null,
         'timestamp_alteracao_senha': null,
@@ -606,7 +686,7 @@ class DatabaseHelper {
     final agora = DateTime.now().millisecondsSinceEpoch.toString();
     await updateUserConfig({
       'id': userConfigId,
-      'senha_pendente': novoPin,
+      'senha_pendente': novoPinHash,
       'timestamp_alteracao_senha': agora,
     });
     return false;
@@ -779,19 +859,140 @@ class DatabaseHelper {
     required String titulo,
     required String descricao,
     required String categoria,
+    String? alertaId,
+    String? tipo,
+    String? status,
+    double? latitude,
+    double? longitude,
+    double? precisao,
+    String? fotoUrl,
+    String? fotoLocal,
+    String? contexto,
+    DateTime? quando,
   }) async {
     final db = await database;
-    final id = await db.insert('historico', {
-      'titulo': titulo,
-      'descricao': descricao,
-      'categoria': categoria,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
+    final id = await db.insert(
+      'historico',
+      {
+        'titulo': titulo,
+        'descricao': descricao,
+        'categoria': categoria,
+        'timestamp': (quando ?? DateTime.now()).toIso8601String(),
+        'alerta_id': alertaId,
+        'tipo': tipo,
+        'status': status,
+        'latitude': latitude,
+        'longitude': longitude,
+        'precisao': precisao,
+        'foto_url': fotoUrl,
+        'foto_local': fotoLocal,
+        'contexto': contexto,
+      },
+      // Uma entrada por alerta: o mesmo alerta_id (ex.: importado do
+      // Firestore depois de já existir localmente) nunca duplica.
+      conflictAlgorithm:
+          alertaId != null ? ConflictAlgorithm.ignore : ConflictAlgorithm.abort,
+    );
     // Avisa qualquer tela ouvindo (ver [historicoAtualizadoNotifier]) que
     // um novo evento acabou de ser gravado, para recarregar a lista já em
     // primeiro plano.
     historicoAtualizadoNotifier.value++;
     return id;
+  }
+
+  /// Entrada do histórico de um alerta pelo seu [alertaId] (`null` se não
+  /// existir neste aparelho).
+  Future<Map<String, dynamic>?> buscarAlertaHistorico(String alertaId) async {
+    final db = await database;
+    final linhas = await db.query('historico',
+        where: 'alerta_id = ?', whereArgs: [alertaId], limit: 1);
+    return linhas.isEmpty ? null : linhas.first;
+  }
+
+  /// Atualiza campos de uma entrada existente pelo [alertaId] (status,
+  /// foto, localização precisa…). Só grava os campos não nulos.
+  Future<int> atualizarAlertaHistorico(
+    String alertaId, {
+    String? status,
+    double? latitude,
+    double? longitude,
+    double? precisao,
+    String? fotoUrl,
+    String? fotoLocal,
+    String? descricao,
+  }) async {
+    final campos = <String, Object?>{
+      if (status != null) 'status': status,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (precisao != null) 'precisao': precisao,
+      if (fotoUrl != null) 'foto_url': fotoUrl,
+      if (fotoLocal != null) 'foto_local': fotoLocal,
+      if (descricao != null) 'descricao': descricao,
+    };
+    if (campos.isEmpty) return 0;
+    final db = await database;
+    final n = await db.update('historico', campos,
+        where: 'alerta_id = ?', whereArgs: [alertaId]);
+    if (n > 0) historicoAtualizadoNotifier.value++;
+    return n;
+  }
+
+  /// Ids de alerta já presentes no histórico local (para a importação do
+  /// Firestore pular o que já existe).
+  Future<Set<String>> idsAlertasNoHistorico() async {
+    final db = await database;
+    final linhas = await db.query('historico',
+        columns: ['alerta_id'], where: 'alerta_id IS NOT NULL');
+    return linhas.map((l) => l['alerta_id'] as String).toSet();
+  }
+
+  // ==========================================
+  // TRAVA DO HISTÓRICO PROTEGIDO (3 PINs errados)
+  // ==========================================
+
+  /// Instante (epoch ms) até quando a área protegida está bloqueada, ou
+  /// `null` se não estiver.
+  Future<int?> historicoBloqueadoAte() async {
+    final config = await getUserConfig();
+    final ate = config?['historico_bloqueado_ate'] as int?;
+    if (ate == null || ate <= DateTime.now().millisecondsSinceEpoch) return null;
+    return ate;
+  }
+
+  /// Registra um PIN errado na área protegida. No 3º erro seguido bloqueia
+  /// por 5 minutos, dobrando a cada novo bloqueio (5, 10, 20…). Devolve o
+  /// fim do bloqueio quando ele acabou de começar, senão `null`.
+  Future<int?> registrarErroPinHistorico() async {
+    final config = await getUserConfig();
+    if (config == null) return null;
+    final erros = ((config['historico_erros_pin'] as int?) ?? 0) + 1;
+    if (erros < 3) {
+      await updateUserConfig({'id': config['id'], 'historico_erros_pin': erros});
+      return null;
+    }
+    final bloqueios = (config['historico_bloqueios_pin'] as int?) ?? 0;
+    final minutos = 5 * (1 << bloqueios.clamp(0, 10));
+    final ate = DateTime.now().add(Duration(minutes: minutos)).millisecondsSinceEpoch;
+    await updateUserConfig({
+      'id': config['id'],
+      'historico_erros_pin': 0,
+      'historico_bloqueios_pin': bloqueios + 1,
+      'historico_bloqueado_ate': ate,
+    });
+    return ate;
+  }
+
+  /// PIN correto na área protegida: zera erros e o escalonamento.
+  Future<void> zerarErrosPinHistorico() async {
+    final config = await getUserConfig();
+    if (config == null) return;
+    await updateUserConfig({
+      'id': config['id'],
+      'historico_erros_pin': 0,
+      'historico_bloqueios_pin': 0,
+      'historico_bloqueado_ate': null,
+    });
   }
 
   /// Retorna os eventos do histórico exibidos na tela de Histórico Geral
@@ -1395,6 +1596,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
     required String origem,
     double? latitude,
     double? longitude,
+    String? alertaId,
   }) async {
     final db = await database;
     return await db.insert('fila_retry_upload_sos', {
@@ -1402,6 +1604,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       'origem': origem,
       'latitude': latitude,
       'longitude': longitude,
+      'alerta_id': alertaId,
       'criado_em': DateTime.now().toIso8601String(),
       'tentativas': 0,
     });

@@ -1,93 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../app_navigator.dart';
-import '../screens/camera_captura_screen.dart';
+import '../screens/sos_em_andamento_screen.dart';
+import '../widgets/plano_bloqueado_dialog.dart';
 import 'plano_ciclo_service.dart';
+import 'sos_disparo_service.dart';
 
-/// Orquestra a abertura do recurso de Captura e Dissuasão
-/// ([CameraCapturaScreen]) a partir de qualquer ponto de disparo de
-/// emergência da UI.
+/// Ponto de entrada ÚNICO do SOS — botão do app (aba Segurança) e botão
+/// físico (Volume+): envia a localização NA HORA, sem diálogo de
+/// confirmação, e abre a sequência visual ([SosEmAndamentoScreen] →
+/// câmera → tela vermelha).
 class CapturaDissuasaoService {
   CapturaDissuasaoService._internal();
   static final CapturaDissuasaoService _instance =
       CapturaDissuasaoService._internal();
   factory CapturaDissuasaoService() => _instance;
 
-  /// [origemUnificada], quando informado, identifica a sequência
-  /// unificada de SOS (ver [SosDisparoService]/[CameraCapturaScreen]) —
-  /// repassado direto para a tela, sem alterar a checagem de plano nem o
-  /// retry-loop de navegação abaixo.
+  /// Dispara o SOS. Devolve `true` quando a sequência começou (a tela do
+  /// SOS foi aberta); `false` se já havia um SOS em andamento (toque
+  /// duplo), se o plano em cache diz claramente "bloqueado", ou se não há
+  /// navegação disponível.
   ///
-  /// Retorna `true` só quando a [CameraCapturaScreen] foi de fato
-  /// empurrada para a navegação — `false` em qualquer caminho que NÃO
-  /// abre a câmera (fora da janela de 10 dias ativos do Plano Free,
-  /// `NavigatorState` indisponível). Usado por
-  /// `main.dart::_dispararSequenciaUnificadaDeSos` para decidir se a
-  /// tela preta do cold-start via botão físico ([_TelaPretaAguardandoSos])
-  /// precisa de um fallback de saída — ver documentação completa lá.
-  Future<bool> abrirCapturaSePermitido({String? origemUnificada}) async {
-    try {
-      // 1. Verifica se o Plano Free está dentro da janela de 10 dias
-      // ativos (ou se é Premium) — ver PlanoCicloService. REESPECIFICAÇÃO
-      // DO USUÁRIO (2026-09-04): antes a foto era gated por um teto
-      // separado de 2/mês (PlanoLimiteService, removido), que contradizia
-      // a regra oficial "todos os recursos liberados dentro dos 10 dias
-      // ativos" — agora usa a MESMA trava única de SMS/Push (ver
-      // `EmergencyAlertService._enviarSms`/`FirebaseSyncService`), sem
-      // nenhum teto numérico adicional.
-      final bool permitido = await PlanoCicloService().podeUsarRecursosAvancados();
-      debugPrint('📷 [CapturaDissuasaoService] podeUsarRecursosAvancados() retornou: $permitido');
-      if (!permitido) {
-        debugPrint(
-            '📷 [CapturaDissuasaoService] Plano Free fora da janela de 10 dias ativos do mês — captura não será aberta.');
-        return false;
-      }
-
-      // 2. Apenas verifica o status da permissão de CÂMERA, sem solicitar.
-      // A solicitação real (Permission.camera.request()) acontece uma
-      // única vez, dentro de CameraCapturaScreen._inicializarCamera().
-      // Chamar request() também aqui causava uma corrida entre as duas
-      // telas — o permission_handler não permite duas solicitações
-      // simultâneas e uma delas falhava com PlatformException
-      // ("A request for permissions is already running"), deixando a
-      // permissão presa em "denied".
-      try {
-        final status = await Permission.camera.status;
-        debugPrint('📷 [CapturaDissuasaoService] Status atual da permissão de câmera: $status');
-      } catch (e) {
-        debugPrint('⚠️ [CapturaDissuasaoService] Falha ao verificar permissão de câmera: $e');
-      }
-
-      // 3. RETRY LOOP: Aguarda até 3s usando appNavigatorKey
-      NavigatorState? navigatorState = appNavigatorKey.currentState;
-      int tentativas = 0;
-      while (navigatorState == null && tentativas < 10) {
-        debugPrint(
-            '⏳ [CapturaDissuasaoService] NavigatorState ainda nulo. Aguardando montagem da UI (tentativa ${tentativas + 1}/10)...');
-        await Future.delayed(const Duration(milliseconds: 300));
-        navigatorState = appNavigatorKey.currentState;
-        tentativas++;
-      }
-
-      if (navigatorState == null) {
-        debugPrint(
-            '⚠️ [CapturaDissuasaoService] NavigatorState indisponível após aguardar — captura não pôde ser aberta.');
-        return false;
-      }
-
-      // 4. Navega para a CameraCapturaScreen
-      debugPrint('📷 [CapturaDissuasaoService] Navegando para CameraCapturaScreen...');
-      navigatorState.push(
-        MaterialPageRoute(
-          builder: (_) => CameraCapturaScreen(origemUnificada: origemUnificada),
-          fullscreenDialog: true,
-        ),
-      );
-      return true;
-    } catch (e) {
-      debugPrint('⚠️ [CapturaDissuasaoService] Falha ao tentar abrir a tela de captura: $e');
+  /// O plano NUNCA atrasa o SOS: só o status em cache é consultado (ver
+  /// [PlanoCicloService.podeUsarRapido]) — nada de esperar a rede.
+  Future<bool> iniciarSos({required String origem, String? contexto}) async {
+    if (SosDisparoService().emAndamento) {
+      debugPrint('🔁 [SOS] Toque ignorado — já há um SOS em andamento.');
       return false;
     }
+    if (!await PlanoCicloService().podeUsarRapido()) {
+      final contexto = appNavigatorKey.currentContext;
+      if (contexto != null && contexto.mounted) await exibirAvisoPlanoBloqueado(contexto);
+      return false;
+    }
+
+    final sessao = await SosDisparoService().iniciar(origem: origem, contexto: contexto);
+    if (sessao == null) return false;
+
+    NavigatorState? navegador = appNavigatorKey.currentState;
+    var tentativas = 0;
+    while (navegador == null && tentativas < 10) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      navegador = appNavigatorKey.currentState;
+      tentativas++;
+    }
+    if (navegador == null) {
+      debugPrint('⚠️ [SOS] Navegação indisponível — a localização já foi enviada.');
+      SosDisparoService().encerrarSessao();
+      return false;
+    }
+    navegador.push(
+      MaterialPageRoute(
+        builder: (_) => SosEmAndamentoScreen(sessao: sessao),
+        fullscreenDialog: true,
+      ),
+    );
+    return true;
   }
 }

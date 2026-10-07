@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup na nuvem e transferência entre aparelhos (Android 12+): o banco
+     local fica de fora — o histórico de alertas vem do Firestore (ver
+     HistoricoAlertasService.importarDoFirestore). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="."/>
+        <exclude domain="root" path="app_flutter/historico_fotos/"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="."/>
+        <exclude domain="root" path="app_flutter/historico_fotos/"/>
+    </device-transfer>
+</data-extraction-rules>

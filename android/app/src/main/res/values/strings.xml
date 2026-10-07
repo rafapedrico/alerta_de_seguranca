@@ -3,28 +3,26 @@
     <!-- Nome exibido embaixo do ícone do app no launcher do Android. -->
     <string name="app_name">Guardião-X</string>
 
-    <!-- Modo "Despertador de Emergência" — notificação de controle do
-         AlertaRecebidoAlarmService (ver essa classe para o comentário
-         completo). Texto nativo (não passa pelo l10n do Flutter, igual
-         aos demais textos nativos deste app). -->
-    <string name="alerta_alarme_titulo">Alerta de emergência tocando</string>
-    <string name="alerta_alarme_corpo">Toque para abrir ou deslize para silenciar</string>
-    <string name="alerta_alarme_silenciar">Silenciar</string>
-
     <!-- Notificação full-screen-intent usada por
          VolumeSosService.forcarAberturaLockscreenCameraActivity para
          abrir a câmera sobre a tela bloqueada, contornando a restrição
          de "Background Activity Launch" do Android 12+ (ver comentário
-         completo na classe). Texto nativo, mesmo motivo dos acima. -->
+         completo na classe). -->
     <string name="alerta_sos_fisico_titulo">SOS acionado</string>
     <string name="alerta_sos_fisico_corpo">Abrindo a câmera de emergência…</string>
 
-    <!-- Notificação full-screen-intent usada por
-         RotinaAlarmWakeService.postarNotificacaoFullScreen para abrir a
-         tela do alarme de rotina mesmo com o app em segundo plano ou a
-         tela bloqueada (contornando a mesma restrição de "Background
-         Activity Launch" do Android 12+ — ver comentário completo na
-         classe). Texto nativo, mesmo motivo dos acima. -->
-    <string name="alerta_rotina_fisico_titulo">Confirmação de segurança pendente</string>
-    <string name="alerta_rotina_fisico_corpo">Toque para confirmar que está tudo bem</string>
+    <!-- Textos padrão das notificações nativas do cronômetro e dos
+         despertadores (RotinaAlarmWakeService/VigiaLocalizacao). O Dart grava
+         os mesmos textos no idioma escolhido no app (TextosNativos), que têm
+         prioridade sobre estes. -->
+    <string name="cronometro_notificacao_titulo">Guardião-X</string>
+    <string name="cronometro_notificacao_corpo">Desligue o alerta de emergência — toque para digitar seu PIN</string>
+    <string name="despertador_notificacao_titulo">Despertador de segurança</string>
+    <string name="despertador_notificacao_corpo">Toque para confirmar que está tudo bem</string>
+    <string name="despertador_acao_desativar">Desativar despertador</string>
+    <string name="servico_alarme_ativo">Alarme de segurança tocando</string>
+    <string name="canal_alarme_tela_cheia">Alarmes de segurança</string>
+    <string name="canal_localizacao_seguranca">Localização de segurança</string>
+    <string name="cronometro_servico_ativo">Cronômetro de segurança ativo</string>
+    <string name="despertador_servico_ativo">Despertador de segurança: localização ativa</string>
 </resources>

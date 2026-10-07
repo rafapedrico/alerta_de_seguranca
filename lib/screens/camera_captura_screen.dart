@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,29 +7,29 @@ import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../services/device_admin_service.dart';
-import '../services/emergency_alert_service.dart';
 import '../services/sos_disparo_service.dart';
 import '../services/bloqueio_app_service.dart';
 
 enum _EstadoCaptura {
   inicializandoCamera,
   prontaParaFoto,
+  cameraIndisponivel,
   processandoEnvio,
   dissuasaoExibida,
 }
 
+/// Câmera do SOS (depois dos avisos de `SosEmAndamentoScreen`) e, ao
+/// final, a tela vermelha de dissuasão com o texto VERDADEIRO do que foi
+/// enviado (ver [_CameraCapturaScreenState._textoDissuasao]).
+///
+/// - Limite de 10 s para a câmera abrir; senão: "Câmera indisponível —
+///   alerta já enviado aos seus contatos" e segue para a tela vermelha.
+/// - Foto: limite de 15 s para o upload ([SosDisparoService.enviarFoto]);
+///   depois disso ela vai para a fila de reenvio e o fluxo segue.
 class CameraCapturaScreen extends StatefulWidget {
-  const CameraCapturaScreen({super.key, this.origemUnificada});
+  const CameraCapturaScreen({super.key, required this.sessao});
 
-  /// Quando informado, esta captura faz parte da sequência UNIFICADA de
-  /// SOS (P1->P4, ver [SosDisparoService]) — a foto (P2) é enviada pelo
-  /// pipeline híbrido novo (Firebase Storage + Push) e o gesto
-  /// de deslizar (P4) tenta o bloqueio nativo de tela via
-  /// [DeviceAdminService] antes de cair no fallback histórico. Quando
-  /// `null` (fluxo de timeout do cronômetro de check-in, fora do escopo
-  /// desta unificação), mantém o comportamento histórico inalterado: SMS
-  /// de texto + `SystemNavigator.pop()` no swipe.
-  final String? origemUnificada;
+  final SessaoSos sessao;
 
   @override
   State<CameraCapturaScreen> createState() => _CameraCapturaScreenState();
@@ -50,6 +52,10 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
   // possível dos ~3s do botão físico.
   static const Duration _duracaoSimulacaoEnvio = Duration(milliseconds: 250);
 
+  /// Limite para a câmera abrir.
+  static const Duration _limiteAbrirCamera = Duration(seconds: 10);
+  Timer? _timerAbrirCamera;
+
   static const MethodChannel _lockscreenChannel =
       MethodChannel('com.example.security_check_app/lockscreen');
 
@@ -62,6 +68,12 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
         '🟩🟩🟩 [CameraCapturaScreen] >>> initState() ENTROU <<< timestamp=${DateTime.now().toIso8601String()}');
 
     _forcarShowWhenLocked();
+    _timerAbrirCamera = Timer(_limiteAbrirCamera, () {
+      if (mounted && _estado == _EstadoCaptura.inicializandoCamera) {
+        debugPrint('⚠️ [CameraCapturaScreen] Câmera não abriu em ${_limiteAbrirCamera.inSeconds}s.');
+        _cameraIndisponivel();
+      }
+    });
     _inicializarCamera();
   }
 
@@ -75,6 +87,8 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
 
   @override
   void dispose() {
+    _timerAbrirCamera?.cancel();
+    SosDisparoService().encerrarSessao();
     _focusNode.dispose();
     _descartarCameraSuavemente();
     super.dispose();
@@ -136,7 +150,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
         final statusSolicitado = await Permission.camera.request();
         if (!statusSolicitado.isGranted) {
           debugPrint('⚠️ [CameraCapturaScreen] Permissão de câmera negada.');
-          _avancarSemFoto();
+          _cameraIndisponivel();
           return;
         }
       }
@@ -145,7 +159,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
 
       if (cameras.isEmpty) {
         debugPrint('⚠️ [CameraCapturaScreen] Nenhuma câmera disponível.');
-        _avancarSemFoto();
+        _cameraIndisponivel();
         return;
       }
 
@@ -203,7 +217,8 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
         await controller.setFocusMode(FocusMode.auto);
       } catch (_) {}
 
-      if (mounted) {
+      if (mounted && _estado == _EstadoCaptura.inicializandoCamera) {
+        _timerAbrirCamera?.cancel();
         setState(() {
           _controller = controller;
           _estado = _EstadoCaptura.prontaParaFoto;
@@ -215,8 +230,24 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
       }
     } catch (e) {
       debugPrint('⚠️ [CameraCapturaScreen] Falha ao inicializar a câmera: $e');
-      _avancarSemFoto();
+      _cameraIndisponivel();
     }
+  }
+
+  /// Câmera não abriu (sem permissão, sem câmera, erro ou 10 s): avisa e
+  /// segue para a tela vermelha sem foto.
+  Future<void> _cameraIndisponivel() async {
+    if (!mounted ||
+        _estado == _EstadoCaptura.cameraIndisponivel ||
+        _estado == _EstadoCaptura.dissuasaoExibida) {
+      return;
+    }
+    _timerAbrirCamera?.cancel();
+    _descartarCameraSuavemente();
+    setState(() => _estado = _EstadoCaptura.cameraIndisponivel);
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    setState(() => _estado = _EstadoCaptura.dissuasaoExibida);
   }
 
   void _avancarSemFoto() {
@@ -256,27 +287,14 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
   }
 
   Future<void> _processarEnvioEEnviarSmsResgate(XFile? foto) async {
-    final String? origemUnificada = widget.origemUnificada;
-
-    if (origemUnificada != null) {
-      // P2 da sequência unificada de SOS: envia a foto de verdade pelo
-      // pipeline híbrido (Firebase Storage + Push), com
-      // fallback automático para SMS de texto se não houver sessão
-      // autenticada (ver SosDisparoService).
-      if (foto != null) {
-        await SosDisparoService().dispararFotoCapturada(foto, origem: origemUnificada);
-      }
-    } else {
-      // Fluxo HISTÓRICO (timeout do cronômetro de check-in, fora do
-      // escopo da unificação de SOS) — inalterado.
+    // Foto para o Firebase (limite de 15 s) e, com o link verdadeiro, para
+    // os contatos; sem upload, vai para a fila de reenvio — nunca um SMS
+    // de foto sem a foto.
+    if (foto != null) {
       try {
-        await EmergencyAlertService().enviarSmsResgateFoto(
-          login: 'familia_resgate',
-          senha:
-              'SOS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        );
+        await SosDisparoService().enviarFoto(foto, widget.sessao);
       } catch (e) {
-        debugPrint('⚠️ Falha ao enviar SMS de resgate: $e');
+        debugPrint('⚠️ [CameraCapturaScreen] Falha ao enviar a foto: $e');
       }
     }
 
@@ -322,6 +340,8 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
         );
       case _EstadoCaptura.prontaParaFoto:
         return _buildPreviewCamera();
+      case _EstadoCaptura.cameraIndisponivel:
+        return _buildAvisoVermelho(AppLocalizations.of(context)!.sosCameraIndisponivel);
       case _EstadoCaptura.processandoEnvio:
         return _buildProcessandoEnvio();
       case _EstadoCaptura.dissuasaoExibida:
@@ -419,6 +439,33 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
     );
   }
 
+  Widget _buildAvisoVermelho(String texto) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Text(
+          texto,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.redAccent,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            height: 1.35,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Frase da tela vermelha conforme o que FOI de fato enviado.
+  String _textoDissuasao(AppLocalizations l10n) {
+    final sessao = widget.sessao;
+    if (sessao.semContatos) return l10n.dissuasaoSemContatos;
+    if (!sessao.localizacaoConfirmada) return l10n.dissuasaoSemConfirmacao;
+    if (!sessao.fotoEnviada) return l10n.dissuasaoSemFoto;
+    return l10n.mensagemEnviadaAviso;
+  }
+
   /// P4 da sequência unificada: tenta o bloqueio NATIVO de tela
   /// (`DevicePolicyManager.lockNow()`, ver [DeviceAdminService]) — só
   /// funciona se o usuário já concedeu a permissão de Administrador do
@@ -429,13 +476,11 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
   Future<void> _acionarSaidaDeSeguranca() async {
     debugPrint('🛑 Gesto de segurança (Swipe Up) acionado.');
 
-    if (widget.origemUnificada != null) {
-      final bool bloqueou = await DeviceAdminService().bloquearTelaAgora();
-      if (bloqueou) {
-        debugPrint('🔒 [CameraCapturaScreen] Tela bloqueada nativamente (Device Admin).');
-      } else {
-        debugPrint('⚠️ [CameraCapturaScreen] Bloqueio nativo indisponível (Device Admin não ativo) — usando fallback.');
-      }
+    final bool bloqueou = await DeviceAdminService().bloquearTelaAgora();
+    if (bloqueou) {
+      debugPrint('🔒 [CameraCapturaScreen] Tela bloqueada nativamente (Device Admin).');
+    } else {
+      debugPrint('⚠️ [CameraCapturaScreen] Bloqueio nativo indisponível (Device Admin não ativo) — usando fallback.');
     }
 
     SystemNavigator.pop();
@@ -471,7 +516,7 @@ class _CameraCapturaScreenState extends State<CameraCapturaScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              AppLocalizations.of(context)!.mensagemEnviadaAviso,
+              _textoDissuasao(AppLocalizations.of(context)!),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
