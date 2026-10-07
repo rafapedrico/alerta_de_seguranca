@@ -191,8 +191,8 @@ class RotinaAlarmWakeService : Service() {
         modoSomAtual = modo
         val numeroSom = somEscolhido(this)
         when (modo) {
-            MODO_ALARME -> if (numeroSom == SOM_SILENCIOSO) vibrarEmLoop() else tocarEmLoop(numeroSom, AudioAttributes.USAGE_ALARM)
-            MODO_TOQUE -> if (numeroSom == SOM_SILENCIOSO) Unit else tocarEmLoop(numeroSom, AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+            MODO_ALARME -> tocarEmLoop(numeroSom, AudioAttributes.USAGE_ALARM)
+            MODO_TOQUE -> tocarEmLoop(numeroSom, AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
             MODO_VIBRAR -> vibrarEmLoop()
             else -> Unit
         }
@@ -477,9 +477,6 @@ class RotinaAlarmWakeService : Service() {
         private const val MODO_TOQUE = "toque"
         private const val MODO_VIBRAR = "vibrar"
         private const val MODO_MUDO = "mudo"
-
-        /** Som 10 = "Toque Silencioso" (silêncio proposital). */
-        const val SOM_SILENCIOSO = 10
 
         /** Som escolhido em Configurações (`som_selecionado`, gravado pelo
          * shared_preferences do Dart). */

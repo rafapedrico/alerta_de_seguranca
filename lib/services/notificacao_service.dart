@@ -139,7 +139,10 @@ class NotificacaoService {
   /// escolhido pelo destinatário em Configurações, uso de notificação — no
   /// volume atual, nunca forçado), mais um canal mudo para o silencioso,
   /// o vibrar e o Não Perturbe.
-  static String canalAlertaRecebidoPorSom(int numeroSom) => 'alerta_recebido_som_$numeroSom';
+  /// O som 10 ganhou um id novo (`_v2`): o canal antigo foi criado sem
+  /// som quando ele era o "Toque Silencioso", e canais são imutáveis.
+  static String canalAlertaRecebidoPorSom(int numeroSom) =>
+      numeroSom == 10 ? 'alerta_recebido_som_10_v2' : 'alerta_recebido_som_$numeroSom';
   static const String canalAlertaRecebidoMudoId = 'alerta_recebido_mudo';
   static String canalAlertaEnviadoNome = 'Confirmação de Alerta Enviado';
   static String canalAlertaEnviadoDescricao =
@@ -478,8 +481,8 @@ class NotificacaoService {
           '$canalAlertaRecebidoNome ($n)',
           description: canalAlertaRecebidoDescricao,
           importance: Importance.max,
-          playSound: n != 10,
-          sound: n != 10 ? RawResourceAndroidNotificationSound('som_$n') : null,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('som_$n'),
           audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
           enableVibration: false,
         ),
@@ -628,6 +631,7 @@ class NotificacaoService {
     try {
       await implementacaoAndroid?.deleteNotificationChannel(canalAlertaRecebido.id);
       await implementacaoAndroid?.deleteNotificationChannel('alerta_enviado_confirmacao');
+      await implementacaoAndroid?.deleteNotificationChannel('alerta_recebido_som_10');
     } catch (_) {}
     for (final c in canaisAlertaRecebido) {
       await implementacaoAndroid?.createNotificationChannel(c);

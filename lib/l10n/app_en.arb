@@ -679,7 +679,7 @@
   "somNome7": "Security Horn",
   "somNome8": "Industrial Alarm",
   "somNome9": "Police Siren",
-  "somNome10": "Silent Tone",
+  "somNome10": "Alarm Beeps",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: the alarm was not turned off with the PIN before the end of the grace period.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: the PIN was entered incorrectly 3 times in a row while trying to confirm the routine alarm check-in.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

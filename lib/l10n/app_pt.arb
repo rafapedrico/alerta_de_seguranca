@@ -920,7 +920,7 @@
   "somNome7": "Buzina de Segurança",
   "somNome8": "Alarme Industrial",
   "somNome9": "Sirene Policial",
-  "somNome10": "Toque Silencioso",
+  "somNome10": "Bipes de Alarme",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: o despertador não foi desativado com o PIN até o fim do tempo de tolerância.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: o PIN foi digitado incorretamente 3 vezes seguidas ao tentar confirmar o check-in do alarme de rotina.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

@@ -91,7 +91,7 @@ class AlarmeSonoroService {
     SomAlarme(numero: 7, nomeExibicao: 'Buzina de Segurança', assetPath: 'sounds/som_7.mp3'),
     SomAlarme(numero: 8, nomeExibicao: 'Alarme Industrial', assetPath: 'sounds/som_8.mp3'),
     SomAlarme(numero: 9, nomeExibicao: 'Sirene Policial', assetPath: 'sounds/som_9.mp3'),
-    SomAlarme(numero: 10, nomeExibicao: 'Toque Silencioso', assetPath: 'sounds/som_10.mp3'),
+    SomAlarme(numero: 10, nomeExibicao: 'Bipes de Alarme', assetPath: 'sounds/som_10.mp3'),
   ];
 
   final AudioPlayer _player = AudioPlayer();
@@ -129,16 +129,8 @@ class AlarmeSonoroService {
   /// reprodução funcionando perfeitamente. Este método permite detectar
   /// esse cenário ANTES de tentar tocar, para que o chamador possa
   /// avisar o usuário de forma clara em vez de falhar silenciosamente.
-  ///
-  /// EXCEÇÃO: o som de número 10 ("Toque Silencioso") é um placeholder de
-  /// SILÊNCIO PROPOSITAL — não um placeholder esquecido — então ele é
-  /// sempre considerado válido, independentemente do tamanho em bytes do
-  /// arquivo, evitando que o aviso de "arquivo vazio" apareça para ele
-  /// tanto no teste quanto no disparo real do alarme.
+  /// Todos os 10 sons são audíveis (nenhum é silêncio proposital).
   Future<bool> _assetDeSomEhValido(String assetPath, {int? numeroSom}) async {
-    if (numeroSom == 10) {
-      return true;
-    }
     try {
       final bytes = await rootBundle.load('assets/$assetPath');
       return bytes.lengthInBytes > 0;
@@ -197,13 +189,6 @@ class AlarmeSonoroService {
     try {
       await _playerTeste.stop();
       final som = _somPorNumero(numero);
-
-      // Som 10 = "Toque Silencioso": silêncio proposital, não há o que
-      // validar/tocar. Short-circuit total: nem verificamos os bytes do
-      // asset nem chamamos o player, apenas simulamos sucesso.
-      if (som.numero == 10) {
-        return true;
-      }
 
       final valido = await _assetDeSomEhValido(som.assetPath, numeroSom: som.numero);
       if (!valido) {
@@ -264,21 +249,6 @@ class AlarmeSonoroService {
       final numeroSom = await carregarSomSelecionado();
       final duracaoSegundos = await carregarDuracaoSegundos();
       final som = _somPorNumero(numeroSom);
-
-      // Som 10 = "Toque Silencioso": silêncio proposital. Short-circuit
-      // total: nem carregamos nem tocamos o asset, apenas simulamos o
-      // fluxo de "alarme ativo" com o mesmo auto-stop de segurança dos
-      // demais sons.
-      if (som.numero == 10) {
-        debugPrint(
-            '🔇 [AlarmeSonoroService] Som 10 ("Toque Silencioso") selecionado — pulando carregamento/reprodução de áudio (silêncio proposital).');
-        Future.delayed(Duration(seconds: duracaoSegundos), () {
-          if (_tocandoEmLoop) {
-            pararAlarme();
-          }
-        });
-        return;
-      }
 
       final valido = await _assetDeSomEhValido(som.assetPath, numeroSom: som.numero);
       if (!valido) {
