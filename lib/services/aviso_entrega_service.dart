@@ -18,13 +18,15 @@ class StatusEntregaContato {
 /// alerta.", "Não foi possível entregar…").
 ///
 /// Push data-only. Campos lidos:
-/// - `tipo`: `aviso_entrega` (com `statusEntrega`) ou um de
-///   `entrega_alerta_tentando` / `entrega_alerta_entregue` /
-///   `entrega_alerta_nao_entregue`;
-/// - `statusEntrega`: `tentando` | `entregue` | `nao_entregue`;
+/// - `tipo`: `aviso_entrega_alerta` (o que o servidor envia), ou
+///   `aviso_entrega` / `entrega_alerta_tentando` / `entrega_alerta_entregue`
+///   / `entrega_alerta_nao_entregue`;
+/// - `statusEntrega`: `tentando` | `entregue` | `nao_entregue` — sem ele,
+///   `situacao` (`pendente` = tentando, `entregue`, `nao_entregue`);
 /// - `titulo`, `corpo`: o texto mostrado, como veio do servidor;
-/// - `alertaId` (id do documento em `usuarios/{uid}/alertas`), e para
-///   identificar o contato `contatoId` ou `telefone`, e `nomeContato`.
+/// - `alertaId` (id do documento em `usuarios/{uid}/alertas`);
+/// - contato: `nomeContato` (ou `nomeDestinatario`), e `contatoId` ou
+///   `telefone` quando vierem.
 ///
 /// Mostra uma notificação visível com `titulo`/`corpo` e grava o status do
 /// contato na entrada do alerta (pelo `alertaId`; sem ele, no alerta mais
@@ -33,6 +35,7 @@ class AvisoEntregaService {
   AvisoEntregaService._();
 
   static const Set<String> tipos = {
+    'aviso_entrega_alerta',
     'aviso_entrega',
     'entrega_alerta_tentando',
     'entrega_alerta_entregue',
@@ -40,12 +43,21 @@ class AvisoEntregaService {
   };
 
   static String? statusDoPush(Map<String, dynamic> data) {
-    final explicito = (data['statusEntrega'] as String?)?.trim();
-    if (explicito == StatusEntregaContato.entregue ||
-        explicito == StatusEntregaContato.tentando ||
-        explicito == StatusEntregaContato.naoEntregue) {
-      return explicito;
+    String? normalizar(Object? valor) {
+      switch ((valor as String?)?.trim().toLowerCase()) {
+        case 'entregue':
+          return StatusEntregaContato.entregue;
+        case 'tentando':
+        case 'pendente':
+          return StatusEntregaContato.tentando;
+        case 'nao_entregue':
+          return StatusEntregaContato.naoEntregue;
+      }
+      return null;
     }
+
+    final status = normalizar(data['statusEntrega']) ?? normalizar(data['situacao']);
+    if (status != null) return status;
     switch (data['tipo']) {
       case 'entrega_alerta_entregue':
         return StatusEntregaContato.entregue;
@@ -57,14 +69,17 @@ class AvisoEntregaService {
     return null;
   }
 
+  /// Nome do contato: `nomeContato`, senão `nomeDestinatario`.
+  static String nomeDoContato(Map<String, dynamic> data) {
+    final nome = ((data['nomeContato'] as String?) ?? '').trim();
+    return nome.isNotEmpty ? nome : ((data['nomeDestinatario'] as String?) ?? '').trim();
+  }
+
   static Future<void> processar(Map<String, dynamic> data) async {
     final titulo = ((data['titulo'] as String?) ?? '').trim();
     final corpo = ((data['corpo'] as String?) ?? '').trim();
-    final contato = ((data['contatoId'] as String?) ??
-            (data['telefone'] as String?) ??
-            (data['nomeContato'] as String?) ??
-            '')
-        .trim();
+    final nome = nomeDoContato(data);
+    final contato = ((data['contatoId'] as String?) ?? (data['telefone'] as String?) ?? nome).trim();
 
     try {
       final db = DatabaseHelper();
@@ -77,7 +92,7 @@ class AvisoEntregaService {
         await db.salvarEntregaContato(
           alertaId: alertaId,
           contato: contato,
-          nome: (data['nomeContato'] as String?) ?? '',
+          nome: nome,
           status: status,
           texto: corpo.isNotEmpty ? corpo : titulo,
         );

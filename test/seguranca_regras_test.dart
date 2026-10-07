@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:security_check_app/models/alarme_rotina.dart';
 import 'package:security_check_app/services/alarme_nativo_service.dart';
+import 'package:security_check_app/services/aviso_entrega_service.dart';
 import 'package:security_check_app/services/pin_seguro.dart';
 import 'package:security_check_app/services/rotina_alarme_service.dart';
 
@@ -70,5 +71,23 @@ void main() {
     expect(AlarmeNativoService.etiquetaParaNuvem(AlarmeRotina.chaveEtiquetaPadrao), '');
     expect(AlarmeNativoService.etiquetaParaNuvem('Academia'), 'Academia');
     expect(AlarmeNativoService.etiquetaParaNuvem(null), '');
+  });
+
+  group('Aviso de entrega (aviso_entrega_alerta)', () {
+    test('tipo do servidor é aceito', () {
+      expect(AvisoEntregaService.tipos.contains('aviso_entrega_alerta'), isTrue);
+    });
+
+    test('statusEntrega tem prioridade; sem ele, situacao (pendente = tentando)', () {
+      expect(AvisoEntregaService.statusDoPush({'statusEntrega': 'entregue', 'situacao': 'pendente'}),
+          StatusEntregaContato.entregue);
+      expect(AvisoEntregaService.statusDoPush({'situacao': 'pendente'}), StatusEntregaContato.tentando);
+      expect(AvisoEntregaService.statusDoPush({'situacao': 'nao_entregue'}), StatusEntregaContato.naoEntregue);
+    });
+
+    test('nomeContato, senão nomeDestinatario', () {
+      expect(AvisoEntregaService.nomeDoContato({'nomeContato': 'Ana', 'nomeDestinatario': 'B'}), 'Ana');
+      expect(AvisoEntregaService.nomeDoContato({'nomeDestinatario': 'Bia'}), 'Bia');
+    });
   });
 }

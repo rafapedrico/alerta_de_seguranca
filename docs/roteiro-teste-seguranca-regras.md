@@ -133,7 +133,7 @@ tela vermelha não afirma envio.
    original não muda.
 
 ## 7. Avisos de entrega ao remetente
-Depende do servidor enviar o push (contrato em `lib/services/aviso_entrega_service.dart`).
+O servidor envia `tipo: "aviso_entrega_alerta"` (contrato em `lib/services/aviso_entrega_service.dart`).
 1. Dispare um SOS com um contato com o celular desligado: chega a
    notificação "{nome} ainda não recebeu seu alerta…" com o texto do servidor.
 2. Ligue o celular do contato: chega "{nome} recebeu seu alerta.".
