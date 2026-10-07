@@ -679,7 +679,7 @@
   "somNome7": "セキュリティホーン",
   "somNome8": "産業用アラーム",
   "somNome9": "パトカーサイレン",
-  "somNome10": "アラームビープ",
+  "somNome10": "サイレン",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}：猶予時間が終わるまでにPINでアラームが止められませんでした。",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}：定期アラームのチェックインを確認しようとした際、PINが3回連続で間違って入力されました。",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

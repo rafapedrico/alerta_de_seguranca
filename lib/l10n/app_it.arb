@@ -679,7 +679,7 @@
   "somNome7": "Clacson di Sicurezza",
   "somNome8": "Allarme Industriale",
   "somNome9": "Sirena della Polizia",
-  "somNome10": "Bip di Allarme",
+  "somNome10": "Sirena",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: la sveglia non è stata disattivata con il PIN prima della fine della tolleranza.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: il PIN è stato inserito in modo errato 3 volte di fila durante il tentativo di confermare il check-in dell'allarme di routine.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

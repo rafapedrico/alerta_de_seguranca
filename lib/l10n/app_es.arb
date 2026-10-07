@@ -679,7 +679,7 @@
   "somNome7": "Bocina de Seguridad",
   "somNome8": "Alarma Industrial",
   "somNome9": "Sirena Policial",
-  "somNome10": "Pitidos de Alarma",
+  "somNome10": "Sirena",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: el despertador no se desactivó con el PIN antes de terminar el tiempo de tolerancia.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: el PIN se ingresó incorrectamente 3 veces seguidas al intentar confirmar el check-in de la alarma de rutina.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

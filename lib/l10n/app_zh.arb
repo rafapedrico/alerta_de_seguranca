@@ -679,7 +679,7 @@
   "somNome7": "安全喇叭",
   "somNome8": "工业警报",
   "somNome9": "警笛",
-  "somNome10": "警报蜂鸣",
+  "somNome10": "警笛",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}：在宽限时间结束前未使用PIN关闭闹钟。",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}：尝试确认常规闹钟签到时，PIN码连续3次输入错误。",
   "@historicoCheckinRotinaPinIncorretoMotivo": {

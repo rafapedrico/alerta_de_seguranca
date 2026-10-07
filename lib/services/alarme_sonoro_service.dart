@@ -91,7 +91,7 @@ class AlarmeSonoroService {
     SomAlarme(numero: 7, nomeExibicao: 'Buzina de Segurança', assetPath: 'sounds/som_7.mp3'),
     SomAlarme(numero: 8, nomeExibicao: 'Alarme Industrial', assetPath: 'sounds/som_8.mp3'),
     SomAlarme(numero: 9, nomeExibicao: 'Sirene Policial', assetPath: 'sounds/som_9.mp3'),
-    SomAlarme(numero: 10, nomeExibicao: 'Bipes de Alarme', assetPath: 'sounds/som_10.mp3'),
+    SomAlarme(numero: 10, nomeExibicao: 'Sirene', assetPath: 'sounds/som_10.mp3'),
   ];
 
   final AudioPlayer _player = AudioPlayer();

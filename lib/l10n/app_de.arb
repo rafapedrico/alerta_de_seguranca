@@ -679,7 +679,7 @@
   "somNome7": "Sicherheitshupe",
   "somNome8": "Industriealarm",
   "somNome9": "Polizeisirene",
-  "somNome10": "Alarmpiepser",
+  "somNome10": "Sirene",
   "historicoCheckinRotinaFalhaMotivo": "{etiqueta}: Der Wecker wurde vor dem Ende der Toleranzzeit nicht mit der PIN ausgeschaltet.",
   "historicoCheckinRotinaPinIncorretoMotivo": "{etiqueta}: Die PIN wurde beim Versuch, den Check-in des Routine-Alarms zu bestätigen, 3-mal hintereinander falsch eingegeben.",
   "@historicoCheckinRotinaPinIncorretoMotivo": {
