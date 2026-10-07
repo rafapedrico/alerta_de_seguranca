@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:security_check_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/aviso_entrega_service.dart';
+import '../services/database_helper.dart';
 import '../services/historico_alertas_service.dart';
 
 /// Detalhe de uma entrada da área protegida do Histórico (alerta enviado
@@ -112,6 +114,7 @@ class AlertaHistoricoDetalheScreen extends StatelessWidget {
             const SizedBox(height: 6),
             Text(contexto),
           ],
+          if (evento['alerta_id'] != null) _EntregasDoAlerta(alertaId: evento['alerta_id'] as String),
           const SizedBox(height: 16),
           Text(l10n.historicoDetalheFoto, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -138,5 +141,92 @@ class AlertaHistoricoDetalheScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Status de entrega por contato (avisos do servidor ao remetente), com o
+/// mesmo texto da notificação.
+class _EntregasDoAlerta extends StatelessWidget {
+  const _EntregasDoAlerta({required this.alertaId});
+
+  final String alertaId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: DatabaseHelper().entregasDoAlerta(alertaId),
+      builder: (context, snap) {
+        final entregas = snap.data ?? const [];
+        if (entregas.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.historicoEntregaTitulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              for (final e in entregas)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(_icone(e['status'] as String?), size: 18, color: _cor(e['status'] as String?)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${((e['nome'] as String?) ?? '').isNotEmpty ? '${e['nome']} — ' : ''}'
+                              '${_rotulo(e['status'] as String?, l10n)}',
+                              style: TextStyle(fontWeight: FontWeight.w600, color: _cor(e['status'] as String?)),
+                            ),
+                            if (((e['texto'] as String?) ?? '').isNotEmpty) Text(e['texto'] as String),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static String _rotulo(String? status, AppLocalizations l10n) {
+    switch (status) {
+      case StatusEntregaContato.entregue:
+        return l10n.historicoEntregaEntregue;
+      case StatusEntregaContato.naoEntregue:
+        return l10n.historicoEntregaNaoEntregue;
+      default:
+        return l10n.historicoEntregaTentando;
+    }
+  }
+
+  static Color _cor(String? status) {
+    switch (status) {
+      case StatusEntregaContato.entregue:
+        return Colors.green.shade700;
+      case StatusEntregaContato.naoEntregue:
+        return Colors.red.shade700;
+      default:
+        return Colors.orange.shade800;
+    }
+  }
+
+  static IconData _icone(String? status) {
+    switch (status) {
+      case StatusEntregaContato.entregue:
+        return Icons.check_circle;
+      case StatusEntregaContato.naoEntregue:
+        return Icons.cancel;
+      default:
+        return Icons.schedule;
+    }
   }
 }

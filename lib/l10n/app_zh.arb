@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 紧急SOS（实体按键）！\n位置：{localizacao}",
   "smsTextoDoUsuario": "留言：{texto}",
   "historicoDetalhePrecisao": "精度：±{metros} 米",
-  "historicoBloqueadoAte": "因PIN错误3次，此区域已锁定。请在{hora}重试。"
+  "historicoBloqueadoAte": "因PIN错误3次，此区域已锁定。请在{hora}重试。",
+  "historicoEntregaTitulo": "送达联系人",
+  "historicoEntregaEntregue": "已送达",
+  "historicoEntregaTentando": "正在尝试",
+  "historicoEntregaNaoEntregue": "未送达"
 }

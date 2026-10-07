@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 SOS D’URGENCE (bouton physique) !\nLocalisation : {localizacao}",
   "smsTextoDoUsuario": "Message : {texto}",
   "historicoDetalhePrecisao": "Précision : ±{metros} m",
-  "historicoBloqueadoAte": "Zone verrouillée après 3 codes PIN incorrects. Réessayez à {hora}."
+  "historicoBloqueadoAte": "Zone verrouillée après 3 codes PIN incorrects. Réessayez à {hora}.",
+  "historicoEntregaTitulo": "Remise aux contacts",
+  "historicoEntregaEntregue": "Remis",
+  "historicoEntregaTentando": "Nouvelle tentative",
+  "historicoEntregaNaoEntregue": "Non remis"
 }

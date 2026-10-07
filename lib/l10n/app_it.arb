@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 SOS DI EMERGENZA (pulsante fisico)!\nPosizione: {localizacao}",
   "smsTextoDoUsuario": "Messaggio: {texto}",
   "historicoDetalhePrecisao": "Precisione: ±{metros} m",
-  "historicoBloqueadoAte": "Area bloccata dopo 3 PIN errati. Riprova alle {hora}."
+  "historicoBloqueadoAte": "Area bloccata dopo 3 PIN errati. Riprova alle {hora}.",
+  "historicoEntregaTitulo": "Consegna ai contatti",
+  "historicoEntregaEntregue": "Consegnato",
+  "historicoEntregaTentando": "In corso",
+  "historicoEntregaNaoEntregue": "Non consegnato"
 }

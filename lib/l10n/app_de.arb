@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 NOTFALL-SOS (physische Taste)!\nStandort: {localizacao}",
   "smsTextoDoUsuario": "Nachricht: {texto}",
   "historicoDetalhePrecisao": "Genauigkeit: ±{metros} m",
-  "historicoBloqueadoAte": "Bereich nach 3 falschen PINs gesperrt. Versuche es um {hora} erneut."
+  "historicoBloqueadoAte": "Bereich nach 3 falschen PINs gesperrt. Versuche es um {hora} erneut.",
+  "historicoEntregaTitulo": "Zustellung an die Kontakte",
+  "historicoEntregaEntregue": "Zugestellt",
+  "historicoEntregaTentando": "Wird versucht",
+  "historicoEntregaNaoEntregue": "Nicht zugestellt"
 }

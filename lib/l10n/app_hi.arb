@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 आपातकालीन SOS (फ़िज़िकल बटन)!\nस्थान: {localizacao}",
   "smsTextoDoUsuario": "संदेश: {texto}",
   "historicoDetalhePrecisao": "सटीकता: ±{metros} मी",
-  "historicoBloqueadoAte": "3 गलत PIN के बाद यह क्षेत्र लॉक है। {hora} पर फिर से प्रयास करें।"
+  "historicoBloqueadoAte": "3 गलत PIN के बाद यह क्षेत्र लॉक है। {hora} पर फिर से प्रयास करें।",
+  "historicoEntregaTitulo": "संपर्कों तक डिलीवरी",
+  "historicoEntregaEntregue": "पहुँच गया",
+  "historicoEntregaTentando": "कोशिश जारी",
+  "historicoEntregaNaoEntregue": "नहीं पहुँचा"
 }

@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 EMERGENCY SOS (physical button)!\nLocation: {localizacao}",
   "smsTextoDoUsuario": "Message: {texto}",
   "historicoDetalhePrecisao": "Accuracy: ±{metros} m",
-  "historicoBloqueadoAte": "Area locked after 3 incorrect PINs. Try again at {hora}."
+  "historicoBloqueadoAte": "Area locked after 3 incorrect PINs. Try again at {hora}.",
+  "historicoEntregaTitulo": "Delivery to contacts",
+  "historicoEntregaEntregue": "Delivered",
+  "historicoEntregaTentando": "Trying",
+  "historicoEntregaNaoEntregue": "Not delivered"
 }

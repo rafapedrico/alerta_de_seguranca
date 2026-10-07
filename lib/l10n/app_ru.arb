@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 ЭКСТРЕННЫЙ SOS (физическая кнопка)!\nГеопозиция: {localizacao}",
   "smsTextoDoUsuario": "Сообщение: {texto}",
   "historicoDetalhePrecisao": "Точность: ±{metros} м",
-  "historicoBloqueadoAte": "Раздел заблокирован после 3 неверных PIN. Повторите попытку в {hora}."
+  "historicoBloqueadoAte": "Раздел заблокирован после 3 неверных PIN. Повторите попытку в {hora}.",
+  "historicoEntregaTitulo": "Доставка контактам",
+  "historicoEntregaEntregue": "Доставлено",
+  "historicoEntregaTentando": "Повторная попытка",
+  "historicoEntregaNaoEntregue": "Не доставлено"
 }

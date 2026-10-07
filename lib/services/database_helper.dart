@@ -37,7 +37,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 20,
+      version: 21,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -215,7 +215,23 @@ class DatabaseHelper {
         alerta_id TEXT
       )
     ''');
+    await db.execute(_sqlTabelaEntregas);
   }
+
+  /// Status de entrega de cada alerta a cada contato (avisos do servidor
+  /// ao remetente — ver AvisoEntregaService).
+  static const String _sqlTabelaEntregas = '''
+      CREATE TABLE IF NOT EXISTS entregas_alerta_contato (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        alerta_id TEXT NOT NULL,
+        contato TEXT NOT NULL,
+        nome TEXT,
+        status TEXT NOT NULL,
+        texto TEXT,
+        atualizado_em TEXT NOT NULL,
+        UNIQUE(alerta_id, contato)
+      )
+    ''';
 
   /// Uma entrada por alerta: o mesmo `alerta_id` nunca vira duas linhas
   /// (envio local + importação do Firestore, foto chegando depois).
@@ -594,6 +610,10 @@ class DatabaseHelper {
         }
       }
     }
+    // Migration from v20 to v21: status de entrega por contato.
+    if (oldVersion < 21) {
+      await db.execute(_sqlTabelaEntregas);
+    }
   }
 
 
@@ -945,6 +965,54 @@ class DatabaseHelper {
     final linhas = await db.query('historico',
         columns: ['alerta_id'], where: 'alerta_id IS NOT NULL');
     return linhas.map((l) => l['alerta_id'] as String).toSet();
+  }
+
+  /// Grava (substitui) o status de entrega do alerta [alertaId] ao
+  /// [contato].
+  Future<void> salvarEntregaContato({
+    required String alertaId,
+    required String contato,
+    required String nome,
+    required String status,
+    required String texto,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'entregas_alerta_contato',
+      {
+        'alerta_id': alertaId,
+        'contato': contato,
+        'nome': nome,
+        'status': status,
+        'texto': texto,
+        'atualizado_em': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    historicoAtualizadoNotifier.value++;
+  }
+
+  Future<List<Map<String, dynamic>>> entregasDoAlerta(String alertaId) async {
+    final db = await database;
+    return db.query('entregas_alerta_contato',
+        where: 'alerta_id = ?', whereArgs: [alertaId], orderBy: 'nome ASC');
+  }
+
+  /// Alerta ENVIADO mais recente dentro de [janela] (aviso de entrega sem
+  /// `alertaId`).
+  Future<String?> alertaMaisRecenteEnviado(Duration janela) async {
+    final db = await database;
+    final desde = DateTime.now().subtract(janela).toIso8601String();
+    final linhas = await db.query(
+      'historico',
+      columns: ['alerta_id'],
+      where: "categoria = 'critico' AND alerta_id IS NOT NULL AND timestamp >= ? AND "
+          "tipo IN ('sos_manual','sos_fisico','cronometro_expirado','tentativa_desarme_incorreto','despertador_expirado')",
+      whereArgs: [desde],
+      orderBy: 'timestamp DESC',
+      limit: 1,
+    );
+    return linhas.isEmpty ? null : linhas.first['alerta_id'] as String?;
   }
 
   // ==========================================
@@ -1660,6 +1728,7 @@ Future<int> definirAlarmePausado(int id, dynamic statusPausa) async {
       'monitoramento_contatos',
       'alertas_terceiros_recebidos',
       'fila_retry_upload_sos',
+      'entregas_alerta_contato',
     ];
     for (final tabela in tabelas) {
       try {

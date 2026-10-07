@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 緊急SOS（物理ボタン）！\n位置情報：{localizacao}",
   "smsTextoDoUsuario": "メッセージ：{texto}",
   "historicoDetalhePrecisao": "精度：±{metros} m",
-  "historicoBloqueadoAte": "PINを3回間違えたためロックされています。{hora}にもう一度お試しください。"
+  "historicoBloqueadoAte": "PINを3回間違えたためロックされています。{hora}にもう一度お試しください。",
+  "historicoEntregaTitulo": "連絡先への配信",
+  "historicoEntregaEntregue": "配信済み",
+  "historicoEntregaTentando": "再試行中",
+  "historicoEntregaNaoEntregue": "未配信"
 }

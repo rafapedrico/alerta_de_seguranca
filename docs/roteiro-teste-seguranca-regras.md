@@ -121,3 +121,21 @@ tela vermelha não afirma envio.
 3. Com o PIN correto: liberado. Troque de aba e volte: pede o PIN de novo.
    App em segundo plano por mais de 2 min: pede de novo.
 4. Apagar uma entrada (arrastar) ou "Limpar": pede o PIN de novo.
+
+## 6. Redução de custo do Firebase
+1. Cronômetro de 10 min com o aparelho parado: `usuarios/{uid}/monitoramento/atual`
+   é atualizado a cada ~5 min; andando, a cada ~30 m. `usuarios/{uid}` e
+   `alarmes_agendados/...` não recebem mais `latitude`/`ultimaLocalizacao`.
+2. SOS com foto: o arquivo em `sos_fotos/{uid}/` tem no máximo 1600 px no
+   lado maior (JPEG, ~200–400 KB) e está na orientação certa.
+3. Posição precisa que chega depois do alerta: aparece um documento novo em
+   `usuarios/{uid}/alertas/{alertaId}/atualizacoes_localizacao`; o alerta
+   original não muda.
+
+## 7. Avisos de entrega ao remetente
+Depende do servidor enviar o push (contrato em `lib/services/aviso_entrega_service.dart`).
+1. Dispare um SOS com um contato com o celular desligado: chega a
+   notificação "{nome} ainda não recebeu seu alerta…" com o texto do servidor.
+2. Ligue o celular do contato: chega "{nome} recebeu seu alerta.".
+3. No Histórico > detalhe do alerta, a seção "Entrega aos contatos" mostra
+   cada contato com Entregue / Tentando / Não entregue e o mesmo texto.

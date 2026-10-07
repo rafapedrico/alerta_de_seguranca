@@ -1412,5 +1412,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "historicoEntregaTitulo": "Entrega aos contatos",
+  "historicoEntregaEntregue": "Entregue",
+  "historicoEntregaTentando": "Tentando",
+  "historicoEntregaNaoEntregue": "Não entregue"
 }

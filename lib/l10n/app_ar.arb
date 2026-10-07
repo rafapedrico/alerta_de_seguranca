@@ -1004,5 +1004,9 @@
   "smsSosFisicoCorpo": "🚨 نداء استغاثة طارئ (الزر الفعلي)!\nالموقع: {localizacao}",
   "smsTextoDoUsuario": "الرسالة: {texto}",
   "historicoDetalhePrecisao": "الدقة: ±{metros} م",
-  "historicoBloqueadoAte": "تم قفل القسم بعد 3 رموز PIN خاطئة. حاول مرة أخرى في {hora}."
+  "historicoBloqueadoAte": "تم قفل القسم بعد 3 رموز PIN خاطئة. حاول مرة أخرى في {hora}.",
+  "historicoEntregaTitulo": "التسليم إلى جهات الاتصال",
+  "historicoEntregaEntregue": "تم التسليم",
+  "historicoEntregaTentando": "جارٍ المحاولة",
+  "historicoEntregaNaoEntregue": "لم يتم التسليم"
 }
