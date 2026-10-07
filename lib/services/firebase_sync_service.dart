@@ -444,15 +444,14 @@ class FirebaseSyncService {
     }
   }
 
-  /// Sobrescreve (via merge, nunca acumula) a última localização
-  /// conhecida do usuário no documento `usuarios/{usuarioId}`. Deve ser
-  /// chamada periodicamente (a cada 1 minuto, ver
-  /// [LocationService.iniciarCicloDeAtualizacao]) enquanto o
-  /// monitoramento ativo estiver em andamento (cronômetro de Segurança ou
-  /// alarme de rotina disparado da Família aguardando confirmação).
+  /// Grava a posição atual SÓ em `usuarios/{uid}/monitoramento/atual`
+  /// (merge, sobrescreve) — o único documento de posição do usuário (o
+  /// mesmo do rastreamento nativo e do iOS). Não duplica mais em
+  /// `usuarios/{uid}` (redução de custo do Firestore).
   Future<void> atualizarLocalizacaoAtual({
     required double latitude,
     required double longitude,
+    double? precisao,
   }) async {
     if (!_firebaseDisponivel) return;
     if (!await _podeUsarRecursoAvancado()) {
@@ -460,46 +459,20 @@ class FirebaseSyncService {
           'transmissão de localização em tempo real bloqueada.');
       return;
     }
-    final agora = FieldValue.serverTimestamp();
-    try {
-      await _documentoUsuario.set(
-        {
-          'latitude': latitude,
-          'longitude': longitude,
-          'atualizadoEm': agora,
-        },
-        SetOptions(merge: true),
-      ).timeout(_timeoutFirestore);
-    } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao atualizar localização no Firestore: $e');
-    }
-
-    // Espelha a MESMA leitura de GPS em `usuarios/{uid}/monitoramento/atual`
-    // — documento SEPARADO do principal acima, com regra de leitura
-    // própria (ver firestore.rules) que permite acesso a qualquer usuário
-    // com permissão "aprovado" na aba Monitoramento (MonitoramentoService),
-    // sem expor os demais campos privados do documento principal
-    // (fcmToken). Best-effort e independente da escrita acima —
-    // uma falha aqui nunca deve impedir o heartbeat usado pelo alarme de
-    // pânico.
-    // Mesmo formato do serviço contínuo nativo e do app iOS (merge, para
-    // não apagar `precisao`/`origem` de outras gravações).
     try {
       final continuo = await RastreamentoContinuoService.ativoNoAparelho();
       await _documentoUsuario.collection('monitoramento').doc('atual').set({
         'latitude': latitude,
         'longitude': longitude,
-        'atualizadoEm': agora,
-        // Esta leitura não traz a precisão: não deixa a de outra gravação.
-        'precisao': FieldValue.delete(),
+        'atualizadoEm': FieldValue.serverTimestamp(),
+        // Sem precisão nesta leitura: não deixa a de outra gravação.
+        'precisao': precisao ?? FieldValue.delete(),
         'origem': 'app',
         'plataforma': 'android',
         'rastreamentoContinuo': continuo,
       }, SetOptions(merge: true)).timeout(_timeoutFirestore);
     } catch (e) {
-      debugPrint(
-          '⚠️ [FirebaseSyncService] Falha ao espelhar localização para a aba Monitoramento: $e');
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao gravar a localização atual: $e');
     }
   }
 
@@ -605,14 +578,35 @@ class FirebaseSyncService {
         if (longitude != null) 'longitude': longitude,
       }, alertaId: '${alertaIdSos}_foto');
 
-  /// Posição exata chegou depois do alerta: atualiza a posição do usuário
-  /// (o alerta em si não pode ser alterado pelo cliente — ver
-  /// `firestore.rules`).
-  Future<void> atualizarPosicaoPrecisaDoAlerta({
+  /// Posição exata chegou DEPOIS do alerta. O alerta é prova e nunca é
+  /// alterado: a posição vai num documento NOVO (só criação) em
+  /// `usuarios/{uid}/alertas/{alertaId}/atualizacoes_localizacao` — o
+  /// servidor junta ao histórico e avisa os contatos. Fica na fila offline
+  /// do Firestore se não houver sinal.
+  Future<void> registrarAtualizacaoLocalizacaoDoAlerta({
+    required String alertaId,
     required double latitude,
     required double longitude,
-  }) =>
-      atualizarLocalizacaoAtual(latitude: latitude, longitude: longitude);
+    double? precisao,
+  }) async {
+    if (!_firebaseDisponivel) return;
+    try {
+      await _documentoUsuario
+          .collection('alertas')
+          .doc(alertaId)
+          .collection('atualizacoes_localizacao')
+          .add({
+        'latitude': latitude,
+        'longitude': longitude,
+        if (precisao != null) 'precisao': precisao,
+        'registradoEm': FieldValue.serverTimestamp(),
+      }).timeout(_timeoutFirestore);
+    } on TimeoutException {
+      debugPrint('☁️ [FirebaseSyncService] Atualização de localização do alerta $alertaId na fila offline.');
+    } catch (e) {
+      debugPrint('⚠️ [FirebaseSyncService] Falha ao registrar a atualização de localização do alerta $alertaId: $e');
+    }
+  }
 
   /// Disparo IMEDIATO e prioritário para a nuvem ao detectar uma falha de
   /// desarme antecipado (PIN incorreto e/ou tempo esgotado, conforme

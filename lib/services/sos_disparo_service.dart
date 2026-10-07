@@ -180,9 +180,11 @@ class SosDisparoService {
             longitude: precisa.longitude,
             precisao: precisa.accuracy,
           );
-          await FirebaseSyncService().atualizarPosicaoPrecisaDoAlerta(
+          await FirebaseSyncService().registrarAtualizacaoLocalizacaoDoAlerta(
+            alertaId: sessao.alertaId,
             latitude: precisa.latitude,
             longitude: precisa.longitude,
+            precisao: precisa.accuracy,
           );
         }
       }
