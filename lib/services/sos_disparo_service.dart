@@ -27,7 +27,8 @@ class SessaoSos {
   /// Id do alerta (documento do Firestore e entrada do histórico).
   final String alertaId;
 
-  /// `sos_manual` (botão do app) ou `sos_fisico` (Volume+).
+  /// `sos_manual` (botão do app), `sos_fisico` (Volume+) ou `sos_widget`
+  /// (Widget SOS da tela de início).
   final String origem;
 
   double? latitude;
@@ -130,7 +131,9 @@ class SosDisparoService {
         ..precisao = posicao?.accuracy;
 
       final fisico = sessao.origem == TipoAlertaHistorico.sosFisico;
-      final tipo = fisico ? TipoAlertaHistorico.sosFisico : TipoAlertaHistorico.sosManual;
+      final tipo = fisico || sessao.origem == TipoAlertaHistorico.sosWidget
+          ? sessao.origem
+          : TipoAlertaHistorico.sosManual;
       await HistoricoAlertasService().criarAlerta(
         alertaId: sessao.alertaId,
         tipo: tipo,

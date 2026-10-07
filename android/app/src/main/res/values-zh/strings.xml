@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">紧急按钮 — 守护者-X</string>
+    <string name="sos_widget_descricao">遇到危险时轻点：发送您的位置并打开相机</string>
+</resources>

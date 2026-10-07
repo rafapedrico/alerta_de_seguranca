@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">زر الذعر — حارس-X</string>
+    <string name="sos_widget_descricao">اضغط عند الخطر: يرسل موقعك ويفتح الكاميرا</string>
+</resources>

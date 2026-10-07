@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget SOS (ver SosWidgetProvider): só a imagem oficial do botão SOS,
+     a mesma do widget do iOS, sempre quadrada (fitCenter) em qualquer
+     tamanho. O toque abre o app direto no fluxo do SOS. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sos_widget_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/sos_widget_imagem"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/sos_widget_nome"
+        android:scaleType="fitCenter"
+        android:src="@drawable/sos_widget" />
+</FrameLayout>

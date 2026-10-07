@@ -1007,7 +1007,7 @@ class DatabaseHelper {
       'historico',
       columns: ['alerta_id'],
       where: "categoria = 'critico' AND alerta_id IS NOT NULL AND timestamp >= ? AND "
-          "tipo IN ('sos_manual','sos_fisico','cronometro_expirado','tentativa_desarme_incorreto','despertador_expirado')",
+          "tipo IN ('sos_manual','sos_fisico','sos_widget','cronometro_expirado','tentativa_desarme_incorreto','despertador_expirado')",
       whereArgs: [desde],
       orderBy: 'timestamp DESC',
       limit: 1,

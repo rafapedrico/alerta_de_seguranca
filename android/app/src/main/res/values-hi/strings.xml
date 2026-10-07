@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">पैनिक बटन — रक्षक-X</string>
+    <string name="sos_widget_descricao">खतरे में टैप करें: आपका स्थान भेजता है और कैमरा खोलता है</string>
+</resources>

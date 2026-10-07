@@ -25,6 +25,14 @@ class PermissaoStatusCard extends StatelessWidget {
     required this.aoConceder,
     this.aoAbrirConfiguracoes,
     this.textoStatusParcial,
+    this.textoStatusConcedida,
+    this.textoStatusPendente,
+    this.corStatusPendente,
+    this.textoBotaoConceder,
+    this.aoTocarCard,
+    this.aviso,
+    this.textoBotaoAviso,
+    this.aoTocarBotaoAviso,
   });
 
   final IconData icone;
@@ -44,6 +52,24 @@ class PermissaoStatusCard extends StatelessWidget {
   /// não a permissão básica. `null` usa o texto genérico.
   final String? textoStatusParcial;
 
+  /// Substituem os textos/cor genéricos de status e o rótulo do botão —
+  /// usados por itens que não são uma permissão do sistema (ex: o Widget
+  /// SOS: "Ativo"/"Não adicionado", botão "Como adicionar").
+  final String? textoStatusConcedida;
+  final String? textoStatusPendente;
+  final Color? corStatusPendente;
+  final String? textoBotaoConceder;
+
+  /// Toque em qualquer parte do card (além do botão).
+  final VoidCallback? aoTocarCard;
+
+  /// Quando informado, o card fica VERMELHO e mostra este aviso com o botão
+  /// [textoBotaoAviso] — ex.: o botão SOS desativado nos dias bloqueados do
+  /// Plano Free ("Assinar Premium").
+  final String? aviso;
+  final String? textoBotaoAviso;
+  final VoidCallback? aoTocarBotaoAviso;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -53,7 +79,7 @@ class PermissaoStatusCard extends StatelessWidget {
     switch (status) {
       case StatusPermissaoOnboarding.concedida:
         corStatus = Colors.green.shade600;
-        textoStatus = l10n.onboardingStatusConcedida;
+        textoStatus = textoStatusConcedida ?? l10n.onboardingStatusConcedida;
         break;
       case StatusPermissaoOnboarding.parcial:
         // CORREÇÃO DE BUG REAL (2026-09-05, pedido explícito do usuário —
@@ -67,19 +93,22 @@ class PermissaoStatusCard extends StatelessWidget {
         textoStatus = textoStatusParcial ?? l10n.onboardingStatusParcial;
         break;
       case StatusPermissaoOnboarding.pendente:
-        corStatus = Colors.grey.shade600;
-        textoStatus = l10n.onboardingStatusPendente;
+        corStatus = corStatusPendente ?? Colors.grey.shade600;
+        textoStatus = textoStatusPendente ?? l10n.onboardingStatusPendente;
         break;
     }
     final corDestaque = essencial ? Colors.red.shade400 : Colors.blue.shade400;
 
-    return Container(
+    final card = Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: aviso != null ? Colors.red.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: aviso != null ? Colors.red.shade400 : Colors.grey.shade300,
+          width: aviso != null ? 1.5 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,17 +160,53 @@ class PermissaoStatusCard extends StatelessWidget {
                 style: TextStyle(fontSize: 12.5, color: corStatus, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
-              if (!concedida)
+              if (!concedida && aviso == null)
                 ElevatedButton(
                   onPressed: aoConceder,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     textStyle: const TextStyle(fontSize: 13),
                   ),
-                  child: Text(l10n.permissaoSmsPermitir),
+                  child: Text(textoBotaoConceder ?? l10n.permissaoSmsPermitir),
                 ),
             ],
           ),
+          if (aviso != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade600,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    aviso!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (textoBotaoAviso != null && aoTocarBotaoAviso != null) ...[
+                    const SizedBox(height: 10),
+                    FilledButton(
+                      onPressed: aoTocarBotaoAviso,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.red.shade700,
+                      ),
+                      child: Text(textoBotaoAviso!),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           if (aoAbrirConfiguracoes != null) ...[
             const SizedBox(height: 4),
             Align(
@@ -162,6 +227,13 @@ class PermissaoStatusCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    if (aoTocarCard == null) return card;
+    return GestureDetector(
+      onTap: aoTocarCard,
+      behavior: HitTestBehavior.opaque,
+      child: card,
     );
   }
 

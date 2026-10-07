@@ -1416,5 +1416,53 @@
   "historicoEntregaTitulo": "Entrega aos contatos",
   "historicoEntregaEntregue": "Entregue",
   "historicoEntregaTentando": "Tentando",
-  "historicoEntregaNaoEntregue": "Não entregue"
+  "historicoEntregaNaoEntregue": "Não entregue",
+  "sosWidgetStatusTitulo": "Botão SOS na tela de início",
+  "sosWidgetStatusAtivo": "Ativo",
+  "sosWidgetStatusNaoAdicionado": "Não adicionado",
+  "sosWidgetBotaoComoAdicionar": "Como adicionar",
+  "sosWidgetTutorialTitulo": "Adicione o Botão SOS",
+  "sosWidgetTutorialEntendi": "Entendi",
+  "sosWidgetTutorialTelaInicioTitulo": "Na tela de início",
+  "sosSemLoginTitulo": "Ative o Botão SOS",
+  "sosSemLoginTexto": "Para o Botão SOS funcionar, entre na sua conta do Guardião-X uma vez neste aparelho. Depois disso, um toque no botão envia sua localização e abre a câmera, sem pedir senha.",
+  "sosSemLoginBotaoEntrar": "Entrar agora",
+  "sosPlanoNotificacaoTitulo": "Botão SOS",
+  "sosPlanoLembreteNotificacao": "Seu botão SOS ficará desativado a partir de amanhã ({inicio}) até {fim}. Assine o Premium para mantê-lo sempre ativo.",
+  "@sosPlanoLembreteNotificacao": {
+    "placeholders": {
+      "inicio": {
+        "type": "String"
+      },
+      "fim": {
+        "type": "String"
+      }
+    }
+  },
+  "sosPlanoDesativadoAte": "Seu botão SOS está desativado até {fim}. Assine o Premium para mantê-lo ativo.",
+  "@sosPlanoDesativadoAte": {
+    "placeholders": {
+      "fim": {
+        "type": "String"
+      }
+    }
+  },
+  "sosPlanoWidgetDesativado": "Botão SOS desativado no Plano Free até {fim}",
+  "@sosPlanoWidgetDesativado": {
+    "placeholders": {
+      "fim": {
+        "type": "String"
+      }
+    }
+  },
+  "sosPlanoBotaoAssinar": "Assinar Premium",
+  "sosPlanoStatusDesativado": "Desativado no Plano Free",
+  "historicoTipoSosWidget": "SOS acionado pelo widget",
+  "sosWidgetStatusDescricao": "Widget \"Botão de Pânico\" do Guardião-X: um toque na tela de início envia sua localização e abre a câmera.",
+  "sosWidgetTutorialIntro": "Deixe o Botão de Pânico do Guardião-X a um toque de distância na tela de início. Toque em \"Adicionar à tela inicial\" ou siga os passos abaixo.",
+  "sosWidgetTutorialTelaInicioPasso1": "Na tela de início, segure um espaço vazio e toque em \"Widgets\".",
+  "sosWidgetTutorialTelaInicioPasso2": "Procure \"Guardião-X\" na lista de widgets.",
+  "sosWidgetTutorialTelaInicioPasso3": "Segure o \"Botão de Pânico\" e arraste-o para a tela de início. Para mudar o tamanho, segure o botão e arraste as bordas.",
+  "sosWidgetBotaoAdicionarTelaInicial": "Adicionar à tela inicial",
+  "sosWidgetFixarSemSuporte": "Seu aparelho não permite adicionar o widget automaticamente. Siga o passo a passo abaixo."
 }

@@ -12,4 +12,9 @@
     <string name="canal_localizacao_seguranca">Safety location</string>
     <string name="cronometro_servico_ativo">Safety timer active</string>
     <string name="despertador_servico_ativo">Safety alarm: location active</string>
+
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">Panic Button — Guardian-X</string>
+    <string name="sos_widget_descricao">Tap if you\'re in danger: sends your location and opens the camera</string>
 </resources>

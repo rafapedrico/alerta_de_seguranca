@@ -23,12 +23,19 @@ class CapturaDissuasaoService {
   ///
   /// O plano NUNCA atrasa o SOS: só o status em cache é consultado (ver
   /// [PlanoCicloService.podeUsarRapido]) — nada de esperar a rede.
-  Future<bool> iniciarSos({required String origem, String? contexto}) async {
+  /// [planoJaVerificado]: o chamador já decidiu pelo plano (Widget SOS,
+  /// que mostra a própria tela de botão desativado — ver
+  /// `SosWidgetFluxoService`).
+  Future<bool> iniciarSos({
+    required String origem,
+    String? contexto,
+    bool planoJaVerificado = false,
+  }) async {
     if (SosDisparoService().emAndamento) {
       debugPrint('🔁 [SOS] Toque ignorado — já há um SOS em andamento.');
       return false;
     }
-    if (!await PlanoCicloService().podeUsarRapido()) {
+    if (!planoJaVerificado && !await PlanoCicloService().podeUsarRapido()) {
       final contexto = appNavigatorKey.currentContext;
       if (contexto != null && contexto.mounted) await exibirAvisoPlanoBloqueado(contexto);
       return false;

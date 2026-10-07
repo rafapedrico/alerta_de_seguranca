@@ -43,10 +43,13 @@ import 'services/rastreamento_continuo_service.dart';
 import 'services/relatorio_falha_entrega_service.dart';
 import 'services/retry_upload_service.dart';
 import 'services/rotina_alarme_service.dart';
+import 'services/sos_plano_aviso_service.dart';
+import 'services/sos_widget_fluxo_service.dart';
 import 'services/volume_sos_service.dart';
 import 'services/wallpaper_service.dart';
 import 'widgets/camada_bloqueio_app.dart';
 import 'widgets/pin_dialog.dart';
+import 'widgets/tela_sos_widget.dart';
 
 const String _rotaInicialSosFisico = '/sos_fisico_lockscreen';
 const String _rotaInicialRotinaAlarme = '/rotina_alarme_confirmacao';
@@ -155,6 +158,13 @@ void main() {
       WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
           _rotaInicialCronometroAlarme;
 
+  // Toque no Widget SOS da tela de início com o app fechado (ver
+  // MainActivity.getInitialRoute): a tela preta do SOS sai já no primeiro
+  // quadro, por cima da splash (ver SosWidgetFluxoService).
+  final bool coldStartViaSosWidget =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName ==
+          SosWidgetFluxoService.rotaInicial;
+
   // Síncrono, idempotente, sem I/O — ver encryption_service.dart (só
   // deriva a chave em memória; os demais serviços chamam de novo
   // sozinhos caso ainda não tenha rodado).
@@ -214,7 +224,8 @@ void main() {
   Future<void>? futuroFirebaseEAuthImediato;
   if (coldStartViaSosFisico ||
       coldStartViaRotinaAlarme ||
-      coldStartViaCronometroAlarme) {
+      coldStartViaCronometroAlarme ||
+      coldStartViaSosWidget) {
     // Os TRÊS cold starts de emergência (SOS físico, Alarme de Rotina,
     // Cronômetro Regressivo) não têm animação para proteger — Firebase
     // imediato. Rotina/Cronômetro deixam o app bloqueado por baixo (as
@@ -226,6 +237,15 @@ void main() {
       unawaited(futuroFirebaseEAuthImediato
           .then((_) => BloqueioAppService().bloquearSeHouverSessao()));
     }
+  }
+
+  // Widget SOS: toques com o app aberto chegam pelo canal nativo; no cold
+  // start pelo widget o fluxo começa ANTES do runApp (síncrono até a tela
+  // preta estar pedida) — o Widget SOS libera o bloqueio enquanto estiver
+  // na tela, e o app fica bloqueado por baixo (ver acima).
+  SosWidgetFluxoService().escutarToques(garantirFirebaseEAuth: _iniciarFirebaseEAuth);
+  if (coldStartViaSosWidget) {
+    SosWidgetFluxoService().iniciar(garantirFirebaseEAuth: _iniciarFirebaseEAuth);
   }
 
   // ETAPA 1, fim: primeiro frame disparado imediatamente — ZERO
@@ -573,6 +593,10 @@ Future<void> iniciarServicosPosLoginOuDashboard() async {
   // necessário, nunca dependem deste disparo já ter terminado.
   PlanoCicloService().iniciar();
 
+  // Avisos locais de que o botão SOS vai parar/parou nos dias bloqueados
+  // do Plano Free (véspera e início do bloqueio) — ver SosPlanoAvisoService.
+  SosPlanoAvisoService().iniciar();
+
   // REGRA DE NEGÓCIO (Alarme de Rotina, pedido explícito do usuário,
   // 2026-09-04): fora dos 10 dias ativos do mês (e sem Premium), nenhum
   // alarme de rotina deve continuar agendado — ver documentação completa
@@ -771,8 +795,11 @@ class _SecurityCheckAppState extends State<SecurityCheckApp> {
                     textScaler: TextScaler.linear(fatorFonte),
                   ),
                   // Bloqueio local POR CIMA do Navigator (ver
-                  // BloqueioAppService): nenhuma navegação escapa dele.
-                  child: CamadaBloqueioApp(child: child!),
+                  // BloqueioAppService): nenhuma navegação escapa dele. A
+                  // tela preta do Widget SOS fica por cima de tudo.
+                  child: CamadaTelaSosWidget(
+                    child: CamadaBloqueioApp(child: child!),
+                  ),
                 );
               },
               // CORREÇÃO DE BUG REAL (2026-08-11) — CAUSA RAIZ VERDADEIRA:

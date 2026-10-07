@@ -117,6 +117,7 @@ class AvisoEntregaService {
   static const Set<String> tiposDeAlerta = {
     TipoAlertaHistorico.sosManual,
     TipoAlertaHistorico.sosFisico,
+    TipoAlertaHistorico.sosWidget,
     TipoAlertaHistorico.cronometroExpirado,
     TipoAlertaHistorico.tentativaDesarmeIncorreto,
     TipoAlertaHistorico.despertadorExpirado,

@@ -6,6 +6,8 @@ import '../main.dart' show iniciarServicosPosLoginOuDashboard;
 import '../services/alertas_recebidos_service.dart';
 import '../services/battery_optimization_service.dart';
 import '../services/sms_permission_service.dart';
+import '../services/sos_widget_status_service.dart';
+import '../widgets/aviso_sos_plano_banner.dart';
 import 'tabs/seguranca_tab.dart';
 import 'tabs/familia_tab.dart';
 import 'tabs/monitoramento_tab.dart';
@@ -100,6 +102,10 @@ class _HomeScreenState extends State<HomeScreen> {
       await SmsPermissionService().verificarNoOnboarding(context);
       if (!mounted) return;
       await BatteryOptimizationService().verificarNoOnboarding(context);
+      if (!mounted) return;
+      // Passo a passo do Widget SOS, uma única vez, se ainda não estiver
+      // na tela de início.
+      await SosWidgetStatusService.exibirTutorialNoPrimeiroLoginSeNecessario(context);
     });
   }
 
@@ -210,12 +216,21 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
 
-      body: _mostrandoInicio
-          ? const InicioDashboard()
-          : IndexedStack(
-              index: _indiceAbaAtual,
-              children: _telas,
-            ),
+      // Faixa do botão SOS desativado (dias bloqueados do Plano Free) no
+      // topo, em qualquer aba — ver AvisoSosPlanoBanner.
+      body: Column(
+        children: [
+          const AvisoSosPlanoBanner(),
+          Expanded(
+            child: _mostrandoInicio
+                ? const InicioDashboard()
+                : IndexedStack(
+                    index: _indiceAbaAtual,
+                    children: _telas,
+                  ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceAbaAtual,
         onTap: _aoSelecionarAba,

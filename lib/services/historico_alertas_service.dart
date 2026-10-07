@@ -20,6 +20,9 @@ class TipoAlertaHistorico {
 
   static const String sosManual = 'sos_manual';
   static const String sosFisico = 'sos_fisico';
+
+  /// Widget SOS da tela de início (mesmo valor do app iOS).
+  static const String sosWidget = 'sos_widget';
   static const String cronometroExpirado = 'cronometro_expirado';
   static const String tentativaDesarmeIncorreto = 'tentativa_desarme_incorreto';
   static const String cronometroAtivado = 'cronometro_ativado';
@@ -278,9 +281,7 @@ class HistoricoAlertasService {
         // Foto sem a entrada do SOS (alerta antigo, sem `alertaId`).
         await criarAlerta(
           alertaId: alertaSos,
-          tipo: (dados['origem'] as String?) == TipoAlertaHistorico.sosManual
-              ? TipoAlertaHistorico.sosManual
-              : TipoAlertaHistorico.sosFisico,
+          tipo: _tipoSos((dados['origem'] as String?) ?? ''),
           titulo: l10n.historicoFotoSosSmsTitulo,
           descricao: l10n.historicoFotoSosSmsTitulo,
           latitude: (dados['latitude'] as num?)?.toDouble(),
@@ -312,21 +313,25 @@ class HistoricoAlertasService {
   static String _tipoLocal(Map<String, dynamic> dados) {
     final tipo = (dados['tipo'] as String?) ?? '';
     final origem = (dados['origem'] as String?) ?? '';
-    if (tipo == 'sos_fisico') {
-      return origem == TipoAlertaHistorico.sosManual
-          ? TipoAlertaHistorico.sosManual
-          : TipoAlertaHistorico.sosFisico;
-    }
+    if (tipo == 'sos_fisico') return _tipoSos(origem);
     if (tipo == TipoAlertaHistorico.cronometroExpirado ||
         tipo == TipoAlertaHistorico.despertadorExpirado ||
         tipo == TipoAlertaHistorico.tentativaDesarmeIncorreto ||
-        tipo == TipoAlertaHistorico.sosManual) {
+        tipo == TipoAlertaHistorico.sosManual ||
+        tipo == TipoAlertaHistorico.sosWidget) {
       return tipo;
     }
     if (tipo == 'alarme_rotina' || origem == 'alarme_rotina') {
       return TipoAlertaHistorico.despertadorExpirado;
     }
     return TipoAlertaHistorico.tentativaDesarmeIncorreto;
+  }
+
+  /// Tipo local de um SOS pela `origem` (`sos_widget_ios` também é widget).
+  static String _tipoSos(String origem) {
+    if (origem == TipoAlertaHistorico.sosManual) return TipoAlertaHistorico.sosManual;
+    if (origem.contains('widget')) return TipoAlertaHistorico.sosWidget;
+    return TipoAlertaHistorico.sosFisico;
   }
 
   /// Título localizado por tipo (entradas importadas e tela de detalhe).
@@ -336,6 +341,8 @@ class HistoricoAlertasService {
         return l10n.historicoTipoSosManual;
       case TipoAlertaHistorico.sosFisico:
         return l10n.historicoTipoSosFisico;
+      case TipoAlertaHistorico.sosWidget:
+        return l10n.historicoTipoSosWidget;
       case TipoAlertaHistorico.cronometroExpirado:
         return l10n.historicoTipoCronometroExpirado;
       case TipoAlertaHistorico.cronometroAtivado:

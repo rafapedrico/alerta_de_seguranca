@@ -1,6 +1,9 @@
 package com.example.security_check_app
 
+import android.app.KeyguardManager
 import android.app.NotificationManager
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -22,11 +25,17 @@ private const val CANAL_SOLICITACAO_MONITORAMENTO =
 private const val CANAL_PERMISSOES_NATIVAS =
     "com.example.security_check_app/permissoes_nativas"
 
+/** Widget SOS (ver [SosWidgetProvider]): status/adição do widget e o toque
+ * com o app já aberto ("sosWidgetTocado") — `SosWidgetStatusService` e
+ * `SosWidgetFluxoService` no Dart. */
+private const val CANAL_SOS_WIDGET = "guardiaox/sos_widget"
+
 // FlutterFragmentActivity (e não FlutterActivity): exigido pelo local_auth
 // (bloqueio do app por digital/rosto, ver CamadaBloqueioApp no Dart).
 open class MainActivity: FlutterFragmentActivity() {
 
     private var canalSolicitacaoMonitoramento: MethodChannel? = null
+    private var canalSosWidget: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -89,6 +98,57 @@ open class MainActivity: FlutterFragmentActivity() {
                 result.notImplemented()
             }
         }
+
+        val canalWidget = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CANAL_SOS_WIDGET)
+        canalWidget.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "widgetInstalado" -> result.success(SosWidgetProvider.idsInstalados(this).isNotEmpty())
+                "podeFixarWidget" -> result.success(podeFixarWidgetSos())
+                "fixarWidget" -> result.success(fixarWidgetSos())
+                else -> result.notImplemented()
+            }
+        }
+        canalSosWidget = canalWidget
+    }
+
+    /** O launcher aceita adicionar widgets a pedido do app (Android 8+)? */
+    private fun podeFixarWidgetSos(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        return AppWidgetManager.getInstance(this).isRequestPinAppWidgetSupported
+    }
+
+    /** Abre o pedido do launcher para adicionar o Widget SOS à tela inicial.
+     * `false` = launcher sem suporte (o Dart mostra o passo a passo). */
+    private fun fixarWidgetSos(): Boolean {
+        if (!podeFixarWidgetSos()) return false
+        return try {
+            AppWidgetManager.getInstance(this).requestPinAppWidget(
+                ComponentName(this, SosWidgetProvider::class.java), null, null,
+            )
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Toque no Widget SOS — nunca um Intent reaberto pela tela de recentes
+     * (que repetiria o SOS). */
+    private fun ehToqueDoWidgetSos(intent: Intent?): Boolean =
+        intent?.action == SosWidgetProvider.ACAO_SOS_WIDGET &&
+            (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
+
+    /** Cold start pelo widget: o Dart lê esta rota de forma síncrona e já
+     * desenha a tela preta do SOS no primeiro quadro (ver main.dart). */
+    override fun getInitialRoute(): String? {
+        if (ehToqueDoWidgetSos(intent)) return SosWidgetProvider.ROTA_INICIAL_SOS_WIDGET
+        return super.getInitialRoute()
+    }
+
+    /** O SOS nunca espera o desbloqueio (já está sendo enviado); com a tela
+     * bloqueada, pede o desbloqueio para mostrar a câmera. */
+    private fun pedirDesbloqueioSeNecessario() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val keyguard = getSystemService(KeyguardManager::class.java) ?: return
+        if (keyguard.isKeyguardLocked) keyguard.requestDismissKeyguard(this, null)
     }
 
     /** Checagem 100% silenciosa (sem navegar para Configurações nem
@@ -105,11 +165,23 @@ open class MainActivity: FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (ehToqueDoWidgetSos(intent)) {
+            // A rota inicial já foi entregue ao engine em super.onCreate;
+            // limpa a action para uma recriação não repetir o SOS.
+            intent.action = Intent.ACTION_MAIN
+            pedirDesbloqueioSeNecessario()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (ehToqueDoWidgetSos(intent)) {
+            intent.action = Intent.ACTION_MAIN
+            pedirDesbloqueioSeNecessario()
+            canalSosWidget?.invokeMethod("sosWidgetTocado", null)
+            return
+        }
         val payload = extrairPayloadSolicitacao(intent, limpar = true)
         if (payload != null) {
             canalSolicitacaoMonitoramento?.invokeMethod("solicitacaoRecebida", payload)

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">Panikknopf — Wächter-X</string>
+    <string name="sos_widget_descricao">Bei Gefahr antippen: sendet Ihren Standort und öffnet die Kamera</string>
+</resources>

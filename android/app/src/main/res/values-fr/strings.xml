@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget SOS (SosWidgetProvider): nome e descrição na lista de
+         widgets do launcher — os mesmos do widget do iOS. -->
+    <string name="sos_widget_nome">Bouton Panique — Gardien-X</string>
+    <string name="sos_widget_descricao">Touchez en cas de danger : envoie votre position et ouvre l\'appareil photo</string>
+</resources>

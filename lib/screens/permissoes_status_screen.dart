@@ -3,7 +3,11 @@ import 'package:permission_handler/permission_handler.dart' show openAppSettings
 import 'package:security_check_app/l10n/app_localizations.dart';
 
 import '../services/onboarding_service.dart';
+import '../services/plano_ciclo_service.dart';
+import '../services/premium_purchase_service.dart';
 import '../services/rastreamento_continuo_service.dart';
+import '../services/sos_plano_aviso_service.dart';
+import '../services/sos_widget_status_service.dart';
 import '../widgets/permissao_status_card.dart';
 
 /// Tela "Status de Permissões", acessível a qualquer momento em
@@ -38,6 +42,13 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
 
   StatusPermissaoOnboarding _telaCheia = StatusPermissaoOnboarding.pendente;
 
+  /// Widget SOS na tela de início (`getAppWidgetIds`, ver
+  /// [SosWidgetStatusService]). `null` = desconhecido.
+  bool? _widgetSos;
+
+  /// Dias bloqueados do Plano Free: o botão SOS está desativado.
+  BloqueioSosPlano? _bloqueioSosPlano;
+
   bool _carregando = true;
 
   @override
@@ -68,6 +79,12 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
       _service.statusCamera(),
       _service.statusTelaCheia(),
     ]);
+    // Reverificado também a cada volta ao primeiro plano (ver
+    // didChangeAppLifecycleState): fica verde sozinho depois que o
+    // usuário adiciona o widget e volta ao app.
+    final widgetSos = await SosWidgetStatusService.widgetInstalado();
+    final bloqueioSosPlano =
+        BloqueioSosPlano.vigente(await PlanoCicloService().obterStatusAtualizado());
     await RastreamentoContinuoService().atualizarEstado();
     if (!mounted) return;
     setState(() {
@@ -76,6 +93,8 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
       _localizacao = resultados[2];
       _camera = resultados[3];
       _telaCheia = resultados[4];
+      _widgetSos = widgetSos;
+      _bloqueioSosPlano = bloqueioSosPlano;
       _carregando = false;
     });
   }
@@ -193,6 +212,29 @@ class _PermissoesStatusScreenState extends State<PermissoesStatusScreen>
                             ? openAppSettings
                             : null,
                   ),
+                  if (_widgetSos != null)
+                    PermissaoStatusCard(
+                      icone: Icons.sos_rounded,
+                      titulo: l10n.sosWidgetStatusTitulo,
+                      descricao: l10n.sosWidgetStatusDescricao,
+                      essencial: false,
+                      status: _widgetSos == true && _bloqueioSosPlano == null
+                          ? StatusPermissaoOnboarding.concedida
+                          : StatusPermissaoOnboarding.pendente,
+                      textoStatusConcedida: l10n.sosWidgetStatusAtivo,
+                      textoStatusPendente: _bloqueioSosPlano != null
+                          ? l10n.sosPlanoStatusDesativado
+                          : l10n.sosWidgetStatusNaoAdicionado,
+                      corStatusPendente: Colors.red.shade600,
+                      textoBotaoConceder: l10n.sosWidgetBotaoComoAdicionar,
+                      aoConceder: () => SosWidgetStatusService.abrirTutorial(context),
+                      aoTocarCard: () => SosWidgetStatusService.abrirTutorial(context),
+                      aviso: _bloqueioSosPlano == null
+                          ? null
+                          : l10n.sosPlanoDesativadoAte(formatarDiaMes(_bloqueioSosPlano!.fim)),
+                      textoBotaoAviso: l10n.sosPlanoBotaoAssinar,
+                      aoTocarBotaoAviso: PremiumPurchaseService().comprarPremium,
+                    ),
                   const _CartaoRastreamentoContinuo(),
                 ],
               ),
