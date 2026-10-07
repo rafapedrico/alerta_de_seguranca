@@ -10,7 +10,7 @@ import 'database_helper.dart';
 import 'firebase_auth_service.dart';
 
 /// Janela de LOCALIZAÇÃO do despertador: das 2 h antes do horário até o
-/// fim da tolerância (gravada a cada 1 min pelo serviço nativo
+/// fim da tolerância (lida a cada 1 min pelo serviço nativo
 /// `VigiaLocalizacao`). Fora dela, nada de localização para o despertador.
 const Duration janelaLocalizacao2h = Duration(hours: 2);
 
@@ -30,9 +30,11 @@ const Duration intervaloHeartbeat = Duration(minutes: 15);
 ///   reafirma esse mesmo ciclo — NUNCA empurra o prazo para a próxima
 ///   ocorrência depois do horário, e respeita a pausa.
 ///
-/// A LOCALIZAÇÃO não é mais enviada daqui: o serviço nativo
-/// (`VigiaLocalizacao.kt`) grava a cada 1 min durante o cronômetro e nas
-/// 2 h antes de cada despertador, mesmo com o app fechado.
+/// A LOCALIZAÇÃO não é enviada daqui nem gravada nos documentos de
+/// `alarmes_agendados`: o serviço nativo (`VigiaLocalizacao.kt`) grava SÓ em
+/// `usuarios/{uid}/monitoramento/atual` durante o cronômetro e nas 2 h antes
+/// de cada despertador (deslocamento de 30 m ou a cada 5 min parado), mesmo
+/// com o app fechado.
 class BackgroundLocationHeartbeatService {
   BackgroundLocationHeartbeatService._internal();
   static final BackgroundLocationHeartbeatService _instance =

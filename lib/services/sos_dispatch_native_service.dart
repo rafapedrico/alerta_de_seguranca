@@ -47,6 +47,28 @@ class SosDispatchNativeService {
     }
   }
 
+  /// Foto do SOS reduzida para no máximo [ladoMaximo] px no lado maior,
+  /// JPEG qualidade [qualidade] (redução de custo). Devolve o caminho da
+  /// foto reduzida, ou `null` se não deu — aí o chamador usa a original.
+  Future<String?> redimensionarFoto(
+    String origem, {
+    int ladoMaximo = 1600,
+    int qualidade = 75,
+  }) async {
+    try {
+      final destino = '${origem.replaceAll(RegExp(r'\.jpe?g$', caseSensitive: false), '')}_sos.jpg';
+      return await _canal.invokeMethod<String>('redimensionarFoto', {
+        'origem': origem,
+        'destino': destino,
+        'ladoMaximo': ladoMaximo,
+        'qualidade': qualidade,
+      });
+    } catch (e) {
+      debugPrint('⚠️ [SosDispatchNativeService] Falha ao redimensionar a foto: $e');
+      return null;
+    }
+  }
+
   /// Executa [corpo] (o envio real do SMS/upload) com o Foreground
   /// Service nativo ativo do início ao fim — iniciado ANTES de [corpo]
   /// começar, parado num `finally` assim que [corpo] terminar, com

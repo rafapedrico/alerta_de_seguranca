@@ -44,10 +44,11 @@ import java.util.concurrent.TimeUnit
 // tolerância) — com a tela apagada ou o app fechado.
 //
 // Foreground service do tipo `location` ("Cronômetro de segurança ativo"),
-// ligado só enquanto houver uma JANELA aberta. A cada 60 s grava a posição,
-// sobrescrevendo, em `usuarios/{uid}`, `usuarios/{uid}/monitoramento/atual`
-// e `alarmes_agendados/{uid}_{idAlarme}.ultimaLocalizacao` de cada janela
-// aberta. Fora das janelas, nada é enviado. Gravação pela API REST do
+// ligado só enquanto houver uma JANELA aberta. Lê a posição a cada 60 s e
+// grava SÓ em `usuarios/{uid}/monitoramento/atual` (sobrescreve), e só se
+// houve deslocamento de 30 m ou mais desde a última gravação, ou a cada
+// 5 min parado (redução de custo do Firestore). Fora das janelas, nada é
+// enviado. Gravação pela API REST do
 // Firestore (mesmo caminho de `RastreamentoContinuo.kt`), com o token da
 // sessão do Firebase Auth nativo — funciona sem engine Flutter.
 
@@ -232,12 +233,9 @@ object GxFirestoreRest {
         return escrita
     }
 
-    /** Posição em `usuarios/{uid}` e `.../monitoramento/atual` (merge). */
-    fun gravarPosicaoUsuario(ctx: Context, local: Location): Boolean = comSessao(ctx) { uid, token, raiz ->
+    /** Posição SÓ em `usuarios/{uid}/monitoramento/atual` (merge). */
+    fun gravarPosicaoAtual(ctx: Context, local: Location): Boolean = comSessao(ctx) { uid, token, raiz ->
         val base = "$raiz/usuarios/$uid"
-        val usuario = JSONObject()
-            .put("latitude", duplo(local.latitude))
-            .put("longitude", duplo(local.longitude))
         val atual = JSONObject()
             .put("latitude", duplo(local.latitude))
             .put("longitude", duplo(local.longitude))
@@ -246,41 +244,9 @@ object GxFirestoreRest {
             .put("plataforma", texto("android"))
         commit(
             raiz, token,
-            JSONArray()
-                .put(escritaParcial(base, usuario, listOf("atualizadoEm"), false))
-                .put(escritaParcial("$base/monitoramento/atual", atual, listOf("atualizadoEm"), false)),
+            JSONArray().put(escritaParcial("$base/monitoramento/atual", atual, listOf("atualizadoEm"), false)),
         )
     }
-
-    /** `alarmes_agendados/{uid}_{idAlarme}.ultimaLocalizacao` (sobrescreve).
-     * Só atualiza um documento que já existe. */
-    fun gravarUltimaLocalizacao(ctx: Context, idAlarme: String, local: Location): Boolean =
-        comSessao(ctx) { uid, token, raiz ->
-            val ultima = JSONObject().put(
-                "ultimaLocalizacao",
-                JSONObject().put(
-                    "mapValue",
-                    JSONObject().put(
-                        "fields",
-                        JSONObject()
-                            .put("lat", duplo(local.latitude))
-                            .put("lng", duplo(local.longitude))
-                            .put("precisao", duplo(local.accuracy.toDouble())),
-                    ),
-                ),
-            )
-            commit(
-                raiz, token,
-                JSONArray().put(
-                    escritaParcial(
-                        "$raiz/alarmes_agendados/${uid}_$idAlarme",
-                        ultima,
-                        listOf("ultimaLocalizacao.timestamp"),
-                        true,
-                    ),
-                ),
-            )
-        }
 
     /**
      * Garante o documento do CICLO [ciclo] do despertador [idAlarme] na
@@ -480,6 +446,22 @@ class VigiaLocalizacaoService : Service() {
         private const val CANAL = "gx_vigia_localizacao"
         private const val ID_NOTIFICACAO = 47_160
         private const val INTERVALO_MS = 60_000L
+
+        /** Grava só com deslocamento de 30 m ou mais, ou a cada 5 min parado. */
+        private const val DESLOCAMENTO_MINIMO_M = 30f
+        private const val INTERVALO_PARADO_MS = 5 * 60_000L
+        private const val PREFS_ULTIMA = "gx_vigia_ultima_gravacao"
+
+        /** Decide se [local] deve ser gravado, dada a última gravação
+         * (posição + instante) — de QUALQUER serviço que grava em
+         * `monitoramento/atual` (este ou o rastreamento contínuo). */
+        fun deveGravar(
+            distanciaDesdeUltimaM: Float?,
+            msDesdeUltima: Long?,
+        ): Boolean {
+            if (distanciaDesdeUltimaM == null || msDesdeUltima == null || msDesdeUltima < 0) return true
+            return distanciaDesdeUltimaM >= DESLOCAMENTO_MINIMO_M || msDesdeUltima >= INTERVALO_PARADO_MS
+        }
         const val ACAO_REVISAR = "com.example.security_check_app.VIGIA_REVISAR"
 
         @Volatile
@@ -526,12 +508,11 @@ class VigiaLocalizacaoService : Service() {
             executor.execute {
                 try {
                     val local = lerPosicao()
-                    if (local != null) {
-                        GxFirestoreRest.gravarPosicaoUsuario(this, local)
-                        for (j in VigiaLocalizacao.abertas(this)) {
-                            GxFirestoreRest.gravarUltimaLocalizacao(this, j.docId, local)
+                    if (local != null && precisaGravar(local)) {
+                        if (GxFirestoreRest.gravarPosicaoAtual(this, local)) {
+                            marcarGravacao(local)
+                            Log.i(TAG, "Posição gravada (${abertas.size} janela(s)).")
                         }
-                        Log.i(TAG, "Posição gravada (${abertas.size} janela(s)).")
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Falha no ciclo de localização: $e")
@@ -541,6 +522,29 @@ class VigiaLocalizacaoService : Service() {
             }
         }
         handler.postDelayed(ciclo, INTERVALO_MS)
+    }
+
+    /** Última gravação em `monitoramento/atual`: a deste serviço ou a do
+     * rastreamento contínuo, a mais recente. */
+    private fun precisaGravar(local: Location): Boolean {
+        val propria = getSharedPreferences(PREFS_ULTIMA, Context.MODE_PRIVATE).let { p ->
+            if (p.contains("ts")) Triple(p.getLong("ts", 0L), p.getFloat("lat", 0f).toDouble(), p.getFloat("lng", 0f).toDouble()) else null
+        }
+        val continuo = RastreamentoContinuo.ultimaGravacao(this)
+        val ultima = listOfNotNull(propria, continuo).maxByOrNull { it.first }
+            ?: return true
+        val distancia = FloatArray(1).also {
+            Location.distanceBetween(ultima.second, ultima.third, local.latitude, local.longitude, it)
+        }[0]
+        return deveGravar(distancia, System.currentTimeMillis() - ultima.first)
+    }
+
+    private fun marcarGravacao(local: Location) {
+        getSharedPreferences(PREFS_ULTIMA, Context.MODE_PRIVATE).edit()
+            .putLong("ts", System.currentTimeMillis())
+            .putFloat("lat", local.latitude.toFloat())
+            .putFloat("lng", local.longitude.toFloat())
+            .apply()
     }
 
     private fun lerPosicao(): Location? {

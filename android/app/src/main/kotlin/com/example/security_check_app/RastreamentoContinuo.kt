@@ -372,7 +372,8 @@ object RastreamentoContinuo {
     private fun texto(v: String) = JSONObject().put("stringValue", v)
     private fun booleano(v: Boolean) = JSONObject().put("booleanValue", v)
 
-    /** Grava a posição (merge) em `usuarios/{uid}` e `.../monitoramento/atual`. */
+    /** Grava a posição (merge) SÓ em `usuarios/{uid}/monitoramento/atual`
+     * (não duplica mais em `usuarios/{uid}` — redução de custo). */
     fun gravarPosicao(ctx: Context, local: Location, origem: String, conclusao: (Boolean) -> Unit) {
         val config = carregarConfig(ctx)
         if (planoBloqueadoAteMs(config) != null) {
@@ -382,9 +383,6 @@ object RastreamentoContinuo {
         executor.execute {
             val ok = try {
                 commitAutenticado(ctx) { _, base ->
-                    val usuario = JSONObject()
-                        .put("latitude", duplo(local.latitude))
-                        .put("longitude", duplo(local.longitude))
                     val atual = JSONObject()
                         .put("latitude", duplo(local.latitude))
                         .put("longitude", duplo(local.longitude))
@@ -392,9 +390,7 @@ object RastreamentoContinuo {
                         .put("origem", texto(origem))
                         .put("plataforma", texto("android"))
                         .put("rastreamentoContinuo", booleano(true))
-                    JSONArray()
-                        .put(escritaComMascara(base, usuario))
-                        .put(escritaComMascara("$base/monitoramento/atual", atual))
+                    JSONArray().put(escritaComMascara("$base/monitoramento/atual", atual))
                 }
             } catch (e: SemSessao) {
                 Log.w(TAG, "Posição não gravada: ${e.motivo}")

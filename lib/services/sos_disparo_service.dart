@@ -219,7 +219,11 @@ class SosDisparoService {
   /// Foto do SOS: cópia na pasta privada (histórico), upload com limite de
   /// 15 s e, com o link verdadeiro, push + SMS. Sem upload: fila de reenvio
   /// (com a posição e o alertaId), sem SMS de foto. `true` = enviada.
-  Future<bool> enviarFoto(XFile foto, SessaoSos sessao) async {
+  Future<bool> enviarFoto(XFile fotoOriginal, SessaoSos sessao) async {
+    // No máximo 1600 px no lado maior, JPEG 75, antes de tudo (upload,
+    // cópia do histórico e fila de reenvio usam a foto reduzida).
+    final reduzida = await SosDispatchNativeService().redimensionarFoto(fotoOriginal.path);
+    final foto = reduzida != null ? XFile(reduzida) : fotoOriginal;
     await HistoricoAlertasService().anexarFoto(sessao.alertaId, fotoArquivo: foto.path);
     var enviada = false;
     await SosDispatchNativeService().executarComServicoAtivo(() async {
